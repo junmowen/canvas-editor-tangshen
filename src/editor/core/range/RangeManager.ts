@@ -90,6 +90,15 @@ class TableSelectionProjectionService {
     if (normalizedRange.startIndex === normalizedRange.endIndex) {
       const publicCursorPosition = this.draw.getPosition().getCursorPosition()
       if (publicCursorPosition && positionContext.isTable) {
+        const activeSlice = this.draw
+          .getTableLayoutSnapshotAccessor()
+          .resolveSliceByPositionContext(positionContext)
+        if (
+          activeSlice &&
+          normalizedRange.startIndex < activeSlice.absoluteStart
+        ) {
+          return normalizedRange
+        }
         const fragmentOffset = this.hooks.resolveActiveTableFragmentOffset(
           leadingOffset,
           publicCursorPosition

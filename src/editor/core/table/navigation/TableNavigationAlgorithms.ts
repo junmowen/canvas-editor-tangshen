@@ -163,7 +163,7 @@ export function resolveVerticalIndexWithinCurrentCell(payload: {
     probablePosition.length &&
     probablePosition[0].pageNo > currentPosition.pageNo
   ) {
-    return probablePosition[0].index
+    return Math.max(0, probablePosition[0].index - 1)
   }
 
   let nextIndex: number | null = null

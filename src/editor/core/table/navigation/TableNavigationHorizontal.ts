@@ -178,6 +178,26 @@ export function resolveHorizontalBoundaryNavigation(
   if (!logicalCell) {
     return null
   }
+  const activeSlice = deps.resolveSliceByPositionContext(positionContext)
+  const activeSliceStartIndex =
+    activeSlice?.positionList[0]?.index ?? activeSlice?.absoluteStart
+  if (
+    activeSlice &&
+    activeSliceStartIndex !== undefined &&
+    endIndex >= activeSliceStartIndex &&
+    endIndex + 1 < activeSlice.absoluteEnd
+  ) {
+    const nextIndex =
+      endIndex < activeSlice.absoluteStart
+        ? activeSlice.absoluteStart + endIndex + 1
+        : endIndex + 1
+    return {
+      nextPositionContext: createTablePositionContext({
+        slice: activeSlice
+      }),
+      nextIndex
+    }
+  }
   const table = originalElementList[logicalCell.tableIndex]
   if (!table?.trList?.length) {
     return null
@@ -230,4 +250,3 @@ export function resolveHorizontalBoundaryNavigation(
     nextIndex: targetSlice?.absoluteStart ?? 0
   }
 }
-

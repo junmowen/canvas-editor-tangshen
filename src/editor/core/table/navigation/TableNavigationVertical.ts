@@ -46,7 +46,17 @@ export function resolveVerticalNavigation(
   if (!table?.trList?.length) {
     return null
   }
-
+  const logicalCellSliceList = deps.getLogicalCellSliceList(
+    logicalCell.tableIndex,
+    logicalCell.trIndex,
+    logicalCell.tdIndex
+  )
+  const resolvePositionContextByIndex = (index: number): IPositionContext | null => {
+    const slice = logicalCellSliceList.find(
+      slice => index >= slice.absoluteStart && index < slice.absoluteEnd
+    )
+    return slice ? createTablePositionContext({ slice }) : null
+  }
   const currentPosition = deps.getPositionList()[cursorIndex]
   const visibleCursorPosition = deps.getCursorPosition()
   const referencePageNo = visibleCursorPosition?.pageNo ?? currentPosition?.pageNo
@@ -71,7 +81,7 @@ export function resolveVerticalNavigation(
     })
     if (previousFragmentIndex !== null) {
       return {
-        nextPositionContext: null,
+        nextPositionContext: resolvePositionContextByIndex(previousFragmentIndex),
         nextIndex: previousFragmentIndex
       }
     }

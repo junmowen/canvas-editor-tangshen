@@ -37,18 +37,35 @@ export function resolveFragmentTransitionIndex(
     return null
   }
 
-  const sliceList = deps
-    .getCellSlicesByLogicalCell({
-      tableId: table.id,
-      trId: tr.id,
-      tdId: td.id
-    })
-    .map(slice => ({
-      absoluteStart: slice.absoluteStart,
-      absoluteEnd: slice.absoluteEnd
-    }))
+  const activeSlice = deps.resolveSliceByPositionContext(positionContext)
+  const sourceSliceList = deps.getCellSlicesByLogicalCell({
+    tableId: table.id,
+    trId: tr.id,
+    tdId: td.id
+  })
+  const sliceList = sourceSliceList.map(slice => ({
+    absoluteStart: slice.absoluteStart,
+    absoluteEnd: slice.absoluteEnd
+  }))
   if (sliceList.length <= 1) {
     return null
+  }
+  if (direction === 'prev' && activeSlice) {
+    const activeSliceIndex = sourceSliceList.findIndex(
+      slice =>
+        slice.fragmentTableId === activeSlice.fragmentTableId &&
+        slice.fragmentTrId === activeSlice.fragmentTrId &&
+        slice.fragmentTdId === activeSlice.fragmentTdId
+    )
+    const activeSliceStartIndex =
+      activeSlice.positionList[0]?.index ?? activeSlice.absoluteStart
+    if (
+      activeSliceIndex > 0 &&
+      cursorIndex >= activeSliceStartIndex &&
+      cursorIndex < activeSlice.absoluteStart
+    ) {
+      return Math.max(0, sliceList[activeSliceIndex - 1].absoluteEnd - 1)
+    }
   }
 
   const currentSliceIndex = sliceList.findIndex(
@@ -82,4 +99,3 @@ export function resolveFragmentTransitionIndex(
   }
   return sliceList[currentSliceIndex + 1].absoluteStart
 }
-

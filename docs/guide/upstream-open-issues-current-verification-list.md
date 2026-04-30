@@ -100,4 +100,4 @@
 
 当前开发候选：
 
-1. `#41`：`table-pagination-input.cy.ts` 已收敛到 32/34 通过，剩余 later fragment 起始光标上下往返与右箭头移动 2 个失败
+1. `#41`：`table-pagination-input.cy.ts` 已收敛到 34/34 通过，later fragment 起始光标上下往返与右箭头移动已转绿
