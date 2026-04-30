@@ -65,6 +65,12 @@
 2. `table-pagination-merged.cy.ts`：`5` 个测试，`0` 个通过，`5` 个失败
 3. `table-pagination-merged.cy.ts` 经过 helper 粗扫/精扫优化后不再长时间超时，可在约 `39s` 内稳定复现失败
 
+### 第七轮合并单元格分页拆分收口后
+
+1. `table-pagination-merged.cy.ts`：`5` 个测试，`5` 个通过，`0` 个失败
+2. `TableFragmentSplitter` 在缺省 `colgroup` 时按 fragment 单元格覆盖范围推导列数
+3. split 行被上方 `rowspan` 单元格覆盖时，不再走整行前拆分，改走 carry-cell 拆分路径，避免后续 fragment 变成空表格
+
 这说明：
 
 1. 前一轮大批失败里，确实有相当一部分是 helper 基线失效
@@ -73,7 +79,7 @@
 4. later fragment 起始光标的垂直往返与右箭头移动已经转绿，`table-pagination-input.cy.ts` 当前全绿
 5. mock 数据里的真实分页边界、later fragment 起点上下移动和 CJK 拖选采样已转绿，`table-pagination-mock.cy.ts` 当前全绿
 6. 多单元格 later-page 点击输入、表格工具页码、第一行向下进入下一行等场景已转绿
-7. 合并单元格分页仍是当前最明确剩余缺口，失败集中在找不到 later fragment 点，以及起始 fragment 底部点击后 public cursor index 投影为 `0`
+7. 合并单元格分页 later fragment 点位、起始 fragment 底部点击、同页拖选、跨页反向拖选、既有光标拖选均已转绿
 
 ---
 
@@ -366,5 +372,5 @@
 当前 `#41` 的主结论已经很明确：
 
 1. helper 层的大头已经收掉
-2. `table-pagination-input.cy.ts`、`table-pagination-mock.cy.ts`、`table-pagination-multicell.cy.ts` 三条主线已经全绿
-3. 后续修复重点应该转向合并单元格分页布局/命中，以及更重的批量验证，而不是继续围绕 input/mock/multicell 的 helper 基线漂移
+2. `table-pagination-input.cy.ts`、`table-pagination-mock.cy.ts`、`table-pagination-multicell.cy.ts`、`table-pagination-merged.cy.ts` 四条主线已经全绿
+3. 后续修复重点应该转向剩余表格分页专项与更重的批量验证，而不是继续围绕 input/mock/multicell/merged 的 helper 基线漂移

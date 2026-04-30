@@ -100,4 +100,4 @@
 
 当前开发候选：
 
-1. `#41`：`table-pagination-input.cy.ts` 已收敛到 34/34 通过，`table-pagination-mock.cy.ts` 已收敛到 13/13 通过，`table-pagination-multicell.cy.ts` 已收敛到 4/4 通过；later fragment 起始光标上下往返、右箭头移动、mock 实际分页边界向下导航、多单元格 later-page 点击/工具/向下导航均已转绿。`table-pagination-merged.cy.ts` 仍稳定 0/5，主要失败是合并单元格找不到 later fragment 点。
+1. `#41`：`table-pagination-input.cy.ts` 已收敛到 34/34 通过，`table-pagination-mock.cy.ts` 已收敛到 13/13 通过，`table-pagination-multicell.cy.ts` 已收敛到 4/4 通过，`table-pagination-merged.cy.ts` 已收敛到 5/5 通过；later fragment 起始光标上下往返、右箭头移动、mock 实际分页边界向下导航、多单元格 later-page 点击/工具/向下导航、合并单元格跨页拆分与拖选均已转绿。

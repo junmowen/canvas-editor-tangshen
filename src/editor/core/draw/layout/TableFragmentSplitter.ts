@@ -243,7 +243,8 @@ export class TableFragmentSplitter {
     const defaultTrMinHeight = this.draw.getOptions().table.defaultTrMinHeight
     if (
       splitTrIndex > 0 &&
-      splitTrPreHeight < defaultTrMinHeight * scale
+      splitTrPreHeight < defaultTrMinHeight * scale &&
+      !this.hasCarryCellAtSplitRow(trList, splitTrIndex, fragment)
     ) {
       return this.splitFragmentBeforeRow({
         fragment,
@@ -263,7 +264,8 @@ export class TableFragmentSplitter {
     const headCarryHeightList: IFragmentCarryHeightItem[] = []
     const tailCarryHeightList: IFragmentCarryHeightItem[] = []
 
-    for (let c = 0; c < (fragment.colgroup?.length || 0); c++) {
+    const colCount = this.getFragmentColumnCount(fragment)
+    for (let c = 0; c < colCount; c++) {
       const splitTd = this.getCoveringCell(trList, splitTrIndex, c)
       if (!splitTd) continue
       const processedCellId = splitTd.originId || splitTd.id
@@ -477,5 +479,39 @@ export class TableFragmentSplitter {
   /** 计算整个 fragment 的总高度。 */
   private computeFragmentHeight(trList: ITableFragmentRow[]) {
     return trList.reduce((pre, cur) => pre + (cur.originHeight || cur.height), 0)
+  }
+
+  /** 判断当前拆分行是否被上方 rowspan 单元格覆盖。 */
+  private hasCarryCellAtSplitRow(
+    trList: ITableFragmentRow[],
+    splitTrIndex: number,
+    fragment: ITableFragmentDescriptor
+  ) {
+    const colCount = this.getFragmentColumnCount(fragment)
+    for (let colIndex = 0; colIndex < colCount; colIndex++) {
+      const coveringCell = this.getCoveringCell(trList, splitTrIndex, colIndex)
+      if (!coveringCell) continue
+      const startRowIndex = coveringCell.rowIndex ?? splitTrIndex
+      if (startRowIndex < splitTrIndex) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /** 获取 fragment 的逻辑列数；缺省 colgroup 时从单元格覆盖范围兜底推导。 */
+  private getFragmentColumnCount(fragment: ITableFragmentDescriptor) {
+    const colgroupLength = fragment.colgroup?.length || 0
+    if (colgroupLength > 0) {
+      return colgroupLength
+    }
+
+    return (fragment.trList || []).reduce((max, tr, trIndex) => {
+      const rowMax = tr.tdList.reduce((tdMax, td, tdIndex) => {
+        const colIndex = td.colIndex ?? tdIndex
+        return Math.max(tdMax, colIndex + td.colspan)
+      }, 0)
+      return Math.max(max, rowMax, trIndex === 0 ? tr.tdList.length : 0)
+    }, 0)
   }
 }

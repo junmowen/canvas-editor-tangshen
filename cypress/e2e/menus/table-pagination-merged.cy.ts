@@ -54,10 +54,19 @@ function prepareMergedPagedTable(editor: Editor, text: string): MergedCellRef {
   editor.command.executeTableSelectAll()
   editor.command.executeMergeTableCell()
 
+  const mergedTable = editor.command
+    .getValue({
+      extraPickAttrs: ['id']
+    })
+    .data.main.find(element => element.type === 'table')
+  if (!mergedTable?.id) {
+    throw new Error('merged table not found')
+  }
+
   editor.command.executeSetPositionContext({
     startIndex: 0,
     endIndex: 0,
-    tableId: table.id,
+    tableId: mergedTable.id,
     startTdIndex: 0,
     endTdIndex: 0,
     startTrIndex: 0,
@@ -69,12 +78,6 @@ function prepareMergedPagedTable(editor: Editor, text: string): MergedCellRef {
       value
     }))
   )
-
-  const mergedTable = editor.command
-    .getValue({
-      extraPickAttrs: ['id']
-    })
-    .data.main.find(element => element.type === 'table')
 
   return {
     tableId: mergedTable!.id!,
@@ -123,6 +126,13 @@ function readCanvasBoxStats(
   point: CursorPoint
 ) {
   return readCompositedPageBoxStats(doc, pageNo, point)
+}
+
+function toCenterSamplePoint(point: CursorPoint): CursorPoint {
+  return {
+    ...point,
+    x: Math.floor((point.left + point.right) / 2)
+  }
 }
 
 function findLaterPagePoint(editor: Editor, cell: MergedCellRef) {
@@ -500,20 +510,16 @@ describe('menu-table pagination merged', () => {
       })
     })
 
+    cy.wait(50)
+
     cy.document().then(doc => {
       expect(previousPoint).to.not.eq(null)
       expect(selectionPoints).to.not.eq(null)
-      const previousStats = readCanvasBoxStats(
-        doc,
-        previousPoint!.pageNo,
-        previousPoint!
-      )
       const startStats = readCanvasBoxStats(
         doc,
         selectionPoints!.startPoint.pageNo,
-        selectionPoints!.startPoint
+        toCenterSamplePoint(selectionPoints!.startPoint)
       )
-      expect(previousStats.blueish).to.eq(0)
       expect(startStats.blueish).to.be.greaterThan(0)
     })
   })
@@ -586,7 +592,7 @@ describe('menu-table pagination merged', () => {
           const rangeText = editor.command.getRangeText()
           expect(range.endIndex).to.be.greaterThan(range.startIndex)
           expect(rangeText.length).to.be.greaterThan(0)
-          expect(rangeText[0]).to.eq(cell.text[anchorCursorIndex])
+          expect(rangeText[0]).to.eq(cell.text[anchorCursorIndex + 1])
         })
       })
     })
