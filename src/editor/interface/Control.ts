@@ -88,6 +88,7 @@ export interface IControlStyle {
   bold?: boolean
   highlight?: string
   italic?: boolean
+  underline?: boolean
   strikeout?: boolean
 }
 

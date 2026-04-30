@@ -191,6 +191,7 @@ interface IElement {
   // 列表
   listType?: ListType;
   listStyle?: ListStyle;
+  listLevel?: number; // 列表层级，0 或 undefined 表示一级列表，1 表示二级列表
   listWrap?: boolean;
   // 区域
   areaId?: string;

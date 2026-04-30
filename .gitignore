@@ -6,3 +6,11 @@ dist-ssr
 *.local
 cache
 .temp
+.cypress-serve/
+.vite*.log
+.vite*.out.log
+.vite*.err.log
+.static-serve*.log
+cypress/screenshots/
+cypress/e2e/tmp/
+tmp/

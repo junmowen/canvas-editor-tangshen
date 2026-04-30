@@ -317,6 +317,48 @@ instance.command.executeTitle(TitleLevel | null)
 instance.command.executeList(listType: ListType | null, listStyle?: ListStyle)
 ```
 
+说明：
+
+1. `listType` 传入 `ListType.OL` 时设置为有序列表。
+2. `listType` 传入 `ListType.UL` 时设置为无序列表。
+3. `listType` 传入 `null`，或对已有相同类型、样式的列表再次执行时，会取消当前选区所在段落的列表。
+4. 光标位于列表段落内时，按 `Tab` 增加子列表层级，按 `Shift + Tab` 取消一级子列表层级。
+5. 子列表层级会写入元素的 `listLevel` 字段，可通过 `getValue` 保存，并在 `setValue` 后恢复。
+
+示例：
+
+```javascript
+// 设置有序列表
+instance.command.executeList(ListType.OL)
+
+// 设置无序列表
+instance.command.executeList(ListType.UL, ListStyle.DISC)
+
+// 取消当前列表
+instance.command.executeList(null)
+```
+
+数据示例：
+
+```javascript
+instance.command.executeSetValue({
+  main: [
+    {
+      type: 'list',
+      value: '',
+      listType: 'ol',
+      listStyle: 'decimal',
+      valueList: [
+        { value: '\n' },
+        { value: '一级列表' },
+        { value: '\n', listLevel: 1 },
+        { value: '二级列表', listLevel: 1 }
+      ]
+    }
+  ]
+})
+```
+
 ## executeRowFlex
 
 功能：行对齐

@@ -28,6 +28,7 @@ export interface IRangeStyle {
   level: TitleLevel | null
   listType: ListType | null
   listStyle: ListStyle | null
+  listLevel: number | null
   groupIds: string[] | null
   textDecoration: ITextDecoration | null
   extension?: unknown | null

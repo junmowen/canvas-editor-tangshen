@@ -28,13 +28,14 @@ const ISSUE_SPECS = {
   },
   425: {
     title: '文本控件内容中，再插入控件，页面{}显示有问题。',
-    specs: ['cypress/e2e/control/text.cy.ts'],
-    note: '现有 spec 仅作相关链路回归，不能完全等价覆盖 issue 场景。'
+    specs: [
+      'cypress/e2e/issues/issue-425-control-in-text-control.cy.ts',
+      'cypress/e2e/control/text.cy.ts'
+    ]
   },
   440: {
     title: '文档列表内容内无法取消或者增加子列表',
-    specs: ['cypress/e2e/menus/text.cy.ts', 'cypress/e2e/menus/row.cy.ts'],
-    note: '现有 spec 偏文本/段落，建议后续补子列表专项场景。'
+    specs: ['cypress/e2e/issues/issue-440-list-sublevel.cy.ts']
   },
   446: {
     title: '格式刷未携带所有格式',
@@ -103,7 +104,10 @@ const ISSUE_SPECS = {
   },
   1385: {
     title: '官网的demo中 在文本、列举控件中 插入下划线 显示异常',
-    specs: ['cypress/e2e/menus/format.cy.ts']
+    specs: [
+      'cypress/e2e/issues/issue-1385-control-underline.cy.ts',
+      'cypress/e2e/menus/format.cy.ts'
+    ]
   },
   1399: {
     title: '选中CONTROL类型的内容，向前删除executeBackspace无效',
@@ -111,8 +115,10 @@ const ISSUE_SPECS = {
   },
   1404: {
     title: '插入表格的时候当colgroup未传入时，默认使用编辑器宽度平分',
-    specs: ['cypress/e2e/menus/table.cy.ts'],
-    note: '现有表格 spec 仅作相关链路回归，建议后续补 colgroup 缺省专项场景。'
+    specs: [
+      'cypress/e2e/issues/issue-1404-table-colgroup-default.cy.ts',
+      'cypress/e2e/menus/table.cy.ts'
+    ]
   }
 }
 

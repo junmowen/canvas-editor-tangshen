@@ -36,10 +36,10 @@
 
 | Issue | 标题 | 是否命中业务 | 状态 | 验证入口 | 下一步 |
 | --- | --- | --- | --- | --- | --- |
-| #1404 | 插入表格的时候当colgroup未传入时，默认使用编辑器宽度平分 | 是 | 未验证 | `TableOperate.ts` / `table.cy.ts` | 补测试 |
+| #1404 | 插入表格的时候当colgroup未传入时，默认使用编辑器宽度平分 | 是 | 已验证-本地已解决 | `issue-1404-table-colgroup-default.cy.ts` / `table.cy.ts` | 跳过 |
 | #1399 | 选中CONTROL类型的内容，向前删除executeBackspace无效 | 是 | 已验证-本地已解决 | `backspace.ts` / `Control.ts` | 跳过 |
 | #1387 | 希望表格可以添加根据内容自动调整的功能 | 否 | 暂不处理 | `TableOperate.ts` / 表格能力文档 | 跳过 |
-| #1385 | 官网的demo中 在文本、列举控件中 插入下划线 显示异常 | 待判断 | 未验证 | `RowRenderer.ts` / `format.cy.ts` | 验证 |
+| #1385 | 官网的demo中 在文本、列举控件中 插入下划线 显示异常 | 是 | 已验证-本地已解决 | `issue-1385-control-underline.cy.ts` / `format.cy.ts` | 跳过 |
 | #1372 | 图片浮动文字之上问题 | 待判断 | 未验证 | `Position.ts` / `image.cy.ts` | 验证 |
 | #1317 | Area元素能否支持在表格中插入 | 否 | 暂不处理 | `Area.ts` / `TableParticle.ts` | 跳过 |
 | #1270 | 同屏多页 | 否 | 暂不处理 | `DrawPageSetupService.ts` / page mode 文档 | 跳过 |
@@ -75,9 +75,9 @@
 | #451 | 编辑器支持rtl渲染 | 待判断 | 暂不处理 | `TextParticle.ts` / 排版主链 | 跳过 |
 | #446 | 格式刷未携带所有格式 | 是 | 已验证-本地已解决 | `painter.cy.ts` / `command-execute.md` | 跳过 |
 | #442 | 控件最小宽度设置支持跨行 | 否 | 暂不处理 | `Control.ts` / control 布局链 | 跳过 |
-| #440 | 文档列表内容内无法取消或者增加子列表 | 待判断 | 未验证 | `ListParticle.ts` / `text.cy.ts` | 验证 |
+| #440 | 文档列表内容内无法取消或者增加子列表 | 是 | 已验证-本地已解决 | `issue-440-list-sublevel.cy.ts` / `ListParticle.ts` / `TabIntent.ts` | 跳过 |
 | #438 | 可否增加文档处理  没有标尺值功能 | 否 | 暂不处理 | `option.md` / ruler 相关能力 | 跳过 |
-| #425 | 文本控件内容中，再插入控件，页面{}显示有问题。 | 待判断 | 未验证 | `TextControl.ts` / control 测试 | 验证 |
+| #425 | 文本控件内容中，再插入控件，页面{}显示有问题。 | 是 | 已验证-本地已解决 | `issue-425-control-in-text-control.cy.ts` / `text.cy.ts` | 跳过 |
 | #390 | 是否可以生成如下的表格 | 待判断 | 未验证 | `table.cy.ts` / issue 具体内容 | 验证 |
 | #374 | 主线合并支持svg、pdf渲染层 | 否 | 暂不处理 | `README.md` / `start.md` | 跳过 |
 | #362 | 批注功能添加连接线 | 否 | 暂不处理 | schema / comment 能力说明 | 跳过 |

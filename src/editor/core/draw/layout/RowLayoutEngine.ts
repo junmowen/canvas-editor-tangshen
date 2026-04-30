@@ -75,17 +75,22 @@ export class RowLayoutEngine {
     let pageNo = 0
     let listId: string | undefined
     let listIndex = 0
+    const listIndexMap = new Map<string, number>()
     let controlRealWidth = 0
 
     for (let i = 0; i < elementList.length; i++) {
       const curRow = rowList[rowList.length - 1]
       const element = elementList[i]
+      const listStyleKey = this.draw.getListParticle().getListStyleKey(element)
       const rowMargin =
         defaultBasicRowMarginHeight * (element.rowMargin ?? defaultRowMargin)
       const offsetX =
         curRow.offsetX ||
-        (element.listId && listStyleMap.get(element.listId)) ||
+        (listStyleKey && listStyleMap.get(listStyleKey)) ||
         0
+      if (element.listId && !curRow.offsetX) {
+        curRow.offsetX = offsetX
+      }
       const availableWidth = innerWidth - offsetX
       const isStartElement = curRow.elementList.length === 1
 
@@ -180,9 +185,19 @@ export class RowLayoutEngine {
 
       if (element.listId) {
         if (element.listId !== listId) {
-          listIndex = 0
-        } else if (element.value === ZERO && !element.listWrap) {
-          listIndex++
+          listIndexMap.clear()
+        }
+        if (element.value === ZERO && !element.listWrap) {
+          const level = element.listLevel || 0
+          const indexKey = `${element.listId}:${level}`
+          listIndex = listIndexMap.get(indexKey) || 0
+          listIndexMap.set(indexKey, listIndex + 1)
+          for (const key of [...listIndexMap.keys()]) {
+            const [, keyLevel] = key.split(':')
+            if (Number(keyLevel) > level) {
+              listIndexMap.delete(key)
+            }
+          }
         }
       }
       listId = element.listId
@@ -257,7 +272,7 @@ export class RowLayoutEngine {
 
         if (element.listId) {
           row.isList = true
-          row.offsetX = listStyleMap.get(element.listId!)
+          row.offsetX = listStyleKey ? listStyleMap.get(listStyleKey) : 0
           row.listIndex = listIndex
         }
 

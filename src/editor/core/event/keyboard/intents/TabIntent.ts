@@ -21,6 +21,15 @@ export function runTabIntent(evt: KeyboardEvent, host: CanvasEvent) {
   const rangeManager = draw.getRange()
   const elementList = draw.getElementList()
   const { startIndex, endIndex } = rangeManager.getEditBoundaryRange()
+  const paragraphElementList = rangeManager.getRangeParagraphElementList()
+  if (paragraphElementList?.some(element => element.listId)) {
+    const isHandled = draw
+      .getListParticle()
+      .indentList(evt.shiftKey ? -1 : 1)
+    if (isHandled) {
+      return
+    }
+  }
   const anchorStyle = rangeManager.getRangeAnchorStyle(elementList, endIndex)
   const copyStyle = anchorStyle
     ? pickObject(anchorStyle, EDITOR_ELEMENT_STYLE_ATTR)

@@ -1791,8 +1791,7 @@ window.onload = function () {
       'table',
       'hyperlink',
       'separator',
-      'page-break',
-      'control'
+      'page-break'
     ]
     // 菜单操作权限
     disableMenusInControlContext.forEach(menu => {

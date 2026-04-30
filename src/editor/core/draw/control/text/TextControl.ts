@@ -1,8 +1,10 @@
 import {
   CONTROL_STYLE_ATTR,
+  EDITOR_ROW_ATTR,
   TEXTLIKE_ELEMENT_TYPE
 } from '../../../../dataset/constant/Element'
-import { ControlComponent } from '../../../../dataset/enum/Control'
+import { ControlComponent, ControlType } from '../../../../dataset/enum/Control'
+import { ElementType } from '../../../../dataset/enum/Element'
 import { KeyMap } from '../../../../dataset/enum/KeyMap'
 import { DeepRequired } from '../../../../interface/Common'
 import {
@@ -124,6 +126,12 @@ export class TextControl implements IControlInstance {
     this.control.shrinkBoundary(context)
     const { startIndex, endIndex } = range
     const draw = this.control.getDraw()
+    const startElement = elementList[startIndex]
+    const insertData = data.map(item =>
+      item.type === ElementType.CONTROL && item.control
+        ? this.convertNestedControlToValueElement(item, startElement)
+        : item
+    )
     // 移除选区元素
     if (startIndex !== endIndex) {
       draw.spliceElementList(
@@ -140,7 +148,6 @@ export class TextControl implements IControlInstance {
       this.control.removePlaceholder(startIndex, context)
     }
     // 非文本类元素或前缀过渡掉样式属性
-    const startElement = elementList[startIndex]
     const anchorElement =
       (startElement.type &&
         !TEXTLIKE_ELEMENT_TYPE.includes(startElement.type)) ||
@@ -154,10 +161,10 @@ export class TextControl implements IControlInstance {
         : omitObject(startElement, ['type'])
     // 插入起始位置
     const start = range.startIndex + 1
-    for (let i = 0; i < data.length; i++) {
+    for (let i = 0; i < insertData.length; i++) {
       const newElement: IElement = {
         ...anchorElement,
-        ...data[i],
+        ...insertData[i],
         controlComponent: ControlComponent.VALUE
       }
       formatElementContext(elementList, [newElement], startIndex, {
@@ -165,7 +172,54 @@ export class TextControl implements IControlInstance {
       })
       draw.spliceElementList(elementList, start + i, 0, [newElement])
     }
-    return start + data.length - 1
+    return start + insertData.length - 1
+  }
+
+  private convertNestedControlToValueElement(
+    element: IElement,
+    startElement: IElement
+  ): IElement {
+    const control = element.control!
+    const controlOption = this.options.control
+    const prefix = control.prefix ?? controlOption.prefix
+    const postfix = control.postfix ?? controlOption.postfix
+    const displayValue = this.getNestedControlDisplayValue(element)
+    const nestedValueElement: IElement = {
+      ...pickObject(element, EDITOR_ROW_ATTR),
+      ...pickObject(control, CONTROL_STYLE_ATTR),
+      value: `${prefix}${control.preText || ''}${displayValue}${control.postText || ''}${postfix}`,
+      type: ElementType.CONTROL,
+      control: {
+        ...control,
+        value: control.value ? [...control.value] : null
+      },
+      controlId: startElement.controlId,
+      controlComponent: ControlComponent.VALUE
+    }
+    return nestedValueElement
+  }
+
+  private getNestedControlDisplayValue(element: IElement): string {
+    const control = element.control!
+    if (Array.isArray(control.value) && control.value.length) {
+      return control.value.map(valueElement => valueElement.value).join('')
+    }
+    if (
+      (control.type === ControlType.SELECT ||
+        control.type === ControlType.CHECKBOX ||
+        control.type === ControlType.RADIO) &&
+      control.code &&
+      Array.isArray(control.valueSets)
+    ) {
+      const codeList = control.code.split(',')
+      const valueList = control.valueSets
+        .filter(valueSet => codeList.includes(valueSet.code))
+        .map(valueSet => valueSet.value)
+      if (valueList.length) {
+        return valueList.join(control.multiSelectDelimiter || '、')
+      }
+    }
+    return control.placeholder || ''
   }
 
   /**

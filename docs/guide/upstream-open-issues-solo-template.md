@@ -21,7 +21,7 @@
 
 | Issue | 标题 | 是否命中业务 | 状态 | 验证入口 | 下一步 |
 | --- | --- | --- | --- | --- | --- |
-| #1404 | colgroup 默认平分 | 是/否 | 未验证 | table 插入场景 | 验证 |
+| #1404 | colgroup 默认平分 | 是/否 | 已验证-本地已解决 | issue-1404-table-colgroup-default.cy.ts | 跳过 |
 | #1399 | CONTROL 删除无效 | 是/否 | 未验证 | control + backspace | 验证 |
 
 ---

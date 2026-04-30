@@ -38,7 +38,7 @@ import {
 import { BlockType } from '../dataset/enum/Block'
 import { ImageDisplay, LocationPosition } from '../dataset/enum/Common'
 import { ControlComponent, ControlType } from '../dataset/enum/Control'
-import { EditorMode } from '../dataset/enum/Editor'
+import { EditorMode, PaperDirection } from '../dataset/enum/Editor'
 import { ElementType } from '../dataset/enum/Element'
 import { ListStyle, ListType, UlStyle } from '../dataset/enum/List'
 import { RowFlex } from '../dataset/enum/Row'
@@ -68,6 +68,7 @@ export function unzipElementList(elementList: IElement[]): IElement[] {
 interface IFormatElementListOption {
   isHandleFirstElement?: boolean // 根据上下文确定首字符处理逻辑（处理首字符补偿）
   isForceCompensation?: boolean // 强制补偿字符
+  isFromControlValue?: boolean // 控件值内部格式化
   editorOptions: DeepRequired<IEditorOption>
 }
 
@@ -78,6 +79,7 @@ export function formatElementList(
   const {
     isHandleFirstElement = true,
     isForceCompensation = false,
+    isFromControlValue = false,
     editorOptions
   } = options
   const startElement = elementList[0]
@@ -96,6 +98,21 @@ export function formatElementList(
   let i = 0
   while (i < elementList.length) {
     let el = elementList[i]
+    if (isFromControlValue && el.type === ElementType.CONTROL && el.control) {
+      const inlineElement: IElement = {
+        ...el,
+        value: getControlInlineText(el, editorOptions)
+      }
+      CONTROL_STYLE_ATTR.forEach(attr => {
+        const value = el.control?.[attr] as never
+        if (value !== undefined) {
+          inlineElement[attr] = value
+        }
+      })
+      elementList.splice(i, 1, inlineElement)
+      i++
+      continue
+    }
     // 优先处理虚拟元素
     if (el.type === ElementType.TITLE) {
       // 移除父节点
@@ -150,6 +167,7 @@ export function formatElementList(
           value.listId = listId
           value.listType = el.listType
           value.listStyle = el.listStyle
+          value.listLevel = value.listLevel ?? el.listLevel ?? 0
           elementList.splice(i, 0, value)
           i++
         }
@@ -197,6 +215,32 @@ export function formatElementList(
       el.id = tableId
       if (el.trList) {
         const { defaultTrMinHeight } = editorOptions.table
+        if (!el.colgroup?.length) {
+          const colCount = Math.max(
+            ...el.trList.map(tr =>
+              tr.tdList.reduce((sum, td) => sum + (td.colspan || 1), 0)
+            )
+          )
+          if (colCount > 0) {
+            const margins =
+              editorOptions.paperDirection === PaperDirection.VERTICAL
+                ? editorOptions.margins
+                : [
+                    editorOptions.margins[1],
+                    editorOptions.margins[2],
+                    editorOptions.margins[3],
+                    editorOptions.margins[0]
+                  ]
+            const pageWidth =
+              editorOptions.paperDirection === PaperDirection.VERTICAL
+                ? editorOptions.width
+                : editorOptions.height
+            const colWidth = (pageWidth - margins[1] - margins[3]) / colCount
+            el.colgroup = Array.from({ length: colCount }, () => ({
+              width: colWidth
+            }))
+          }
+        }
         for (let t = 0; t < el.trList.length; t++) {
           const tr = el.trList[t]
           const trId = tr.id || getUUID()
@@ -464,7 +508,8 @@ export function formatElementList(
           formatElementList(valueList, {
             ...options,
             isHandleFirstElement: false,
-            isForceCompensation: false
+            isForceCompensation: false,
+            isFromControlValue: true
           })
           for (let v = 0; v < valueList.length; v++) {
             const element = valueList[v]
@@ -476,7 +521,10 @@ export function formatElementList(
               controlId,
               value: value === '\n' ? ZERO : value,
               type: element.type || ElementType.TEXT,
-              control: el.control,
+              control:
+                element.type === ElementType.CONTROL && element.control
+                  ? element.control
+                  : el.control,
               controlComponent: ControlComponent.VALUE
             })
             i++
@@ -562,6 +610,50 @@ export function formatElementList(
     }
     i++
   }
+}
+
+function getControlInlineText(
+  element: IElement,
+  editorOptions: DeepRequired<IEditorOption>
+): string {
+  const control = element.control
+  if (!control) return element.value
+  const prefix = control.prefix ?? editorOptions.control.prefix
+  const postfix = control.postfix ?? editorOptions.control.postfix
+  const value = getControlInlineValueText(element, editorOptions)
+  return `${prefix}${control.preText || ''}${value}${control.postText || ''}${postfix}`
+}
+
+function getControlInlineValueText(
+  element: IElement,
+  editorOptions: DeepRequired<IEditorOption>
+): string {
+  const control = element.control!
+  if (Array.isArray(control.value) && control.value.length) {
+    return control.value
+      .map(valueElement =>
+        valueElement.type === ElementType.CONTROL && valueElement.control
+          ? getControlInlineText(valueElement, editorOptions)
+          : valueElement.value
+      )
+      .join('')
+  }
+  if (
+    (control.type === ControlType.SELECT ||
+      control.type === ControlType.CHECKBOX ||
+      control.type === ControlType.RADIO) &&
+    control.code &&
+    Array.isArray(control.valueSets)
+  ) {
+    const codeList = control.code.split(',')
+    const valueList = control.valueSets
+      .filter(valueSet => codeList.includes(valueSet.code))
+      .map(valueSet => valueSet.value)
+    if (valueList.length) {
+      return valueList.join(control.multiSelectDelimiter || '、')
+    }
+  }
+  return control.placeholder || ''
 }
 
 export function isSameElementExceptValue(
@@ -704,12 +796,14 @@ export function zipElementList(
       if (listId) {
         const listType = element.listType
         const listStyle = element.listStyle
+        const listLevel = element.listLevel
         const listElement: IElement = {
           type: ElementType.LIST,
           value: '',
           listId,
           listType,
-          listStyle
+          listStyle,
+          listLevel
         }
         const valueList: IElement[] = []
         while (e < elementList.length) {
@@ -860,7 +954,9 @@ export function zipElementList(
           const controlE = elementList[start]
           if (controlId !== controlE.controlId) break
           if (controlE.controlComponent === ControlComponent.VALUE) {
-            delete controlE.control
+            if (controlE.type !== ElementType.CONTROL) {
+              delete controlE.control
+            }
             delete controlE.controlId
             valueList.push(controlE)
           }
@@ -1091,7 +1187,7 @@ export function convertElementToDom(
   if (element.highlight) {
     dom.style.backgroundColor = element.highlight
   }
-  if (element.underline) {
+  if (element.underline || element.control?.underline) {
     dom.style.textDecoration = 'underline'
   }
   if (element.strikeout) {

@@ -210,6 +210,14 @@ export class Control {
       }
       // 如果不是控件元素，保留
       if (!element.controlId) return true
+      if (
+        element.control?.underline &&
+        element.controlComponent === ControlComponent.PLACEHOLDER
+      ) {
+        element.value = element.value ? ' ' : ''
+        element.color = this.options.defaultColor
+        return true
+      }
       // 如果控件有最小宽度，处理前缀和后缀
       if (element.control?.minWidth) {
         if (

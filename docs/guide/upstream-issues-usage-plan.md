@@ -184,6 +184,7 @@
 | 能力 | 是否在用 | 关联 issue | 风险判断 | 当前策略 |
 | --- | --- | --- | --- | --- |
 | 表格分页 | 是 | `#41` | 高 | 升级必测，限制复杂嵌套用法 |
+| 表格缺省列宽 | 是 | `#1404` | 已本地验证 | 已补缺省 `colgroup` 回归，升级保留必测 |
 | 表格前插入内容 | 是 | `#1163` | 高 | 使用前先做回归样例 |
 | 控件删除 | 是 | `#1399` | 中 | 避免重度依赖 CONTROL 选中删除 |
 | 图片环绕 | 否 | `#1200` `#1372` | 中 | 暂不用于核心业务 |
@@ -200,7 +201,7 @@
 当前应优先关注：
 
 1. [#41](https://github.com/Hufe921/canvas-editor/issues/41) 表格分页
-2. [#1404](https://github.com/Hufe921/canvas-editor/issues/1404) `colgroup` 默认宽度
+2. [#1404](https://github.com/Hufe921/canvas-editor/issues/1404) `colgroup` 默认宽度（本地已补缺省 `colgroup` 回归）
 3. [#1163](https://github.com/Hufe921/canvas-editor/issues/1163) 表格前添加文字
 4. [#1387](https://github.com/Hufe921/canvas-editor/issues/1387) 根据内容自动调整表格
 5. [#1317](https://github.com/Hufe921/canvas-editor/issues/1317) Area 插入表格
@@ -227,7 +228,7 @@
 
 当前应优先关注：
 
-1. [#1385](https://github.com/Hufe921/canvas-editor/issues/1385) 下划线显示异常
+1. [#1385](https://github.com/Hufe921/canvas-editor/issues/1385) 下划线显示异常（本地已补控件下划线回归）
 2. [#1372](https://github.com/Hufe921/canvas-editor/issues/1372) 图片浮动文字之上
 3. [#1200](https://github.com/Hufe921/canvas-editor/issues/1200) 图片环绕
 

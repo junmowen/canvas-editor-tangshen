@@ -66,6 +66,7 @@ export interface IListElement {
   listType?: ListType
   listStyle?: ListStyle
   listId?: string
+  listLevel?: number
   listWrap?: boolean
 }
 

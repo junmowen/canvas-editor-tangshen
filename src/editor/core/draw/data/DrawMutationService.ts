@@ -197,6 +197,7 @@ export class DrawMutationService {
           delete curElement.listId
           delete curElement.listType
           delete curElement.listStyle
+          delete curElement.listLevel
           startIndex++
         }
       }

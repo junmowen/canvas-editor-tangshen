@@ -924,6 +924,7 @@ export class RangeManager {
     const level = curElement.level || null
     const listType = curElement.listType || null
     const listStyle = curElement.listStyle || null
+    const listLevel = curElement.listLevel ?? null
     const textDecoration = underline ? curElement.textDecoration || null : null
     // 菜单
     const painter = !!this.draw.getPainterStyle()
@@ -952,6 +953,7 @@ export class RangeManager {
       level,
       listType,
       listStyle,
+      listLevel,
       groupIds,
       textDecoration,
       extension
@@ -994,6 +996,7 @@ export class RangeManager {
       level: null,
       listType: null,
       listStyle: null,
+      listLevel: null,
       groupIds: null,
       textDecoration: null,
       extension: null

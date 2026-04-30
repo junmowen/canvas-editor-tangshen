@@ -1,6 +1,7 @@
 import { NBSP, WRAP, ZERO } from '../../dataset/constant/Common'
 import {
   AREA_CONTEXT_ATTR,
+  CONTROL_STYLE_ATTR,
   EDITOR_ELEMENT_STYLE_ATTR,
   EDITOR_ROW_ATTR,
   LIST_CONTEXT_ATTR,
@@ -2635,11 +2636,44 @@ export class CommandAdapt {
     const isDisabled = this.draw.isReadonly() || this.draw.isDisabled()
     if (isDisabled) return
     const cloneElement = deepClone(payload)
+    if (this.control.getIsRangeWithinControl()) {
+      const activeControl = this.control.getActiveControl()
+      if (!activeControl) {
+        this.control.initControl()
+      }
+      const nextActiveControl = this.control.getActiveControl()
+      if (nextActiveControl) {
+        const { startIndex, endIndex } = this.range.getEditBoundaryRange()
+        const curIndex = nextActiveControl.setValue([cloneElement], undefined, {
+          isIgnoreDisabledRule: true
+        })
+        if (~curIndex) {
+          this.range.setRange(curIndex, curIndex)
+          this.control.emitControlContentChange()
+          this.draw.render({
+            curIndex,
+            isSubmitHistory: true
+          })
+        } else {
+          this.range.setRange(startIndex, endIndex)
+        }
+        return
+      }
+    }
     // 格式化上下文信息
     const { startIndex } = this.getRange()
     const elementList = this.draw.getElementList()
     const copyElement = getAnchorElement(elementList, startIndex)
     if (!copyElement) return
+    const defaultStyle = this.range.getDefaultStyle()
+    if (cloneElement.control && defaultStyle) {
+      CONTROL_STYLE_ATTR.forEach(attr => {
+        const value = defaultStyle[attr]
+        if (value !== undefined) {
+          cloneElement.control![attr] = value as never
+        }
+      })
+    }
     const cloneAttr = [
       ...TABLE_CONTEXT_ATTR,
       ...EDITOR_ROW_ATTR,

@@ -70,6 +70,7 @@ export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
   'title',
   'listType',
   'listStyle',
+  'listLevel',
   'listWrap',
   'groupIds',
   'conceptId',
@@ -111,7 +112,8 @@ export const TITLE_CONTEXT_ATTR: Array<keyof IElement> = [
 export const LIST_CONTEXT_ATTR: Array<keyof IElement> = [
   'listId',
   'listType',
-  'listStyle'
+  'listStyle',
+  'listLevel'
 ]
 
 export const CONTROL_CONTEXT_ATTR: Array<keyof IElement> = [
@@ -126,6 +128,7 @@ export const CONTROL_STYLE_ATTR: Array<keyof IControlStyle> = [
   'bold',
   'highlight',
   'italic',
+  'underline',
   'strikeout'
 ]
 

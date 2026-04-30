@@ -19,10 +19,6 @@
 | Issue | 标题 | 验证入口 | 建议优先级 |
 | --- | --- | --- | --- |
 | #41 | 表格分页 | 表格分页专项测试组 / 重构文档 | 高 |
-| #1385 | 官网的demo中 在文本、列举控件中 插入下划线 显示异常 | `RowRenderer.ts` / `format.cy.ts` | 高 |
-| #1404 | 插入表格的时候当colgroup未传入时，默认使用编辑器宽度平分 | `TableOperate.ts` / `table.cy.ts` | 高 |
-| #440 | 文档列表内容内无法取消或者增加子列表 | `ListParticle.ts` / `text.cy.ts` | 中 |
-| #425 | 文本控件内容中，再插入控件，页面{}显示有问题。 | `TextControl.ts` / control 测试 | 中 |
 | #837 | 大文本计算性能优化 | `DrawLayoutPipeline.ts` / 性能文档 | 中 |
 | #1372 | 图片浮动文字之上问题 | `Position.ts` / `image.cy.ts` | 中 |
 | #1200 | Smart Word Wrapping Around Images ("SURROUND") | `Position.ts` / `image.cy.ts` | 中 |
@@ -41,15 +37,11 @@
 ### 第一组：先看核心链
 
 1. `#41`
-2. `#1404`
-3. `#1385`
 
 ### 第二组：再看常见编辑能力
 
-1. `#440`
-2. `#425`
-3. `#725`
-4. `#1190`
+1. `#725`
+2. `#1190`
 
 ### 第三组：最后看样式、图片和性能细项
 
@@ -99,10 +91,12 @@
 3. `#446` 使用 `painter.cy.ts` 通过
 4. `#813` 已验证仍存在：`pointer-debug-selection.cy.ts` 通过，`plain-text-selection.cy.ts` 仍有 2 个行为断言失败
 5. `#1163` 已按新增功能补行内表格样例并通过：`issue-inline-table-label.cy.ts` / `issue-1163-text-before-table.cy.ts` / `issue-left-blank-after-table-click.cy.ts` / `table.cy.ts`
-6. `#1385` 当前只有相关格式链路验证通过，仍需补下划线专项样例
-7. `#1404` 当前只有相关表格链路验证通过，仍需补缺省 `colgroup` 专项样例
+6. `#1385` 已补文本控件/列举控件下划线专项样例并通过，覆盖有值控件、空控件、先点下划线再插空控件的打印图片输出：`issue-1385-control-underline.cy.ts` / `format.cy.ts`
+7. `#1404` 已补缺省 `colgroup` 专项样例并通过：`issue-1404-table-colgroup-default.cy.ts` / `table.cy.ts`
 8. `#1190` 当前仍保留 `manual-only`
 9. `#621` 当前仍保留 `manual-only`
+10. `#440` 已补列表子层级能力并通过专项样例：`issue-440-list-sublevel.cy.ts`，覆盖 Tab 增加子列表、Shift+Tab 取消子列表层级、`getValue/setValue` 层级数据往返
+11. `#425` 已补文本控件值内嵌控件专项样例并通过：`issue-425-control-in-text-control.cy.ts` / `text.cy.ts`，保存恢复后保留子控件对象，并按 `{占位符/选中值}` 作为内联文本显示，避免空 `{}`。
 
 当前开发候选：
 
