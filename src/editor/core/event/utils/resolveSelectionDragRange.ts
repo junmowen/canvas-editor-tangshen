@@ -21,6 +21,7 @@ interface IResolveSelectionDragRangePayload {
 interface IBaseTextHit {
   boundaryIndex: number
   hitIndex?: number
+  isRightBoundaryHit?: boolean
 }
 
 interface ITextHit extends IBaseTextHit {
@@ -99,10 +100,17 @@ function toPointerHit(payload: {
 }): TPointerHit {
   const { draw, position, boundaryIndex, hitIndex } = payload
   if (!position.isTable) {
+    const hitPosition =
+      hitIndex !== undefined ? draw.getPosition().getPositionList()[hitIndex] : null
+    const rightX = hitPosition?.coordinate.rightTop[0]
     return {
       object: 'text',
       boundaryIndex,
-      hitIndex
+      hitIndex,
+      isRightBoundaryHit:
+        rightX !== undefined && position.x !== undefined
+          ? position.x >= rightX - 1
+          : false
     }
   }
   return {
@@ -161,6 +169,9 @@ function shouldUseHitTextRange(startHit: TPointerHit, endHit: TPointerHit): bool
 
 function resolveHitRangeStartBoundary(hit: TPointerHit): number {
   if (hit.object === 'text' && hit.hitIndex !== undefined) {
+    if (hit.isRightBoundaryHit) {
+      return hit.boundaryIndex
+    }
     return Math.max(0, hit.hitIndex - 1)
   }
   return hit.boundaryIndex
@@ -184,6 +195,14 @@ function resolveTextSelection(payload: {
     startHit.hitIndex !== undefined &&
     endHit.hitIndex !== undefined
   ) {
+    if (startHit.isRightBoundaryHit) {
+      return normalizeRange(
+        startHit.boundaryIndex,
+        startHit.boundaryIndex > endHit.boundaryIndex
+          ? endHit.boundaryIndex
+          : resolveHitRangeEndBoundary(endHit)
+      )
+    }
     return normalizeRange(
       Math.min(
         resolveHitRangeStartBoundary(startHit),

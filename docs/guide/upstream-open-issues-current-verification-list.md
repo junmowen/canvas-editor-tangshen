@@ -89,7 +89,7 @@
 1. `#94` 已补自动化样例并通过
 2. `#1399` 已补自动化样例并通过；同时追加表单模式 `controlDeletableDisabled` 禁删控件结构回归，确认仍允许删除文本控件值
 3. `#446` 使用 `painter.cy.ts` 通过
-4. `#813` 已验证仍存在：`pointer-debug-selection.cy.ts` 通过，`plain-text-selection.cy.ts` 仍有 2 个行为断言失败
+4. `#813` 已补光标右边界拖拽选区修复并通过：`pointer-debug-selection.cy.ts` / `plain-text-selection.cy.ts`
 5. `#1163` 已按新增功能补行内表格样例并通过：`issue-inline-table-label.cy.ts` / `issue-1163-text-before-table.cy.ts` / `issue-left-blank-after-table-click.cy.ts` / `table.cy.ts`
 6. `#1385` 已补文本控件/列举控件下划线专项样例并通过，覆盖有值控件、空控件、先点下划线再插空控件的打印图片输出：`issue-1385-control-underline.cy.ts` / `format.cy.ts`
 7. `#1404` 已补缺省 `colgroup` 专项样例并通过：`issue-1404-table-colgroup-default.cy.ts` / `table.cy.ts`
@@ -100,5 +100,4 @@
 
 当前开发候选：
 
-1. `#813`
-2. `#41`：`table-pagination-input.cy.ts` 仍有后续分页 fragment 导航断言失败
+1. `#41`：`table-pagination-input.cy.ts` 仍有后续分页 fragment 导航断言失败

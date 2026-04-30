@@ -93,7 +93,7 @@
 | #866 | 分节符 | `未见证据` | 未见 section break 能力入口。 | 作为未实现需求列入 backlog。 |
 | #837 | 大文本计算性能优化 | `部分解决` | 本地已有大量性能重构基础，见 [performance-optimization-plan.md](/D:/canvas-editor/docs/guide/performance-optimization-plan.md)、visible-only / overlay-only / invalidation 体系，但 issue 仍 open。 | 视为性能主线部分落地，需用大文本样例实测。 |
 | #825 | 文本控件内插入列表元素 | `未见证据` | 未见文档声明文本控件内正式支持列表元素嵌套。 | 作为未实现需求列入 backlog。 |
-| #813 | 光标位置 | `部分解决` | 本地 cursor / selection / hit-test 主链近期开了大规模重构，见 [draw-refactor-plan.md](/D:/canvas-editor/docs/guide/draw-refactor-plan.md) 与 [table-refactor-plan.md](/D:/canvas-editor/docs/guide/table-refactor-plan.md)。但 issue 仍 open。 | 视为核心链大幅推进，必须人工回归 issue 场景。 |
+| #813 | 光标位置 | `已解决` | 已修正从已有光标右边界拖拽时被误当作字符内部命中导致多选左侧字符的问题；专项验证见 [pointer-debug-selection.cy.ts](/D:/canvas-editor/cypress/e2e/menus/pointer-debug-selection.cy.ts) 和 [plain-text-selection.cy.ts](/D:/canvas-editor/cypress/e2e/menus/plain-text-selection.cy.ts)。 | 本地已验证，后续仅保留回归。 |
 | #778 | 页眉页脚可以配置某一页不显示 | `未见证据` | 本地有页眉页脚能力，但未见按单页隐藏的正式配置。 | 作为未实现需求列入 backlog。 |
 | #762 | 元素支持悬浮提示 | `未见证据` | 未见元素 tooltip/hover tip 公开能力文档。 | 作为未实现需求列入 backlog。 |
 | #747 | Add footnote | `未见证据` | 未见脚注能力文档或代码入口。 | 作为未实现需求列入 backlog。 |

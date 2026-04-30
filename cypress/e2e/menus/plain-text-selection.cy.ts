@@ -83,7 +83,7 @@ describe('plain text selection', () => {
 
     cy.get('@plainTextPoints').then(payload => {
       const points = payload as PointInfo[]
-      cy.document().then(doc => {
+      cy.document().should(doc => {
         expect(readCompositedPageBoxStats(doc, points[0].pageNo, points[0]).blueish).to.be.greaterThan(0)
         expect(readCompositedPageBoxStats(doc, points[1].pageNo, points[1]).blueish).to.be.greaterThan(0)
         expect(readCompositedPageBoxStats(doc, points[2].pageNo, points[2]).blueish).to.be.greaterThan(0)
@@ -118,7 +118,7 @@ describe('plain text selection', () => {
 
     cy.get('@plainTextPoints').then(payload => {
       const points = payload as PointInfo[]
-      cy.document().then(doc => {
+      cy.document().should(doc => {
         expect(readCompositedPageBoxStats(doc, points[0].pageNo, points[0]).blueish).to.be.greaterThan(0)
         expect(readCompositedPageBoxStats(doc, points[1].pageNo, points[1]).blueish).to.be.greaterThan(0)
         expect(readCompositedPageBoxStats(doc, points[2].pageNo, points[2]).blueish).to.be.greaterThan(0)
