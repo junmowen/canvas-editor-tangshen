@@ -120,7 +120,7 @@
 | #256 | tab stops setting | `未见证据` | 未见 tab stops 正式配置能力。 | 作为未实现需求列入 backlog。 |
 | #195 | 是否对将项目改成monorepo的pr感兴趣？ | `未见证据` | 当前仓库结构并非 monorepo。 | 这不是你的业务功能问题，可单独归为“忽略/不跟进”。 |
 | #94 | 连页模式数据比较多时显示白屏 | `部分解决` | 本地已有可见页刷新、overlay-only、性能调度和失效管理，见 [RenderInvalidationManager.ts](/D:/canvas-editor/src/editor/core/table/render/RenderInvalidationManager.ts) 与 [performance-optimization-plan.md](/D:/canvas-editor/docs/guide/performance-optimization-plan.md)，但 issue 仍 open。 | 视为性能主线部分落地，需用大数据连续模式实测。 |
-| #41 | 表格分页 | `部分解决` | 本地已有大规模分页表格重构、文档、测试与 README 主线说明；本轮将 [table-pagination-input.cy.ts](/D:/canvas-editor/cypress/e2e/menus/table-pagination-input.cy.ts) 从 28/34 推进到 34/34，later fragment 起始光标上下往返与右箭头移动已转绿，详见 [issue-41-table-pagination-failure-breakdown.md](/D:/canvas-editor/docs/guide/issue-41-table-pagination-failure-breakdown.md)。 | 继续跑表格分页相邻专项并做人工样例确认。 |
+| #41 | 表格分页 | `部分解决` | 本地已有大规模分页表格重构、文档、测试与 README 主线说明；本轮将 [table-pagination-input.cy.ts](/D:/canvas-editor/cypress/e2e/menus/table-pagination-input.cy.ts) 从 28/34 推进到 34/34，并将 [table-pagination-mock.cy.ts](/D:/canvas-editor/cypress/e2e/menus/table-pagination-mock.cy.ts) 收敛到 13/13，later fragment 起始光标上下往返、右箭头移动、mock 实际分页边界向下导航已转绿，详见 [issue-41-table-pagination-failure-breakdown.md](/D:/canvas-editor/docs/guide/issue-41-table-pagination-failure-breakdown.md)。 | 继续跑表格分页合并/多单元格专项并做人工样例确认。 |
 
 ---
 

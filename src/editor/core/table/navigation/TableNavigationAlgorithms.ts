@@ -123,12 +123,28 @@ export function resolveVerticalIndexWithinCurrentCell(payload: {
   positionList: IElementPosition[]
   cursorIndex: number
   direction: 'up' | 'down'
+  currentPosition?: IElementPosition | null
 }): number | null {
   const { positionList, cursorIndex, direction } = payload
-  const currentPosition = positionList[cursorIndex]
+  const currentPosition = payload.currentPosition || positionList[cursorIndex]
   if (!currentPosition) {
     return null
   }
+  const currentPositionIndex =
+    payload.currentPosition &&
+    positionList[cursorIndex]?.pageNo !== payload.currentPosition.pageNo
+      ? positionList.findIndex(position => {
+          const currentLeftTop = payload.currentPosition!.coordinate.leftTop
+          const leftTop = position.coordinate.leftTop
+          return (
+            position.pageNo === payload.currentPosition!.pageNo &&
+            position.value === payload.currentPosition!.value &&
+            Math.abs(leftTop[0] - currentLeftTop[0]) < 0.5 &&
+            Math.abs(leftTop[1] - currentLeftTop[1]) < 0.5
+          )
+        })
+      : cursorIndex
+  const scanCursorIndex = currentPositionIndex >= 0 ? currentPositionIndex : cursorIndex
 
   if (direction === 'up' && currentPosition.isFirstLetter) {
     return null
@@ -139,7 +155,7 @@ export function resolveVerticalIndexWithinCurrentCell(payload: {
   const probablePosition: IElementPosition[] = []
 
   if (direction === 'up') {
-    for (let cursor = cursorIndex - 1; cursor >= 0; cursor--) {
+    for (let cursor = scanCursorIndex - 1; cursor >= 0; cursor--) {
       const position = positionList[cursor]
       if (!position || position.rowNo === currentRowNo) continue
       if (probablePosition[0] && probablePosition[0].rowNo !== position.rowNo) {
@@ -148,7 +164,7 @@ export function resolveVerticalIndexWithinCurrentCell(payload: {
       probablePosition.unshift(position)
     }
   } else {
-    for (let cursor = cursorIndex + 1; cursor < positionList.length; cursor++) {
+    for (let cursor = scanCursorIndex + 1; cursor < positionList.length; cursor++) {
       const position = positionList[cursor]
       if (!position || position.rowNo === currentRowNo) continue
       if (probablePosition[0] && probablePosition[0].rowNo !== position.rowNo) {
@@ -163,7 +179,10 @@ export function resolveVerticalIndexWithinCurrentCell(payload: {
     probablePosition.length &&
     probablePosition[0].pageNo > currentPosition.pageNo
   ) {
-    return Math.max(0, probablePosition[0].index - 1)
+    const nextPageStartIndex = probablePosition[0].index
+    return nextPageStartIndex === scanCursorIndex + 1
+      ? nextPageStartIndex
+      : Math.max(0, nextPageStartIndex - 1)
   }
 
   let nextIndex: number | null = null

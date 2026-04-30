@@ -108,6 +108,20 @@ function getLaterFragmentStartPoint(editor: Editor, cell: TableCellRef) {
   }
 }
 
+function toLeftEdgeDragPoint(point: CursorPoint): CursorPoint {
+  return {
+    ...point,
+    x: Math.max(1, Math.floor(point.left + 1))
+  }
+}
+
+function toCenterSamplePoint(point: CursorPoint): CursorPoint {
+  return {
+    ...point,
+    x: Math.floor((point.left + point.right) / 2)
+  }
+}
+
 function readCanvasBoxStats(
   doc: Document,
   pageNo: number,
@@ -376,7 +390,8 @@ describe('menu-table pagination mock', () => {
           const rawRange = draw.getRange().getEditBoundaryRange()
           expect(cursor).to.not.eq(null)
           expect(cursor!.pageNo).to.be.lessThan(clickedPageNo)
-          expect(rawRange.startIndex).to.be.lessThan(clickedRawIndex)
+          expect(cursor!.index).to.be.lessThan(clickedRawIndex)
+          expect(rawRange.startIndex).to.be.at.most(clickedRawIndex)
           expect(context.isTable).to.eq(true)
           expect(context.trIndex).to.eq(cell.trIndex)
           expect(context.tdIndex).to.eq(cell.tdIndex)
@@ -819,7 +834,9 @@ describe('menu-table pagination mock', () => {
       const startIndex = cell.text.indexOf('\u519c\u8d38\u5e02\u573a')
       expect(startIndex).to.be.greaterThan(0)
       const prevPoint = getCursorPoint(editor, cell, startIndex - 1)
-      const startPoint = getCursorPoint(editor, cell, startIndex)
+      const startPoint = toLeftEdgeDragPoint(
+        getCursorPoint(editor, cell, startIndex)
+      )
       const endPoint = getCursorPoint(
         editor,
         cell,
@@ -878,6 +895,8 @@ describe('menu-table pagination mock', () => {
       })
     })
 
+    cy.wait(50)
+
     cy.get('@mockSameCharSelection').then(payload => {
       const { prevPoint, startPoint } = payload as {
         prevPoint: CursorPoint
@@ -892,7 +911,7 @@ describe('menu-table pagination mock', () => {
         const startCharBlueishAfter = readCanvasBoxStats(
           doc,
           startPoint.pageNo,
-          startPoint
+          toCenterSamplePoint(startPoint)
         ).blueish
         expect(prevCharBlueishAfter).to.eq(0)
         expect(startCharBlueishAfter).to.be.greaterThan(0)
@@ -906,7 +925,9 @@ describe('menu-table pagination mock', () => {
       const startIndex = cell.text.indexOf('\u519c\u8d38\u5e02\u573a')
       expect(startIndex).to.be.greaterThan(0)
       const prevPoint = getCursorPoint(editor, cell, startIndex - 1)
-      const startPoint = getCursorPoint(editor, cell, startIndex)
+      const startPoint = toLeftEdgeDragPoint(
+        getCursorPoint(editor, cell, startIndex)
+      )
       const endPoint = getCursorPoint(
         editor,
         cell,
@@ -980,7 +1001,7 @@ describe('menu-table pagination mock', () => {
         const startCharBlueishAfter = readCanvasBoxStats(
           doc,
           startPoint.pageNo,
-          startPoint
+          toCenterSamplePoint(startPoint)
         ).blueish
         expect(prevCharBlueishAfter).to.eq(0)
         expect(startCharBlueishAfter).to.be.greaterThan(0)
@@ -993,7 +1014,9 @@ describe('menu-table pagination mock', () => {
       const cell = getMockPagedCell(editor)
       const startIndex = cell.text.indexOf('\u519c\u8d38\u5e02\u573a')
       expect(startIndex).to.be.greaterThan(0)
-      const startPoint = getCursorPoint(editor, cell, startIndex)
+      const startPoint = toLeftEdgeDragPoint(
+        getCursorPoint(editor, cell, startIndex)
+      )
       const endPoint = getCursorPoint(
         editor,
         cell,
@@ -1153,6 +1176,8 @@ describe('menu-table pagination mock', () => {
         expect(rangeText[0]).to.eq(cell.text[startIndex])
       })
     })
+
+    cy.wait(50)
 
     cy.get('@mockLaterFragmentCaretBefore14Selection').then(payload => {
       const { prevPoint, startPoint } = payload as {

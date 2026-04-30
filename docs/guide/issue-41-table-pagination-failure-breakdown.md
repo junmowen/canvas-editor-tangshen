@@ -54,12 +54,18 @@
 2. `34` 个通过
 3. `0` 个失败
 
+### 第五轮 mock 实际分页边界收口后
+
+1. `table-pagination-input.cy.ts`：`34` 个测试，`34` 个通过，`0` 个失败
+2. `table-pagination-mock.cy.ts`：`13` 个测试，`13` 个通过，`0` 个失败
+
 这说明：
 
 1. 前一轮大批失败里，确实有相当一部分是 helper 基线失效
 2. helper 两轮收口后，失败数从 `28` 级别收敛到了 `8`
 3. 公开 range 改为逻辑单元格索引后，跨页删除、跨页左右/上下边界、反向拖选、later fragment 首字符与 CJK 首字符均已转绿
 4. later fragment 起始光标的垂直往返与右箭头移动已经转绿，`table-pagination-input.cy.ts` 当前全绿
+5. mock 数据里的真实分页边界、later fragment 起点上下移动和 CJK 拖选采样已转绿，`table-pagination-mock.cy.ts` 当前全绿
 
 ---
 
@@ -352,5 +358,5 @@
 当前 `#41` 的主结论已经很明确：
 
 1. helper 层的大头已经收掉
-2. 表格分页测试不再是“几乎全灭”，而是稳定收敛到 `8` 个核心失败
-3. 后续修复重点应该正式转向真实行为问题，而不是继续把时间花在大面积测试基线漂移上
+2. `table-pagination-input.cy.ts` 和 `table-pagination-mock.cy.ts` 两条主线已经全绿
+3. 后续修复重点应该转向合并单元格、多单元格和更重的批量验证，而不是继续围绕 input/mock 的 helper 基线漂移

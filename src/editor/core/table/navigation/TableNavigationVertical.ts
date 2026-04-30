@@ -90,7 +90,8 @@ export function resolveVerticalNavigation(
   const sameCellVerticalIndex = resolveVerticalIndexWithinCurrentCell({
     positionList: deps.getPositionList(),
     cursorIndex,
-    direction
+    direction,
+    currentPosition: visibleCursorPosition
   })
   if (sameCellVerticalIndex !== null) {
     return {
