@@ -3,7 +3,8 @@ import {
   EDITOR_ROW_ATTR,
   TEXTLIKE_ELEMENT_TYPE
 } from '../../../../dataset/constant/Element'
-import { ControlComponent, ControlType } from '../../../../dataset/enum/Control'
+import { ControlComponent } from '../../../../dataset/enum/Control'
+import { EditorMode } from '../../../../dataset/enum/Editor'
 import { ElementType } from '../../../../dataset/enum/Element'
 import { KeyMap } from '../../../../dataset/enum/KeyMap'
 import { DeepRequired } from '../../../../interface/Common'
@@ -15,7 +16,10 @@ import {
 import { IEditorOption } from '../../../../interface/Editor'
 import { IElement } from '../../../../interface/Element'
 import { omitObject, pickObject } from '../../../../utils'
-import { formatElementContext } from '../../../../utils/element'
+import {
+  formatElementContext,
+  formatElementList
+} from '../../../../utils/element'
 import { Control } from '../Control'
 
 /**
@@ -77,6 +81,11 @@ export class TextControl implements IControlInstance {
     let preIndex = startIndex
     while (preIndex > 0) {
       const preElement = elementList[preIndex]
+      if (preElement.parentControlId === startElement.controlId) {
+        data.unshift(preElement)
+        preIndex--
+        continue
+      }
       if (
         preElement.controlId !== startElement.controlId ||
         preElement.controlComponent === ControlComponent.PREFIX ||
@@ -93,6 +102,11 @@ export class TextControl implements IControlInstance {
     let nextIndex = startIndex + 1
     while (nextIndex < elementList.length) {
       const nextElement = elementList[nextIndex]
+      if (nextElement.parentControlId === startElement.controlId) {
+        data.push(nextElement)
+        nextIndex++
+        continue
+      }
       if (
         nextElement.controlId !== startElement.controlId ||
         nextElement.controlComponent === ControlComponent.POSTFIX ||
@@ -127,9 +141,9 @@ export class TextControl implements IControlInstance {
     const { startIndex, endIndex } = range
     const draw = this.control.getDraw()
     const startElement = elementList[startIndex]
-    const insertData = data.map(item =>
+    const insertData = data.flatMap(item =>
       item.type === ElementType.CONTROL && item.control
-        ? this.convertNestedControlToValueElement(item, startElement)
+        ? this.convertNestedControlToValueElementList(item, startElement)
         : item
     )
     // 移除选区元素
@@ -165,61 +179,83 @@ export class TextControl implements IControlInstance {
       const newElement: IElement = {
         ...anchorElement,
         ...insertData[i],
-        controlComponent: ControlComponent.VALUE
+        controlComponent: insertData[i].controlComponent || ControlComponent.VALUE
       }
       formatElementContext(elementList, [newElement], startIndex, {
         editorOptions: this.options
       })
       draw.spliceElementList(elementList, start + i, 0, [newElement])
     }
+    this.syncParentAffix(elementList, startElement.controlId)
     return start + insertData.length - 1
   }
 
-  private convertNestedControlToValueElement(
-    element: IElement,
-    startElement: IElement
-  ): IElement {
-    const control = element.control!
-    const controlOption = this.options.control
-    const prefix = control.prefix ?? controlOption.prefix
-    const postfix = control.postfix ?? controlOption.postfix
-    const displayValue = this.getNestedControlDisplayValue(element)
-    const nestedValueElement: IElement = {
-      ...pickObject(element, EDITOR_ROW_ATTR),
-      ...pickObject(control, CONTROL_STYLE_ATTR),
-      value: `${prefix}${control.preText || ''}${displayValue}${control.postText || ''}${postfix}`,
-      type: ElementType.CONTROL,
-      control: {
-        ...control,
-        value: control.value ? [...control.value] : null
-      },
-      controlId: startElement.controlId,
-      controlComponent: ControlComponent.VALUE
-    }
-    return nestedValueElement
+  private syncParentAffix(elementList: IElement[], controlId?: string) {
+    if (!controlId) return
+    const valueElementList = elementList.filter(
+      element =>
+        element.controlId === controlId &&
+        element.controlComponent === ControlComponent.VALUE
+    )
+    const childElementList = elementList.filter(
+      element => element.parentControlId === controlId
+    )
+    const isOnlyNestedControlValue =
+      !valueElementList.length &&
+      !!childElementList.length &&
+      new Set(childElementList.map(element => element.controlId)).size === 1
+    const control = elementList.find(
+      element => element.controlId === controlId && element.control
+    )?.control
+    const prefix = isOnlyNestedControlValue
+      ? ''
+      : control?.prefix ?? this.options.control.prefix
+    const postfix = isOnlyNestedControlValue
+      ? ''
+      : control?.postfix ?? this.options.control.postfix
+    this.setAffixValue(elementList, controlId, ControlComponent.PREFIX, prefix)
+    this.setAffixValue(elementList, controlId, ControlComponent.POSTFIX, postfix)
   }
 
-  private getNestedControlDisplayValue(element: IElement): string {
-    const control = element.control!
-    if (Array.isArray(control.value) && control.value.length) {
-      return control.value.map(valueElement => valueElement.value).join('')
-    }
-    if (
-      (control.type === ControlType.SELECT ||
-        control.type === ControlType.CHECKBOX ||
-        control.type === ControlType.RADIO) &&
-      control.code &&
-      Array.isArray(control.valueSets)
-    ) {
-      const codeList = control.code.split(',')
-      const valueList = control.valueSets
-        .filter(valueSet => codeList.includes(valueSet.code))
-        .map(valueSet => valueSet.value)
-      if (valueList.length) {
-        return valueList.join(control.multiSelectDelimiter || '、')
-      }
-    }
-    return control.placeholder || ''
+  private setAffixValue(
+    elementList: IElement[],
+    controlId: string,
+    component: ControlComponent,
+    value: string
+  ) {
+    const affixElementList = elementList.filter(
+      element =>
+        element.controlId === controlId && element.controlComponent === component
+    )
+    const valueList = value.split('')
+    affixElementList.forEach((element, index) => {
+      element.value = valueList[index] || ''
+    })
+  }
+
+  private convertNestedControlToValueElementList(
+    element: IElement,
+    startElement: IElement
+  ): IElement[] {
+    const nestedElementList: IElement[] = [
+      {
+        ...pickObject(element, EDITOR_ROW_ATTR),
+        ...pickObject(element.control!, CONTROL_STYLE_ATTR),
+        ...element,
+        control: {
+          ...element.control!,
+          value: element.control!.value ? [...element.control!.value] : null
+        }
+      } as IElement
+    ]
+    formatElementList(nestedElementList, {
+      isHandleFirstElement: false,
+      isForceCompensation: false,
+      isFromControlValue: true,
+      parentControlId: startElement.controlId,
+      editorOptions: this.options
+    })
+    return nestedElementList
   }
 
   /**
@@ -285,6 +321,9 @@ export class TextControl implements IControlInstance {
     if (evt.key === KeyMap.Backspace) {
       // 移除选区元素
       if (startIndex !== endIndex) {
+        if (this.getIsDeleteControlStructure(startIndex, endIndex, elementList)) {
+          return startIndex
+        }
         draw.spliceElementList(
           elementList,
           startIndex + 1,
@@ -318,6 +357,9 @@ export class TextControl implements IControlInstance {
     } else if (evt.key === KeyMap.Delete) {
       // 移除选区元素
       if (startIndex !== endIndex) {
+        if (this.getIsDeleteControlStructure(startIndex, endIndex, elementList)) {
+          return startIndex
+        }
         draw.spliceElementList(
           elementList,
           startIndex + 1,
@@ -352,6 +394,31 @@ export class TextControl implements IControlInstance {
       }
     }
     return endIndex
+  }
+
+  private getIsDeleteControlStructure(
+    startIndex: number,
+    endIndex: number,
+    elementList: IElement[]
+  ): boolean {
+    const draw = this.control.getDraw()
+    const options = draw.getOptions()
+    if (
+      draw.getMode() !== EditorMode.FORM ||
+      !options.modeRule[EditorMode.FORM].controlDeletableDisabled
+    ) {
+      return false
+    }
+    for (let i = startIndex + 1; i <= endIndex; i++) {
+      const element = elementList[i]
+      if (
+        element?.controlId &&
+        element.controlComponent !== ControlComponent.VALUE
+      ) {
+        return true
+      }
+    }
+    return false
   }
 
   /**

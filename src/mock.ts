@@ -567,6 +567,11 @@ export const options: IEditorOption = {
   placeholder: {
     data: '请输入正文'
   },
+  modeRule: {
+    form: {
+      controlDeletableDisabled: true
+    }
+  },
   zone: {
     tipDisabled: false
   },

@@ -1,4 +1,5 @@
 import { ZERO } from '../../../dataset/constant/Common'
+import { ControlComponent } from '../../../dataset/enum/Control'
 import { ElementType } from '../../../dataset/enum/Element'
 import { EditorMode } from '../../../dataset/enum/Editor'
 import {
@@ -201,11 +202,17 @@ export class DrawMutationService {
           startIndex++
         }
       }
+      const isWithinControl = this.draw
+        .getComponents()
+        .control.getIsRangeWithinControl()
+      const isDisableControlDeleteInFormMode =
+        this.draw.getMode() === EditorMode.FORM &&
+        modeRule[EditorMode.FORM].controlDeletableDisabled
       // 如果不忽略删除规则且不在设计模式，则执行可删除性检查
       if (
         !isIgnoreDeletedRule &&
         !this.draw.isDesignMode() &&
-        !this.draw.getComponents().control.getIsRangeWithinControl()
+        (!isWithinControl || isDisableControlDeleteInFormMode)
       ) {
         // 获取当前表格单元格的可删除性设置
         const tdDeletable = this.draw.getTd()?.deletable
@@ -220,9 +227,9 @@ export class DrawMutationService {
             deleteElement?.area?.hide ||
             (tdDeletable !== false &&
               deleteElement?.control?.deletable !== false &&
-              (!deleteElement?.controlId ||
-                this.draw.getMode() !== EditorMode.FORM ||
-                !modeRule[EditorMode.FORM].controlDeletableDisabled) &&
+              (!isDisableControlDeleteInFormMode ||
+                !deleteElement?.controlId ||
+                deleteElement.controlComponent === ControlComponent.VALUE) &&
               deleteElement?.title?.deletable !== false &&
               (group.deletable !== false || !deleteElement?.groupIds?.length) &&
               (deleteElement?.area?.deletable !== false ||

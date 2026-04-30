@@ -111,7 +111,10 @@ const ISSUE_SPECS = {
   },
   1399: {
     title: '选中CONTROL类型的内容，向前删除executeBackspace无效',
-    specs: ['cypress/e2e/issues/issue-1399-control-backspace.cy.ts']
+    specs: [
+      'cypress/e2e/issues/issue-1399-control-backspace.cy.ts',
+      'cypress/e2e/issues/issue-form-control-deletion-disabled.cy.ts'
+    ]
   },
   1404: {
     title: '插入表格的时候当colgroup未传入时，默认使用编辑器宽度平分',
@@ -123,7 +126,7 @@ const ISSUE_SPECS = {
 }
 
 const CURRENT_ISSUES = [
-  41, 1385, 1404, 440, 425,
+  41, 1399, 1385, 1404, 440, 425,
   837, 1372, 1200, 1190, 1053, 877, 725, 692, 621, 390
 ]
 

@@ -87,7 +87,7 @@
 当前已确认：
 
 1. `#94` 已补自动化样例并通过
-2. `#1399` 已补自动化样例并通过
+2. `#1399` 已补自动化样例并通过；同时追加表单模式 `controlDeletableDisabled` 禁删控件结构回归，确认仍允许删除文本控件值
 3. `#446` 使用 `painter.cy.ts` 通过
 4. `#813` 已验证仍存在：`pointer-debug-selection.cy.ts` 通过，`plain-text-selection.cy.ts` 仍有 2 个行为断言失败
 5. `#1163` 已按新增功能补行内表格样例并通过：`issue-inline-table-label.cy.ts` / `issue-1163-text-before-table.cy.ts` / `issue-left-blank-after-table-click.cy.ts` / `table.cy.ts`
@@ -96,7 +96,7 @@
 8. `#1190` 当前仍保留 `manual-only`
 9. `#621` 当前仍保留 `manual-only`
 10. `#440` 已补列表子层级能力并通过专项样例：`issue-440-list-sublevel.cy.ts`，覆盖 Tab 增加子列表、Shift+Tab 取消子列表层级、`getValue/setValue` 层级数据往返
-11. `#425` 已补文本控件值内嵌控件专项样例并通过：`issue-425-control-in-text-control.cy.ts` / `text.cy.ts`，保存恢复后保留子控件对象，并按 `{占位符/选中值}` 作为内联文本显示，避免空 `{}`。
+11. `#425` 已补文本控件值内嵌控件专项样例并通过：`issue-425-control-in-text-control.cy.ts` / `text.cy.ts`，保存恢复后保留子控件对象，子控件在渲染层保留独立 `controlId` 并可由 `getControlList()` 识别，避免空 `{}` 与双层括号。
 
 当前开发候选：
 

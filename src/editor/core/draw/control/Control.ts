@@ -43,6 +43,8 @@ import {
 import {
   formatElementContext,
   formatElementList,
+  getControlInlineContentText,
+  getControlInlineText,
   getNonHideElementIndex,
   pickElementAttr,
   zipElementList
@@ -1014,6 +1016,158 @@ export class Control {
     return this.activeControl.cut()
   }
 
+  private isNestedControlValueElement(element: IElement): boolean {
+    return (
+      element.type === ElementType.CONTROL &&
+      element.controlComponent === ControlComponent.VALUE &&
+      !!element.control
+    )
+  }
+
+  private getNestedControlValueResult(
+    element: IElement,
+    zone: EditorZone
+  ): IGetControlValueResult[number] {
+    const control = element.control!
+    const text = this.getControlDisplayText(control)
+    const result: IGetControlValueResult[number] = {
+      ...control,
+      zone,
+      value: text || null,
+      innerText: text || null
+    }
+    if (
+      control.type === ControlType.TEXT ||
+      control.type === ControlType.DATE ||
+      control.type === ControlType.NUMBER
+    ) {
+      result.elementList = Array.isArray(control.value)
+        ? zipElementList(control.value)
+        : []
+    }
+    return result
+  }
+
+  private setNestedControlValue(
+    element: IElement,
+    value: ISetControlValueOption['value'],
+    elementList?: IElement[]
+  ) {
+    const control = element.control!
+    if (
+      control.type === ControlType.TEXT ||
+      control.type === ControlType.DATE ||
+      control.type === ControlType.NUMBER
+    ) {
+      const formatValue = Array.isArray(value)
+        ? deepClone(value)
+        : value
+        ? [{ value }]
+        : []
+      if (formatValue.length) {
+        formatElementList(formatValue, {
+          isHandleFirstElement: false,
+          editorOptions: this.options
+        })
+      }
+      control.value = formatValue
+    } else if (
+      control.type === ControlType.SELECT ||
+      control.type === ControlType.CHECKBOX ||
+      control.type === ControlType.RADIO
+    ) {
+      control.code = Array.isArray(value) ? null : value
+      control.value = null
+    }
+    element.value = this.getIsOnlyNestedControlValue(element, elementList)
+      ? getControlInlineContentText(element, this.options)
+      : getControlInlineText(element, this.options)
+  }
+
+  private setExpandedNestedControlValue(
+    elementList: IElement[],
+    prefixIndex: number,
+    value: ISetControlValueOption['value']
+  ): number {
+    const prefixElement = elementList[prefixIndex]
+    const controlId = prefixElement.controlId
+    if (!controlId) return prefixIndex + 1
+    const control = prefixElement.control!
+    let endIndex = prefixIndex + 1
+    while (endIndex < elementList.length) {
+      const nextElement = elementList[endIndex]
+      if (nextElement.controlId !== controlId) break
+      endIndex++
+    }
+    if (
+      control.type === ControlType.TEXT ||
+      control.type === ControlType.DATE ||
+      control.type === ControlType.NUMBER
+    ) {
+      const formatValue = Array.isArray(value)
+        ? deepClone(value)
+        : value
+        ? [{ value }]
+        : []
+      if (formatValue.length) {
+        formatElementList(formatValue, {
+          isHandleFirstElement: false,
+          editorOptions: this.options
+        })
+      }
+      control.value = formatValue
+      const valueElementList = formatValue.map(item => ({
+        ...pickObject(prefixElement, [
+          'parentControlId',
+          'controlId',
+          ...CONTROL_STYLE_ATTR
+        ]),
+        ...item,
+        control,
+        controlComponent: ControlComponent.VALUE
+      }))
+      elementList.splice(prefixIndex + 1, endIndex - prefixIndex - 2, ...valueElementList)
+      return prefixIndex + valueElementList.length + 2
+    }
+    return endIndex
+  }
+
+  private getIsOnlyNestedControlValue(
+    element: IElement,
+    elementList?: IElement[]
+  ): boolean {
+    if (!elementList || !element.controlId) return false
+    return (
+      elementList.filter(
+        item =>
+          item.controlId === element.controlId &&
+          item.controlComponent === ControlComponent.VALUE
+      ).length === 1
+    )
+  }
+
+  private getControlDisplayText(control: IControl): string {
+    if (Array.isArray(control.value) && control.value.length) {
+      return control.value.map(element => element.value).join('')
+    }
+    if (
+      (control.type === ControlType.SELECT ||
+        control.type === ControlType.CHECKBOX ||
+        control.type === ControlType.RADIO) &&
+      control.code &&
+      Array.isArray(control.valueSets)
+    ) {
+      return control.code
+        .split(',')
+        .map(
+          code => control.valueSets?.find(valueSet => valueSet.code === code)?.value
+        )
+        .filter(Boolean)
+        .join(control.multiSelectDelimiter || '、')
+    }
+    return ''
+  }
+
   public getValueById(payload: IGetControlValueOption): IGetControlValueResult {
     const { id, conceptId, areaId } = payload
     const result: IGetControlValueResult = []
@@ -1035,11 +1189,21 @@ export class Control {
           }
         }
         if (
+          element.controlComponent &&
+          element.controlComponent !== ControlComponent.PREFIX
+        ) {
+          continue
+        }
+        if (
           !element.control ||
           (id && element.controlId !== id) ||
           (conceptId && element.control.conceptId !== conceptId) ||
           (areaId && element.areaId !== areaId)
         ) {
+          continue
+        }
+        if (this.isNestedControlValueElement(element)) {
+          result.push(this.getNestedControlValueResult(element, zone))
           continue
         }
         const { type, code, valueSets } = element.control
@@ -1139,6 +1303,12 @@ export class Control {
           }
         }
         if (!element.control) continue
+        if (
+          element.controlComponent &&
+          element.controlComponent !== ControlComponent.PREFIX
+        ) {
+          continue
+        }
         // 获取设置值优先id、conceptId、areaId
         const payloadItem = payload.find(
           p =>
@@ -1147,6 +1317,26 @@ export class Control {
             (p.areaId && element.areaId === p.areaId)
         )
         if (!payloadItem) continue
+        if (this.isNestedControlValueElement(element)) {
+          this.setNestedControlValue(element, payloadItem.value, elementList)
+          isExistSet = true
+          if (payloadItem.isSubmitHistory !== false) {
+            isExistSubmitHistory = true
+          }
+          continue
+        }
+        if (element.parentControlId) {
+          isExistSet = true
+          if (payloadItem.isSubmitHistory !== false) {
+            isExistSubmitHistory = true
+          }
+          i = this.setExpandedNestedControlValue(
+            elementList,
+            i - 1,
+            payloadItem.value
+          )
+          continue
+        }
         const { value, isSubmitHistory = true } = payloadItem
         // 只要存在一次保存历史均记录
         isExistSet = true
@@ -1447,7 +1637,19 @@ export class Control {
   }
 
   public getList(): IElement[] {
-    const controlElementList: IElement[] = []
+    const controlElementMap = new Map<string, IElement[]>()
+    const collectControlElement = (element: IElement) => {
+      const controlId = element.controlId
+      if (!controlId) return
+      const controlElementList = controlElementMap.get(controlId) || []
+      // 移除控件所在标题及列表上下文信息
+      const controlElement = omitObject(element, [
+        ...TITLE_CONTEXT_ATTR,
+        ...LIST_CONTEXT_ATTR
+      ])
+      controlElementList.push(controlElement)
+      controlElementMap.set(controlId, controlElementList)
+    }
     function getControlElementList(elementList: IElement[]) {
       for (let e = 0; e < elementList.length; e++) {
         const element = elementList[e]
@@ -1462,14 +1664,7 @@ export class Control {
             }
           }
         }
-        if (element.controlId) {
-          // 移除控件所在标题及列表上下文信息
-          const controlElement = omitObject(element, [
-            ...TITLE_CONTEXT_ATTR,
-            ...LIST_CONTEXT_ATTR
-          ])
-          controlElementList.push(controlElement)
-        }
+        collectControlElement(element)
       }
     }
     const data = [
@@ -1480,9 +1675,16 @@ export class Control {
     for (const elementList of data) {
       getControlElementList(elementList)
     }
-    return zipElementList(controlElementList, {
-      extraPickAttrs: ['controlId']
+    const result: IElement[] = []
+    controlElementMap.forEach(elementList => {
+      const controlElement = zipElementList(elementList, {
+        extraPickAttrs: ['controlId']
+      })[0]
+      if (controlElement) {
+        result.push(controlElement)
+      }
     })
+    return result
   }
 
   public recordBorderInfo(x: number, y: number, width: number, height: number) {

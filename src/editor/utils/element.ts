@@ -69,6 +69,7 @@ interface IFormatElementListOption {
   isHandleFirstElement?: boolean // 根据上下文确定首字符处理逻辑（处理首字符补偿）
   isForceCompensation?: boolean // 强制补偿字符
   isFromControlValue?: boolean // 控件值内部格式化
+  parentControlId?: string // 父级控件值上下文
   editorOptions: DeepRequired<IEditorOption>
 }
 
@@ -79,7 +80,7 @@ export function formatElementList(
   const {
     isHandleFirstElement = true,
     isForceCompensation = false,
-    isFromControlValue = false,
+    parentControlId,
     editorOptions
   } = options
   const startElement = elementList[0]
@@ -98,18 +99,10 @@ export function formatElementList(
   let i = 0
   while (i < elementList.length) {
     let el = elementList[i]
-    if (isFromControlValue && el.type === ElementType.CONTROL && el.control) {
-      const inlineElement: IElement = {
-        ...el,
-        value: getControlInlineText(el, editorOptions)
-      }
-      CONTROL_STYLE_ATTR.forEach(attr => {
-        const value = el.control?.[attr] as never
-        if (value !== undefined) {
-          inlineElement[attr] = value
-        }
-      })
-      elementList.splice(i, 1, inlineElement)
+    if (
+      el.type === ElementType.CONTROL &&
+      el.controlComponent === ControlComponent.VALUE
+    ) {
       i++
       continue
     }
@@ -338,6 +331,11 @@ export function formatElementList(
         }
       } = options
       const controlId = el.controlId || getUUID()
+      const isOnlyNestedControlValue =
+        Array.isArray(value) &&
+        value.length === 1 &&
+        value[0].type === ElementType.CONTROL &&
+        !!value[0].control
       // 移除父节点
       elementList.splice(i, 1)
       // 控件上下文提取（压缩后的控件上下文无法提取）
@@ -345,6 +343,9 @@ export function formatElementList(
         ...EDITOR_ELEMENT_CONTEXT_ATTR,
         ...EDITOR_ROW_ATTR
       ])
+      if (parentControlId) {
+        controlContext.parentControlId = parentControlId
+      }
       // 控件设置的默认样式（以前缀为基准）
       const controlDefaultStyle = pickObject(
         <IElement>(<unknown>el.control),
@@ -356,7 +357,9 @@ export function formatElementList(
         color: editorOptions.control.bracketColor
       }
       // 前缀
-      const prefixStrList = splitText(prefix || controlOption.prefix)
+      const prefixStrList = isOnlyNestedControlValue
+        ? ['']
+        : splitText(prefix || controlOption.prefix)
       for (let p = 0; p < prefixStrList.length; p++) {
         const value = prefixStrList[p]
         elementList.splice(i, 0, {
@@ -509,8 +512,19 @@ export function formatElementList(
             ...options,
             isHandleFirstElement: false,
             isForceCompensation: false,
-            isFromControlValue: true
+            isFromControlValue: true,
+            parentControlId: controlId
           })
+          const isOnlyNestedControlValue =
+            valueList.length === 1 &&
+            valueList[0].type === ElementType.CONTROL &&
+            !!valueList[0].control
+          if (isOnlyNestedControlValue) {
+            valueList[0].value = getControlInlineContentText(
+              valueList[0],
+              editorOptions
+            )
+          }
           for (let v = 0; v < valueList.length; v++) {
             const element = valueList[v]
             const value = element.value
@@ -518,14 +532,16 @@ export function formatElementList(
               ...controlContext,
               ...controlDefaultStyle,
               ...element,
-              controlId,
+              controlId: element.parentControlId ? element.controlId : controlId,
               value: value === '\n' ? ZERO : value,
               type: element.type || ElementType.TEXT,
               control:
                 element.type === ElementType.CONTROL && element.control
                   ? element.control
                   : el.control,
-              controlComponent: ControlComponent.VALUE
+              controlComponent: element.parentControlId
+                ? element.controlComponent
+                : ControlComponent.VALUE
             })
             i++
           }
@@ -569,7 +585,9 @@ export function formatElementList(
         }
       }
       // 后缀
-      const postfixStrList = splitText(postfix || controlOption.postfix)
+      const postfixStrList = isOnlyNestedControlValue
+        ? ['']
+        : splitText(postfix || controlOption.postfix)
       for (let p = 0; p < postfixStrList.length; p++) {
         const value = postfixStrList[p]
         elementList.splice(i, 0, {
@@ -612,7 +630,7 @@ export function formatElementList(
   }
 }
 
-function getControlInlineText(
+export function getControlInlineText(
   element: IElement,
   editorOptions: DeepRequired<IEditorOption>
 ): string {
@@ -620,8 +638,17 @@ function getControlInlineText(
   if (!control) return element.value
   const prefix = control.prefix ?? editorOptions.control.prefix
   const postfix = control.postfix ?? editorOptions.control.postfix
+  return `${prefix}${getControlInlineContentText(element, editorOptions)}${postfix}`
+}
+
+export function getControlInlineContentText(
+  element: IElement,
+  editorOptions: DeepRequired<IEditorOption>
+): string {
+  const control = element.control
+  if (!control) return element.value
   const value = getControlInlineValueText(element, editorOptions)
-  return `${prefix}${control.preText || ''}${value}${control.postText || ''}${postfix}`
+  return `${control.preText || ''}${value}${control.postText || ''}`
 }
 
 function getControlInlineValueText(
@@ -952,15 +979,24 @@ export function zipElementList(
         let start = e
         while (start < elementList.length) {
           const controlE = elementList[start]
-          if (controlId !== controlE.controlId) break
-          if (controlE.controlComponent === ControlComponent.VALUE) {
+          const isNestedControlElement = controlE.parentControlId === controlId
+          if (controlId !== controlE.controlId && !isNestedControlElement) {
+            break
+          }
+          if (isNestedControlElement) {
+            delete controlE.parentControlId
+            valueList.push(controlE)
+          } else if (controlE.controlComponent === ControlComponent.VALUE) {
             if (controlE.type !== ElementType.CONTROL) {
               delete controlE.control
             }
             delete controlE.controlId
             valueList.push(controlE)
           }
-          if (controlE.controlComponent === ControlComponent.POSTFIX) {
+          if (
+            !isNestedControlElement &&
+            controlE.controlComponent === ControlComponent.POSTFIX
+          ) {
             isFull = true
           }
           start++

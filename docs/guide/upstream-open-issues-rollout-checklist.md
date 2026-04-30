@@ -71,7 +71,7 @@
 | Issue | Title | 本地判断 | 证据/依据 | 推进建议 |
 | --- | --- | --- | --- | --- |
 | #1404 | 插入表格的时候当colgroup未传入时，默认使用编辑器宽度平分 | `已解决` | 已在格式化表格数据时为缺省 `colgroup` 按编辑区宽度平分补齐列宽，并补 [issue-1404-table-colgroup-default.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-1404-table-colgroup-default.cy.ts) 直接回归。 | 本地已验证，后续仅保留回归。 |
-| #1399 | 选中CONTROL类型的内容，向前删除executeBackspace无效 | `需人工验证` | 本地删除链和控件链近期重构很多，但 issue 仍 open；未见直接对应测试。相关代码见 [BackspaceIntent.ts](/D:/canvas-editor/src/editor/core/event/keyboard/intents/BackspaceIntent.ts)。 | 先做 CONTROL 选中 + backspace 回归样例。 |
+| #1399 | 选中CONTROL类型的内容，向前删除executeBackspace无效 | `已解决` | 已补 CONTROL 选中 backspace 专项，并追加表单模式 `controlDeletableDisabled` 禁删控件结构回归；相关样例见 [issue-1399-control-backspace.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-1399-control-backspace.cy.ts) 和 [issue-form-control-deletion-disabled.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-form-control-deletion-disabled.cy.ts)。 | 本地已验证，后续仅保留回归。 |
 | #1387 | 希望表格可以添加根据内容自动调整的功能 | `未见证据` | 文档只见表格列最小宽度与现有列宽逻辑，未见“按内容自动调整表格”正式能力入口。 | 作为未实现需求列入 backlog。 |
 | #1385 | 官网的demo中 在文本、列举控件中 插入下划线 显示异常 | `已解决` | 已将控件下划线纳入控件值样式传播与 HTML 输出；插入控件会继承当前默认下划线样式，打印过滤空下划线控件时保留空白占位用于画线，并补 [issue-1385-control-underline.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-1385-control-underline.cy.ts) 覆盖文本控件、列举控件、有值打印、空控件打印和先点下划线再插空控件的打印路径。 | 本地已验证，后续仅保留回归。 |
 | #1372 | 图片浮动文字之上问题 | `部分解决` | 本地已具备图片浮动与环绕实现，见 [Position.ts](/D:/canvas-editor/src/editor/core/position/Position.ts) 的 `setSurroundPosition()` 与 [contextmenu-internal.md](/D:/canvas-editor/docs/guide/contextmenu-internal.md) 的环绕能力，但 issue 仍 open。 | 能力已存在，但应按浮动图片压字场景专项验证。 |
@@ -111,7 +111,7 @@
 | #442 | 控件最小宽度设置支持跨行 | `未见证据` | 代码里有控件最小宽度相关痕迹，但未见“跨行支持”正式能力文档。 | 作为未实现或未闭环能力列入 backlog。 |
 | #440 | 文档列表内容内无法取消或者增加子列表 | `已解决` | 已补 `listLevel` 列表层级、Tab/Shift+Tab 调整层级、分层编号/缩进计算和数据压缩展开保留；专项验证见 [issue-440-list-sublevel.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-440-list-sublevel.cy.ts)。 | 验证后关闭本地任务。 |
 | #438 | 可否增加文档处理  没有标尺值功能 | `未见证据` | 未见无标尺值处理能力的明确说明。 | 作为未实现需求列入 backlog。 |
-| #425 | 文本控件内容中，再插入控件，页面{}显示有问题。 | `已解决` | 已补文本控件值内嵌控件处理：运行时可在文本控件内 `executeInsertControl`，保存恢复后保留子控件对象，并按 `{占位符/选中值}` 内联显示，不再显示空 `{}`；专项验证见 [issue-425-control-in-text-control.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-425-control-in-text-control.cy.ts)。 | 验证后关闭本地任务。 |
+| #425 | 文本控件内容中，再插入控件，页面{}显示有问题。 | `已解决` | 已补文本控件值内嵌控件处理：运行时可在文本控件内 `executeInsertControl`，保存恢复后保留子控件对象；子控件在渲染层保留独立 `controlId`，可由 `getControlList()` 识别，不再显示空 `{}` 或双层括号；专项验证见 [issue-425-control-in-text-control.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-425-control-in-text-control.cy.ts)。 | 验证后关闭本地任务。 |
 | #390 | 是否可以生成如下的表格 | `需人工验证` | issue 标题过泛，需打开 issue 内容才能知道具体表格结构；本地已有大量表格能力但无法仅凭标题判断。 | 需要补 issue 内容摘要后再推进。 |
 | #374 | 主线合并支持svg、pdf渲染层 | `部分解决` | README 明确说明 `svg` 在开发中、`pdf` 在 feature 分支可用，但不是主线正式能力。 | 视为主线未完全解决。 |
 | #362 | 批注功能添加连接线 | `未见证据` | README/文档有批注字样，但未见“批注连接线”能力。 | 作为未实现需求列入 backlog。 |
