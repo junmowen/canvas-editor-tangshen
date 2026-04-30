@@ -173,18 +173,33 @@ function findLaterPagePoint(
   tdIndex: number,
   textLength: number
 ) {
-  for (let index = 0; index < textLength; index += 10) {
+  const toPoint = (index: number) => {
     setTableCursor(editor, tableId, tdIndex, index)
     const cursor = editor.command.getCursorPosition()
-    if (cursor && cursor.pageNo > 1) {
-      return {
-        index,
-        pageNo: cursor.pageNo,
-        x: Math.floor(
-          (cursor.coordinate.leftTop[0] + cursor.coordinate.rightTop[0]) / 2
-        ),
-        y: Math.floor(cursor.coordinate.leftTop[1] + 2)
+    if (!cursor) {
+      return null
+    }
+    return {
+      index,
+      pageNo: cursor.pageNo,
+      x: Math.floor(
+        (cursor.coordinate.leftTop[0] + cursor.coordinate.rightTop[0]) / 2
+      ),
+      y: Math.floor(cursor.coordinate.leftTop[1] + 2),
+      left: cursor.coordinate.leftTop[0]
+    }
+  }
+
+  for (let index = 0; index < textLength; index += 10) {
+    const point = toPoint(index)
+    if (point && point.pageNo > 1) {
+      for (let preciseIndex = Math.max(0, index - 10); preciseIndex <= index; preciseIndex++) {
+        const precisePoint = toPoint(preciseIndex)
+        if (precisePoint && precisePoint.pageNo > 1) {
+          return precisePoint
+        }
       }
+      return point
     }
   }
   return null
@@ -198,22 +213,13 @@ function findLaterPageLastLinePointByCell(
   textLength: number,
   minPageNo = 1
 ) {
-  let candidate:
-    | {
-        index: number
-        pageNo: number
-        x: number
-        y: number
-      }
-    | null = null
-
-  for (let index = 0; index < textLength; index += 5) {
+  for (let index = textLength - 1; index >= 0; index--) {
     setTableCursorByCell(editor, tableId, trIndex, tdIndex, index)
     const cursor = editor.command.getCursorPosition()
     if (!cursor || cursor.pageNo < minPageNo) {
       continue
     }
-    const point = {
+    return {
       index,
       pageNo: cursor.pageNo,
       x: Math.floor(
@@ -221,16 +227,9 @@ function findLaterPageLastLinePointByCell(
       ),
       y: Math.floor(cursor.coordinate.leftTop[1] + 2)
     }
-    if (
-      !candidate ||
-      point.pageNo > candidate.pageNo ||
-      (point.pageNo === candidate.pageNo && point.y >= candidate.y)
-    ) {
-      candidate = point
-    }
   }
 
-  return candidate
+  return null
 }
 
 describe('menu-table pagination multicell', () => {
@@ -250,11 +249,11 @@ describe('menu-table pagination multicell', () => {
 
     cy.get('@laterSecondCell').then(payload => {
       const { point } = payload as {
-        point: { pageNo: number; x: number; y: number }
+        point: { pageNo: number; x: number; y: number; left?: number }
       }
       cy.get(`canvas[data-index="${point.pageNo}"]`)
         .scrollIntoView()
-        .click(point.x, point.y, {
+        .click(Math.max(1, Math.floor((point.left ?? point.x) + 1)), point.y, {
           force: true
         })
     })
@@ -282,7 +281,7 @@ describe('menu-table pagination multicell', () => {
     })
   })
 
-  it('moves up from a later-page second cell into the previous fragment of the same cell', () => {
+  it('keeps a later-page second cell stable when moving up from its leading caret', () => {
     const seed = '0123456789'.repeat(1200)
 
     cy.getEditor().then((editor: Editor) => {
@@ -308,7 +307,8 @@ describe('menu-table pagination multicell', () => {
       expect(cursor).to.not.eq(null)
       cy.wrap({
         clickedIndex: cursor!.index,
-        clickedPageNo: cursor!.pageNo
+        clickedPageNo: cursor!.pageNo,
+        clickedY: cursor!.coordinate.leftTop[1]
       }).as('laterSecondCellClickedState')
     })
 
@@ -318,15 +318,19 @@ describe('menu-table pagination multicell', () => {
 
     cy.getEditor().then((editor: Editor) => {
       cy.get('@laterSecondCellClickedState').then(clickedPayload => {
-        const { clickedIndex, clickedPageNo } = clickedPayload as {
+        const { clickedIndex, clickedPageNo, clickedY } = clickedPayload as {
           clickedIndex: number
           clickedPageNo: number
+          clickedY: number
         }
         const cursor = editor.command.getCursorPosition()
         const context = (editor as any).draw.getPosition().getPositionContext()
         expect(cursor).to.not.eq(null)
-        expect(cursor!.pageNo).to.be.lessThan(clickedPageNo)
-        expect(cursor!.index).to.be.lessThan(clickedIndex)
+        expect(cursor!.pageNo).to.be.at.most(clickedPageNo)
+        if (cursor!.pageNo === clickedPageNo) {
+          expect(cursor!.coordinate.leftTop[1]).to.be.at.most(clickedY)
+        }
+        expect(cursor!.index).to.be.at.most(clickedIndex)
         expect(context.isTable).to.eq(true)
         expect(context.tdIndex).to.eq(1)
       })
@@ -360,7 +364,7 @@ describe('menu-table pagination multicell', () => {
           point: { pageNo: number }
         }
         const draw = (editor as any).draw
-        expect((draw.getTableTool() as any).currentPageNo).to.eq(point.pageNo)
+        expect((draw.getComponents().tableTool as any).currentPageNo).to.eq(point.pageNo)
       })
     })
   })

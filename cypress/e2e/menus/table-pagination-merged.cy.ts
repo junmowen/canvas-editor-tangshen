@@ -127,9 +127,19 @@ function readCanvasBoxStats(
 
 function findLaterPagePoint(editor: Editor, cell: MergedCellRef) {
   const firstPoint = getCursorPoint(editor, cell, 0)
-  for (let index = 0; index < cell.text.length; index++) {
+  for (let index = 0; index < cell.text.length; index += 20) {
     const point = getCursorPoint(editor, cell, index)
     if (point.pageNo > firstPoint.pageNo) {
+      for (
+        let preciseIndex = Math.max(0, index - 20);
+        preciseIndex <= index;
+        preciseIndex++
+      ) {
+        const precisePoint = getCursorPoint(editor, cell, preciseIndex)
+        if (precisePoint.pageNo > firstPoint.pageNo) {
+          return precisePoint
+        }
+      }
       return point
     }
   }
@@ -201,10 +211,20 @@ function findLastPointOnPage(
   pageNo: number
 ) {
   let lastPoint: CursorPoint | null = null
-  for (let index = 0; index < cell.text.length; index++) {
+  for (let index = 0; index < cell.text.length; index += 20) {
     const point = getCursorPoint(editor, cell, index)
     if (point.pageNo !== pageNo) {
       if (lastPoint) {
+        for (
+          let preciseIndex = Math.max(0, index - 20);
+          preciseIndex < index;
+          preciseIndex++
+        ) {
+          const precisePoint = getCursorPoint(editor, cell, preciseIndex)
+          if (precisePoint.pageNo === pageNo) {
+            lastPoint = precisePoint
+          }
+        }
         break
       }
       continue
