@@ -1,4 +1,5 @@
 import Editor from '../../../src/editor'
+import { TextDecorationStyle } from '../../../src/editor/dataset/enum/Text'
 
 describe('菜单-格式刷', () => {
   beforeEach(() => {
@@ -16,11 +17,24 @@ describe('菜单-格式刷', () => {
 
       editor.command.executeBackspace()
 
+      const sourceStyle = {
+        bold: true,
+        color: '#FF0000',
+        highlight: '#F2F27F',
+        font: 'Microsoft YaHei',
+        size: 18,
+        italic: true,
+        underline: true,
+        strikeout: true,
+        textDecoration: {
+          style: TextDecorationStyle.WAVY
+        }
+      }
+
       editor.command.executeInsertElementList([
         {
           value: text,
-          bold: true,
-          italic: true
+          ...sourceStyle
         }
       ])
 
@@ -44,9 +58,9 @@ describe('菜单-格式刷', () => {
 
           expect(data.length).to.eq(1)
 
-          expect(data[0].italic).to.eq(true)
-
-          expect(data[0].bold).to.eq(true)
+          Object.entries(sourceStyle).forEach(([key, value]) => {
+            expect(data[0][key as keyof typeof sourceStyle]).to.deep.eq(value)
+          })
         })
     })
   })

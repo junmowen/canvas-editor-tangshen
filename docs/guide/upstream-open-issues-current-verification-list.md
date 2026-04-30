@@ -88,7 +88,7 @@
 
 1. `#94` 已补自动化样例并通过
 2. `#1399` 已补自动化样例并通过；同时追加表单模式 `controlDeletableDisabled` 禁删控件结构回归，确认仍允许删除文本控件值
-3. `#446` 使用 `painter.cy.ts` 通过
+3. `#446` 已扩展 `painter.cy.ts` 覆盖主要文本格式字段并通过
 4. `#813` 已补光标右边界拖拽选区修复并通过：`pointer-debug-selection.cy.ts` / `plain-text-selection.cy.ts`
 5. `#1163` 已按新增功能补行内表格样例并通过：`issue-inline-table-label.cy.ts` / `issue-1163-text-before-table.cy.ts` / `issue-left-blank-after-table-click.cy.ts` / `table.cy.ts`
 6. `#1385` 已补文本控件/列举控件下划线专项样例并通过，覆盖有值控件、空控件、先点下划线再插空控件的打印图片输出：`issue-1385-control-underline.cy.ts` / `format.cy.ts`

@@ -81,7 +81,7 @@
 | #1237 | 分栏效果 | `未见证据` | 文档与代码未见多栏布局能力。 | 作为未实现需求列入 backlog。 |
 | #1200 | Smart Word Wrapping Around Images ("SURROUND") | `部分解决` | 本地已存在图片四周环绕能力入口，见 [contextmenu-internal.md](/D:/canvas-editor/docs/guide/contextmenu-internal.md) 与 [Position.ts](/D:/canvas-editor/src/editor/core/position/Position.ts)，但 issue 标题强调 “smart” 环绕，诉求可能高于当前实现。 | 先把现有环绕能力视为部分覆盖，再按复杂段落样例验证。 |
 | #1190 | tab缩进更多场景 | `部分解决` | 本地已存在缩进相关快捷键与布局能力，见 [shortcut-internal.md](/D:/canvas-editor/docs/guide/shortcut-internal.md) 与 issue `#725` 同类方向，但“更多场景”未见明确完成。 | 列为部分覆盖需求。 |
-| #1163 | 表格前如何添加文字 | `部分解决` | 本地表格分页和前后编辑主线已大幅推进，见 [table-refactor-plan.md](/D:/canvas-editor/docs/guide/table-refactor-plan.md) 与大量表格分页 Cypress 用例，但 issue 仍 open。 | 先用“表格前输入文字”做回归验证，可能已解决或接近解决。 |
+| #1163 | 表格前如何添加文字 | `已解决` | 已补表格前插入文字、行内表格标签、表格点击后左侧空白光标与基础表格回归；相关样例见 [issue-inline-table-label.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-inline-table-label.cy.ts)、[issue-1163-text-before-table.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-1163-text-before-table.cy.ts)、[issue-left-blank-after-table-click.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-left-blank-after-table-click.cy.ts) 和 [table.cy.ts](/D:/canvas-editor/cypress/e2e/menus/table.cy.ts)，当前 `15/15` 通过。 | 本地已验证，后续仅保留回归。 |
 | #1106 | Add Red Squiggly Underline Under Misspelled Words | `未见证据` | 本地有多种下划线样式，但未见拼写检查或红色波浪线拼写能力。 | 作为未实现需求列入 backlog。 |
 | #1053 | 单元格框线设置 | `部分解决` | 本地已有表格边框、边框拖拽与分页边框测试，见 [TableTool.ts](/D:/canvas-editor/src/editor/core/draw/particle/table/TableTool.ts) 和 `table-pagination-border.cy.ts`。但 issue 标题泛指“单元格框线设置”，能力范围需人工确认。 | 视为部分覆盖，补样例确认 UI/API 是否满足。 |
 | #1051 | 增区域设置默认高度，类似单元格，可以拖拽一个高度作为默认高度 | `未见证据` | Area 能力存在，但未见“默认高度拖拽配置”文档或公开能力。 | 作为未实现需求列入 backlog。 |
@@ -107,7 +107,7 @@
 | #499 | Add paragraph spacing options | `未见证据` | 未见正式段前段后间距配置文档。 | 作为未实现需求列入 backlog。 |
 | #478 | Add feature similar to MS Word macros | `未见证据` | 未见宏或脚本化自动化能力。 | 作为未实现需求列入 backlog。 |
 | #451 | 编辑器支持rtl渲染 | `未见证据` | 未见 RTL 渲染文档或能力入口。 | 作为未实现需求列入 backlog。 |
-| #446 | 格式刷未携带所有格式 | `需人工验证` | 本地已有格式刷能力，见 [command-execute.md](/D:/canvas-editor/docs/guide/command-execute.md)，但 issue 指向“未携带所有格式”，必须按样式覆盖面验证。 | 建议专项列出格式项回归。 |
+| #446 | 格式刷未携带所有格式 | `已解决` | 已扩展 [painter.cy.ts](/D:/canvas-editor/cypress/e2e/menus/painter.cy.ts)，覆盖 `bold`、`color`、`highlight`、`font`、`size`、`italic`、`underline`、`strikeout`、`textDecoration` 等格式刷样式复制，当前 `1/1` 通过。 | 本地已验证，后续仅保留回归。 |
 | #442 | 控件最小宽度设置支持跨行 | `未见证据` | 代码里有控件最小宽度相关痕迹，但未见“跨行支持”正式能力文档。 | 作为未实现或未闭环能力列入 backlog。 |
 | #440 | 文档列表内容内无法取消或者增加子列表 | `已解决` | 已补 `listLevel` 列表层级、Tab/Shift+Tab 调整层级、分层编号/缩进计算和数据压缩展开保留；专项验证见 [issue-440-list-sublevel.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-440-list-sublevel.cy.ts)。 | 验证后关闭本地任务。 |
 | #438 | 可否增加文档处理  没有标尺值功能 | `未见证据` | 未见无标尺值处理能力的明确说明。 | 作为未实现需求列入 backlog。 |
