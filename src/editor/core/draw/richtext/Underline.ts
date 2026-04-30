@@ -11,7 +11,7 @@ export class Underline extends AbstractRichText {
     this.options = draw.getOptions()
   }
 
-  // 下划线
+  // 绘制单实线下划线。
   private _drawLine(
     ctx: CanvasRenderingContext2D,
     startX: number,
@@ -23,11 +23,11 @@ export class Underline extends AbstractRichText {
     ctx.beginPath()
     switch (dashType) {
       case DashType.DASHED:
-        // 长虚线- - - - - -
+        // 虚线效果：- - - - -
         ctx.setLineDash([3, 1])
         break
       case DashType.DOTTED:
-        // 点虚线 . . . . . .
+        // 点线效果：. . . . . .
         ctx.setLineDash([1, 1])
         break
     }
@@ -36,14 +36,14 @@ export class Underline extends AbstractRichText {
     ctx.stroke()
   }
 
-  // 双实线
+  // 绘制双下划线。
   private _drawDouble(
     ctx: CanvasRenderingContext2D,
     startX: number,
     startY: number,
     width: number
   ) {
-    const SPACING = 3 // 双实线间距
+    const SPACING = 3 // 双线之间的垂直间距。
     const endX = startX + width
     const endY = startY + SPACING * this.options.scale
     ctx.beginPath()
@@ -56,7 +56,7 @@ export class Underline extends AbstractRichText {
     ctx.stroke()
   }
 
-  // 波浪线
+  // 绘制波浪下划线。
   private _drawWave(
     ctx: CanvasRenderingContext2D,
     startX: number,
@@ -64,9 +64,9 @@ export class Underline extends AbstractRichText {
     width: number
   ) {
     const { scale } = this.options
-    const AMPLITUDE = 1.2 * scale // 振幅
-    const FREQUENCY = 1 / scale // 频率
-    const adjustY = startY + 2 * AMPLITUDE // 增加2倍振幅
+    const AMPLITUDE = 1.2 * scale // 波浪振幅。
+    const FREQUENCY = 1 / scale // 波浪频率。
+    const adjustY = startY + 2 * AMPLITUDE // 下移基线，避免波峰贴边。
     ctx.beginPath()
     for (let x = 0; x < width; x++) {
       const y = AMPLITUDE * Math.sin(FREQUENCY * x)
@@ -82,7 +82,7 @@ export class Underline extends AbstractRichText {
     ctx.save()
     ctx.strokeStyle = this.fillColor || underlineColor
     ctx.lineWidth = scale
-    const adjustY = Math.floor(y + 2 * ctx.lineWidth) + 0.5 // +0.5从1处渲染，避免线宽度等于3
+    const adjustY = Math.floor(y + 2 * ctx.lineWidth) + 0.5 // +0.5 用于对齐像素，避免线条发虚。
     switch (this.fillDecorationStyle) {
       case TextDecorationStyle.WAVY:
         this._drawWave(ctx, x, adjustY, width)

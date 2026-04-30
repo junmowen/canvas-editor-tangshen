@@ -1,5 +1,6 @@
 import { RowFlex } from '../dataset/enum/Row'
 import { IElement, IElementMetrics } from './Element'
+import { ITableFragmentDescriptor } from './table/TableFragment'
 
 export type IRowElement = IElement & {
   metrics: IElementMetrics
@@ -22,4 +23,5 @@ export interface IRow {
   isWidthNotEnough?: boolean
   rowIndex: number
   isSurround?: boolean
+  tableFragment?: ITableFragmentDescriptor
 }

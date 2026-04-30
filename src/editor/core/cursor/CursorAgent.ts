@@ -1,21 +1,27 @@
 import { EDITOR_PREFIX } from '../../dataset/constant/Editor'
 import { EventBusMap } from '../../interface/EventBus'
 import { Draw } from '../draw/Draw'
-import { CanvasEvent } from '../event/CanvasEvent'
+import { EditorClipboardController } from '../event/EditorClipboardController'
+import { EditorInputController } from '../event/EditorInputController'
 import { EventBus } from '../event/eventbus/EventBus'
-import { pasteByEvent } from '../event/handlers/paste'
 
 export class CursorAgent {
   private draw: Draw
   private container: HTMLDivElement
   private agentCursorDom: HTMLTextAreaElement
-  private canvasEvent: CanvasEvent
+  private inputController: EditorInputController
+  private clipboardController: EditorClipboardController
   private eventBus: EventBus<EventBusMap>
 
-  constructor(draw: Draw, canvasEvent: CanvasEvent) {
+  constructor(
+    draw: Draw,
+    inputController: EditorInputController,
+    clipboardController: EditorClipboardController
+  ) {
     this.draw = draw
-    this.container = draw.getContainer()
-    this.canvasEvent = canvasEvent
+    this.container = draw.getPageCanvasHost().getContainer()
+    this.inputController = inputController
+    this.clipboardController = clipboardController
     this.eventBus = draw.getEventBus()
     // 代理光标绘制
     const agentCursorDom = document.createElement('textarea')
@@ -43,13 +49,13 @@ export class CursorAgent {
   }
 
   private _keyDown(evt: KeyboardEvent) {
-    this.canvasEvent.keydown(evt)
+    this.inputController.keydown(evt)
   }
 
   private _input(evt: Event) {
     const data = (<InputEvent>evt).data
     if (data) {
-      this.canvasEvent.input(data)
+      this.inputController.input(data)
     }
     if (this.eventBus.isSubscribe('input')) {
       this.eventBus.emit('input', evt)
@@ -61,15 +67,15 @@ export class CursorAgent {
     if (isReadonly) return
     const clipboardData = evt.clipboardData
     if (!clipboardData) return
-    pasteByEvent(this.canvasEvent, evt)
+    this.clipboardController.pasteByEvent(evt)
     evt.preventDefault()
   }
 
   private _compositionstart() {
-    this.canvasEvent.compositionstart()
+    this.inputController.compositionstart()
   }
 
   private _compositionend(evt: CompositionEvent) {
-    this.canvasEvent.compositionend(evt)
+    this.inputController.compositionend(evt)
   }
 }

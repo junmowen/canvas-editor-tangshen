@@ -20,7 +20,7 @@ export class Shortcut {
     // 全局快捷键
     this._addEvent()
     // 编辑器快捷键
-    const agentDom = draw.getCursor().getAgentDom()
+    const agentDom = draw.getComponents().cursor.getAgentDom()
     agentDom.addEventListener('keydown', this._agentKeydown.bind(this))
   }
 

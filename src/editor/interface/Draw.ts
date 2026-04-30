@@ -9,6 +9,7 @@ export interface IDrawOption {
   isSubmitHistory?: boolean
   isCompute?: boolean
   isLazy?: boolean
+  pageRenderScope?: 'all' | 'visible'
   isInit?: boolean
   isSourceHistory?: boolean
   isFirstRender?: boolean
@@ -37,6 +38,14 @@ export interface IDrawRowPayload {
   innerWidth: number
   zone?: EditorZone
   isDrawLineBreak?: boolean
+  selectionCtx?: CanvasRenderingContext2D | null
+  tableCellContext?: {
+    tableId: string
+    trId: string
+    tdId: string
+    trIndex: number
+    tdIndex: number
+  }
 }
 
 export interface IDrawFloatPayload {
@@ -77,8 +86,11 @@ export interface IComputeRowListPayload {
   elementList: IElement[]
   startX?: number
   startY?: number
+  isFloat?: boolean
   isFromTable?: boolean
+  /** 兼容旧布局链路的分页模式字段。 */
   isPagingMode?: boolean
+  isPagingPageMode?: boolean
   pageHeight?: number
   mainOuterHeight?: number
   surroundElementList?: IElement[]

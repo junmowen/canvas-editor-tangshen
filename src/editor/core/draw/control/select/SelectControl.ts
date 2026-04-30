@@ -1,14 +1,9 @@
 import {
-  EDITOR_COMPONENT,
-  EDITOR_PREFIX
-} from '../../../../dataset/constant/Editor'
-import {
   CONTROL_STYLE_ATTR,
   EDITOR_ELEMENT_STYLE_ATTR,
   TEXTLIKE_ELEMENT_TYPE
 } from '../../../../dataset/constant/Element'
 import { ControlComponent } from '../../../../dataset/enum/Control'
-import { EditorComponent } from '../../../../dataset/enum/Editor'
 import { ElementType } from '../../../../dataset/enum/Element'
 import { KeyMap } from '../../../../dataset/enum/KeyMap'
 import { DeepRequired } from '../../../../interface/Common'
@@ -28,63 +23,119 @@ import {
 } from '../../../../utils'
 import { formatElementContext } from '../../../../utils/element'
 import { Control } from '../Control'
+import { EDITOR_COMPONENT, EDITOR_PREFIX } from '../../../../dataset/constant/Editor'
+import { EditorComponent } from '../../../../dataset/enum/Editor'
 
+/**
+ * 下拉选择控件。
+ *
+ * 提供下拉选择功能，支持单选和多选模式。
+ */
 export class SelectControl implements IControlInstance {
+  /** 控件元素 */
   private element: IElement
+  /** 控件管理器 */
   private control: Control
+  /** 下拉框是否已弹出 */
   private isPopup: boolean
+  /** 下拉框 DOM 元素 */
   private selectDom: HTMLDivElement | null
+  /** 编辑器选项 */
   private options: DeepRequired<IEditorOption>
+  /** 值分隔符 */
   private VALUE_DELIMITER = ','
+  /** 默认多选分隔符 */
   private DEFAULT_MULTI_SELECT_DELIMITER = ','
 
+  /**
+   * 构造函数。
+   *
+   * @param element - 控件元素
+   * @param control - 控件管理器
+   */
   constructor(element: IElement, control: Control) {
     const draw = control.getDraw()
     this.options = draw.getOptions()
     this.element = element
     this.control = control
+    // 初始化状态
     this.isPopup = false
     this.selectDom = null
   }
 
+  /**
+   * 设置控件元素。
+   *
+   * @param element - 新的控件元素
+   */
   public setElement(element: IElement) {
     this.element = element
   }
 
+  /**
+   * 获取控件元素。
+   *
+   * @returns 控件元素
+   */
   public getElement(): IElement {
     return this.element
   }
 
+  /**
+   * 判断下拉框是否已弹出。
+   *
+   * @returns 是否已弹出
+   */
   public getIsPopup(): boolean {
     return this.isPopup
   }
 
+  /**
+   * 获取选中的代码列表。
+   *
+   * @returns 代码数组
+   */
   public getCodes(): string[] {
     return this.element?.control?.code
       ? this.element.control.code.split(',')
       : []
   }
 
+  /**
+   * 根据代码列表获取对应的文本值。
+   *
+   * @param codes - 代码数组
+   * @returns 文本值，使用分隔符连接，不存在时返回 null
+   */
   public getText(codes: string[]): string | null {
     if (!this.element?.control) return null
     const control = this.element.control
     if (!control.valueSets?.length) return null
+    // 获取多选分隔符
     const multiSelectDelimiter =
       control?.multiSelectDelimiter || this.DEFAULT_MULTI_SELECT_DELIMITER
     const valueSets = control.valueSets
     const valueList: string[] = []
+    // 将代码转换为对应的值
     codes.forEach(code => {
       const valueSet = valueSets.find(v => v.code === code)
       if (valueSet && !isNonValue(valueSet.value)) {
         valueList.push(valueSet.value)
       }
     })
+    // 用分隔符连接值
     return valueList.join(multiSelectDelimiter) || null
   }
 
+  /**
+   * 获取控件值。
+   *
+   * @param context - 控件上下文
+   * @returns 控件值元素列表
+   */
   public getValue(context: IControlContext = {}): IElement[] {
     const elementList = context.elementList || this.control.getElementList()
-    const { startIndex } = context.range || this.control.getRange()
+    const { startIndex } = context.range || this.control.getEditBoundaryRange()
     const startElement = elementList[startIndex]
     const data: IElement[] = []
     // 向左查找
@@ -136,7 +187,7 @@ export class SelectControl implements IControlInstance {
       return -1
     }
     const elementList = context.elementList || this.control.getElementList()
-    const range = context.range || this.control.getRange()
+    const range = context.range || this.control.getEditBoundaryRange()
     // 收缩边界到Value内
     this.control.shrinkBoundary(context)
     const { startIndex, endIndex } = range
@@ -182,7 +233,7 @@ export class SelectControl implements IControlInstance {
       return null
     }
     const elementList = this.control.getElementList()
-    const range = this.control.getRange()
+    const range = this.control.getEditBoundaryRange()
     // 收缩边界到Value内
     this.control.shrinkBoundary()
     const { startIndex, endIndex } = range
@@ -239,7 +290,7 @@ export class SelectControl implements IControlInstance {
       return -1
     }
     this.control.shrinkBoundary()
-    const { startIndex, endIndex } = this.control.getRange()
+    const { startIndex, endIndex } = this.control.getEditBoundaryRange()
     if (startIndex === endIndex) {
       return startIndex
     }
@@ -257,11 +308,11 @@ export class SelectControl implements IControlInstance {
       return -1
     }
     const elementList = context.elementList || this.control.getElementList()
-    const { startIndex } = context.range || this.control.getRange()
+    const { startIndex } = context.range || this.control.getEditBoundaryRange()
     const startElement = elementList[startIndex]
     let leftIndex = -1
     let rightIndex = -1
-    // 向左查找
+    // 向左查找值元素边界
     let preIndex = startIndex
     while (preIndex > 0) {
       const preElement = elementList[preIndex]
@@ -275,7 +326,7 @@ export class SelectControl implements IControlInstance {
       }
       preIndex--
     }
-    // 向右查找
+    // 向右查找值元素边界
     let nextIndex = startIndex + 1
     while (nextIndex < elementList.length) {
       const nextElement = elementList[nextIndex]
@@ -289,8 +340,9 @@ export class SelectControl implements IControlInstance {
       }
       nextIndex++
     }
+    // 如果边界无效，返回 -1
     if (!~leftIndex || !~rightIndex) return -1
-    // 删除元素
+    // 删除值元素
     const draw = this.control.getDraw()
     draw.spliceElementList(
       elementList,
@@ -301,21 +353,30 @@ export class SelectControl implements IControlInstance {
         isIgnoreDeletedRule: options.isIgnoreDeletedRule
       }
     )
-    // 增加占位符
+    // 如果需要，添加占位符
     if (isAddPlaceholder) {
-      this.control.addPlaceholder(preIndex, context)
+      this.control.addPlaceholder(leftIndex, context)
     }
+    // 清空选中代码
     this.control.setControlProperties(
       {
         code: null
       },
       {
         elementList,
-        range: { startIndex: preIndex, endIndex: preIndex }
+        range: { startIndex: leftIndex, endIndex: leftIndex }
       }
     )
-    return preIndex
+    return leftIndex
   }
+
+  /**
+   * 设置选中项。
+   *
+   * @param code - 选中的代码（多选时用逗号分隔）
+   * @param context - 控件上下文
+   * @param options - 控件规则选项
+   */
 
   public setSelect(
     code: string,
@@ -330,7 +391,7 @@ export class SelectControl implements IControlInstance {
       return
     }
     const elementList = context.elementList || this.control.getElementList()
-    const range = context.range || this.control.getRange()
+    const range = context.range || this.control.getEditBoundaryRange()
     const control = this.element.control!
     const newCodes = code?.split(this.VALUE_DELIMITER) || []
     // 缓存旧值
@@ -436,7 +497,9 @@ export class SelectControl implements IControlInstance {
     const control = this.element.control!
     const valueSets = control.valueSets
     if (!Array.isArray(valueSets) || !valueSets.length) return
-    const position = this.control.getPosition()
+    const positionList = this.control.getDraw().getPosition().getPositionList()
+    const { endIndex } = this.control.getEditBoundaryRange()
+    const position = positionList[endIndex] || null
     if (!position) return
     // dom树：<div><ul><li>item</li></ul></div>
     const selectPopupContainer = document.createElement('div')
@@ -486,7 +549,11 @@ export class SelectControl implements IControlInstance {
     container.append(selectPopupContainer)
     this.selectDom = selectPopupContainer
   }
-
+  /**
+   * 激活下拉选择控件。
+   *
+   * 创建并显示下拉选择框。
+   */
   public awake() {
     if (
       this.isPopup ||
@@ -495,12 +562,15 @@ export class SelectControl implements IControlInstance {
     ) {
       return
     }
-    const { startIndex } = this.control.getRange()
+    const { startIndex } = this.control.getEditBoundaryRange()
     const elementList = this.control.getElementList()
+    // 检查下一个元素是否属于同一个控件
     if (elementList[startIndex + 1]?.controlId !== this.element.controlId) {
       return
     }
+    // 创建下拉框 DOM
     this._createSelectPopupDom()
+    // 设置弹出状态
     this.isPopup = true
   }
 

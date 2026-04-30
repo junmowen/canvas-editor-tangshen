@@ -12,7 +12,7 @@ export class PageNumber {
 
   constructor(draw: Draw) {
     this.draw = draw
-    this.options = draw.getOptions()
+    this.options = draw.getRuntime().getOptions()
   }
 
   static formatNumberPlaceholder(
@@ -66,7 +66,8 @@ export class PageNumber {
     const width = this.draw.getWidth()
     // 计算y位置
     const height = this.draw.getHeight()
-    const pageNumberBottom = this.draw.getPageNumberBottom()
+    const pageNumberBottom =
+      this.draw.getServices().metricsService.getPageNumberBottom()
     const y = height - pageNumberBottom
     ctx.save()
     ctx.fillStyle = color

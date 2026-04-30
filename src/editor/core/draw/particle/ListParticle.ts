@@ -11,26 +11,50 @@ import { getUUID } from '../../../utils'
 import { RangeManager } from '../../range/RangeManager'
 import { Draw } from '../Draw'
 
+/**
+ * 列表粒子。
+ *
+ * 负责列表的设置、取消、渲染和测量。
+ */
 export class ListParticle {
+  /** Draw 门面对象 */
   private draw: Draw
+  /** 范围管理器 */
   private range: RangeManager
+  /** 编辑器选项 */
   private options: DeepRequired<IEditorOption>
 
-  // 非递增样式直接返回默认值
+  /** 非递增样式的默认宽度 */
   private readonly UN_COUNT_STYLE_WIDTH = 20
+  /** 测量基准文本 */
   private readonly MEASURE_BASE_TEXT = '0'
+  /** 列表间距 */
   private readonly LIST_GAP = 10
 
+  /**
+   * 构造函数。
+   *
+   * @param draw - Draw 门面对象
+   */
   constructor(draw: Draw) {
     this.draw = draw
     this.range = draw.getRange()
     this.options = draw.getOptions()
   }
 
+  /**
+   * 设置列表。
+   *
+   * 为选中的段落设置列表类型和样式。
+   *
+   * @param listType - 列表类型
+   * @param listStyle - 列表样式
+   */
   public setList(listType: ListType | null, listStyle?: ListStyle) {
+    // 只读模式下不处理
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
-    const { startIndex, endIndex } = this.range.getRange()
+    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
     if (!~startIndex && !~endIndex) return
     // 需要改变的元素列表
     const changeElementList = this.range.getRangeParagraphElementList()
@@ -43,7 +67,7 @@ export class ListParticle {
       this.unsetList()
       return
     }
-    // 设置值
+    // 设置列表值
     const listId = getUUID()
     changeElementList.forEach(el => {
       el.listId = listId
@@ -59,7 +83,7 @@ export class ListParticle {
   public unsetList() {
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
-    const { startIndex, endIndex } = this.range.getRange()
+    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
     if (!~startIndex && !~endIndex) return
     // 需要改变的元素列表
     const changeElementList = this.range

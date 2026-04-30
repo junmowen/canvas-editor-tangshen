@@ -47,7 +47,7 @@ export class Area {
 
   public getActiveAreaId(): string | null {
     if (!this.areaInfoMap.size) return null
-    const { startIndex } = this.range.getRange()
+    const { startIndex } = this.range.getEditBoundaryRange()
     const elementList = this.draw.getElementList()
     const element = elementList[startIndex]
     return element?.areaId || null
@@ -167,7 +167,7 @@ export class Area {
   public compute() {
     this.areaInfoMap.clear()
     const elementList = this.draw.getOriginalMainElementList()
-    const positionList = this.position.getOriginalMainPositionList()
+    const positionList = this.position.getLayoutMainPositionList()
     for (let e = 0; e < elementList.length; e++) {
       const element = elementList[e]
       const areaId = element.areaId
@@ -232,7 +232,7 @@ export class Area {
         // 区域内部最前
         if (element.areaId !== areaId) continue
       }
-      const positionList = this.position.getOriginalMainPositionList()
+      const positionList = this.position.getLayoutMainPositionList()
       return {
         range: {
           startIndex: e,
@@ -266,7 +266,8 @@ export class Area {
     })
     this.draw.render({
       isCompute,
-      isSetCursor: false
+      isSetCursor: false,
+      pageRenderScope: isCompute ? undefined : 'visible'
     })
   }
 

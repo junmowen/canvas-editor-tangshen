@@ -14,7 +14,7 @@ export class PageBorder {
     this.draw = draw
     this.header = draw.getHeader()
     this.footer = draw.getFooter()
-    this.options = draw.getOptions()
+    this.options = draw.getRuntime().getOptions()
   }
 
   public render(ctx: CanvasRenderingContext2D) {

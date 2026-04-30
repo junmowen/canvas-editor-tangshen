@@ -2,7 +2,7 @@ import Editor from '../../src/editor'
 
 describe('基础功能', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
 
     cy.get('canvas').first().as('canvas').should('have.length', 1)
   })
@@ -21,6 +21,43 @@ describe('基础功能', () => {
           const data = editor.command.getValue().data.main
 
           expect(data[0].value).to.eq(text)
+        })
+    })
+  })
+
+  it('回车换行', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSelectAll()
+
+      editor.command.executeBackspace()
+
+      editor.command.executeInsertElementList([{ value: 'a' }])
+      editor.command.executeSetRange(1, 1)
+
+      cy.get('.ce-inputarea')
+        .then($input => {
+          const input = $input[0] as HTMLTextAreaElement
+          const KeyboardEventCtor = input.ownerDocument.defaultView!.KeyboardEvent
+          input.value = ''
+          const wasNotCancelled = input.dispatchEvent(
+            new KeyboardEventCtor('keydown', {
+              key: 'Enter',
+              bubbles: true,
+              cancelable: true
+            })
+          )
+          input.value = ''
+          const data = editor.command.getValue().data.main
+
+          expect(wasNotCancelled).to.eq(false)
+          expect(data.map(element => element.value)).to.deep.eq(['a\n'])
+        })
+      cy.get('.ce-inputarea')
+        .type('b', { force: true })
+        .then(() => {
+          const data = editor.command.getValue().data.main
+
+          expect(data.map(element => element.value)).to.deep.eq(['a\nb'])
         })
     })
   })

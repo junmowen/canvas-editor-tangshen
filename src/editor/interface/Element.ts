@@ -4,7 +4,7 @@ import { ElementType } from '../dataset/enum/Element'
 import { ListStyle, ListType } from '../dataset/enum/List'
 import { RowFlex } from '../dataset/enum/Row'
 import { TitleLevel } from '../dataset/enum/Title'
-import { TableBorder } from '../dataset/enum/table/Table'
+import { TableBorder, TableDisplay } from '../dataset/enum/table/Table'
 import { IArea } from './Area'
 import { IBlock } from './Block'
 import { ICheckbox } from './Checkbox'
@@ -13,6 +13,7 @@ import { IRadio } from './Radio'
 import { ITextDecoration } from './Text'
 import { ITitle } from './Title'
 import { IColgroup } from './table/Colgroup'
+import { ITableFragmentDescriptor } from './table/TableFragment'
 import { ITr } from './table/Tr'
 
 export interface IElementBasic {
@@ -21,6 +22,11 @@ export interface IElementBasic {
   value: string
   extension?: unknown
   externalId?: string
+  sourceIndex?: number
+  /** 分页片段所属的逻辑元素 id。 */
+  pagingId?: string
+  /** 分页片段在逻辑元素中的顺序索引。 */
+  pagingIndex?: number
 }
 
 export interface IElementStyle {
@@ -70,6 +76,7 @@ export interface ITableAttr {
   borderColor?: string
   borderWidth?: number
   borderExternalWidth?: number
+  tableDisplay?: TableDisplay
 }
 
 export interface ITableRule {
@@ -81,8 +88,6 @@ export interface ITableElement {
   trId?: string
   tableId?: string
   conceptId?: string
-  pagingId?: string // 用于区分拆分的表格同属一个源表格
-  pagingIndex?: number // 拆分的表格索引
 }
 
 export type ITable = ITableAttr & ITableRule & ITableElement
@@ -180,6 +185,8 @@ export interface IElementPosition {
   pageNo: number
   index: number
   value: string
+  element?: IElement
+  tableFragment?: ITableFragmentDescriptor
   rowIndex: number
   rowNo: number
   ascent: number

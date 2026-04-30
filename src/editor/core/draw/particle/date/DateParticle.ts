@@ -4,6 +4,7 @@ import { IEditorOption } from '../../../../interface/Editor'
 import { IElement, IElementPosition } from '../../../../interface/Element'
 import { formatElementContext } from '../../../../utils/element'
 import { RangeManager } from '../../../range/RangeManager'
+import { I18n } from '../../../i18n/I18n'
 import { Draw } from '../../Draw'
 import { DatePicker } from './DatePicker'
 
@@ -13,11 +14,11 @@ export class DateParticle {
   private datePicker: DatePicker
   private options: DeepRequired<IEditorOption>
 
-  constructor(draw: Draw) {
+  constructor(draw: Draw, i18n: I18n) {
     this.draw = draw
     this.options = draw.getOptions()
     this.range = draw.getRange()
-    this.datePicker = new DatePicker(draw, {
+    this.datePicker = new DatePicker(draw, i18n, {
       onSubmit: this._setValue.bind(this)
     })
   }
@@ -56,7 +57,7 @@ export class DateParticle {
   public getDateElementRange(): [number, number] | null {
     let leftIndex = -1
     let rightIndex = -1
-    const { startIndex, endIndex } = this.range.getRange()
+    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
     if (!~startIndex && !~endIndex) return null
     const elementList = this.draw.getElementList()
     const startElement = elementList[startIndex]

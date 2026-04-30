@@ -9,7 +9,7 @@ export class LineNumber {
 
   constructor(draw: Draw) {
     this.draw = draw
-    this.options = draw.getOptions()
+    this.options = draw.getRuntime().getOptions()
   }
 
   public render(ctx: CanvasRenderingContext2D, pageNo: number) {
@@ -19,7 +19,7 @@ export class LineNumber {
     } = this.options
     const textParticle = this.draw.getTextParticle()
     const margins = this.draw.getMargins()
-    const positionList = this.draw.getPosition().getOriginalMainPositionList()
+    const positionList = this.draw.getPosition().getLayoutMainPositionList()
     const pageRowList = this.draw.getPageRowList()
     const rowList = pageRowList[pageNo]
     ctx.save()

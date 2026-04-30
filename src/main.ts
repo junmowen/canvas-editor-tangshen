@@ -18,6 +18,7 @@ import Editor, {
   PageMode,
   PaperDirection,
   RowFlex,
+  TableDisplay,
   TextDecorationStyle,
   TitleLevel,
   splitText
@@ -358,6 +359,9 @@ window.onload = function () {
   const tableClose = document.querySelector<HTMLDivElement>('.table-close')!
   const tableTitle = document.querySelector<HTMLDivElement>('.table-select')!
   const tablePanel = document.querySelector<HTMLDivElement>('.table-panel')!
+  const tableDisplayInlineDom = document.querySelector<HTMLInputElement>(
+    '.table-display-inline'
+  )!
   // 绘制行列
   const tableCellList: HTMLDivElement[][] = []
   for (let i = 0; i < 10; i++) {
@@ -392,6 +396,7 @@ window.onload = function () {
     setTableTitle('插入')
     colIndex = 0
     rowIndex = 0
+    tableDisplayInlineDom.checked = false
     // 隐藏panel
     tablePanelContainer.style.display = 'none'
   }
@@ -424,7 +429,11 @@ window.onload = function () {
   }
   tablePanel.onclick = function () {
     // 应用选择
-    instance.command.executeInsertTable(rowIndex, colIndex)
+    instance.command.executeInsertTable(rowIndex, colIndex, {
+      tableDisplay: tableDisplayInlineDom.checked
+        ? TableDisplay.INLINE
+        : TableDisplay.BLOCK
+    })
     recoveryTable()
   }
 

@@ -4,10 +4,13 @@ export interface ITr {
   id?: string
   extension?: unknown
   externalId?: string
+  /** 分页前原始行 id。 */
+  pagingOriginId?: string
   height: number
   tdList: ITd[]
   minHeight?: number
-  pagingRepeat?: boolean // 在各页顶端以标题行的形式重复出现
-  pagingOriginHeight?: number // 被拆分到下一页的行的原始高度
-  pagingOriginId?: string // 被拆分到下一页的行的原始id
+  /** 标记该行是否是分页片段中的重复承接行。 */
+  pagingRepeat?: boolean
+  /** 分页前原始行高。 */
+  pagingOriginHeight?: number
 }

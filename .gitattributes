@@ -1,0 +1,20 @@
+# Normalize text line endings across platforms
+* text=auto eol=lf
+
+# Force UTF-8 for source and documentation files
+*.ts text working-tree-encoding=UTF-8
+*.tsx text working-tree-encoding=UTF-8
+*.js text working-tree-encoding=UTF-8
+*.jsx text working-tree-encoding=UTF-8
+*.mjs text working-tree-encoding=UTF-8
+*.cjs text working-tree-encoding=UTF-8
+*.json text working-tree-encoding=UTF-8
+*.md text working-tree-encoding=UTF-8
+*.html text working-tree-encoding=UTF-8
+*.css text working-tree-encoding=UTF-8
+*.scss text working-tree-encoding=UTF-8
+*.less text working-tree-encoding=UTF-8
+*.yml text working-tree-encoding=UTF-8
+*.yaml text working-tree-encoding=UTF-8
+*.svg text working-tree-encoding=UTF-8
+*.txt text working-tree-encoding=UTF-8

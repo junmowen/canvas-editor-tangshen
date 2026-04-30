@@ -3,12 +3,15 @@ import { EditorZone } from '../dataset/enum/Editor'
 import { IElement, IElementFillRect, IElementPosition } from './Element'
 import { IRange } from './Range'
 import { IRow, IRowElement } from './Row'
-import { ITd } from './table/Td'
 
 export interface ICurrentPosition {
   index: number
+  cursorPosition?: IElementPosition
+  isLeftSideBlank?: boolean
+  hitTargetIndex?: number
   x?: number
   y?: number
+  pageNo?: number
   isCheckbox?: boolean
   isRadio?: boolean
   isControl?: boolean
@@ -22,16 +25,12 @@ export interface ICurrentPosition {
   trId?: string
   tableId?: string
   zone?: EditorZone
-  hitLineStartIndex?: number
 }
 
 export interface IGetPositionByXYPayload {
   x: number
   y: number
   pageNo?: number
-  isTable?: boolean
-  td?: ITd
-  tablePosition?: IElementPosition
   elementList?: IElement[]
   positionList?: IElementPosition[]
 }

@@ -16,11 +16,25 @@ import { omitObject, pickObject } from '../../../../utils'
 import { formatElementContext } from '../../../../utils/element'
 import { Control } from '../Control'
 
+/**
+ * 文本控件。
+ *
+ * 处理文本输入控件，支持文本的输入、删除、剪切等操作。
+ */
 export class TextControl implements IControlInstance {
+  /** 控件元素 */
   private element: IElement
+  /** 控件管理器 */
   private control: Control
+  /** 编辑器选项 */
   private options: DeepRequired<IEditorOption>
 
+  /**
+   * 构造函数。
+   *
+   * @param element - 控件元素
+   * @param control - 控件管理器
+   */
   constructor(element: IElement, control: Control) {
     const draw = control.getDraw()
     this.options = draw.getOptions()
@@ -28,17 +42,33 @@ export class TextControl implements IControlInstance {
     this.control = control
   }
 
+  /**
+   * 设置控件元素。
+   *
+   * @param element - 新的控件元素
+   */
   public setElement(element: IElement) {
     this.element = element
   }
 
+  /**
+   * 获取控件元素。
+   *
+   * @returns 控件元素
+   */
   public getElement(): IElement {
     return this.element
   }
 
+  /**
+   * 获取控件值。
+   *
+   * @param context - 控件上下文
+   * @returns 控件值元素列表
+   */
   public getValue(context: IControlContext = {}): IElement[] {
     const elementList = context.elementList || this.control.getElementList()
-    const { startIndex } = context.range || this.control.getRange()
+    const { startIndex } = context.range || this.control.getEditBoundaryRange()
     const startElement = elementList[startIndex]
     const data: IElement[] = []
     // 向左查找
@@ -89,7 +119,7 @@ export class TextControl implements IControlInstance {
       return -1
     }
     const elementList = context.elementList || this.control.getElementList()
-    const range = context.range || this.control.getRange()
+    const range = context.range || this.control.getEditBoundaryRange()
     // 收缩边界到Value内
     this.control.shrinkBoundary(context)
     const { startIndex, endIndex } = range
@@ -138,6 +168,13 @@ export class TextControl implements IControlInstance {
     return start + data.length - 1
   }
 
+  /**
+   * 清空控件值。
+   *
+   * @param context - 控件上下文
+   * @param options - 控件规则选项
+   * @returns 新的光标位置
+   */
   public clearValue(
     context: IControlContext = {},
     options: IControlRuleOption = {}
@@ -150,7 +187,7 @@ export class TextControl implements IControlInstance {
       return -1
     }
     const elementList = context.elementList || this.control.getElementList()
-    const range = context.range || this.control.getRange()
+    const range = context.range || this.control.getEditBoundaryRange()
     const { startIndex, endIndex } = range
     this.control
       .getDraw()
@@ -170,12 +207,20 @@ export class TextControl implements IControlInstance {
     return startIndex
   }
 
+  /**
+   * 处理键盘按下事件。
+   *
+   * 处理退格键和删除键。
+   *
+   * @param evt - 键盘事件
+   * @returns 新的光标位置，不支持的操作返回 null
+   */
   public keydown(evt: KeyboardEvent): number | null {
     if (this.control.getIsDisabledControl()) {
       return null
     }
     const elementList = this.control.getElementList()
-    const range = this.control.getRange()
+    const range = this.control.getEditBoundaryRange()
     // 收缩边界到Value内
     this.control.shrinkBoundary()
     const { startIndex, endIndex } = range
@@ -255,12 +300,17 @@ export class TextControl implements IControlInstance {
     return endIndex
   }
 
+  /**
+   * 处理剪切事件。
+   *
+   * @returns 新的光标位置
+   */
   public cut(): number {
     if (this.control.getIsDisabledControl()) {
       return -1
     }
     this.control.shrinkBoundary()
-    const { startIndex, endIndex } = this.control.getRange()
+    const { startIndex, endIndex } = this.control.getEditBoundaryRange()
     if (startIndex === endIndex) {
       return startIndex
     }

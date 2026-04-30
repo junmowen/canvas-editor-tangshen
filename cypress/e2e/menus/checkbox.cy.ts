@@ -4,7 +4,7 @@ describe('菜单-复选框', () => {
   beforeEach(() => {
     cy.visit('http://localhost:3000/canvas-editor/')
 
-    cy.get('canvas').first().as('canvas').should('have.length', 1)
+    cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
 
   const type: ElementType = <ElementType>'checkbox'

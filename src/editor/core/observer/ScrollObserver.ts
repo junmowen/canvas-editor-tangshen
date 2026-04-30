@@ -84,5 +84,6 @@ export class ScrollObserver {
     const { intersectionPageNo, visiblePageNoList } = this.getPageVisibleInfo()
     this.draw.setIntersectionPageNo(intersectionPageNo)
     this.draw.setVisiblePageNoList(visiblePageNoList)
+    this.draw.refreshVisiblePagesIfNeeded()
   }, 150)
 }

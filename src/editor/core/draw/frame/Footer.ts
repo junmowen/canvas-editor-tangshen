@@ -23,56 +23,107 @@ export class Footer {
     this.position = draw.getPosition()
     this.zone = draw.getZone()
     this.options = draw.getOptions()
-
+    // 初始化列表
     this.elementList = data || []
     this.rowList = []
     this.positionList = []
   }
 
+  /**
+   * 获取行列表。
+   *
+   * @returns 页脚行列表
+   */
   public getRowList(): IRow[] {
     return this.rowList
   }
 
+  /**
+   * 设置元素列表。
+   *
+   * @param elementList - 页脚元素列表
+   */
   public setElementList(elementList: IElement[]) {
     this.elementList = elementList
   }
 
+  /**
+   * 获取元素列表。
+   *
+   * @returns 页脚元素列表
+   */
   public getElementList(): IElement[] {
     return this.elementList
   }
 
+  /**
+   * 获取位置列表。
+   *
+   * @returns 元素位置列表
+   */
   public getPositionList(): IElementPosition[] {
     return this.positionList
   }
 
+  /**
+   * 计算页脚布局。
+   *
+   * 包括行列表和位置列表的计算。
+   */
   public compute() {
+    // 恢复初始状态
     this.recovery()
+    // 计算行列表
     this._computeRowList()
+    // 计算位置列表
     this._computePositionList()
   }
 
+  /**
+   * 恢复初始状态。
+   *
+   * 清空行列表和位置列表。
+   */
   public recovery() {
     this.rowList = []
     this.positionList = []
   }
 
+  /**
+   * 计算页脚行列表。
+   *
+   * 使用布局计算器计算页脚的行列表。
+   */
   private _computeRowList() {
     const innerWidth = this.draw.getInnerWidth()
     this.rowList = this.draw.computeRowList({
       innerWidth,
-      elementList: this.elementList
+      elementList: this.elementList,
+      isFloat: true
     })
   }
 
+  /**
+   * 计算页脚位置列表。
+   *
+   * 使用位置管理器计算每个元素的位置信息。
+   */
+  /**
+   * 计算页脚位置列表。
+   *
+   * 计算每个元素的位置信息。
+   */
   private _computePositionList() {
+    // 获取页脚底部位置
     const footerBottom = this.getFooterBottom()
     const innerWidth = this.draw.getInnerWidth()
     const margins = this.draw.getMargins()
     const startX = margins[3]
-    // 页面高度 - 页脚顶部距离页面底部高度
+    // 计算起始 Y 坐标（页面底部 - 页脚底部距离 - 页脚高度）
     const pageHeight = this.draw.getHeight()
     const footerHeight = this.getHeight()
     const startY = pageHeight - footerBottom - footerHeight
+    // 计算位置列表
     this.position.computePageRowPosition({
       positionList: this.positionList,
       rowList: this.rowList,
@@ -122,6 +173,12 @@ export class Footer {
     return extraHeight <= 0 ? 0 : extraHeight
   }
 
+  /**
+   * 渲染页脚。
+   *
+   * @param ctx - 画布上下文
+   * @param pageNo - 页码
+   */
   public render(ctx: CanvasRenderingContext2D, pageNo: number) {
     ctx.save()
     ctx.globalAlpha = this.zone.isFooterActive()

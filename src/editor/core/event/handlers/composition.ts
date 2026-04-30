@@ -14,7 +14,7 @@ function compositionend(host: CanvasEvent, evt: CompositionEvent) {
   if (!evt.data) {
     removeComposingInput(host)
     const rangeManager = draw.getRange()
-    const { endIndex: curIndex } = rangeManager.getRange()
+    const { endIndex: curIndex } = rangeManager.getEditBoundaryRange()
     draw.render({
       curIndex,
       isSubmitHistory: false

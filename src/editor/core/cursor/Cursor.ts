@@ -8,7 +8,8 @@ import { IElementPosition } from '../../interface/Element'
 import { findScrollContainer } from '../../utils'
 import { isMobile } from '../../utils/ua'
 import { Draw } from '../draw/Draw'
-import { CanvasEvent } from '../event/CanvasEvent'
+import { EditorClipboardController } from '../event/EditorClipboardController'
+import { EditorInputController } from '../event/EditorInputController'
 import { Position } from '../position/Position'
 import { CursorAgent } from './CursorAgent'
 
@@ -16,7 +17,6 @@ export type IDrawCursorOption = ICursorOption & {
   isShow?: boolean
   isBlink?: boolean
   isFocus?: boolean
-  hitLineStartIndex?: number
 }
 
 export interface IMoveCursorToVisibleOption {
@@ -34,18 +34,21 @@ export class Cursor {
   private cursorDom: HTMLDivElement
   private cursorAgent: CursorAgent
   private blinkTimeout: number | null
-  private hitLineStartIndex: number | undefined
 
-  constructor(draw: Draw, canvasEvent: CanvasEvent) {
+  constructor(
+    draw: Draw,
+    inputController: EditorInputController,
+    clipboardController: EditorClipboardController
+  ) {
     this.draw = draw
-    this.container = draw.getContainer()
+    this.container = draw.getPageCanvasHost().getContainer()
     this.position = draw.getPosition()
     this.options = draw.getOptions()
 
     this.cursorDom = document.createElement('div')
     this.cursorDom.classList.add(`${EDITOR_PREFIX}-cursor`)
     this.container.append(this.cursorDom)
-    this.cursorAgent = new CursorAgent(draw, canvasEvent)
+    this.cursorAgent = new CursorAgent(draw, inputController, clipboardController)
     this.blinkTimeout = null
   }
 
@@ -67,10 +70,6 @@ export class Cursor {
 
   public clearAgentDomValue() {
     this.getAgentDom().value = ''
-  }
-
-  public getHitLineStartIndex() {
-    return this.hitLineStartIndex
   }
 
   private _blinkStart() {
@@ -108,7 +107,7 @@ export class Cursor {
   }
 
   public drawCursor(payload?: IDrawCursorOption) {
-    let cursorPosition = this.position.getCursorPosition()
+    const cursorPosition = this.position.getCursorPosition()
     if (!cursorPosition) return
     const { scale, cursor } = this.options
     const {
@@ -116,18 +115,12 @@ export class Cursor {
       width,
       isShow = true,
       isBlink = true,
-      isFocus = true,
-      hitLineStartIndex
+      isFocus = true
     } = { ...cursor, ...payload }
     // 设置光标代理
     const height = this.draw.getHeight()
     const pageGap = this.draw.getPageGap()
     // 光标位置
-    this.hitLineStartIndex = hitLineStartIndex
-    if (hitLineStartIndex) {
-      const positionList = this.position.getPositionList()
-      cursorPosition = positionList[hitLineStartIndex]
-    }
     const {
       metrics,
       coordinate: { leftTop, rightTop },
@@ -155,7 +148,15 @@ export class Cursor {
       metrics.boundingBoxDescent < 0 ? 0 : metrics.boundingBoxDescent
     const cursorTop =
       leftTop[1] + ascent + descent - (cursorHeight - increaseHeight) + preY
-    const cursorLeft = hitLineStartIndex ? leftTop[0] : rightTop[0]
+    const pageRelativeCursorTop =
+      leftTop[1] + ascent + descent - (cursorHeight - increaseHeight)
+    const cursorLeft = rightTop[0]
+    const overlayHost = this.draw.getPageCanvasHost().getPageOverlayHost(curPageNo)
+    if (overlayHost && this.cursorDom.parentElement !== overlayHost) {
+      overlayHost.append(this.cursorDom)
+    } else if (!overlayHost && this.cursorDom.parentElement !== this.container) {
+      this.container.append(this.cursorDom)
+    }
     agentCursorDom.style.left = `${cursorLeft}px`
     agentCursorDom.style.top = `${
       cursorTop + cursorHeight - defaultOffsetHeight
@@ -169,7 +170,9 @@ export class Cursor {
     this.cursorDom.style.width = `${width * scale}px`
     this.cursorDom.style.backgroundColor = color
     this.cursorDom.style.left = `${cursorLeft}px`
-    this.cursorDom.style.top = `${cursorTop}px`
+    this.cursorDom.style.top = `${
+      overlayHost ? pageRelativeCursorTop : cursorTop
+    }px`
     this.cursorDom.style.display = isReadonly ? 'none' : 'block'
     this.cursorDom.style.height = `${cursorHeight}px`
     if (isBlink) {

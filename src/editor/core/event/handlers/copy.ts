@@ -19,7 +19,7 @@ export function copy(host: CanvasEvent, options?: ICopyOption) {
   const rangeManager = draw.getRange()
   // 光标闭合时复制整行
   let copyElementList: IElement[] | null = null
-  const range = rangeManager.getRange()
+  const range = rangeManager.getEditBoundaryRange()
   if (range.isCrossRowCol) {
     // 原始表格信息
     const tableElement = rangeManager.getRangeTableElement()

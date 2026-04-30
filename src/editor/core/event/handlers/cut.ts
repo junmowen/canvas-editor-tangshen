@@ -3,8 +3,9 @@ import { CanvasEvent } from '../CanvasEvent'
 
 export function cut(host: CanvasEvent) {
   const draw = host.getDraw()
-  const rangeManager = draw.getRange()
-  const { startIndex, endIndex } = rangeManager.getRange()
+  const components = draw.getComponents()
+  const rangeManager = components.range
+  const { startIndex, endIndex } = rangeManager.getEditBoundaryRange()
   if (!~startIndex && !~startIndex) return
   if (draw.isReadonly() || !rangeManager.getIsCanInput()) return
 
@@ -13,7 +14,7 @@ export function cut(host: CanvasEvent) {
   let end = endIndex
   // 无选区则剪切一行
   if (startIndex === endIndex) {
-    const position = draw.getPosition()
+    const position = components.position
     const positionList = position.getPositionList()
     const startPosition = positionList[startIndex]
     const curRowNo = startPosition.rowNo
@@ -33,7 +34,7 @@ export function cut(host: CanvasEvent) {
   const options = draw.getOptions()
   // 写入粘贴板
   writeElementList(elementList.slice(start + 1, end + 1), options)
-  const control = draw.getControl()
+  const control = components.control
   let curIndex: number
   if (control.getActiveControl() && control.getIsRangeWithinControl()) {
     curIndex = control.cut()

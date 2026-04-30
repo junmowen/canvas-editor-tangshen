@@ -39,8 +39,14 @@
     "build": "npm run lint && tsc && vite build --mode app",
     "serve": "vite preview",
     "lint": "eslint .",
+    "encoding:check": "node scripts/verify-utf8.js",
+    "encoding:check:staged": "node scripts/verify-utf8.js --staged",
+    "encoding:check:all": "node scripts/verify-utf8.js --all",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
+    "issues:verify": "node scripts/verifyIssues.js",
+    "issues:verify:list": "node scripts/verifyIssues.js --list",
+    "issues:verify:current": "node scripts/verifyIssues.js --current",
     "type:check": "tsc --noEmit",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
@@ -68,7 +74,7 @@
     "prismjs": "^1.27.0"
   },
   "simple-git-hooks": {
-    "pre-commit": "npm run lint && npm run type:check",
+    "pre-commit": "npm run encoding:check:staged && npm run lint && npm run type:check",
     "commit-msg": "node scripts/verifyCommit.js"
   }
 }

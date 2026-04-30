@@ -12,14 +12,15 @@ import { CanvasEvent } from '../CanvasEvent'
 
 export function input(data: string, host: CanvasEvent) {
   const draw = host.getDraw()
+  const components = draw.getComponents()
   if (draw.isReadonly() || draw.isDisabled()) return
-  const position = draw.getPosition()
+  const position = components.position
   const cursorPosition = position.getCursorPosition()
   if (!data || !cursorPosition) return
   const isComposing = host.isComposing
   // 正在合成文本进行非输入操作
   if (isComposing && host.compositionInfo?.value === data) return
-  const rangeManager = draw.getRange()
+  const rangeManager = components.range
   if (!rangeManager.getIsCanInput()) return
   // 移除合成前，缓存设置的默认样式设置
   const defaultStyle =
@@ -27,12 +28,12 @@ export function input(data: string, host: CanvasEvent) {
   // 移除合成输入
   removeComposingInput(host)
   if (!isComposing) {
-    const cursor = draw.getCursor()
+    const cursor = components.cursor
     cursor.clearAgentDomValue()
   }
   const { TEXT, HYPERLINK, SUBSCRIPT, SUPERSCRIPT, DATE, TAB } = ElementType
   const text = data.replaceAll(`\n`, ZERO)
-  const { startIndex, endIndex } = rangeManager.getRange()
+  const { startIndex, endIndex } = rangeManager.getEditBoundaryRange()
   // 格式化元素
   const elementList = draw.getElementList()
   const copyElement = rangeManager.getRangeAnchorStyle(elementList, endIndex)
@@ -83,7 +84,7 @@ export function input(data: string, host: CanvasEvent) {
     return newElement
   })
   // 控件-移除placeholder
-  const control = draw.getControl()
+  const control = components.control
   let curIndex: number
   if (control.getActiveControl() && control.getIsRangeWithinControl()) {
     curIndex = control.setValue(inputData)
@@ -130,7 +131,7 @@ export function removeComposingInput(host: CanvasEvent) {
   if (startIndex >= 0 && endIndex > startIndex && endIndex <= elementList.length) {
     elementList.splice(startIndex + 1, endIndex - startIndex)
   }
-  const rangeManager = draw.getRange()
+  const rangeManager = draw.getComponents().range
   rangeManager.setRange(startIndex, startIndex)
   host.compositionInfo = null
 }

@@ -17,21 +17,21 @@ export class ZoneTip {
   private tipContent: HTMLSpanElement
   private currentMoveZone: EditorZone | undefined
 
-  constructor(draw: Draw, zone: Zone) {
+  constructor(draw: Draw, zone: Zone, i18n: I18n) {
     this.draw = draw
     this.zone = zone
-    this.i18n = draw.getI18n()
-    this.container = draw.getContainer()
-    this.pageContainer = draw.getPageContainer()
+    this.i18n = i18n
+    this.container = draw.getPageCanvasHost().getContainer()
+    this.pageContainer = draw.getPageCanvasHost().getPageContainer()
 
     const { tipContainer, tipContent } = this._drawZoneTip()
     this.tipContainer = tipContainer
     this.tipContent = tipContent
     this.isDisableMouseMove = true
     this.currentMoveZone = EditorZone.MAIN
-    // 监听区域
+    // 閻╂垵鎯夐崠鍝勭厵
     const watchZones: EditorZone[] = []
-    const { header, footer } = draw.getOptions()
+    const { header, footer } = draw.getRuntime().getOptions()
     if (!header.disabled) {
       watchZones.push(EditorZone.HEADER)
     }
@@ -48,28 +48,26 @@ export class ZoneTip {
       'mousemove',
       throttle((evt: MouseEvent) => {
         if (this.isDisableMouseMove || !this.draw.getIsPagingMode()) return
-        if (!evt.offsetY) return
-        if (evt.target instanceof HTMLCanvasElement) {
-          const mousemoveZone = this.zone.getZoneByY(evt.offsetY)
-          if (!watchZones.includes(mousemoveZone)) {
-            this._updateZoneTip(false)
-            return
-          }
-          this.currentMoveZone = mousemoveZone
-          // 激活区域是正文，移动区域是页眉、页脚时绘制
-          this._updateZoneTip(
-            this.zone.getZone() === EditorZone.MAIN &&
-              (mousemoveZone === EditorZone.HEADER ||
-                mousemoveZone === EditorZone.FOOTER),
-            evt.x,
-            evt.y
-          )
-        } else {
+        const pagePoint = this.draw.getPointerCoordinates(evt).page
+        if (!pagePoint) {
           this._updateZoneTip(false)
+          return
         }
+        const mousemoveZone = this.zone.getZoneByY(pagePoint.y)
+        if (!watchZones.includes(mousemoveZone)) {
+          this._updateZoneTip(false)
+          return
+        }
+        this.currentMoveZone = mousemoveZone
+        this._updateZoneTip(
+          this.zone.getZone() === EditorZone.MAIN &&
+            (mousemoveZone === EditorZone.HEADER ||
+              mousemoveZone === EditorZone.FOOTER),
+          evt.clientX,
+          evt.clientY
+        )
       }, 250)
     )
-    // mouseenter后mousemove有效，避免因节流导致的mouseleave后继续执行逻辑
     this.pageContainer.addEventListener('mouseenter', () => {
       this.isDisableMouseMove = false
     })

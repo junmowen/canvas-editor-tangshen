@@ -116,7 +116,8 @@ export class Watermark {
         // 避免层级上浮，触发编辑器二次渲染
         this.draw.render({
           isCompute: false,
-          isSubmitHistory: false
+          isSubmitHistory: false,
+          pageRenderScope: 'visible'
         })
       }
       return

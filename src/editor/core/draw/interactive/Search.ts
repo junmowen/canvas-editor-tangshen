@@ -19,6 +19,12 @@ export interface INavigateInfo {
   count: number
 }
 
+interface ISearchRenderMatch {
+  searchIndex: number
+  searchMatch: ISearchResult
+  position: IElementPosition
+}
+
 export class Search {
   private draw: Draw
   private options: Required<IEditorOption>
@@ -26,6 +32,9 @@ export class Search {
   private searchKeyword: string | null
   private searchNavigateIndex: number | null
   private searchMatchList: ISearchResult[]
+  private searchMatchPageMap: Map<number, ISearchRenderMatch[]>
+  private searchMatchPageNoList: Array<number | null>
+  private searchRenderPageNoList: number[]
 
   constructor(draw: Draw) {
     this.draw = draw
@@ -34,6 +43,9 @@ export class Search {
     this.searchNavigateIndex = null
     this.searchKeyword = null
     this.searchMatchList = []
+    this.searchMatchPageMap = new Map()
+    this.searchMatchPageNoList = []
+    this.searchRenderPageNoList = []
   }
 
   public getSearchKeyword(): string | null {
@@ -43,10 +55,17 @@ export class Search {
   public setSearchKeyword(payload: string | null) {
     this.searchKeyword = payload
     this.searchNavigateIndex = null
+    this.searchMatchPageMap.clear()
+    this.searchMatchPageNoList = []
+    this.searchRenderPageNoList = []
+    if (!payload) {
+      this.searchMatchList = []
+    }
   }
 
   public searchNavigatePre(): number | null {
     if (!this.searchMatchList.length || !this.searchKeyword) return null
+    const prevPageNoList = this._getSearchNavigatePageNoList()
     if (this.searchNavigateIndex === null) {
       this.searchNavigateIndex = 0
     } else {
@@ -71,11 +90,13 @@ export class Search {
           this.searchMatchList.length - 1 - (this.searchKeyword.length - 1)
       }
     }
+    this._setSearchRenderPageNoList(prevPageNoList)
     return this.searchNavigateIndex
   }
 
   public searchNavigateNext(): number | null {
     if (!this.searchMatchList.length || !this.searchKeyword) return null
+    const prevPageNoList = this._getSearchNavigatePageNoList()
     if (this.searchNavigateIndex === null) {
       this.searchNavigateIndex = 0
     } else {
@@ -98,6 +119,7 @@ export class Search {
         this.searchNavigateIndex = 0
       }
     }
+    this._setSearchRenderPageNoList(prevPageNoList)
     return this.searchNavigateIndex
   }
 
@@ -120,7 +142,7 @@ export class Search {
     }px`
     anchor.style.left = `${leftTop[0]}px`
     anchor.style.top = `${leftTop[1] + preY}px`
-    this.draw.getContainer().append(anchor)
+    this.draw.getPageCanvasHost().getContainer().append(anchor)
     // 移动到可视范围
     anchor.scrollIntoView(false)
     anchor.remove()
@@ -135,6 +157,12 @@ export class Search {
 
   public getSearchMatchList(): ISearchResult[] {
     return this.searchMatchList
+  }
+
+  public consumeSearchRenderPageNoList(): number[] {
+    const pageNoList = [...this.searchRenderPageNoList]
+    this.searchRenderPageNoList = []
+    return pageNoList
   }
 
   public getSearchNavigateInfo(): null | INavigateInfo {
@@ -277,6 +305,7 @@ export class Search {
       payload,
       this.draw.getOriginalElementList()
     )
+    this._rebuildSearchMatchPageMap()
   }
 
   public render(ctx: CanvasRenderingContext2D, pageIndex: number) {
@@ -289,33 +318,20 @@ export class Search {
     }
     const { searchMatchAlpha, searchMatchColor, searchNavigateMatchColor } =
       this.options
-    const positionList = this.position.getOriginalPositionList()
-    const elementList = this.draw.getOriginalElementList()
+    const searchMatchIndexSet = new Set(this.getSearchNavigateIndexList())
+    const pageMatchList = this.searchMatchPageMap.get(pageIndex) || []
     ctx.save()
     ctx.globalAlpha = searchMatchAlpha
-    for (let s = 0; s < this.searchMatchList.length; s++) {
-      const searchMatch = this.searchMatchList[s]
-      let position: IElementPosition | null = null
-      if (searchMatch.type === EditorContext.TABLE) {
-        const { tableIndex, trIndex, tdIndex, index } = searchMatch
-        position =
-          elementList[tableIndex!]?.trList![trIndex!].tdList[tdIndex!]
-            ?.positionList![index]
-      } else {
-        position = positionList[searchMatch.index]
-      }
-      if (!position) continue
+    for (let s = 0; s < pageMatchList.length; s++) {
+      const { searchIndex, searchMatch, position } = pageMatchList[s]
       const {
         coordinate: { leftTop, leftBottom, rightTop },
-        pageNo
       } = position
-      if (pageNo !== pageIndex) continue
       // 高亮并定位当前搜索词
-      const searchMatchIndexList = this.getSearchNavigateIndexList()
-      if (searchMatchIndexList.includes(s)) {
+      if (searchMatchIndexSet.has(searchIndex)) {
         ctx.fillStyle = searchNavigateMatchColor
         // 是否是第一个字符，则移动到可视范围
-        const preSearchMatch = this.searchMatchList[s - 1]
+        const preSearchMatch = this.searchMatchList[searchIndex - 1]
         if (!preSearchMatch || preSearchMatch.groupId !== searchMatch.groupId) {
           this.searchNavigateScrollIntoView(position)
         }
@@ -329,6 +345,67 @@ export class Search {
       ctx.fillRect(x, y, width, height)
     }
     ctx.restore()
+  }
+
+  private _getPositionBySearchMatch(
+    searchMatch: ISearchResult,
+    elementList: IElement[],
+    positionList: IElementPosition[]
+  ): IElementPosition | null {
+    if (searchMatch.type === EditorContext.TABLE) {
+      const { tableIndex, trIndex, tdIndex, index } = searchMatch
+      return (
+        elementList[tableIndex!]?.trList?.[trIndex!].tdList?.[tdIndex!]
+          ?.positionList?.[index] || null
+      )
+    }
+    return positionList[searchMatch.index] || null
+  }
+
+  private _getSearchNavigatePageNoList(): number[] {
+    const searchMatchIndexList = this.getSearchNavigateIndexList()
+    if (!searchMatchIndexList.length) return []
+    const pageNoSet = new Set<number>()
+    for (let i = 0; i < searchMatchIndexList.length; i++) {
+      const pageNo = this.searchMatchPageNoList[searchMatchIndexList[i]]
+      if (pageNo !== null && pageNo !== undefined) {
+        pageNoSet.add(pageNo)
+      }
+    }
+    return Array.from(pageNoSet)
+  }
+
+  private _setSearchRenderPageNoList(prevPageNoList: number[]) {
+    const nextPageNoList = this._getSearchNavigatePageNoList()
+    this.searchRenderPageNoList = Array.from(
+      new Set([...prevPageNoList, ...nextPageNoList])
+    ).sort((a, b) => a - b)
+  }
+
+  private _rebuildSearchMatchPageMap() {
+    this.searchMatchPageMap.clear()
+    this.searchMatchPageNoList = new Array(this.searchMatchList.length).fill(null)
+    const positionList = this.position.getOriginalPositionList()
+    const elementList = this.draw.getOriginalElementList()
+    for (let i = 0; i < this.searchMatchList.length; i++) {
+      const searchMatch = this.searchMatchList[i]
+      const position = this._getPositionBySearchMatch(
+        searchMatch,
+        elementList,
+        positionList
+      )
+      if (!position) {
+        continue
+      }
+      this.searchMatchPageNoList[i] = position.pageNo
+      const pageMatchList = this.searchMatchPageMap.get(position.pageNo) || []
+      pageMatchList.push({
+        searchIndex: i,
+        searchMatch,
+        position
+      })
+      this.searchMatchPageMap.set(position.pageNo, pageMatchList)
+    }
   }
 
   public replace(payload: string, option?: IReplaceOption) {

@@ -13,7 +13,7 @@ export class Background {
 
   constructor(draw: Draw) {
     this.draw = draw
-    this.options = draw.getOptions()
+    this.options = draw.getRuntime().getOptions()
     this.imageCache = new Map()
   }
 
@@ -92,7 +92,8 @@ export class Background {
         // 避免层级上浮，触发编辑器二次渲染
         this.draw.render({
           isCompute: false,
-          isSubmitHistory: false
+          isSubmitHistory: false,
+          pageRenderScope: 'visible'
         })
       }
     }
@@ -109,8 +110,9 @@ export class Background {
       const { width, height } = this.options
       this._renderBackgroundImage(ctx, width, height)
     } else {
-      const width = this.draw.getCanvasWidth(pageNo)
-      const height = this.draw.getCanvasHeight(pageNo)
+      const page = this.draw.getPage(pageNo)
+      const width = page.width
+      const height = page.height
       this._renderBackgroundColor(ctx, color, width, height)
     }
   }

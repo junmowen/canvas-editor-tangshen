@@ -1,7 +1,11 @@
 import { ElementType, IElement, TableBorder, VerticalAlign } from '../../../..'
 import { ZERO } from '../../../../dataset/constant/Common'
 import { TABLE_CONTEXT_ATTR } from '../../../../dataset/constant/Element'
-import { TdBorder, TdSlash } from '../../../../dataset/enum/table/Table'
+import {
+  TableDisplay,
+  TdBorder,
+  TdSlash
+} from '../../../../dataset/enum/table/Table'
 import { DeepRequired } from '../../../../interface/Common'
 import { IEditorOption } from '../../../../interface/Editor'
 import { IColgroup } from '../../../../interface/table/Colgroup'
@@ -18,6 +22,13 @@ import { Draw } from '../../Draw'
 import { TableParticle } from './TableParticle'
 import { TableTool } from './TableTool'
 
+export interface IInsertTableOption {
+  tableDisplay?: TableDisplay
+}
+/**
+ * 表格结构操作器。
+ * 负责插入、删除、合并、拆分以及边框等表格结构编辑操作。
+ */
 export class TableOperate {
   private draw: Draw
   private range: RangeManager
@@ -26,17 +37,101 @@ export class TableOperate {
   private tableParticle: TableParticle
   private options: DeepRequired<IEditorOption>
 
-  constructor(draw: Draw) {
+  constructor(
+    draw: Draw,
+    deps: {
+      range: RangeManager
+      position: Position
+      tableTool: TableTool
+      tableParticle: TableParticle
+      options: DeepRequired<IEditorOption>
+    }
+  ) {
     this.draw = draw
-    this.range = draw.getRange()
-    this.position = draw.getPosition()
-    this.tableTool = draw.getTableTool()
-    this.tableParticle = draw.getTableParticle()
-    this.options = draw.getOptions()
+    this.range = deps.range
+    this.position = deps.position
+    this.tableTool = deps.tableTool
+    this.tableParticle = deps.tableParticle
+    this.options = deps.options
+  }
+  /**
+   * 读取逻辑态表格，并补齐当前结构操作依赖的行列位置信息。
+   * fragment 重组后可能缺少最新的 rowIndex / colIndex / x / y，这里统一补算。
+   */
+  private getContextTableElement(index: number): IElement {
+    const element = this.draw.getOriginalElementList()[index]
+    this.tableParticle.computeRowColInfo(element)
+    return element
   }
 
-  public insertTable(row: number, col: number) {
-    const { startIndex, endIndex } = this.range.getRange()
+  private resolveContextTable() {
+    const positionContext = this.position.getPositionContext()
+    if (!positionContext.isTable) return null
+    let tableIndex = positionContext.index
+    const originalElementList = this.draw.getOriginalElementList()
+    let element =
+      tableIndex !== undefined ? originalElementList[tableIndex] : undefined
+    if (element?.type !== ElementType.TABLE || !element.trList?.length) {
+      const tableId = positionContext.tableId
+      tableIndex = tableId ? this.resolveTableIndexById(tableId) : -1
+      element = ~tableIndex ? originalElementList[tableIndex] : undefined
+    }
+    if (element?.type !== ElementType.TABLE || !element.trList?.length) {
+      return null
+    }
+    this.tableParticle.computeRowColInfo(element)
+    return {
+      positionContext,
+      index: tableIndex!,
+      element,
+      trIndex: positionContext.trIndex,
+      tdIndex: positionContext.tdIndex,
+      tableId: element.id || positionContext.tableId
+    }
+  }
+
+  private resolveTableIndexById(tableId: string): number {
+    const originalElementList = this.draw.getOriginalElementList()
+    return originalElementList.findIndex(element => {
+      if (element.type !== ElementType.TABLE || !element.id) return false
+      return (
+        element.id === tableId ||
+        this.draw.getTableLayoutSnapshotAccessor().isSameLogicalTable(
+          element.id,
+          tableId
+        )
+      )
+    })
+  }
+
+  private resolveInlineTableWidth(startIndex: number, fallbackWidth: number) {
+    const positionList = this.position.getPositionList()
+    const cursorPosition = positionList[startIndex]
+    if (!cursorPosition) {
+      return fallbackWidth
+    }
+    const rowPositionList = positionList.filter(position => {
+      return (
+        position.pageNo === cursorPosition.pageNo &&
+        position.rowNo === cursorPosition.rowNo
+      )
+    })
+    if (!rowPositionList.length) {
+      return fallbackWidth
+    }
+    const rowStartX = Math.min(
+      ...rowPositionList.map(position => position.coordinate.leftTop[0])
+    )
+    const usedWidth = Math.max(
+      0,
+      (cursorPosition.coordinate.rightTop[0] - rowStartX) / this.options.scale
+    )
+    const inlineWidth = fallbackWidth - usedWidth
+    return inlineWidth > 0 ? inlineWidth : fallbackWidth
+  }
+
+  public insertTable(row: number, col: number, options: IInsertTableOption = {}) {
+    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
     if (!~startIndex && !~endIndex) return
     const { defaultTrMinHeight } = this.options.table
     const elementList = this.draw.getElementList()
@@ -48,8 +143,13 @@ export class TableOperate {
       const row = rowList[rowIndex]
       offsetX = row?.offsetX || 0
     }
-    const innerWidth = this.draw.getContextInnerWidth() - offsetX
-    // colgroup
+    const baseInnerWidth = this.draw.getContextInnerWidth() - offsetX
+    const innerWidth =
+      options.tableDisplay === TableDisplay.INLINE
+        ? this.resolveInlineTableWidth(startIndex, baseInnerWidth)
+        : baseInnerWidth
+
+    // 初始化列配置。
     const colgroup: IColgroup[] = []
     const colWidth = innerWidth / col
     for (let c = 0; c < col; c++) {
@@ -57,7 +157,8 @@ export class TableOperate {
         width: colWidth
       })
     }
-    // trlist
+
+    // 初始化行与单元格。
     const trList: ITr[] = []
     for (let r = 0; r < row; r++) {
       const tdList: ITd[] = []
@@ -74,19 +175,23 @@ export class TableOperate {
       }
       trList.push(tr)
     }
+
     const element: IElement = {
       type: ElementType.TABLE,
       value: '',
+      tableDisplay: options.tableDisplay,
       colgroup,
       trList
     }
-    // 格式化element
+
+    // 统一补齐表格元素上下文。
     formatElementList([element], {
       editorOptions: this.options
     })
     formatElementContext(elementList, [element], startIndex, {
       editorOptions: this.options
     })
+
     const curIndex = startIndex + 1
     this.draw.spliceElementList(
       elementList,
@@ -99,14 +204,13 @@ export class TableOperate {
   }
 
   public insertTableTopRow() {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return
-    const { index, trIndex, tableId } = positionContext
-    const originalElementList = this.draw.getOriginalElementList()
-    const element = originalElementList[index!]
+    const context = this.resolveContextTable()
+    if (!context || context.trIndex === undefined) return
+    const { index, trIndex, tableId, element } = context
     const curTrList = element.trList!
     const curTr = curTrList[trIndex!]
-    // 之前跨行的增加跨行数
+
+    // 如果当前行被上方跨行单元格覆盖，需要先补齐对应的 rowspan。
     if (curTr.tdList.length < element.colgroup!.length) {
       const curTrNo = curTr.tdList[0].rowIndex!
       for (let t = 0; t < trIndex!; t++) {
@@ -119,7 +223,8 @@ export class TableOperate {
         }
       }
     }
-    // 增加当前行
+
+    // 在当前行上方插入一行新的空白行。
     const newTrId = getUUID()
     const newTr: ITr = {
       height: curTr.height,
@@ -145,7 +250,6 @@ export class TableOperate {
       })
     }
     curTrList.splice(trIndex!, 0, newTr)
-    // 重新设置上下文
     this.position.setPositionContext({
       isTable: true,
       index,
@@ -156,22 +260,20 @@ export class TableOperate {
       tableId
     })
     this.range.setRange(0, 0)
-    // 重新渲染
     this.draw.render({ curIndex: 0 })
     this.tableTool.render()
   }
 
   public insertTableBottomRow() {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return
-    const { index, trIndex, tableId } = positionContext
-    const originalElementList = this.draw.getOriginalElementList()
-    const element = originalElementList[index!]
+    const context = this.resolveContextTable()
+    if (!context || context.trIndex === undefined) return
+    const { index, trIndex, tableId, element } = context
     const curTrList = element.trList!
     const curTr = curTrList[trIndex!]
     const anchorTr =
       curTrList.length - 1 === trIndex ? curTr : curTrList[trIndex! + 1]
-    // 之前/当前行跨行的增加跨行数
+
+    // 如果锚点行被上方跨行单元格覆盖，需要先补齐对应的 rowspan。
     if (anchorTr.tdList.length < element.colgroup!.length) {
       const curTrNo = anchorTr.tdList[0].rowIndex!
       for (let t = 0; t < trIndex! + 1; t++) {
@@ -184,7 +286,8 @@ export class TableOperate {
         }
       }
     }
-    // 增加当前行
+
+    // 在当前行下方插入一行新的空白行。
     const newTrId = getUUID()
     const newTr: ITr = {
       height: anchorTr.height,
@@ -210,7 +313,8 @@ export class TableOperate {
       })
     }
     curTrList.splice(trIndex! + 1, 0, newTr)
-    // 重新设置上下文
+
+    // 重新设置表格光标上下文。
     this.position.setPositionContext({
       isTable: true,
       index,
@@ -221,7 +325,8 @@ export class TableOperate {
       tableId: element.id
     })
     this.range.setRange(0, 0)
-    // 重新渲染
+
+    // 重新渲染。
     this.draw.render({ curIndex: 0 })
   }
 
@@ -232,15 +337,15 @@ export class TableOperate {
     const colgroupWidth = colgroup.reduce((pre, cur) => pre + cur.width, 0)
     const width = this.draw.getOriginalInnerWidth()
     if (colgroupWidth > width) {
-      // 过滤大于最小宽度的列（可能减少宽度的列）
+      // 过滤出宽度大于最小值的列，用于参与等比压缩。
       const greaterMinWidthCol = colgroup.filter(
         col => col.width > defaultColMinWidth
       )
-      // 均分多余宽度
+      // 均分需要缩减的宽度。
       const adjustWidth = (colgroupWidth - width) / greaterMinWidthCol.length
       for (let g = 0; g < colgroup.length; g++) {
         const group = colgroup[g]
-        // 小于最小宽度的列不处理
+        // 缩减后仍不小于最小列宽时才执行压缩。
         if (group.width - adjustWidth >= defaultColMinWidth) {
           group.width -= adjustWidth
         }
@@ -249,14 +354,13 @@ export class TableOperate {
   }
 
   public insertTableLeftCol() {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return
-    const { index, tdIndex, tableId } = positionContext
-    const originalElementList = this.draw.getOriginalElementList()
-    const element = originalElementList[index!]
+    const context = this.resolveContextTable()
+    if (!context || context.tdIndex === undefined) return
+    const { index, tdIndex, tableId, element } = context
     const curTrList = element.trList!
     const curTdIndex = tdIndex!
-    // 增加列
+
+    // 在当前列左侧为每一行插入单元格。
     for (let t = 0; t < curTrList.length; t++) {
       const tr = curTrList[t]
       const tdId = getUUID()
@@ -275,14 +379,16 @@ export class TableOperate {
         ]
       })
     }
-    // 重新计算宽度
+
+    // 插入新的列宽配置。
     const { defaultColMinWidth } = this.options.table
     const colgroup = element.colgroup!
     colgroup.splice(curTdIndex, 0, {
       width: defaultColMinWidth
     })
     this.adjustColWidth(element)
-    // 重新设置上下文
+
+    // 重置表格光标上下文。
     this.position.setPositionContext({
       isTable: true,
       index,
@@ -293,20 +399,20 @@ export class TableOperate {
       tableId
     })
     this.range.setRange(0, 0)
-    // 重新渲染
+
+    // 重新渲染。
     this.draw.render({ curIndex: 0 })
     this.tableTool.render()
   }
 
   public insertTableRightCol() {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return
-    const { index, tdIndex, tableId } = positionContext
-    const originalElementList = this.draw.getOriginalElementList()
-    const element = originalElementList[index!]
+    const context = this.resolveContextTable()
+    if (!context || context.tdIndex === undefined) return
+    const { index, tdIndex, tableId, element } = context
     const curTrList = element.trList!
     const curTdIndex = tdIndex! + 1
-    // 增加列
+
+    // 在当前列右侧为每一行插入单元格。
     for (let t = 0; t < curTrList.length; t++) {
       const tr = curTrList[t]
       const tdId = getUUID()
@@ -325,14 +431,16 @@ export class TableOperate {
         ]
       })
     }
-    // 重新计算宽度
+
+    // 插入新的列宽配置。
     const { defaultColMinWidth } = this.options.table
     const colgroup = element.colgroup!
     colgroup.splice(curTdIndex, 0, {
       width: defaultColMinWidth
     })
     this.adjustColWidth(element)
-    // 重新设置上下文
+
+    // 重置表格光标上下文。
     this.position.setPositionContext({
       isTable: true,
       index,
@@ -343,25 +451,30 @@ export class TableOperate {
       tableId: element.id
     })
     this.range.setRange(0, 0)
-    // 重新渲染
+
+    // 重新渲染。
     this.draw.render({ curIndex: 0 })
   }
 
   public deleteTableRow() {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return
-    const { index, trIndex, tdIndex } = positionContext
-    const originalElementList = this.draw.getOriginalElementList()
-    const element = originalElementList[index!]
+    const context = this.resolveContextTable()
+    if (
+      !context ||
+      context.trIndex === undefined ||
+      context.tdIndex === undefined
+    ) return
+    const { index, trIndex, tdIndex, element } = context
     const trList = element.trList!
     const curTr = trList[trIndex!]
     const curTdRowIndex = curTr.tdList[tdIndex!].rowIndex!
-    // 如果是最后一行，直接删除整个表格（如果是拆分表格按照正常逻辑走）
-    if (trList.length <= 1 && element.pagingIndex === 0) {
+
+    // 如果当前表格只剩一行，则直接删除整张表格。
+    if (trList.length <= 1) {
       this.deleteTable()
       return
     }
-    // 之前行缩小rowspan
+
+    // 先修正上方跨行单元格的 rowspan。
     for (let r = 0; r < curTdRowIndex; r++) {
       const tr = trList[r]
       const tdList = tr.tdList
@@ -372,7 +485,8 @@ export class TableOperate {
         }
       }
     }
-    // 补跨行
+
+    // 将当前行中仍在跨行的单元格，补到下一行中继续承接。
     for (let d = 0; d < curTr.tdList.length; d++) {
       const td = curTr.tdList[d]
       if (td.rowspan > 1) {
@@ -394,36 +508,39 @@ export class TableOperate {
         })
       }
     }
-    // 删除当前行
+
+    // 删除当前行，并重置选区与工具状态。
     trList.splice(trIndex!, 1)
-    // 重新设置上下文
     this.position.setPositionContext({
       isTable: false
     })
     this.range.clearRange()
-    // 重新渲染
     this.draw.render({
-      curIndex: positionContext.index
+      curIndex: index
     })
     this.tableTool.dispose()
   }
 
   public deleteTableCol() {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return
-    const { index, tdIndex, trIndex } = positionContext
-    const originalElementList = this.draw.getOriginalElementList()
-    const element = originalElementList[index!]
+    const context = this.resolveContextTable()
+    if (
+      !context ||
+      context.trIndex === undefined ||
+      context.tdIndex === undefined
+    ) return
+    const { index, tdIndex, trIndex, element } = context
     const curTrList = element.trList!
     const curTd = curTrList[trIndex!].tdList[tdIndex!]
     const curColIndex = curTd.colIndex!
-    // 如果是最后一列，直接删除整个表格
+
+    // 如果当前表格只剩一列，则直接删除整张表格。
     const moreTdTr = curTrList.find(tr => tr.tdList.length > 1)
     if (!moreTdTr) {
       this.deleteTable()
       return
     }
-    // 缩小colspan或删除与当前列重叠的单元格
+
+    // 缩减覆盖当前列的 colspan，或直接删除该列单元格。
     for (let t = 0; t < curTrList.length; t++) {
       const tr = curTrList[t]
       for (let d = 0; d < tr.tdList.length; d++) {
@@ -441,41 +558,27 @@ export class TableOperate {
       }
     }
     element.colgroup?.splice(curColIndex, 1)
-    // 重新设置上下文
+
+    // 清理表格上下文。
     this.position.setPositionContext({
       isTable: false
     })
     this.range.setRange(0, 0)
-    // 重新渲染
+
+    // 重新渲染。
     this.draw.render({
-      curIndex: positionContext.index
+      curIndex: index
     })
     this.tableTool.dispose()
   }
 
   public deleteTable() {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return
+    const context = this.resolveContextTable()
+    if (!context) return
     const originalElementList = this.draw.getOriginalElementList()
-    const tableElement = originalElementList[positionContext.index!]
-    // 需要删除的表格数量（拆分表格）及位置
-    let deleteCount = 1
-    let deleteStartIndex = positionContext.index!
-    if (tableElement.pagingId) {
-      // 开始删除的下标位置
-      deleteStartIndex = positionContext.index! - tableElement.pagingIndex!
-      // 计算删除的表格数量
-      for (let i = deleteStartIndex + 1; i < originalElementList.length; i++) {
-        if (originalElementList[i].pagingId === tableElement.pagingId) {
-          deleteCount++
-        } else {
-          break
-        }
-      }
-    }
-    // 删除
-    originalElementList.splice(deleteStartIndex, deleteCount)
-    const curIndex = deleteStartIndex - 1
+    const deleteIndex = context.index
+    this.draw.spliceElementList(originalElementList, deleteIndex, 1)
+    const curIndex = deleteIndex - 1
     this.position.setPositionContext({
       isTable: false,
       index: curIndex
@@ -486,82 +589,120 @@ export class TableOperate {
   }
 
   public mergeTableCell() {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return
+    let positionContext = this.position.getPositionContext()
     const {
       isCrossRowCol,
+      tableId,
       startTdIndex,
       endTdIndex,
       startTrIndex,
       endTrIndex
-    } = this.range.getRange()
+    } = this.range.getEditBoundaryRange()
     if (!isCrossRowCol) return
-    const { index } = positionContext
-    const originalElementList = this.draw.getOriginalElementList()
-    const element = originalElementList[index!]
-    const curTrList = element.trList!
-    let startTd = curTrList[startTrIndex!].tdList[startTdIndex!]
-    let endTd = curTrList[endTrIndex!].tdList[endTdIndex!]
-    // 交换起始位置
-    if (startTd.x! > endTd.x! || startTd.y! > endTd.y!) {
-      // prettier-ignore
-      [startTd, endTd] = [endTd, startTd]
+    let tableIndex = positionContext.index
+    const currentTable =
+      tableIndex !== undefined
+        ? this.draw.getOriginalElementList()[tableIndex]
+        : undefined
+    if (
+      (!positionContext.isTable ||
+        tableIndex === undefined ||
+        currentTable?.type !== ElementType.TABLE ||
+        !currentTable.trList?.length) &&
+      tableId
+    ) {
+      const resolvedIndex = this.resolveTableIndexById(tableId)
+      if (~resolvedIndex) {
+        const resolvedTable = this.draw.getOriginalElementList()[resolvedIndex]
+        positionContext = {
+          ...positionContext,
+          isTable: true,
+          index: resolvedIndex,
+          trIndex: startTrIndex,
+          tdIndex: startTdIndex,
+          tableId: resolvedTable.id
+        }
+        tableIndex = resolvedIndex
+      }
     }
-    const startColIndex = startTd.colIndex!
-    const endColIndex = endTd.colIndex! + (endTd.colspan - 1)
-    const startRowIndex = startTd.rowIndex!
-    const endRowIndex = endTd.rowIndex! + (endTd.rowspan - 1)
-    // 选区行列
-    const rowCol: ITd[][] = []
+    if (
+      !positionContext.isTable ||
+      tableIndex === undefined ||
+      startTdIndex === undefined ||
+      endTdIndex === undefined ||
+      startTrIndex === undefined ||
+      endTrIndex === undefined
+    ) {
+      return
+    }
+    const element = this.getContextTableElement(tableIndex)
+    const curTrList = element.trList!
+    const startTd = curTrList[startTrIndex!].tdList[startTdIndex!]
+    const endTd = curTrList[endTrIndex!].tdList[endTdIndex!]
+
+    const startColIndex = Math.min(startTd.colIndex!, endTd.colIndex!)
+    const endColIndex = Math.max(
+      startTd.colIndex! + startTd.colspan - 1,
+      endTd.colIndex! + endTd.colspan - 1
+    )
+    const startRowIndex = Math.min(startTd.rowIndex!, endTd.rowIndex!)
+    const endRowIndex = Math.max(
+      startTd.rowIndex! + startTd.rowspan - 1,
+      endTd.rowIndex! + endTd.rowspan - 1
+    )
+
+    // 收集选区覆盖到的行列矩阵，并校验是否形成完整矩形。
+    const rowColMap = new Map<number, ITd[]>()
+    const coverage = new Set<string>()
     for (let t = 0; t < curTrList.length; t++) {
       const tr = curTrList[t]
-      const tdList: ITd[] = []
       for (let d = 0; d < tr.tdList.length; d++) {
         const td = tr.tdList[d]
-        const tdColIndex = td.colIndex!
-        const tdRowIndex = td.rowIndex!
+        const tdStartColIndex = td.colIndex!
+        const tdEndColIndex = tdStartColIndex + td.colspan - 1
+        const tdStartRowIndex = td.rowIndex!
+        const tdEndRowIndex = tdStartRowIndex + td.rowspan - 1
+        const isOverlap = !(
+          tdEndColIndex < startColIndex ||
+          tdStartColIndex > endColIndex ||
+          tdEndRowIndex < startRowIndex ||
+          tdStartRowIndex > endRowIndex
+        )
+        if (!isOverlap) continue
+        // 只要有单元格部分压到选区边界，说明无法合并成完整矩形。
         if (
-          tdColIndex >= startColIndex &&
-          tdColIndex <= endColIndex &&
-          tdRowIndex >= startRowIndex &&
-          tdRowIndex <= endRowIndex
+          tdStartColIndex < startColIndex ||
+          tdEndColIndex > endColIndex ||
+          tdStartRowIndex < startRowIndex ||
+          tdEndRowIndex > endRowIndex
         ) {
-          tdList.push(td)
+          return
+        }
+        const rowCol = rowColMap.get(tdStartRowIndex) || []
+        rowCol.push(td)
+        rowColMap.set(tdStartRowIndex, rowCol)
+        for (let row = tdStartRowIndex; row <= tdEndRowIndex; row++) {
+          for (let col = tdStartColIndex; col <= tdEndColIndex; col++) {
+            coverage.add(`${row}_${col}`)
+          }
         }
       }
-      if (tdList.length) {
-        rowCol.push(tdList)
-      }
     }
+    const rowCol = [...rowColMap.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, tdList]) =>
+        tdList.sort((a, b) => (a.colIndex || 0) - (b.colIndex || 0))
+      )
     if (!rowCol.length) return
-    // 是否是矩形
-    const lastRow = rowCol[rowCol.length - 1]
-    const leftTop = rowCol[0][0]
-    const rightBottom = lastRow[lastRow.length - 1]
-    const startX = leftTop.x!
-    const startY = leftTop.y!
-    const endX = rightBottom.x! + rightBottom.width!
-    const endY = rightBottom.y! + rightBottom.height!
-    for (let t = 0; t < rowCol.length; t++) {
-      const tr = rowCol[t]
-      for (let d = 0; d < tr.length; d++) {
-        const td = tr[d]
-        const tdStartX = td.x!
-        const tdStartY = td.y!
-        const tdEndX = tdStartX + td.width!
-        const tdEndY = tdStartY + td.height!
-        // 存在不符合项
-        if (
-          startX > tdStartX ||
-          startY > tdStartY ||
-          endX < tdEndX ||
-          endY < tdEndY
-        ) {
+    for (let row = startRowIndex; row <= endRowIndex; row++) {
+      for (let col = startColIndex; col <= endColIndex; col++) {
+        if (!coverage.has(`${row}_${col}`)) {
           return
         }
       }
     }
-    // 合并单元格
+
+    // 开始合并单元格。
     const mergeTdIdList: string[] = []
     const anchorTd = rowCol[0][0]
     const anchorElement = anchorTd.value[0]
@@ -570,12 +711,12 @@ export class TableOperate {
       for (let d = 0; d < tr.length; d++) {
         const td = tr[d]
         const isAnchorTd = t === 0 && d === 0
-        // 缓存待删除单元id并合并单元格内容
+        // 缓存待删除单元格，并将内容移动到锚点单元格。
         if (!isAnchorTd) {
           mergeTdIdList.push(td.id!)
-          // 被合并单元格没内容时忽略换行符
+          // 被合并单元格没有内容时，跳过首个换行占位符。
           const startTdValueIndex = td.value.length > 1 ? 0 : 1
-          // 复制表格属性后追加
+          // 复制表格上下文后，再追加到锚点单元格。
           for (let d = startTdValueIndex; d < td.value.length; d++) {
             const tdElement = td.value[d]
             cloneProperty<IElement>(
@@ -586,11 +727,11 @@ export class TableOperate {
             anchorTd.value.push(tdElement)
           }
         }
-        // 列合并
+        // 列方向合并。
         if (t === 0 && d !== 0) {
           anchorTd.colspan += td.colspan
         }
-        // 行合并
+        // 行方向合并。
         if (t !== 0) {
           if (anchorTd.colIndex === td.colIndex) {
             anchorTd.rowspan += td.rowspan
@@ -598,7 +739,8 @@ export class TableOperate {
         }
       }
     }
-    // 移除多余单元格
+
+    // 移除多余单元格。
     for (let t = 0; t < curTrList.length; t++) {
       const tr = curTrList[t]
       let d = 0
@@ -611,31 +753,38 @@ export class TableOperate {
         d++
       }
     }
-    // 设置上下文信息
+
+    // 设置新的表格位置上下文。
     this.position.setPositionContext({
       ...positionContext,
+      index: tableIndex,
+      tableId: element.id,
       trIndex: anchorTd.trIndex,
       tdIndex: anchorTd.tdIndex
     })
     const curIndex = anchorTd.value.length - 1
     this.range.setRange(curIndex, curIndex)
-    // 重新渲染
+
+    // 重新渲染表格与工具层。
     this.draw.render()
     this.tableTool.render()
   }
 
   public cancelMergeTableCell() {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return
-    const { index, tdIndex, trIndex } = positionContext
-    const originalElementList = this.draw.getOriginalElementList()
-    const element = originalElementList[index!]
+    const context = this.resolveContextTable()
+    if (
+      !context ||
+      context.trIndex === undefined ||
+      context.tdIndex === undefined
+    ) return
+    const { tdIndex, trIndex, element } = context
     const curTrList = element.trList!
     const curTr = curTrList[trIndex!]!
     const curTd = curTr.tdList[tdIndex!]
     if (curTd.rowspan === 1 && curTd.colspan === 1) return
     const colspan = curTd.colspan
-    // 设置跨列
+
+    // 拆分跨列。
     if (curTd.colspan > 1) {
       for (let c = 1; c < curTd.colspan; c++) {
         const tdId = getUUID()
@@ -656,7 +805,8 @@ export class TableOperate {
       }
       curTd.colspan = 1
     }
-    // 设置跨行
+
+    // 拆分跨行。
     if (curTd.rowspan > 1) {
       for (let r = 1; r < curTd.rowspan; r++) {
         const tr = curTrList[trIndex! + r]
@@ -680,7 +830,8 @@ export class TableOperate {
       }
       curTd.rowspan = 1
     }
-    // 重新渲染
+
+    // 重新渲染表格与工具层。
     const curIndex = curTd.value.length - 1
     this.range.setRange(curIndex, curIndex)
     this.draw.render()
@@ -688,28 +839,33 @@ export class TableOperate {
   }
 
   public splitVerticalTableCell() {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return
-    // 暂时忽略跨行列选择
-    const range = this.range.getRange()
+    const context = this.resolveContextTable()
+    if (
+      !context ||
+      context.trIndex === undefined ||
+      context.tdIndex === undefined
+    ) return
+
+    // 暂时忽略跨行跨列选择。
+    const range = this.range.getEditBoundaryRange()
     if (range.isCrossRowCol) return
-    const { index, tdIndex, trIndex } = positionContext
-    const originalElementList = this.draw.getOriginalElementList()
-    const element = originalElementList[index!]
+    const { tdIndex, trIndex, element } = context
     const curTrList = element.trList!
     const curTr = curTrList[trIndex!]!
     const curTd = curTr.tdList[tdIndex!]
-    // 增加列属性
+
+    // 增加列配置。
     element.colgroup!.splice(tdIndex! + 1, 0, {
       width: this.options.table.defaultColMinWidth
     })
-    // 同行增加td，非同行增加跨列数
+
+    // 同一行插入 td，非同行则增加跨列数。
     for (let t = 0; t < curTrList.length; t++) {
       const tr = curTrList[t]
       let d = 0
       while (d < tr.tdList.length) {
         const td = tr.tdList[d]
-        // 非同行：存在交叉时增加跨列数
+        // 非同行：如果当前列被交叉单元格覆盖，则增加其 colspan。
         if (td.rowIndex !== curTd.rowIndex) {
           if (
             td.colIndex! <= curTd.colIndex! &&
@@ -718,7 +874,7 @@ export class TableOperate {
             td.colspan++
           }
         } else {
-          // 当前单元格：往右插入td
+          // 当前单元格：在右侧插入新的 td。
           if (td.id === curTd.id) {
             const tdId = getUUID()
             curTr.tdList.splice(d + curTd.colspan, 0, {
@@ -741,26 +897,32 @@ export class TableOperate {
         d++
       }
     }
-    // 重新渲染
+
+    // 重新渲染表格与工具层。
     this.draw.render()
     this.tableTool.render()
   }
 
   public splitHorizontalTableCell() {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return
-    // 暂时忽略跨行列选择
-    const range = this.range.getRange()
+    const context = this.resolveContextTable()
+    if (
+      !context ||
+      context.trIndex === undefined ||
+      context.tdIndex === undefined
+    ) return
+
+    // 暂时忽略跨行跨列选择。
+    const range = this.range.getEditBoundaryRange()
     if (range.isCrossRowCol) return
-    const { index, tdIndex, trIndex } = positionContext
-    const originalElementList = this.draw.getOriginalElementList()
-    const element = originalElementList[index!]
+    const { tdIndex, trIndex, element } = context
     const curTrList = element.trList!
     const curTr = curTrList[trIndex!]!
     const curTd = curTr.tdList[tdIndex!]
-    // 追加的行跳出循环
+
+    // 记录追加行索引，避免重复处理。
     let appendTrIndex = -1
-    // 交叉行增加rowspan，当前单元格往下追加一行tr
+
+    // 交叉行增加 rowspan，并在下方追加一行 tr。
     let t = 0
     while (t < curTrList.length) {
       if (t === appendTrIndex) {
@@ -800,15 +962,16 @@ export class TableOperate {
           td.rowIndex! < curTd.rowIndex! + curTd.rowspan &&
           td.rowIndex! + td.rowspan >= curTd.rowIndex! + curTd.rowspan
         ) {
-          // 1. 循环td上方大于等于当前td上方 && 小于当前td的下方=>存在交叉
-          // 2. 循环td下方大于或等于当前td下方
+          // 1. 循环 td 上边界落在当前 td 内部，说明存在交叉。
+          // 2. 循环 td 下边界覆盖当前 td 下边界。
           td.rowspan++
         }
         d++
       }
       t++
     }
-    // 重新渲染
+
+    // 重新渲染表格与工具层。
     this.draw.render()
     this.tableTool.render()
   }
@@ -827,22 +990,20 @@ export class TableOperate {
         ) {
           continue
         }
-        // 重设垂直对齐方式
+        // 重设垂直对齐方式。
         td.verticalAlign = payload
       }
     }
-    const { endIndex } = this.range.getRange()
+    const { endIndex } = this.range.getEditBoundaryRange()
     this.draw.render({
       curIndex: endIndex
     })
   }
 
   public tableBorderType(payload: TableBorder) {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return
-    const { index } = positionContext
-    const originalElementList = this.draw.getOriginalElementList()
-    const element = originalElementList[index!]
+    const context = this.resolveContextTable()
+    if (!context) return
+    const { element } = context
     if (
       (!element.borderType && payload === TableBorder.ALL) ||
       element.borderType === payload
@@ -850,18 +1011,16 @@ export class TableOperate {
       return
     }
     element.borderType = payload
-    const { endIndex } = this.range.getRange()
+    const { endIndex } = this.range.getEditBoundaryRange()
     this.draw.render({
       curIndex: endIndex
     })
   }
 
   public tableBorderColor(payload: string) {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return
-    const { index } = positionContext
-    const originalElementList = this.draw.getOriginalElementList()
-    const element = originalElementList[index!]
+    const context = this.resolveContextTable()
+    if (!context) return
+    const { element } = context
     if (
       (!element.borderColor &&
         payload === this.options.table.defaultBorderColor) ||
@@ -870,10 +1029,11 @@ export class TableOperate {
       return
     }
     element.borderColor = payload
-    const { endIndex } = this.range.getRange()
+    const { endIndex } = this.range.getEditBoundaryRange()
     this.draw.render({
       curIndex: endIndex,
-      isCompute: false
+      isCompute: false,
+      pageRenderScope: 'visible'
     })
   }
 
@@ -881,7 +1041,8 @@ export class TableOperate {
     const rowCol = this.tableParticle.getRangeRowCol()
     if (!rowCol) return
     const tdList = rowCol.flat()
-    // 存在则设置边框类型，否则取消设置
+
+    // 存在则设置边框类型，否则取消设置。
     const isSetBorderType = tdList.some(
       td => !td.borderTypes?.includes(payload)
     )
@@ -899,12 +1060,13 @@ export class TableOperate {
           td.borderTypes.splice(borderTypeIndex, 1)
         }
       }
-      // 不存在边框设置时删除字段
+
+      // 边框类型列表为空时删除字段。
       if (!td.borderTypes.length) {
         delete td.borderTypes
       }
     })
-    const { endIndex } = this.range.getRange()
+    const { endIndex } = this.range.getEditBoundaryRange()
     this.draw.render({
       curIndex: endIndex
     })
@@ -914,7 +1076,8 @@ export class TableOperate {
     const rowCol = this.tableParticle.getRangeRowCol()
     if (!rowCol) return
     const tdList = rowCol.flat()
-    // 存在则设置单元格斜线类型，否则取消设置
+
+    // 存在则设置单元格斜线类型，否则取消设置。
     const isSetTdSlashType = tdList.some(
       td => !td.slashTypes?.includes(payload)
     )
@@ -932,12 +1095,13 @@ export class TableOperate {
           td.slashTypes.splice(slashTypeIndex, 1)
         }
       }
-      // 不存在斜线设置时删除字段
+
+      // 斜线类型列表为空时删除字段。
       if (!td.slashTypes.length) {
         delete td.slashTypes
       }
     })
-    const { endIndex } = this.range.getRange()
+    const { endIndex } = this.range.getEditBoundaryRange()
     this.draw.render({
       curIndex: endIndex
     })
@@ -953,21 +1117,23 @@ export class TableOperate {
         col.backgroundColor = payload
       }
     }
-    const { endIndex } = this.range.getRange()
+    const { endIndex } = this.range.getEditBoundaryRange()
     this.range.setRange(endIndex, endIndex)
     this.draw.render({
-      isCompute: false
+      isCompute: false,
+      pageRenderScope: 'visible'
     })
   }
 
   public tableSelectAll() {
-    const positionContext = this.position.getPositionContext()
-    const { index, tableId, isTable } = positionContext
-    if (!isTable || !tableId) return
-    const { startIndex, endIndex } = this.range.getRange()
+    const context = this.resolveContextTable()
+    if (!context || !context.tableId) return
+    const { index, tableId } = context
+    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
     const originalElementList = this.draw.getOriginalElementList()
     const trList = originalElementList[index!].trList!
-    // 最后单元格位置
+
+    // 计算最后一个单元格位置。
     const endTrIndex = trList.length - 1
     const endTdIndex = trList[endTrIndex].tdList.length - 1
     this.range.replaceRange({
@@ -981,7 +1147,8 @@ export class TableOperate {
     })
     this.draw.render({
       isCompute: false,
-      isSubmitHistory: false
+      isSubmitHistory: false,
+      pageRenderScope: 'visible'
     })
   }
 }

@@ -42,13 +42,14 @@ export class ContextMenu {
   private context: IContextMenuContext | null
 
   constructor(draw: Draw, command: Command) {
+    const components = draw.getComponents()
     this.options = draw.getOptions()
     this.draw = draw
     this.command = command
-    this.range = draw.getRange()
-    this.position = draw.getPosition()
-    this.i18n = draw.getI18n()
-    this.container = draw.getContainer()
+    this.range = components.range
+    this.position = components.position
+    this.i18n = components.i18n
+    this.container = draw.getPageCanvasHost().getContainer()
     this.context = null
     // 内部菜单
     this.contextMenuList = [
@@ -114,8 +115,8 @@ export class ContextMenu {
       this.dispose()
       this._render({
         contextMenuList: renderList,
-        left: evt.x,
-        top: evt.y
+        left: evt.clientX,
+        top: evt.clientY
       })
     }
     evt.preventDefault()
@@ -146,7 +147,7 @@ export class ContextMenu {
       isCrossRowCol: crossRowCol,
       startIndex,
       endIndex
-    } = this.range.getRange()
+    } = this.range.getEditBoundaryRange()
     // 是否存在焦点
     const editorTextFocus = !!(~startIndex || ~endIndex)
     // 是否存在选区

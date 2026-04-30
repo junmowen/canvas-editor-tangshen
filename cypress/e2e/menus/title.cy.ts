@@ -6,7 +6,7 @@ describe('菜单-标题', () => {
   beforeEach(() => {
     cy.visit(url)
 
-    cy.get('canvas').first().as('canvas').should('have.length', 1)
+    cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
 
   const text = 'canvas-editor'

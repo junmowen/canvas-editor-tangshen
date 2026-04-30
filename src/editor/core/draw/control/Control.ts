@@ -70,90 +70,164 @@ import { IRowElement } from '../../../interface/Row'
 import { RowFlex } from '../../../dataset/enum/Row'
 import { ZERO } from '../../../dataset/constant/Common'
 
+/**
+ * 光标移动结果接口。
+ */
 interface IMoveCursorResult {
+  /** 新的元素索引 */
   newIndex: number
+  /** 新的元素 */
   newElement: IElement
 }
+
+/**
+ * 控件管理器。
+ *
+ * 负责管理编辑器中的所有控件（文本、复选框、单选框、日期、下拉选择、数字等），
+ * 提供控件的初始化、值设置、值获取、事件处理等功能。
+ */
 export class Control {
+  /** 控件边框渲染器 */
   private controlBorder: ControlBorder
+  /** Draw 门面对象 */
   private draw: Draw
+  /** 范围管理器 */
   private range: RangeManager
+  /** 监听器 */
   private listener: Listener
+  /** 事件总线 */
   private eventBus: EventBus<EventBusMap>
+  /** 控件搜索 */
   private controlSearch: ControlSearch
+  /** 编辑器选项 */
   private options: DeepRequired<IEditorOption>
+  /** 控件选项 */
   private controlOptions: IControlOption
+  /** 当前激活的控件实例 */
   private activeControl: IControlInstance | null
+  /** 当前激活控件的值 */
   private activeControlValue: IElement[]
+  /** 前一个元素（用于控件交互判断） */
   private preElement: IElement | null
 
+  /**
+   * 构造函数。
+   *
+   * @param draw - Draw 门面对象
+   */
   constructor(draw: Draw) {
+    // 初始化控件边框渲染器
     this.controlBorder = new ControlBorder(draw)
 
+    // 初始化核心组件
     this.draw = draw
     this.range = draw.getRange()
     this.listener = draw.getListener()
     this.eventBus = draw.getEventBus()
+    // 初始化控件搜索
     this.controlSearch = new ControlSearch(this)
 
+    // 获取编辑器和控件选项
     this.options = draw.getOptions()
     this.controlOptions = this.options.control
+    // 初始化状态
     this.activeControl = null
     this.activeControlValue = []
     this.preElement = null
   }
 
-  // 搜索高亮匹配
+  /**
+   * 设置控件搜索高亮列表。
+   *
+   * @param payload - 高亮配置列表
+   */
+  /**
+   * 设置控件搜索高亮列表。
+   *
+   * @param payload - 高亮数据列表
+   */
   public setHighlightList(payload: IControlHighlight[]) {
     this.controlSearch.setHighlightList(payload)
   }
 
+  /**
+   * 计算控件高亮列表。
+   *
+   * 如果有高亮匹配结果，则执行计算。
+   */
   public computeHighlightList() {
     const highlightList = this.controlSearch.getHighlightList()
+    // 如果有高亮列表，执行计算
     if (highlightList.length) {
       this.controlSearch.computeHighlightList()
     }
   }
 
+  /**
+   * 渲染控件高亮列表。
+   *
+   * @param ctx - 画布上下文
+   * @param pageNo - 页码
+   */
   public renderHighlightList(ctx: CanvasRenderingContext2D, pageNo: number) {
     const highlightMatchResult = this.controlSearch.getHighlightMatchResult()
+    // 如果有高亮匹配结果，执行渲染
     if (highlightMatchResult.length) {
       this.controlSearch.renderHighlightList(ctx, pageNo)
     }
   }
 
+  /**
+   * 获取 Draw 门面对象。
+   *
+   * @returns Draw 门面对象
+   */
   public getDraw(): Draw {
     return this.draw
   }
 
-  // 过滤控件辅助元素（前后缀、背景提示）
+  /**
+   * 过滤控件辅助元素。
+   *
+   * 移除控件的前缀、后缀和占位符等辅助元素，保留核心内容。
+   *
+   * @param elementList - 元素列表
+   * @returns 过滤后的元素列表
+   */
   public filterAssistElement(elementList: IElement[]): IElement[] {
     return elementList.filter((element, index) => {
+      // 如果是表格元素，递归处理表格单元格
       if (element.type === ElementType.TABLE) {
         const trList = element.trList!
         for (let r = 0; r < trList.length; r++) {
           const tr = trList[r]
           for (let d = 0; d < tr.tdList.length; d++) {
             const td = tr.tdList[d]
+            // 递归过滤单元格中的辅助元素
             td.value = this.filterAssistElement(td.value)
           }
         }
       }
+      // 如果不是控件元素，保留
       if (!element.controlId) return true
+      // 如果控件有最小宽度，处理前缀和后缀
       if (element.control?.minWidth) {
         if (
           element.controlComponent === ControlComponent.PREFIX ||
           element.controlComponent === ControlComponent.POSTFIX
         ) {
+          // 清空前缀和后缀的值，但保留元素
           element.value = ''
           return true
         }
       } else {
         // 控件存在值时无需过滤前后文本
+        // 处理前缀文本
         if (
           element.control?.preText &&
           element.controlComponent === ControlComponent.PRE_TEXT
         ) {
+          // 检查后面是否有控件值
           let isExistValue = false
           let start = index + 1
           while (start < elementList.length) {
@@ -167,10 +241,12 @@ export class Control {
           }
           return isExistValue
         }
+        // 处理后缀文本
         if (
           element.control?.postText &&
           element.controlComponent === ControlComponent.POST_TEXT
         ) {
+          // 检查前面是否有控件值
           let isExistValue = false
           let start = index - 1
           while (start < elementList.length) {
@@ -185,6 +261,7 @@ export class Control {
           return isExistValue
         }
       }
+      // 过滤掉前缀、后缀和占位符组件
       return (
         element.controlComponent !== ControlComponent.PREFIX &&
         element.controlComponent !== ControlComponent.POSTFIX &&
@@ -193,21 +270,26 @@ export class Control {
     })
   }
 
-  // 是否属于控件可以捕获事件的选区
+  /**
+   * 判断选区是否可以被控件捕获事件。
+   *
+   * @returns 是否可以捕获事件
+   */
   public getIsRangeCanCaptureEvent(): boolean {
     if (!this.activeControl) return false
-    const { startIndex, endIndex } = this.getRange()
+    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
+    // 如果没有有效的边界范围，返回 false
     if (!~startIndex && !~endIndex) return false
-    const elementList = this.getElementList()
+    const elementList = this.draw.getElementList()
     const startElement = elementList[startIndex]
-    // 闭合光标在后缀处
+    // 情况1：闭合光标在后缀处，可以捕获事件
     if (
       startIndex === endIndex &&
       startElement.controlComponent === ControlComponent.POSTFIX
     ) {
       return true
     }
-    // 在控件内
+    // 情况2：选区在控件内，可以捕获事件
     const endElement = elementList[endIndex]
     if (
       startElement.controlId &&
@@ -219,23 +301,35 @@ export class Control {
     return false
   }
 
-  // 判断选区是否在后缀处
+  /**
+   * 判断选区是否在控件后缀处。
+   *
+   * @returns 是否在后缀处
+   */
   public getIsRangeInPostfix(): boolean {
     if (!this.activeControl) return false
-    const { startIndex, endIndex } = this.getRange()
+    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
+    // 如果是范围选择，不在后缀处
     if (startIndex !== endIndex) return false
-    const elementList = this.getElementList()
+    const elementList = this.draw.getElementList()
     const element = elementList[startIndex]
+    // 检查元素是否为后缀组件
     return element.controlComponent === ControlComponent.POSTFIX
   }
 
-  // 判断选区是否在控件内
+  /**
+   * 判断选区是否在控件内。
+   *
+   * @returns 是否在控件内
+   */
   public getIsRangeWithinControl(): boolean {
-    const { startIndex, endIndex } = this.getRange()
+    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
+    // 如果没有有效的边界范围，返回 false
     if (!~startIndex && !~endIndex) return false
-    const elementList = this.getElementList()
+    const elementList = this.draw.getElementList()
     const startElement = elementList[startIndex]
     const endElement = elementList[endIndex]
+    // 检查选区是否在同一个控件内，且不在后缀处
     if (
       startElement?.controlId &&
       startElement.controlId === endElement.controlId &&
@@ -246,11 +340,18 @@ export class Control {
     return false
   }
 
-  // 是否元素包含完整控件元素
+  /**
+   * 判断元素列表是否包含完整的控件元素。
+   *
+   * @param elementList - 元素列表
+   * @returns 是否包含完整控件
+   */
   public getIsElementListContainFullControl(elementList: IElement[]): boolean {
+    // 如果列表中没有控件元素，返回 false
     if (!elementList.some(element => element.controlId)) return false
     let prefixCount = 0
     let postfixCount = 0
+    // 统计前缀和后缀数量
     for (let e = 0; e < elementList.length; e++) {
       const element = elementList[e]
       if (element.controlComponent === ControlComponent.PREFIX) {
@@ -259,37 +360,65 @@ export class Control {
         postfixCount++
       }
     }
+    // 如果前缀和后缀数量不匹配或为零，不完整
     if (!prefixCount || !postfixCount) return false
+    // 前缀和后缀数量相等才认为完整
     return prefixCount === postfixCount
   }
 
+  /**
+   * 判断控件是否禁用。
+   *
+   * @param context - 控件上下文（可选）
+   * @returns 是否禁用
+   */
   public getIsDisabledControl(context: IControlContext = {}): boolean {
+    // 设计模式或没有激活控件时不禁用
     if (this.draw.isDesignMode() || !this.activeControl) return false
-    const { startIndex, endIndex } = context.range || this.range.getRange()
+    const { startIndex, endIndex } =
+      context.range || this.range.getEditBoundaryRange()
+    // 如果光标在后缀处，不认为是禁用状态
     if (startIndex === endIndex && ~startIndex && ~endIndex) {
-      const elementList = context.elementList || this.getElementList()
+      const elementList = context.elementList || this.draw.getElementList()
       const startElement = elementList[startIndex]
       if (startElement.controlComponent === ControlComponent.POSTFIX) {
         return false
       }
     }
+    // 检查控件本身的禁用状态
     return !!this.activeControl.getElement()?.control?.disabled
   }
 
+  /**
+   * 判断控件是否禁用粘贴。
+   *
+   * @param context - 控件上下文（可选）
+   * @returns 是否禁用粘贴
+   */
   public getIsDisabledPasteControl(context: IControlContext = {}): boolean {
+    // 设计模式或没有激活控件时不禁用
     if (this.draw.isDesignMode() || !this.activeControl) return false
-    const { startIndex, endIndex } = context.range || this.range.getRange()
+    const { startIndex, endIndex } =
+      context.range || this.range.getEditBoundaryRange()
+    // 如果光标在后缀处，不认为是禁用粘贴状态
     if (startIndex === endIndex && ~startIndex && ~endIndex) {
-      const elementList = context.elementList || this.getElementList()
+      const elementList = context.elementList || this.draw.getElementList()
       const startElement = elementList[startIndex]
       if (startElement.controlComponent === ControlComponent.POSTFIX) {
         return false
       }
     }
+    // 检查控件的禁用粘贴状态
     return !!this.activeControl.getElement()?.control?.pasteDisabled
   }
 
-  // 通过索引找到控件并判断控件是否存在值
+  /**
+   * 通过元素列表索引判断控件是否存在值。
+   *
+   * @param elementList - 元素列表
+   * @param index - 元素索引
+   * @returns 是否存在值
+   */
   public getIsExistValueByElementListIndex(
     elementList: IElement[],
     index: number
@@ -359,7 +488,7 @@ export class Control {
   }
 
   public getContainer(): HTMLDivElement {
-    return this.draw.getContainer()
+    return this.draw.getPageCanvasHost().getContainer()
   }
 
   public getElementList(): IElement[] {
@@ -368,7 +497,7 @@ export class Control {
 
   public getPosition(): IElementPosition | null {
     const positionList = this.draw.getPosition().getPositionList()
-    const { endIndex } = this.range.getRange()
+    const { endIndex } = this.range.getEditBoundaryRange()
     return positionList[endIndex] || null
   }
 
@@ -379,8 +508,8 @@ export class Control {
     return pageNo * (height + pageGap)
   }
 
-  public getRange(): IRange {
-    return this.range.getRange()
+  public getEditBoundaryRange(): IRange {
+    return this.range.getEditBoundaryRange()
   }
 
   public shrinkBoundary(context: IControlContext = {}) {
@@ -392,8 +521,8 @@ export class Control {
   }
 
   public getControlElementList(context: IControlContext = {}): IElement[] {
-    const elementList = context.elementList || this.getElementList()
-    const { startIndex } = context.range || this.getRange()
+    const elementList = context.elementList || this.draw.getElementList()
+    const { startIndex } = context.range || this.range.getEditBoundaryRange()
     const startElement = elementList[startIndex]
     if (!startElement?.controlId) return []
     const data: IElement[] = []
@@ -447,8 +576,8 @@ export class Control {
   }
 
   public initControl() {
-    const elementList = this.getElementList()
-    const range = this.getRange()
+    const elementList = this.draw.getElementList()
+    const range = this.range.getEditBoundaryRange()
     const element = elementList[range.startIndex]
     // 判断控件是否已经激活
     if (this.activeControl) {
@@ -550,7 +679,8 @@ export class Control {
       this.draw.render({
         isCompute,
         isSubmitHistory,
-        isSetCursor: false
+        isSetCursor: false,
+        pageRenderScope: isCompute ? undefined : 'visible'
       })
     } else {
       this.range.setRange(curIndex, curIndex)
@@ -558,7 +688,8 @@ export class Control {
         curIndex,
         isCompute,
         isSetCursor,
-        isSubmitHistory
+        isSubmitHistory,
+        pageRenderScope: isCompute ? undefined : 'visible'
       })
     }
   }
@@ -577,8 +708,10 @@ export class Control {
       options?.controlElement || this.activeControl?.getElement()
     if (!controlElement) return
     // 控件被删除不触发事件
-    const elementList = options?.context?.elementList || this.getElementList()
-    const { startIndex } = options?.context?.range || this.getRange()
+    const elementList =
+      options?.context?.elementList || this.draw.getElementList()
+    const { startIndex } =
+      options?.context?.range || this.range.getEditBoundaryRange()
     if (!elementList[startIndex]?.controlId) return
     // 格式化回调数据
     const controlValue =
@@ -603,8 +736,8 @@ export class Control {
 
   public reAwakeControl() {
     if (!this.activeControl) return
-    const elementList = this.getElementList()
-    const range = this.getRange()
+    const elementList = this.draw.getElementList()
+    const range = this.range.getEditBoundaryRange()
     const element = elementList[range.startIndex]
     this.activeControl.setElement(element)
     if (
@@ -708,7 +841,7 @@ export class Control {
     startIndex: number,
     context: IControlContext = {}
   ): number | null {
-    const elementList = context.elementList || this.getElementList()
+    const elementList = context.elementList || this.draw.getElementList()
     const startElement = elementList[startIndex]
     // 设计模式 || 元素隐藏 => 不验证删除权限
     if (
@@ -766,7 +899,7 @@ export class Control {
   }
 
   public removePlaceholder(startIndex: number, context: IControlContext = {}) {
-    const elementList = context.elementList || this.getElementList()
+    const elementList = context.elementList || this.draw.getElementList()
     const startElement = elementList[startIndex]
     const nextElement = elementList[startIndex + 1]
     if (
@@ -794,7 +927,7 @@ export class Control {
   }
 
   public addPlaceholder(startIndex: number, context: IControlContext = {}) {
-    const elementList = context.elementList || this.getElementList()
+    const elementList = context.elementList || this.draw.getElementList()
     const startElement = elementList[startIndex]
     const control = startElement.control!
     if (!control.placeholder) return
@@ -832,8 +965,8 @@ export class Control {
     properties: Partial<IControl>,
     context: IControlContext = {}
   ) {
-    const elementList = context.elementList || this.getElementList()
-    const { startIndex } = context.range || this.getRange()
+    const elementList = context.elementList || this.draw.getElementList()
+    const { startIndex } = context.range || this.range.getEditBoundaryRange()
     const startElement = elementList[startIndex]
     // 向左查找
     let preIndex = startIndex
@@ -1420,8 +1553,8 @@ export class Control {
       return null
     }
     // 当前上下文控件信息
-    const { startIndex } = this.range.getRange()
-    const elementList = this.getElementList()
+    const { startIndex } = this.range.getEditBoundaryRange()
+    const elementList = this.draw.getElementList()
     const context = getPreContext(elementList, startIndex)
     if (context) {
       return {
@@ -1530,8 +1663,8 @@ export class Control {
       return null
     }
     // 当前上下文控件信息
-    const { endIndex } = this.range.getRange()
-    const elementList = this.getElementList()
+    const { endIndex } = this.range.getEditBoundaryRange()
+    const elementList = this.draw.getElementList()
     const context = getNextContext(elementList, endIndex)
     if (context) {
       return {
@@ -1605,7 +1738,8 @@ export class Control {
       curIndex: nextIndex,
       isCompute: false,
       isSetCursor: true,
-      isSubmitHistory: false
+      isSubmitHistory: false,
+      pageRenderScope: 'visible'
     })
     const positionList = position.getPositionList()
     this.draw.getCursor().moveCursorToVisible({

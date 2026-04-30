@@ -1,25 +1,19 @@
 import { ElementStyleKey } from '../../dataset/enum/ElementStyle'
-import { IElement, IElementPosition } from '../../interface/Element'
-import { ICurrentPosition, IPositionContext } from '../../interface/Position'
+import { IElement } from '../../interface/Element'
 import { Draw } from '../draw/Draw'
 import { Position } from '../position/Position'
 import { RangeManager } from '../range/RangeManager'
 import { threeClick } from '../../utils'
-import { IRange, IRangeElementStyle } from '../../interface/Range'
-import { mousedown } from './handlers/mousedown'
-import { mouseup } from './handlers/mouseup'
-import { mouseleave } from './handlers/mouseleave'
-import { mousemove } from './handlers/mousemove'
-import { keydown } from './handlers/keydown'
-import { input } from './handlers/input'
-import { cut } from './handlers/cut'
-import { copy } from './handlers/copy'
-import { drop } from './handlers/drop'
-import click from './handlers/click'
-import composition from './handlers/composition'
-import drag from './handlers/drag'
-import { isIOS } from '../../utils/ua'
+import { IRangeElementStyle } from '../../interface/Range'
 import { ICopyOption } from '../../interface/Event'
+import {
+  createDefaultPointerSession,
+  IPointerSession
+} from './pointer/PointerSession'
+import { PointerController } from './pointer/PointerController'
+import { PointerSessionController } from './pointer/PointerSessionController'
+import { EditorClipboardController } from './EditorClipboardController'
+import { EditorInputController } from './EditorInputController'
 
 export interface ICompositionInfo {
   elementList?: IElement[]
@@ -30,72 +24,78 @@ export interface ICompositionInfo {
 }
 
 export class CanvasEvent {
-  public isAllowSelection: boolean
   public isComposing: boolean
   public compositionInfo: ICompositionInfo | null
-
-  public isAllowDrag: boolean
-  public isAllowDrop: boolean
-  public cacheRange: IRange | null
-  public cacheElementList: IElement[] | null
-  public cachePositionList: IElementPosition[] | null
-  public cachePositionContext: IPositionContext | null
-  public mouseDownStartPosition: ICurrentPosition | null
-
   private draw: Draw
   private pageContainer: HTMLDivElement
   private pageList: HTMLCanvasElement[]
   private range: RangeManager
   private position: Position
+  private pointerSession: IPointerSession
+  private pointerController: PointerController
+  private pointerSessionController: PointerSessionController
+  private inputController: EditorInputController
+  private clipboardController: EditorClipboardController
 
   constructor(draw: Draw) {
     this.draw = draw
-    this.pageContainer = draw.getPageContainer()
-    this.pageList = draw.getPageList()
-    this.range = this.draw.getRange()
-    this.position = this.draw.getPosition()
+    this.pageContainer = draw.getPageCanvasHost().getPageContainer()
+    this.pageList = draw.getPageCanvasHost().getPageList()
+    this.range = draw.getRange()
+    this.position = draw.getPosition()
 
-    this.isAllowSelection = false
     this.isComposing = false
     this.compositionInfo = null
-    this.isAllowDrag = false
-    this.isAllowDrop = false
-    this.cacheRange = null
-    this.cacheElementList = null
-    this.cachePositionList = null
-    this.cachePositionContext = null
-    this.mouseDownStartPosition = null
+    this.pointerSession = createDefaultPointerSession()
+    this.pointerController = new PointerController(this)
+    this.pointerSessionController = new PointerSessionController(this)
+    this.inputController = new EditorInputController(this)
+    this.clipboardController = new EditorClipboardController(this)
   }
 
   public getDraw(): Draw {
     return this.draw
   }
 
+  public getPointerSession(): IPointerSession {
+    return this.pointerSession
+  }
+
+  public getPointerController(): PointerController {
+    return this.pointerController
+  }
+
+  public getPointerSessionController(): PointerSessionController {
+    return this.pointerSessionController
+  }
+
+  public getInputController(): EditorInputController {
+    return this.inputController
+  }
+
+  public getClipboardController(): EditorClipboardController {
+    return this.clipboardController
+  }
+
   public register() {
     this.pageContainer.addEventListener('click', this.click.bind(this))
     this.pageContainer.addEventListener('mousedown', this.mousedown.bind(this))
     this.pageContainer.addEventListener('mouseup', this.mouseup.bind(this))
+    this.pageContainer.addEventListener('contextmenu', this.contextmenu.bind(this))
     this.pageContainer.addEventListener(
       'mouseleave',
       this.mouseleave.bind(this)
     )
+    this.pageContainer.addEventListener('mouseover', this.mouseover.bind(this))
+    this.pageContainer.addEventListener('mouseenter', this.mouseenter.bind(this))
+    this.pageContainer.addEventListener('mouseout', this.mouseout.bind(this))
     this.pageContainer.addEventListener('mousemove', this.mousemove.bind(this))
     this.pageContainer.addEventListener('dblclick', this.dblclick.bind(this))
+    this.pageContainer.addEventListener('wheel', this.wheel.bind(this))
+    this.pageContainer.addEventListener('drag', this.drag.bind(this))
     this.pageContainer.addEventListener('dragover', this.dragover.bind(this))
     this.pageContainer.addEventListener('drop', this.drop.bind(this))
     threeClick(this.pageContainer, this.threeClick.bind(this))
-  }
-
-  public setIsAllowSelection(payload: boolean) {
-    this.isAllowSelection = payload
-    if (!payload) {
-      this.applyPainterStyle()
-    }
-  }
-
-  public setIsAllowDrag(payload: boolean) {
-    this.isAllowDrag = payload
-    this.isAllowDrop = payload
   }
 
   public clearPainterStyle() {
@@ -120,7 +120,7 @@ export class CanvasEvent {
       })
     })
     this.draw.render({ isSetCursor: false })
-    // 清除格式刷
+    // 清除格式状态。
     const painterOptions = this.draw.getPainterOptions()
     if (!painterOptions || !painterOptions.isDblclick) {
       this.clearPainterStyle()
@@ -133,70 +133,92 @@ export class CanvasEvent {
     this.draw.render({
       isSubmitHistory: false,
       isSetCursor: false,
-      isCompute: false
+      isCompute: false,
+      pageRenderScope: 'visible'
     })
   }
 
   public mousemove(evt: MouseEvent) {
-    mousemove(evt, this)
+    this.pointerController.mousemove(evt)
   }
 
   public mousedown(evt: MouseEvent) {
-    mousedown(evt, this)
+    this.pointerController.mousedown(evt)
   }
 
-  public click() {
-    // IOS系统限制非用户主动触发事件的键盘弹出
-    if (isIOS && !this.draw.isReadonly()) {
-      this.draw.getCursor().getAgentDom().focus()
-    }
+  public click(evt: MouseEvent) {
+    this.pointerController.click(evt)
   }
 
   public mouseup(evt: MouseEvent) {
-    mouseup(evt, this)
+    this.pointerController.mouseup(evt)
   }
 
   public mouseleave(evt: MouseEvent) {
-    mouseleave(evt, this)
+    this.pointerController.mouseleave(evt)
+  }
+
+  public mouseover(evt: MouseEvent) {
+    this.pointerController.mouseover(evt)
+  }
+
+  public mouseenter(evt: MouseEvent) {
+    this.pointerController.mouseenter(evt)
+  }
+
+  public mouseout(evt: MouseEvent) {
+    this.pointerController.mouseout(evt)
+  }
+
+  public contextmenu(evt: MouseEvent) {
+    this.pointerController.contextmenu(evt)
+  }
+
+  public wheel(evt: WheelEvent) {
+    this.pointerController.wheel(evt)
   }
 
   public keydown(evt: KeyboardEvent) {
-    keydown(evt, this)
+    this.inputController.keydown(evt)
   }
 
   public dblclick(evt: MouseEvent) {
-    click.dblclick(this, evt)
+    this.pointerController.dblclick(evt)
   }
 
-  public threeClick() {
-    click.threeClick(this)
+  public threeClick(evt: MouseEvent) {
+    this.pointerController.threeClick(evt)
   }
 
   public input(data: string) {
-    input(data, this)
+    this.inputController.input(data)
   }
 
   public cut() {
-    cut(this)
+    this.inputController.cut()
   }
 
   public copy(options?: ICopyOption) {
-    copy(this, options)
+    this.inputController.copy(options)
   }
 
   public compositionstart() {
-    composition.compositionstart(this)
+    this.inputController.compositionstart()
   }
 
   public compositionend(evt: CompositionEvent) {
-    composition.compositionend(this, evt)
+    this.inputController.compositionend(evt)
   }
 
   public drop(evt: DragEvent) {
-    drop(evt, this)
+    this.pointerController.drop(evt)
+  }
+
+  public drag(evt: DragEvent) {
+    this.pointerController.drag(evt)
   }
 
   public dragover(evt: DragEvent | MouseEvent) {
-    drag.dragover(evt, this)
+    this.pointerController.dragover(evt)
   }
 }

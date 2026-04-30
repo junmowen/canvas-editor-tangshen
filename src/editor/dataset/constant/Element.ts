@@ -53,6 +53,7 @@ export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
   'dashArray',
   'trList',
   'tableToolDisabled',
+  'tableDisplay',
   'borderType',
   'borderColor',
   'width',

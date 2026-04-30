@@ -9,73 +9,144 @@ import { Position } from '../../position/Position'
 import { Zone } from '../../zone/Zone'
 import { Draw } from '../Draw'
 
+/**
+ * 页眉框架。
+ *
+ * 负责页眉区域的计算、布局和渲染。
+ */
 export class Header {
+  /** Draw 门面对象 */
   private draw: Draw
+  /** 位置管理器 */
   private position: Position
+  /** 区域管理器 */
   private zone: Zone
+  /** 编辑器选项 */
   private options: DeepRequired<IEditorOption>
-
+  /** 页眉元素列表 */
   private elementList: IElement[]
+  /** 行列表 */
   private rowList: IRow[]
+  /** 位置列表 */
   private positionList: IElementPosition[]
 
+  /**
+   * 构造函数。
+   *
+   * @param draw - Draw 门面对象
+   * @param data - 初始元素列表（可选）
+   */
   constructor(draw: Draw, data?: IElement[]) {
     this.draw = draw
     this.position = draw.getPosition()
     this.zone = draw.getZone()
     this.options = draw.getOptions()
-
+    // 初始化元素列表
     this.elementList = data || []
     this.rowList = []
     this.positionList = []
   }
 
+  /**
+   * 获取行列表。
+   *
+   * @returns 页眉行列表
+   */
   public getRowList(): IRow[] {
     return this.rowList
   }
 
+  /**
+   * 设置元素列表。
+   *
+   * @param elementList - 页眉元素列表
+   */
   public setElementList(elementList: IElement[]) {
     this.elementList = elementList
   }
 
+  /**
+   * 获取元素列表。
+   *
+   * @returns 页眉元素列表
+   */
   public getElementList(): IElement[] {
     return this.elementList
   }
 
+  /**
+   * 获取位置列表。
+   *
+   * @returns 元素位置列表
+   */
   public getPositionList(): IElementPosition[] {
     return this.positionList
   }
 
+  /**
+   * 计算页眉布局。
+   *
+   * 包括行列表和位置列表的计算。
+   */
   public compute() {
+    // 恢复状态
     this.recovery()
+    // 计算行列表
     this._computeRowList()
+    // 计算位置列表
     this._computePositionList()
   }
 
+  /**
+   * 恢复初始状态。
+   *
+   * 清空行列表和位置列表。
+   */
   public recovery() {
     this.rowList = []
     this.positionList = []
   }
 
+  /**
+   * 计算页眉行列表。
+   *
+   * 使用布局计算器计算页眉的行列表。
+   */
   private _computeRowList() {
+    // 获取内部宽度和边距
     const innerWidth = this.draw.getInnerWidth()
     const margins = this.draw.getMargins()
+    // 获取包围元素列表
     const surroundElementList = pickSurroundElementList(this.elementList)
+    // 计算行列表
     this.rowList = this.draw.computeRowList({
       startX: margins[3],
       startY: this.getHeaderTop(),
       innerWidth,
       elementList: this.elementList,
-      surroundElementList
+      surroundElementList,
+      isFloat: true
     })
   }
 
+  /**
+   * 计算页眉位置列表。
+   *
+   * 计算每个元素的位置信息。
+   */
+  /**
+   * 计算页眉位置列表。
+   *
+   * 使用位置管理器计算每个元素的位置信息。
+   */
   private _computePositionList() {
+    // 获取页眉顶部位置
     const headerTop = this.getHeaderTop()
     const innerWidth = this.draw.getInnerWidth()
     const margins = this.draw.getMargins()
     const startX = margins[3]
     const startY = headerTop
+    // 计算位置列表
     this.position.computePageRowPosition({
       positionList: this.positionList,
       rowList: this.rowList,

@@ -17,19 +17,50 @@ import {
   IPositionContext
 } from '../../interface/Position'
 import { Draw } from '../draw/Draw'
-import { EditorMode, EditorZone } from '../../dataset/enum/Editor'
+import { EditorZone } from '../../dataset/enum/Editor'
 import { deepClone, isRectIntersect } from '../../utils'
 import { ImageDisplay } from '../../dataset/enum/Common'
 import { DeepRequired } from '../../interface/Common'
 import { EventBus } from '../event/eventbus/EventBus'
 import { EventBusMap } from '../../interface/EventBus'
 import { getIsBlockElement } from '../../utils/element'
+import {
+  createCollapsedLeftCursorPosition,
+  resolvePointerBoundaryAtPosition
+} from './utils/resolvePointerBoundaryAtPosition'
 
+// 页内行带索引。用于把“按整页扫描位置列表”的命中过程
+// 缩到“先定位行带，再在局部范围内继续判断”。
+type TPageRowBand = {
+  rowNo: number
+  top: number
+  bottom: number
+  start: number
+  end: number
+}
+
+// Position 内部命中结果。
+// 比公开 ICurrentPosition 多保留少量命中链需要的辅助信息，
+// 例如命中的字符索引和行首边界提示。
+type TPointerHitResult = ICurrentPosition & {
+  hitTargetIndex?: number
+}
+
+/**
+ * 基础位置服务。
+ *
+ * 职责边界：
+ * 1. 管理布局态 / 原始态位置列表；
+ * 2. 提供正文、浮动元素、页边界的基础命中；
+ * 3. 不再承接复杂表格语义，表格主命中已下沉到 TableHitTestService。
+ */
 export class Position {
   private cursorPosition: IElementPosition | null
   private positionContext: IPositionContext
   private positionList: IElementPosition[]
   private floatPositionList: IFloatPosition[]
+  private positionLookupMapCache: WeakMap<IElementPosition[], Map<string, IElementPosition>>
+  private pageRowBandsLookupMapCache: WeakMap<IElementPosition[], Map<number, TPageRowBand[]>>
 
   private draw: Draw
   private eventBus: EventBus<EventBusMap>
@@ -43,6 +74,8 @@ export class Position {
       isTable: false,
       isControl: false
     }
+    this.positionLookupMapCache = new WeakMap()
+    this.pageRowBandsLookupMapCache = new WeakMap()
 
     this.draw = draw
     this.eventBus = draw.getEventBus()
@@ -53,26 +86,177 @@ export class Position {
     return this.floatPositionList
   }
 
+  private normalizeTablePositionList(
+    positionList: IElementPosition[]
+  ): IElementPosition[] {
+    // 表格内部 positionList 在局部 cell 内通常从 0 开始重新编号，
+    // 这里统一重排成连续局部索引，供 cell 内命中与导航使用。
+    return positionList.map((position, index) => ({
+      ...position,
+      index
+    }))
+  }
+
   public getTablePositionList(
     sourceElementList: IElement[]
   ): IElementPosition[] {
-    const { index, trIndex, tdIndex } = this.positionContext
-    return (
-      sourceElementList[index!].trList![trIndex!].tdList[tdIndex!]
-        .positionList || []
+    // 当前 positionContext 落在表格内时，优先尝试拿到“当前逻辑 cell 的连续位置列表”。
+    // paged / fragment / pagingOriginId 等差异都在这里统一收口。
+    const { index, trIndex, tdIndex, tableId, tdId } = this.positionContext
+    const table = index !== undefined ? sourceElementList[index] : null
+    const tr =
+      table && trIndex !== undefined ? table.trList?.[trIndex] : null
+    const td =
+      tr && tdIndex !== undefined
+        ? tr.tdList?.[tdIndex]
+        : null
+
+    const directPositionList = td?.positionList || []
+    if (directPositionList.length && !table?.pagingId) {
+      return this.normalizeTablePositionList(directPositionList)
+    }
+
+    const matchedPositionList: IElementPosition[] = []
+    const expectedTableIds = new Set(
+      [tableId, table?.id, (table as any)?.tableId].filter(Boolean)
     )
+    const expectedTdIds = new Set(
+      [tdId, td?.id, td?.pagingOriginId].filter(Boolean)
+    )
+
+    sourceElementList.forEach(element => {
+      if (element.type !== ElementType.TABLE) return
+      const tableIdMatched =
+        !expectedTableIds.size ||
+        expectedTableIds.has(element.id) ||
+        expectedTableIds.has((element as any).tableId) ||
+        (!!table?.pagingId && element.pagingId === table.pagingId)
+      if (!tableIdMatched) return
+
+      element.trList?.forEach(tr => {
+        tr.tdList.forEach(fragmentTd => {
+          const tdIdMatched =
+            !expectedTdIds.size ||
+            expectedTdIds.has(fragmentTd.id) ||
+            expectedTdIds.has(fragmentTd.pagingOriginId)
+          if (!tdIdMatched) return
+          if (fragmentTd.positionList?.length) {
+            matchedPositionList.push(...fragmentTd.positionList)
+          }
+        })
+      })
+    })
+
+    if (matchedPositionList.length) {
+      return this.normalizeTablePositionList(matchedPositionList)
+    }
+
+    const pageRowFragmentPositionList: IElementPosition[] = []
+    if (table?.id && tr?.id && td?.id) {
+      const sliceList = this.draw
+        .getTableLayoutSnapshotAccessor()
+        .getCellSlicesByLogicalCell({
+          tableId: table.id,
+          trId: tr.id,
+          tdId: td.id
+        })
+      const fragmentTableIds = new Set(sliceList.map(slice => slice.fragmentTableId))
+      const fragmentTrIds = new Set(sliceList.map(slice => slice.fragmentTrId))
+      const fragmentTdIds = new Set(sliceList.map(slice => slice.fragmentTdId))
+
+      this.draw.getPageRowList().forEach(pageRows => {
+        pageRows.forEach(row => {
+          const fragmentTable = row.tableFragment
+          if (!fragmentTable) {
+            return
+          }
+          const rowTableElement = row.elementList.find(
+            element => element.type === ElementType.TABLE
+          ) as IElement | undefined
+          const fragmentTableId =
+            rowTableElement?.id ||
+            (rowTableElement as any)?.tableId ||
+            (fragmentTable as any).id ||
+            (fragmentTable as any).tableId
+          if (!fragmentTableId || !fragmentTableIds.has(fragmentTableId)) {
+            return
+          }
+
+          fragmentTable.trList?.forEach(fragmentTr => {
+            if (!fragmentTr.id || !fragmentTrIds.has(fragmentTr.id)) {
+              return
+            }
+            fragmentTr.tdList.forEach(fragmentTd => {
+              if (!fragmentTd.id || !fragmentTdIds.has(fragmentTd.id)) {
+                return
+              }
+              if (fragmentTd.positionList?.length) {
+                pageRowFragmentPositionList.push(...fragmentTd.positionList)
+              }
+            })
+          })
+        })
+      })
+    }
+
+    if (pageRowFragmentPositionList.length) {
+      return this.normalizeTablePositionList(pageRowFragmentPositionList)
+    }
+
+    if (table?.pagingId && td) {
+      const originTdId = td.pagingOriginId || td.id
+      const positionList: IElementPosition[] = []
+      sourceElementList.forEach(element => {
+        if (element.type !== ElementType.TABLE || element.pagingId !== table.pagingId) {
+          return
+        }
+        element.trList?.forEach(tr => {
+          tr.tdList.forEach(fragmentTd => {
+            if (
+              fragmentTd.id === originTdId ||
+              fragmentTd.pagingOriginId === originTdId
+            ) {
+              positionList.push(...(fragmentTd.positionList || []))
+            }
+          })
+        })
+      })
+      return this.normalizeTablePositionList(positionList)
+    }
+
+    return this.normalizeTablePositionList(directPositionList)
   }
 
   public getPositionList(): IElementPosition[] {
-    return this.positionContext.isTable
-      ? this.getTablePositionList(this.draw.getOriginalElementList())
-      : this.getOriginalPositionList()
+    if (!this.positionContext.isTable) {
+      return this.getOriginalPositionList()
+    }
+    const originalPositionList = this.getTablePositionList(
+      this.draw.getOriginalElementList()
+    )
+    if (originalPositionList.length) {
+      return originalPositionList
+    }
+    return this.getTablePositionList(this.draw.getLayoutMainElementList())
   }
 
-  public getMainPositionList(): IElementPosition[] {
-    return this.positionContext.isTable
-      ? this.getTablePositionList(this.draw.getOriginalMainElementList())
-      : this.positionList
+  /**
+   * 兼容布局态调用方使用的主文档位置列表读取方法。
+   */
+  public getLayoutMainPositionList(): IElementPosition[] {
+    return this.positionList
+  }
+
+  public getLayoutMainPositionListByPage(pageNo: number): IElementPosition[] {
+    const positionList = this.positionList
+    const pageRowBands =
+      this.getPageRowBandsLookupMap(positionList).get(pageNo) || []
+    if (!pageRowBands.length) {
+      return []
+    }
+    const start = pageRowBands[0].start
+    const end = pageRowBands[pageRowBands.length - 1].end
+    return positionList.slice(start, end + 1)
   }
 
   public getOriginalPositionList(): IElementPosition[] {
@@ -88,18 +272,9 @@ export class Position {
     return this.positionList
   }
 
-  public getOriginalMainPositionList(): IElementPosition[] {
-    return this.positionList
-  }
-
-  public getSelectionPositionList(): IElementPosition[] | null {
-    const { startIndex, endIndex } = this.draw.getRange().getRange()
-    if (startIndex === endIndex) return null
-    const positionList = this.getPositionList()
-    return positionList.slice(startIndex + 1, endIndex + 1)
-  }
-
   public setPositionList(payload: IElementPosition[]) {
+    this.positionLookupMapCache = new WeakMap()
+    this.pageRowBandsLookupMapCache = new WeakMap()
     this.positionList = payload
   }
 
@@ -130,6 +305,7 @@ export class Position {
     let index = startIndex
     for (let i = 0; i < rowList.length; i++) {
       const curRow = rowList[i]
+      if (!curRow?.elementList?.length) continue
       // 行存在环绕的可能性均不设置行布局
       if (!curRow.isSurround) {
         // 计算行偏移量（行居中、居右）
@@ -143,27 +319,32 @@ export class Position {
       // 当前行X/Y轴偏移量
       x += curRow.offsetX || 0
       y += curRow.offsetY || 0
-      // 当前td所在位置
-      const tablePreX = x
-      const tablePreY = y
+      const isInlineTableRow = curRow.elementList.some(
+        element =>
+          element.type === ElementType.TABLE && element.tableDisplay === 'inline'
+      )
       for (let j = 0; j < curRow.elementList.length; j++) {
         const element = curRow.elementList[j]
         const metrics = element.metrics
-        const offsetY =
-          !element.hide &&
-          ((element.imgDisplay !== ImageDisplay.INLINE &&
-            element.type === ElementType.IMAGE) ||
-            element.type === ElementType.LATEX)
-            ? curRow.ascent - metrics.height
-            : curRow.ascent
+        const offsetY = this.computeElementOffsetY({
+          element,
+          metrics,
+          rowAscent: curRow.ascent,
+          isInlineTableRow
+        })
         // 偏移量
         if (element.left) {
           x += element.left
         }
+        const elementPreX = x
+        const elementPreY = y
         const positionItem: IElementPosition = {
           pageNo,
           index,
           value: element.value,
+          element,
+          tableFragment:
+            element.type === ElementType.TABLE ? curRow.tableFragment : undefined,
           rowIndex: startRowIndex + i,
           rowNo: i,
           metrics,
@@ -216,10 +397,18 @@ export class Position {
         x += metrics.width
         // 计算表格内元素位置
         if (element.type === ElementType.TABLE && !element.hide) {
+          const tablePreX = elementPreX
+          const tablePreY = elementPreY
+          const tableNextX = x
+          const tableNextY = y
+          const tableSource = curRow.tableFragment || element
+          if (!tableSource.trList?.length) {
+            continue
+          }
           const tdPaddingWidth = tdPadding[1] + tdPadding[3]
           const tdPaddingHeight = tdPadding[0] + tdPadding[2]
-          for (let t = 0; t < element.trList!.length; t++) {
-            const tr = element.trList![t]
+          for (let t = 0; t < tableSource.trList.length; t++) {
+            const tr = tableSource.trList[t]
             for (let d = 0; d < tr.tdList!.length; d++) {
               const td = tr.tdList[d]
               td.positionList = []
@@ -271,8 +460,8 @@ export class Position {
             }
           }
           // 恢复初始x、y
-          x = tablePreX
-          y = tablePreY
+          x = tableNextX
+          y = tableNextY
         }
       }
       x = startX
@@ -281,8 +470,31 @@ export class Position {
     return { x, y, index }
   }
 
+  private computeElementOffsetY(payload: {
+    element: IElement
+    metrics: IElementPosition['metrics']
+    rowAscent: number
+    isInlineTableRow: boolean
+  }) {
+    const { element, metrics, rowAscent, isInlineTableRow } = payload
+    if (isInlineTableRow && element.type !== ElementType.TABLE) {
+      const rowMargin =
+        this.options.defaultBasicRowMarginHeight *
+        (element.rowMargin ?? this.options.defaultRowMargin)
+      return Math.max(0, metrics.boundingBoxAscent + rowMargin)
+    }
+    return !element.hide &&
+      ((element.imgDisplay !== ImageDisplay.INLINE &&
+        element.type === ElementType.IMAGE) ||
+        element.type === ElementType.LATEX)
+      ? rowAscent - metrics.height
+      : rowAscent
+  }
+
   public computePositionList() {
     // 置空原位置信息
+    this.positionLookupMapCache = new WeakMap()
+    this.pageRowBandsLookupMapCache = new WeakMap()
     this.positionList = []
     // 按每页行计算
     const innerWidth = this.draw.getInnerWidth()
@@ -337,6 +549,80 @@ export class Position {
     return this.cursorPosition
   }
 
+  private getPositionLookupMap(positionList: IElementPosition[]) {
+    const cachedMap = this.positionLookupMapCache.get(positionList)
+    if (cachedMap) {
+      return cachedMap
+    }
+    const positionMap = new Map<string, IElementPosition>()
+    for (let i = 0; i < positionList.length; i++) {
+      const position = positionList[i]
+      if (!position) continue
+      positionMap.set(
+        `${position.pageNo}_${position.index}`,
+        position
+      )
+    }
+    this.positionLookupMapCache.set(positionList, positionMap)
+    return positionMap
+  }
+
+  private getPageRowBandsLookupMap(positionList: IElementPosition[]) {
+    const cachedMap = this.pageRowBandsLookupMapCache.get(positionList)
+    if (cachedMap) {
+      return cachedMap
+    }
+    const pageRowBandsMap = new Map<number, TPageRowBand[]>()
+    for (let cursor = 0; cursor < positionList.length; cursor++) {
+      const position = positionList[cursor]
+      if (!position) continue
+      const pageRowBands = pageRowBandsMap.get(position.pageNo)
+      const top = position.coordinate.leftTop[1]
+      const bottom = position.coordinate.leftBottom[1]
+      if (!pageRowBands) {
+        pageRowBandsMap.set(position.pageNo, [
+          {
+            rowNo: position.rowNo,
+            top,
+            bottom,
+            start: cursor,
+            end: cursor
+          }
+        ])
+        continue
+      }
+      const currentBand = pageRowBands[pageRowBands.length - 1]
+      if (currentBand.rowNo === position.rowNo) {
+        currentBand.top = Math.min(currentBand.top, top)
+        currentBand.bottom = Math.max(currentBand.bottom, bottom)
+        currentBand.end = cursor
+      } else {
+        pageRowBands.push({
+          rowNo: position.rowNo,
+          top,
+          bottom,
+          start: cursor,
+          end: cursor
+        })
+      }
+    }
+    this.pageRowBandsLookupMapCache.set(positionList, pageRowBandsMap)
+    return pageRowBandsMap
+  }
+
+  public getPositionByPageAndIndex(
+    pageNo: number,
+    index: number,
+    positionList?: IElementPosition[]
+  ): IElementPosition | null {
+    const targetPositionList = positionList || this.getPositionList()
+    return (
+      this.getPositionLookupMap(targetPositionList).get(
+        `${pageNo}_${index}`
+      ) || null
+    )
+  }
+
   public getPositionContext(): IPositionContext {
     return this.positionContext
   }
@@ -350,331 +636,316 @@ export class Position {
   }
 
   public getPositionByXY(payload: IGetPositionByXYPayload): ICurrentPosition {
-    const { x, y, isTable } = payload
+    const { x, y } = payload
     let { elementList, positionList } = payload
-    if (!elementList) {
-      elementList = this.draw.getOriginalElementList()
-    }
-    if (!positionList) {
-      positionList = this.getOriginalPositionList()
-    }
     const zoneManager = this.draw.getZone()
     const curPageNo = payload.pageNo ?? this.draw.getPageNo()
     const isMainActive = zoneManager.isMainActive()
-    const positionNo = isMainActive ? curPageNo : 0
-    // 验证浮于文字上方元素
-    if (!isTable) {
-      const floatTopPosition = this.getFloatPositionByXY({
-        ...payload,
-        imgDisplays: [ImageDisplay.FLOAT_TOP, ImageDisplay.SURROUND]
-      })
-      if (floatTopPosition) return floatTopPosition
+    if (!elementList) {
+      elementList = isMainActive
+        ? this.draw.getLayoutMainElementList()
+        : this.draw.getOriginalElementList()
     }
-    // 普通元素
-    for (let j = 0; j < positionList.length; j++) {
+    if (!positionList) {
+      positionList = isMainActive
+        ? this.getLayoutMainPositionList()
+        : this.getOriginalPositionList()
+    }
+    const positionNo = isMainActive ? curPageNo : 0
+    const pageRowBands =
+      this.getPageRowBandsLookupMap(positionList).get(positionNo) || []
+    let activeRowBand: TPageRowBand | null = null
+    let left = 0
+    let right = pageRowBands.length - 1
+    while (left <= right) {
+      const middle = Math.floor((left + right) / 2)
+      const rowBand = pageRowBands[middle]
+      if (y < rowBand.top) {
+        right = middle - 1
+      } else if (y > rowBand.bottom) {
+        left = middle + 1
+      } else {
+        activeRowBand = rowBand
+        break
+      }
+    }
+    // 命中左半区时，需要回退到前一个逻辑边界；
+    // 这里统一把“当前位置 cursor -> 逻辑边界索引”的回退规则抽成局部函数。
+    const resolvePreviousLogicalIndex = (
+      positionCursor: number,
+      fallbackIndex: number
+    ) => {
+      return positionList?.[positionCursor - 1]?.index ?? fallbackIndex - 1
+    }
+    // 页内行带兜底命中可能需要根据逻辑索引回查真实元素，
+    // 例如判断当前位置是否落在控件上。
+    const resolveLogicalControlElement = (logicalIndex: number) => {
+      const logicalPosition = this.getPositionByPageAndIndex(
+        positionNo,
+        logicalIndex,
+        positionList
+      )
+      if (!logicalPosition) {
+        return undefined
+      }
+      return elementList?.[logicalPosition.index]
+    }
+    // 第一层：优先验证浮在文字上方的元素。
+    // 这层命中需要早于正文字符盒，否则会被正文文字错误吞掉。
+    const floatTopPosition = this.getFloatPositionByXY({
+      ...payload,
+      imgDisplays: [ImageDisplay.FLOAT_TOP, ImageDisplay.SURROUND]
+    })
+    if (floatTopPosition) return floatTopPosition
+    const directHitStart = activeRowBand?.start ?? 0
+    const directHitEnd = activeRowBand?.end ?? -1
+    // 第二层：只在当前活动行带内做 direct-hit 命中，
+    // 避免跨整页线性扫描。
+    for (let cursor = directHitStart; cursor <= directHitEnd; cursor++) {
+      const position = positionList[cursor]
+      if (!position) continue
       const {
         index,
-        pageNo,
         left,
-        isFirstLetter,
         coordinate: { leftTop, rightTop, leftBottom }
-      } = positionList[j]
-      if (positionNo !== pageNo) continue
-      if (pageNo > positionNo) break
-      // 命中元素
+      } = position
       if (
-        leftTop[0] - left <= x &&
-        rightTop[0] >= x &&
-        leftTop[1] <= y &&
-        leftBottom[1] >= y
+        leftTop[0] - left > x ||
+        rightTop[0] < x ||
+        leftTop[1] > y ||
+        leftBottom[1] < y
       ) {
-        let curPositionIndex = j
-        const element = elementList[j]
-        // 表格被命中
-        if (element.type === ElementType.TABLE) {
-          for (let t = 0; t < element.trList!.length; t++) {
-            const tr = element.trList![t]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              const tablePosition = this.getPositionByXY({
-                x,
-                y,
-                td,
-                pageNo: curPageNo,
-                tablePosition: positionList[j],
-                isTable: true,
-                elementList: td.value,
-                positionList: td.positionList
-              })
-              if (~tablePosition.index) {
-                const { index: tdValueIndex, hitLineStartIndex } = tablePosition
-                const tdValueElement = td.value[tdValueIndex]
-                return {
-                  index,
-                  isCheckbox:
-                    tablePosition.isCheckbox ||
-                    tdValueElement.type === ElementType.CHECKBOX ||
-                    tdValueElement.controlComponent ===
-                      ControlComponent.CHECKBOX,
-                  isRadio:
-                    tdValueElement.type === ElementType.RADIO ||
-                    tdValueElement.controlComponent === ControlComponent.RADIO,
-                  isControl: !!tdValueElement.controlId,
-                  isImage: tablePosition.isImage,
-                  isDirectHit: tablePosition.isDirectHit,
-                  isTable: true,
-                  tdIndex: d,
-                  trIndex: t,
-                  tdValueIndex,
-                  tdId: td.id,
-                  trId: tr.id,
-                  tableId: element.id,
-                  hitLineStartIndex
-                }
-              }
-            }
-          }
+        continue
+      }
+      const element = elementList[cursor]
+      if (!element) {
+        continue
+      }
+      if (
+        element.type === ElementType.IMAGE ||
+        element.type === ElementType.LATEX
+      ) {
+        return {
+          index,
+          hitTargetIndex: index,
+          isDirectHit: true,
+          isImage: true
         }
-        // 图片区域均为命中
-        if (
-          element.type === ElementType.IMAGE ||
-          element.type === ElementType.LATEX
-        ) {
-          return {
-            index: curPositionIndex,
-            isDirectHit: true,
-            isImage: true
-          }
+      }
+      if (
+        element.type === ElementType.CHECKBOX ||
+        element.controlComponent === ControlComponent.CHECKBOX
+      ) {
+        return {
+          index,
+          hitTargetIndex: index,
+          isDirectHit: true,
+          isCheckbox: true
         }
-        if (
-          element.type === ElementType.CHECKBOX ||
-          element.controlComponent === ControlComponent.CHECKBOX
-        ) {
-          return {
-            index: curPositionIndex,
-            isDirectHit: true,
-            isCheckbox: true
+      }
+      if (
+        element.type === ElementType.TAB &&
+        element.listStyle === ListStyle.CHECKBOX
+      ) {
+        let searchCursor = cursor - 1
+        while (searchCursor > 0) {
+          const searchElement = elementList[searchCursor]
+          if (!searchElement) {
+            searchCursor--
+            continue
           }
-        }
-        if (
-          element.type === ElementType.TAB &&
-          element.listStyle === ListStyle.CHECKBOX
-        ) {
-          // 向前找checkbox元素
-          let index = curPositionIndex - 1
-          while (index > 0) {
-            const element = elementList[index]
-            if (
-              element.value === ZERO &&
-              element.listStyle === ListStyle.CHECKBOX
-            ) {
-              break
-            }
-            index--
+          if (
+            searchElement.value === ZERO &&
+            searchElement.listStyle === ListStyle.CHECKBOX
+          ) {
+            break
           }
-          return {
-            index,
-            isDirectHit: true,
-            isCheckbox: true
-          }
-        }
-        if (
-          element.type === ElementType.RADIO ||
-          element.controlComponent === ControlComponent.RADIO
-        ) {
-          return {
-            index: curPositionIndex,
-            isDirectHit: true,
-            isRadio: true
-          }
-        }
-        let hitLineStartIndex: number | undefined
-        // 判断是否在文字中间前后
-        if (elementList[index].value !== ZERO) {
-          const valueWidth = rightTop[0] - leftTop[0]
-          if (x < leftTop[0] + valueWidth / 2) {
-            curPositionIndex = j - 1
-            if (isFirstLetter) {
-              hitLineStartIndex = j
-            }
-          }
+          searchCursor--
         }
         return {
+          index: positionList[searchCursor]?.index ?? searchCursor,
+          hitTargetIndex: positionList[searchCursor]?.index ?? searchCursor,
           isDirectHit: true,
-          hitLineStartIndex,
-          index: curPositionIndex,
-          isControl: !!element.controlId
+          isCheckbox: true
         }
       }
-    }
-    // 验证衬于文字下方元素
-    if (!isTable) {
-      const floatBottomPosition = this.getFloatPositionByXY({
-        ...payload,
-        imgDisplays: [ImageDisplay.FLOAT_BOTTOM]
-      })
-      if (floatBottomPosition) return floatBottomPosition
-    }
-    // 非命中区域
-    let isLastArea = false
-    let curPositionIndex = -1
-    let hitLineStartIndex: number | undefined
-    // 判断是否在表格内
-    if (isTable) {
-      const { scale } = this.options
-      const { td, tablePosition } = payload
-      if (td && tablePosition) {
-        const { leftTop } = tablePosition.coordinate
-        const tdX = td.x! * scale + leftTop[0]
-        const tdY = td.y! * scale + leftTop[1]
-        const tdWidth = td.width! * scale
-        const tdHeight = td.height! * scale
-        if (!(tdX < x && x < tdX + tdWidth && tdY < y && y < tdY + tdHeight)) {
-          return {
-            index: curPositionIndex
-          }
+      if (
+        element.type === ElementType.RADIO ||
+        element.controlComponent === ControlComponent.RADIO
+      ) {
+        return {
+          index,
+          hitTargetIndex: index,
+          isDirectHit: true,
+          isRadio: true
         }
       }
+
+      const { boundaryIndex } =
+        resolvePointerBoundaryAtPosition({
+          x,
+          position,
+          currentBoundaryIndex: index,
+          previousBoundaryIndex: resolvePreviousLogicalIndex(cursor, index),
+          canCollapseToPrevious: element.value !== ZERO
+        })
+      const directHitPosition: TPointerHitResult = {
+        isDirectHit: true,
+        hitTargetIndex: index,
+        index: boundaryIndex,
+        isControl: !!element.controlId
+      }
+      return directHitPosition
     }
-    // 判断所属行是否存在元素
-    const lastLetterList = positionList.filter(
-      p => p.isLastLetter && p.pageNo === positionNo
-    )
-    for (let j = 0; j < lastLetterList.length; j++) {
-      const {
-        index,
-        rowNo,
-        coordinate: { leftTop, leftBottom }
-      } = lastLetterList[j]
-      if (y > leftTop[1] && y <= leftBottom[1]) {
-        const headIndex = positionList.findIndex(
-          p => p.pageNo === positionNo && p.rowNo === rowNo
-        )
-        const headElement = elementList[headIndex]
-        const headPosition = positionList[headIndex]
-        // 是否在头部
+    // 第三层：再处理浮在文字下层的元素。
+    // 这类元素优先级低于正文 direct-hit，但高于行带/页边界兜底。
+    const floatBottomPosition = this.getFloatPositionByXY({
+      ...payload,
+      imgDisplays: [ImageDisplay.FLOAT_BOTTOM]
+    })
+    if (floatBottomPosition) return floatBottomPosition
+    // 第四层：页内行带兜底。
+    // 当没有命中具体字符盒时，仍需要在当前行带内给出一个稳定边界，
+    // 以保证点击空白区、行首前侧区域时的落点一致性。
+    let activeRowBandPosition: TPointerHitResult | null = null
+    if (activeRowBand) {
+      const headIndex = activeRowBand.start
+      const tailIndex = activeRowBand.end
+      const headElement = elementList[headIndex]
+      const headPosition = positionList[headIndex]
+      const tailPosition = positionList[tailIndex]
+      if (headElement && headPosition && tailPosition) {
+        let curPositionIndex = -1
         const headStartX =
           headElement.listStyle === ListStyle.CHECKBOX
             ? this.draw.getMargins()[3]
             : headPosition.coordinate.leftTop[0]
         if (x < headStartX) {
-          // 头部元素为空元素时无需选中
-          if (~headIndex) {
-            if (headPosition.value === ZERO) {
-              curPositionIndex = headIndex
-            } else {
-              curPositionIndex = headIndex - 1
-              hitLineStartIndex = headIndex
-            }
-          } else {
-            curPositionIndex = index
+          const lineStartBoundaryIndex =
+            headPosition.value === ZERO
+              ? headPosition.index
+              : resolvePreviousLogicalIndex(headIndex, headPosition.index)
+          activeRowBandPosition = {
+            index: lineStartBoundaryIndex,
+            hitTargetIndex: headPosition.index,
+            cursorPosition: createCollapsedLeftCursorPosition(
+              headPosition,
+              lineStartBoundaryIndex
+            ),
+            isLeftSideBlank: true,
+            isControl: !!resolveLogicalControlElement(lineStartBoundaryIndex)?.controlId
+          }
+        } else if (
+          headElement.listStyle === ListStyle.CHECKBOX &&
+          x < headPosition.coordinate.leftTop[0]
+        ) {
+          activeRowBandPosition = {
+            index: headPosition.index,
+            isDirectHit: true,
+            isCheckbox: true
           }
         } else {
-          // 是否是复选框列表
-          if (headElement.listStyle === ListStyle.CHECKBOX && x < leftTop[0]) {
-            return {
-              index: headIndex,
-              isDirectHit: true,
-              isCheckbox: true
-            }
-          }
-          curPositionIndex = index
+          curPositionIndex = tailPosition.index
         }
-        isLastArea = true
-        break
+
+        if (!activeRowBandPosition && curPositionIndex >= 0) {
+          activeRowBandPosition = {
+            index: curPositionIndex,
+            isControl: !!resolveLogicalControlElement(curPositionIndex)?.controlId
+          }
+        }
       }
     }
-    if (!isLastArea) {
-      // 页眉底部距离页面顶部距离
-      const header = this.draw.getHeader()
-      const headerHeight = header.getHeight()
-      const headerBottomY = header.getHeaderTop() + headerHeight
-      // 页脚上部距离页面顶部距离
-      const footer = this.draw.getFooter()
-      const pageHeight = this.draw.getHeight()
-      const footerTopY =
-        pageHeight - (footer.getFooterBottom() + footer.getHeight())
-      // 判断所属位置是否属于页眉页脚区域
-      if (isMainActive) {
-        // 页眉：当前位置小于页眉底部位置
-        if (y < headerBottomY) {
-          return {
-            index: -1,
-            zone: EditorZone.HEADER
-          }
-        }
-        // 页脚：当前位置大于页脚顶部位置
-        if (y > footerTopY) {
-          return {
-            index: -1,
-            zone: EditorZone.FOOTER
-          }
-        }
-      } else {
-        // main区域：当前位置小于页眉底部位置 && 大于页脚顶部位置
-        if (y <= footerTopY && y >= headerBottomY) {
-          return {
-            index: -1,
-            zone: EditorZone.MAIN
-          }
+    if (activeRowBandPosition) {
+      return activeRowBandPosition
+    }
+
+    // 第五层：页边界 / 区域兜底。
+    // 当前页内没有任何直接命中时，再判断是否切到页眉页脚，
+    // 或回退到首行 / 末行边界。
+    const header = this.draw.getHeader()
+    const headerHeight = header.getHeight()
+    const headerBottomY = header.getHeaderTop() + headerHeight
+    const footer = this.draw.getFooter()
+    const pageHeight = this.draw.getHeight()
+    const footerTopY =
+      pageHeight - (footer.getFooterBottom() + footer.getHeight())
+
+    if (isMainActive) {
+      if (y < headerBottomY) {
+        return {
+          index: -1,
+          zone: EditorZone.HEADER
         }
       }
-      // 正文上-循环首行
-      const margins = this.draw.getMargins()
-      if (y <= margins[0]) {
-        for (let p = 0; p < positionList.length; p++) {
-          const position = positionList[p]
-          if (position.pageNo !== positionNo || position.rowNo !== 0) continue
+      if (y > footerTopY) {
+        return {
+          index: -1,
+          zone: EditorZone.FOOTER
+        }
+      }
+    } else if (y <= footerTopY && y >= headerBottomY) {
+      return {
+        index: -1,
+        zone: EditorZone.MAIN
+      }
+    }
+
+    const margins = this.draw.getMargins()
+    if (y <= margins[0]) {
+      const firstRowBand = pageRowBands[0] || null
+      let firstRowPosition: IElementPosition | null = null
+      if (firstRowBand) {
+        for (let cursor = firstRowBand.start; cursor <= firstRowBand.end; cursor++) {
+          const position = positionList[cursor]
+          if (!position) continue
           const { leftTop, rightTop } = position.coordinate
-          // 小于左页边距 || 命中文字 || 首行最后元素
           if (
             x <= margins[3] ||
             (x >= leftTop[0] && x <= rightTop[0]) ||
-            positionList[p + 1]?.rowNo !== 0
+            cursor === firstRowBand.end
           ) {
-            return {
-              index: position.index
-            }
-          }
-        }
-      } else {
-        // 正文下-循环尾行
-        const lastLetter = lastLetterList[lastLetterList.length - 1]
-        if (lastLetter) {
-          const lastRowNo = lastLetter.rowNo
-          for (let p = 0; p < positionList.length; p++) {
-            const position = positionList[p]
-            if (
-              position.pageNo !== positionNo ||
-              position.rowNo !== lastRowNo
-            ) {
-              continue
-            }
-            const { leftTop, rightTop } = position.coordinate
-            // 小于左页边距 || 命中文字 || 尾行最后元素
-            if (
-              x <= margins[3] ||
-              (x >= leftTop[0] && x <= rightTop[0]) ||
-              positionList[p + 1]?.rowNo !== lastRowNo
-            ) {
-              return {
-                index: position.index
-              }
-            }
+            firstRowPosition = position
+            break
           }
         }
       }
-      // 当前页最后一行
-      return {
-        index:
-          lastLetterList[lastLetterList.length - 1]?.index ||
-          positionList.length - 1
+      if (firstRowPosition) {
+        return {
+          index: firstRowPosition.index
+        }
+      }
+    } else {
+      const lastRowBand = pageRowBands[pageRowBands.length - 1] || null
+      let lastRowPosition: IElementPosition | null = null
+      if (lastRowBand) {
+        for (let cursor = lastRowBand.start; cursor <= lastRowBand.end; cursor++) {
+          const position = positionList[cursor]
+          if (!position) continue
+          const { leftTop, rightTop } = position.coordinate
+          if (
+            x <= margins[3] ||
+            (x >= leftTop[0] && x <= rightTop[0]) ||
+            cursor === lastRowBand.end
+          ) {
+            lastRowPosition = position
+            break
+          }
+        }
+      }
+      if (lastRowPosition) {
+        return {
+          index: lastRowPosition.index
+        }
       }
     }
+
+    const lastRowBand = pageRowBands[pageRowBands.length - 1]
     return {
-      hitLineStartIndex,
-      index: curPositionIndex,
-      isControl: !!elementList[curPositionIndex]?.controlId
+      index:
+        (lastRowBand ? positionList[lastRowBand.end]?.index : undefined) ||
+        positionList[positionList.length - 1]?.index ||
+        positionList.length - 1
     }
   }
 
@@ -737,63 +1008,6 @@ export class Position {
         }
       }
     }
-  }
-
-  public adjustPositionContext(
-    payload: IGetPositionByXYPayload
-  ): ICurrentPosition | null {
-    const positionResult = this.getPositionByXY(payload)
-    if (!~positionResult.index) return null
-    // 移动控件内光标
-    if (
-      positionResult.isControl &&
-      this.draw.getMode() !== EditorMode.READONLY
-    ) {
-      const { index, isTable, trIndex, tdIndex, tdValueIndex } = positionResult
-      const control = this.draw.getControl()
-      const { newIndex } = control.moveCursor({
-        index,
-        isTable,
-        trIndex,
-        tdIndex,
-        tdValueIndex
-      })
-      if (isTable) {
-        positionResult.tdValueIndex = newIndex
-      } else {
-        positionResult.index = newIndex
-      }
-    }
-    const {
-      index,
-      isCheckbox,
-      isRadio,
-      isControl,
-      isImage,
-      isDirectHit,
-      isTable,
-      trIndex,
-      tdIndex,
-      tdId,
-      trId,
-      tableId
-    } = positionResult
-    // 设置位置上下文
-    this.setPositionContext({
-      isTable: isTable || false,
-      isCheckbox: isCheckbox || false,
-      isRadio: isRadio || false,
-      isControl: isControl || false,
-      isImage: isImage || false,
-      isDirectHit: isDirectHit || false,
-      index,
-      trIndex,
-      tdIndex,
-      tdId,
-      trId,
-      tableId
-    })
-    return positionResult
   }
 
   public setSurroundPosition(payload: ISetSurroundPositionPayload) {

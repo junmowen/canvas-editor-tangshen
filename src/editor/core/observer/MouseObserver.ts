@@ -9,7 +9,7 @@ export class MouseObserver {
   constructor(draw: Draw) {
     this.draw = draw
     this.eventBus = this.draw.getEventBus()
-    this.pageContainer = this.draw.getPageContainer()
+    this.pageContainer = this.draw.getPageCanvasHost().getPageContainer()
     this.pageContainer.addEventListener('mousemove', this._mousemove.bind(this))
     this.pageContainer.addEventListener(
       'mouseenter',

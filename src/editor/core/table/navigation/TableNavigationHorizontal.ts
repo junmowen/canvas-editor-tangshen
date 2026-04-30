@@ -1,0 +1,233 @@
+import { ElementType } from '../../../dataset/enum/Element'
+import { IPositionContext } from '../../../interface/Position'
+import { ITableAdjacentCellNavigationResult, ITableHorizontalBoundaryNavigationRequest } from './TableNavigationTypes'
+import {
+  createTablePositionContext,
+  resolveHorizontalSiblingCell,
+  resolveLogicalCellFromContext
+} from './TableNavigationAlgorithms'
+import { ITableLayoutCellSlice } from '../layout/TableLayoutSnapshotTypes'
+
+interface IHorizontalNavigationDeps {
+  getOriginalElementList: () => any[]
+  getElementList: () => any[]
+  resolveSliceByPositionContext: (positionContext: IPositionContext) => ITableLayoutCellSlice | null
+  getLogicalCellSliceList: (
+    tableIndex: number,
+    trIndex: number,
+    tdIndex: number
+  ) => ITableLayoutCellSlice[]
+}
+
+export function resolveHorizontalBoundaryNavigation(
+  deps: IHorizontalNavigationDeps,
+  payload: ITableHorizontalBoundaryNavigationRequest
+): ITableAdjacentCellNavigationResult | null {
+  const { positionContext, range, direction } = payload
+  const { startIndex, endIndex } = range
+  const originalElementList = deps.getOriginalElementList()
+  const elementList = deps.getElementList()
+
+  if (direction === 'prev') {
+    const currentElement = elementList[startIndex]
+    if (
+      currentElement?.type !== ElementType.TABLE &&
+      (!currentElement?.tableId || startIndex !== 0)
+    ) {
+      return null
+    }
+  } else {
+    const currentElement = elementList[endIndex]
+    const nextElement = elementList[endIndex + 1]
+    if (
+      nextElement?.type !== ElementType.TABLE &&
+      (!currentElement?.tableId || !!nextElement)
+    ) {
+      return null
+    }
+  }
+
+  if (direction === 'prev') {
+    const currentElement = elementList[startIndex]
+    if (currentElement?.type === ElementType.TABLE) {
+      const table = originalElementList[startIndex]
+      if (!table?.trList?.length) {
+        return null
+      }
+      const trIndex = table.trList.length - 1
+      const tdIndex = table.trList[trIndex].tdList.length - 1
+      const tr = table.trList[trIndex]
+      const td = tr?.tdList?.[tdIndex]
+      if (!tr || !td) {
+        return null
+      }
+      const sliceList = deps.getLogicalCellSliceList(startIndex, trIndex, tdIndex)
+      const targetSlice = sliceList[sliceList.length - 1] || null
+      return {
+        nextPositionContext: createTablePositionContext({
+          slice: targetSlice,
+          logicalTableIndex: startIndex,
+          logicalTrIndex: trIndex,
+          logicalTdIndex: tdIndex,
+          fragmentTableId: table.id,
+          fragmentTrId: tr.id,
+          fragmentTdId: td.id
+        }),
+        nextIndex: Math.max(0, (targetSlice?.absoluteEnd ?? td.value.length) - 1)
+      }
+    }
+
+    if (!currentElement?.tableId || startIndex !== 0) {
+      return null
+    }
+
+    const logicalCell = resolveLogicalCellFromContext({
+      positionContext,
+      resolveSliceByPositionContext: deps.resolveSliceByPositionContext,
+      getOriginalElementList: deps.getOriginalElementList
+    })
+    if (!logicalCell) {
+      return null
+    }
+
+    const table = originalElementList[logicalCell.tableIndex]
+    if (!table?.trList?.length) {
+      return null
+    }
+
+    if (logicalCell.trIndex === 0 && logicalCell.tdIndex === 0) {
+      return {
+        nextPositionContext: { isTable: false },
+        nextIndex: logicalCell.tableIndex - 1,
+        disposeTableTool: true
+      }
+    }
+
+    const targetCell = resolveHorizontalSiblingCell({
+      trList: table.trList,
+      trIndex: logicalCell.trIndex,
+      tdIndex: logicalCell.tdIndex,
+      direction: 'prev'
+    })
+    if (!targetCell) {
+      return null
+    }
+
+    const targetTr = table.trList[targetCell.trIndex]
+    const targetTd = targetTr?.tdList?.[targetCell.tdIndex]
+    if (!targetTr || !targetTd) {
+      return null
+    }
+    const sliceList = deps.getLogicalCellSliceList(
+      logicalCell.tableIndex,
+      targetCell.trIndex,
+      targetCell.tdIndex
+    )
+    const targetSlice = sliceList[sliceList.length - 1] || null
+    return {
+      nextPositionContext: createTablePositionContext({
+        slice: targetSlice,
+        logicalTableIndex: logicalCell.tableIndex,
+        logicalTrIndex: targetCell.trIndex,
+        logicalTdIndex: targetCell.tdIndex,
+        fragmentTableId: table.id,
+        fragmentTrId: targetTr.id,
+        fragmentTdId: targetTd.id
+      }),
+      nextIndex: Math.max(0, (targetSlice?.absoluteEnd ?? targetTd.value.length) - 1)
+    }
+  }
+
+  const currentElement = elementList[endIndex]
+  const nextElement = elementList[endIndex + 1]
+  if (nextElement?.type === ElementType.TABLE) {
+    const table = originalElementList[endIndex + 1]
+    if (!table?.trList?.length) {
+      return null
+    }
+    const tr = table.trList[0]
+    const td = tr?.tdList?.[0]
+    if (!tr || !td) {
+      return null
+    }
+    const sliceList = deps.getLogicalCellSliceList(endIndex + 1, 0, 0)
+    const targetSlice = sliceList[0] || null
+    return {
+      nextPositionContext: createTablePositionContext({
+        slice: targetSlice,
+        logicalTableIndex: endIndex + 1,
+        logicalTrIndex: 0,
+        logicalTdIndex: 0,
+        fragmentTableId: table.id,
+        fragmentTrId: tr.id,
+        fragmentTdId: td.id
+      }),
+      nextIndex: targetSlice?.absoluteStart ?? 0
+    }
+  }
+
+  if (!currentElement?.tableId || nextElement) {
+    return null
+  }
+
+  const logicalCell = resolveLogicalCellFromContext({
+    positionContext,
+    resolveSliceByPositionContext: deps.resolveSliceByPositionContext,
+    getOriginalElementList: deps.getOriginalElementList
+  })
+  if (!logicalCell) {
+    return null
+  }
+  const table = originalElementList[logicalCell.tableIndex]
+  if (!table?.trList?.length) {
+    return null
+  }
+
+  const lastTrIndex = table.trList.length - 1
+  const lastTdIndex = table.trList[lastTrIndex].tdList.length - 1
+  if (
+    logicalCell.trIndex === lastTrIndex &&
+    logicalCell.tdIndex === lastTdIndex
+  ) {
+    return {
+      nextPositionContext: { isTable: false },
+      nextIndex: logicalCell.tableIndex,
+      disposeTableTool: true
+    }
+  }
+
+  const targetCell = resolveHorizontalSiblingCell({
+    trList: table.trList,
+    trIndex: logicalCell.trIndex,
+    tdIndex: logicalCell.tdIndex,
+    direction: 'next'
+  })
+  if (!targetCell) {
+    return null
+  }
+
+  const targetTr = table.trList[targetCell.trIndex]
+  const targetTd = targetTr?.tdList?.[targetCell.tdIndex]
+  if (!targetTr || !targetTd) {
+    return null
+  }
+  const sliceList = deps.getLogicalCellSliceList(
+    logicalCell.tableIndex,
+    targetCell.trIndex,
+    targetCell.tdIndex
+  )
+  const targetSlice = sliceList[0] || null
+  return {
+    nextPositionContext: createTablePositionContext({
+      slice: targetSlice,
+      logicalTableIndex: logicalCell.tableIndex,
+      logicalTrIndex: targetCell.trIndex,
+      logicalTdIndex: targetCell.tdIndex,
+      fragmentTableId: table.id,
+      fragmentTrId: targetTr.id,
+      fragmentTdId: targetTd.id
+    }),
+    nextIndex: targetSlice?.absoluteStart ?? 0
+  }
+}
+

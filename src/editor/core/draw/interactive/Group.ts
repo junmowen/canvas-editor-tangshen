@@ -40,7 +40,8 @@ export class Group {
     })
     this.draw.render({
       isSetCursor: false,
-      isCompute: false
+      isCompute: false,
+      pageRenderScope: 'visible'
     })
     return groupId
   }
@@ -96,7 +97,8 @@ export class Group {
     }
     this.draw.render({
       isSetCursor: false,
-      isCompute: false
+      isCompute: false,
+      pageRenderScope: 'visible'
     })
   }
 
@@ -174,7 +176,7 @@ export class Group {
   public render(ctx: CanvasRenderingContext2D) {
     if (!this.fillRectMap.size) return
     // 当前激活组信息
-    const range = this.range.getRange()
+    const range = this.range.getEditBoundaryRange()
     const elementList = this.draw.getElementList()
     const anchorGroupIds = elementList[range.endIndex]?.groupIds
     const {

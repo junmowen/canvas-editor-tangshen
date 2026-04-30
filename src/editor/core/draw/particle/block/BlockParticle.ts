@@ -12,7 +12,7 @@ export class BlockParticle {
 
   constructor(draw: Draw) {
     this.draw = draw
-    this.container = draw.getContainer()
+    this.container = draw.getPageCanvasHost().getContainer()
     this.blockMap = new Map()
     this.blockContainer = this._createBlockContainer()
     this.container.append(this.blockContainer)

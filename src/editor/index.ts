@@ -43,7 +43,12 @@ import { BlockType } from './dataset/enum/Block'
 import { IBlock } from './interface/Block'
 import { ILang } from './interface/i18n/I18n'
 import { VerticalAlign } from './dataset/enum/VerticalAlign'
-import { TableBorder, TdBorder, TdSlash } from './dataset/enum/table/Table'
+import {
+  TableBorder,
+  TableDisplay,
+  TdBorder,
+  TdSlash
+} from './dataset/enum/table/Table'
 import { MaxHeightRatio, NumberType } from './dataset/enum/Common'
 import { TitleLevel } from './dataset/enum/Title'
 import { ListStyle, ListType } from './dataset/enum/List'
@@ -131,6 +136,7 @@ export default class Editor {
       this.eventBus,
       this.override
     )
+    Reflect.set(this, 'draw', draw)
     // 命令
     this.command = new Command(new CommandAdapt(draw))
     // 菜单
@@ -141,7 +147,7 @@ export default class Editor {
     this.register = new Register({
       contextMenu,
       shortcut,
-      i18n: draw.getI18n()
+      i18n: draw.getComponents().i18n
     })
     // 注册销毁方法
     this.destroy = () => {
@@ -190,6 +196,7 @@ export {
   BlockType,
   PaperDirection,
   TableBorder,
+  TableDisplay,
   TdBorder,
   TdSlash,
   MaxHeightRatio,

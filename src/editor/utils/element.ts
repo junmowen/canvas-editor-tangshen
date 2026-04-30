@@ -1780,6 +1780,9 @@ export function getSlimCloneElementList(elementList: IElement[]) {
 }
 
 export function getIsBlockElement(element?: IElement) {
+  if (element?.type === ElementType.TABLE && element.tableDisplay === 'inline') {
+    return false
+  }
   return (
     !!element?.type &&
     (BLOCK_ELEMENT_TYPE.includes(element.type) ||

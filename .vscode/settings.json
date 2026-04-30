@@ -41,6 +41,9 @@
     "yarn.lock",
     "src/editor/core/draw/particle/latex/utils"
   ],
+  "files.encoding": "utf8",
+  "files.autoGuessEncoding": false,
+  "files.eol": "\n",
   "typescript.tsdk": "node_modules/typescript/lib",
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"

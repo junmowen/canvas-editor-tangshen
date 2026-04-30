@@ -8,7 +8,7 @@ export class Margin {
 
   constructor(draw: Draw) {
     this.draw = draw
-    this.options = draw.getOptions()
+    this.options = draw.getRuntime().getOptions()
   }
 
   public render(ctx: CanvasRenderingContext2D, pageNo: number) {
@@ -16,10 +16,11 @@ export class Margin {
     const width = this.draw.getWidth()
     const height =
       pageMode === PageMode.CONTINUITY
-        ? this.draw.getCanvasHeight(pageNo) / this.draw.getPagePixelRatio()
+        ? this.draw.getPage(pageNo).height / this.draw.getPagePixelRatio()
         : this.draw.getHeight()
     const margins = this.draw.getMargins()
-    const marginIndicatorSize = this.draw.getMarginIndicatorSize()
+    const marginIndicatorSize =
+      this.draw.getServices().metricsService.getMarginIndicatorSize()
     ctx.save()
     ctx.translate(0.5, 0.5)
     ctx.strokeStyle = marginIndicatorColor

@@ -1,4 +1,4 @@
-import { IElement } from '../../../..'
+import { ElementType, IElement } from '../../../..'
 import { EDITOR_PREFIX } from '../../../../dataset/constant/Editor'
 import { TableOrder } from '../../../../dataset/enum/table/TableTool'
 import { DeepRequired } from '../../../../interface/Common'
@@ -37,6 +37,8 @@ export class TableTool {
   private position: Position
   private range: RangeManager
   private container: HTMLDivElement
+  private overlayHost: HTMLDivElement | null
+  private currentPageNo: number
   private toolRowContainer: HTMLDivElement | null
   private toolRowAddBtn: HTMLDivElement | null
   private toolColAddBtn: HTMLDivElement | null
@@ -53,7 +55,9 @@ export class TableTool {
     this.options = draw.getOptions()
     this.position = draw.getPosition()
     this.range = draw.getRange()
-    this.container = draw.getContainer()
+    this.container = draw.getPageCanvasHost().getContainer()
+    this.overlayHost = null
+    this.currentPageNo = 0
     // x、y轴
     this.toolRowContainer = null
     this.toolRowAddBtn = null
@@ -79,92 +83,189 @@ export class TableTool {
     this.toolTableSelectBtn = null
     this.toolColContainer = null
     this.toolBorderContainer = null
+    this.overlayHost = null
   }
 
   public render() {
-    const { isTable, index, trIndex, tdIndex } =
-      this.position.getPositionContext()
+    const { isTable, trIndex, tdIndex } = this.position.getPositionContext()
     if (!isTable) return
     // 销毁之前工具
     this.dispose()
     const elementList = this.draw.getOriginalElementList()
-    const positionList = this.position.getOriginalPositionList()
-    const element = elementList[index!]
+    const positionContext = this.position.getPositionContext()
+    let index = positionContext.index
+    let element = index !== undefined ? elementList[index] : undefined
+    if (element?.type !== ElementType.TABLE || !element.trList?.length) {
+      const tableId = positionContext.tableId
+      index = tableId
+        ? elementList.findIndex(item => {
+            if (item.type !== ElementType.TABLE || !item.id) return false
+            return (
+              item.id === tableId ||
+              this.draw
+                .getTableLayoutSnapshotAccessor()
+                .isSameLogicalTable(item.id, tableId)
+            )
+          })
+        : -1
+      element = ~index ? elementList[index] : undefined
+    }
+    if (!element?.trList?.length) return
+    const tableElement = element
     // 表格工具配置禁用又非设计模式时不渲染
-    if (element.tableToolDisabled && !this.draw.isDesignMode()) return
+    if (tableElement.tableToolDisabled && !this.draw.isDesignMode()) return
     // 渲染所需数据
     const { scale } = this.options
-    const position = positionList[index!]
-    const { colgroup, trList } = element
-    const {
-      coordinate: { leftTop }
-    } = position
-    const height = this.draw.getHeight()
-    const pageGap = this.draw.getPageGap()
-    const prePageHeight = this.draw.getPageNo() * (height + pageGap)
-    const tableX = leftTop[0]
-    const tableY = leftTop[1] + prePageHeight
-    const td = element.trList![trIndex!].tdList[tdIndex!]
+    const activeSlice = this.draw
+      .getTableLayoutSnapshotAccessor()
+      .resolveSliceByPositionContext(positionContext)
+    let renderTrList = tableElement.trList || []
+    let renderColgroup = tableElement.colgroup || []
+    let renderTd =
+      tableElement.trList?.[trIndex!]?.tdList?.[tdIndex!] || null
+    let tableX = 0
+    let tableY = 0
+    let toolPageNo = this.draw.getPageNo()
+    if (activeSlice) {
+      const fragmentPosition = this.draw
+        .getTableLayoutSnapshotAccessor()
+        .getPageFragmentPositions(activeSlice.pageNo)
+        .find(position => {
+          const fragmentTable = position.tableFragment
+          return (
+            fragmentTable?.tableId === activeSlice.fragmentTableId ||
+            position.element?.id === activeSlice.fragmentTableId
+          )
+        })
+      const fragmentTable = fragmentPosition?.tableFragment || null
+      if (fragmentPosition && fragmentTable?.trList?.length) {
+        renderTrList = fragmentTable.trList
+        renderColgroup = fragmentTable.colgroup || tableElement.colgroup || []
+        renderTd =
+          fragmentTable.trList?.[activeSlice.fragmentTrIndex]?.tdList?.[
+            activeSlice.fragmentTdIndex
+          ] || renderTd
+        tableX = fragmentPosition.coordinate.leftTop[0]
+        tableY = fragmentPosition.coordinate.leftTop[1]
+        toolPageNo = activeSlice.pageNo
+      }
+    }
+    if (!renderTd) {
+      return
+    }
+    if (!renderTrList.length || !renderColgroup.length) {
+      return
+    }
+    if (tableX === 0 && tableY === 0) {
+      const position = this.position.getOriginalPositionList()[index!]
+      if (!position) {
+        return
+      }
+      tableX = position.coordinate.leftTop[0]
+      tableY = position.coordinate.leftTop[1]
+      toolPageNo = position.pageNo ?? this.draw.getPageNo()
+    }
+    this.currentPageNo = toolPageNo
+    this.overlayHost =
+      this.draw.getPageCanvasHost().getPageOverlayHost(toolPageNo) || this.container
+    this.canvas = this.draw.getPageCanvasHost().getPage(toolPageNo)
+    const td = renderTd
     const rowIndex = td.rowIndex
     const colIndex = td.colIndex
-    const tableHeight = element.height! * scale
-    const tableWidth = element.width! * scale
+    const currentLogicalRowIndex = activeSlice?.logicalTrIndex ?? rowIndex
+    let tableBottom = 0
+    let tableRight = 0
+    for (let r = 0; r < renderTrList.length; r++) {
+      const tr = renderTrList[r]
+      for (let d = 0; d < tr.tdList.length; d++) {
+        const currentTd = tr.tdList[d]
+        tableBottom = Math.max(
+          tableBottom,
+          (currentTd.y! + currentTd.height!) * scale
+        )
+        tableRight = Math.max(
+          tableRight,
+          (currentTd.x! + currentTd.width!) * scale
+        )
+      }
+    }
+    const tableHeight = tableBottom
+    const tableWidth = tableRight
     // 表格选择工具
     const tableSelectBtn = document.createElement('div')
     tableSelectBtn.classList.add(`${EDITOR_PREFIX}-table-tool__select`)
-    tableSelectBtn.style.height = `${tableHeight * scale}`
     tableSelectBtn.style.left = `${tableX}px`
     tableSelectBtn.style.top = `${tableY}px`
     tableSelectBtn.style.transform = `translate(-${
       this.TABLE_SELECT_OFFSET * scale
     }px, ${-this.TABLE_SELECT_OFFSET * scale}px)`
+    const tableOperate = this.draw.getComponents().tableOperate
     // 快捷全选
     tableSelectBtn.onclick = () => {
-      this.draw.getTableOperate().tableSelectAll()
+      tableOperate.tableSelectAll()
     }
-    this.container.append(tableSelectBtn)
+    tableSelectBtn.style.pointerEvents = 'auto'
+    this.overlayHost.append(tableSelectBtn)
     this.toolTableSelectBtn = tableSelectBtn
     // 渲染行工具
-    const rowHeightList = trList!.map(tr => tr.height)
+    const rowHeightList = renderTrList.map(tr => tr.height)
     const rowContainer = document.createElement('div')
     rowContainer.classList.add(`${EDITOR_PREFIX}-table-tool__row`)
     rowContainer.style.transform = `translateX(-${
       this.ROW_COL_OFFSET * scale
     }px)`
+    rowContainer.style.pointerEvents = 'auto'
     for (let r = 0; r < rowHeightList.length; r++) {
       const rowHeight = rowHeightList[r] * scale
       const rowItem = document.createElement('div')
       rowItem.classList.add(`${EDITOR_PREFIX}-table-tool__row__item`)
-      if (r === rowIndex) {
+      const activeFragmentRow = renderTrList[r]
+      const activeRowMatchIndex =
+        tableElement.trList?.findIndex(tr => {
+          const originId = (activeFragmentRow as any)?.originId
+          return tr.id === originId || tr.id === activeFragmentRow?.id
+        }) ?? -1
+      const activeLogicalRowIndex =
+        activeRowMatchIndex >= 0 ? activeRowMatchIndex : r
+      if (activeLogicalRowIndex === currentLogicalRowIndex) {
         rowItem.classList.add('active')
       }
       // 快捷行选择
       rowItem.onclick = () => {
+        const fragmentRow = renderTrList[r]
+        const targetRowMatchIndex =
+          tableElement.trList?.findIndex(tr => {
+            const originId = (fragmentRow as any)?.originId
+            return tr.id === originId || tr.id === fragmentRow?.id
+          }) ?? -1
+        const targetLogicalRowIndex =
+          targetRowMatchIndex >= 0 ? targetRowMatchIndex : r
         const tdList = this.draw
           .getTableParticle()
-          .getTdListByRowIndex(trList!, r)
+          .getTdListByRowIndex(tableElement.trList!, targetLogicalRowIndex)
         const firstTd = tdList[0]
         const lastTd = tdList[tdList.length - 1]
         this.position.setPositionContext({
           index,
           isTable: true,
-          trIndex: firstTd.trIndex,
+          trIndex: targetLogicalRowIndex,
           tdIndex: firstTd.tdIndex,
-          tableId: element.id
+          tableId: tableElement.id
         })
         this.range.setRange(
           0,
           0,
-          element.id,
+          tableElement.id,
           firstTd.tdIndex,
           lastTd.tdIndex,
-          firstTd.trIndex,
-          lastTd.trIndex
+          targetLogicalRowIndex,
+          targetLogicalRowIndex
         )
         this.draw.render({
           curIndex: 0,
           isCompute: false,
-          isSubmitHistory: false
+          isSubmitHistory: false,
+          pageRenderScope: 'visible'
         })
         this._setAnchorActive(rowContainer, r)
       }
@@ -174,7 +275,7 @@ export class TableTool {
       rowItemAnchor.onmousedown = evt => {
         this._mousedown({
           evt,
-          element,
+          element: tableElement,
           index: r,
           order: TableOrder.ROW
         })
@@ -185,37 +286,38 @@ export class TableTool {
     }
     rowContainer.style.left = `${tableX}px`
     rowContainer.style.top = `${tableY}px`
-    this.container.append(rowContainer)
+    this.overlayHost.append(rowContainer)
     this.toolRowContainer = rowContainer
     // 添加行按钮
     const rowAddBtn = document.createElement('div')
     rowAddBtn.classList.add(`${EDITOR_PREFIX}-table-tool__quick__add`)
-    rowAddBtn.style.height = `${tableHeight * scale}`
     rowAddBtn.style.left = `${tableX}px`
     rowAddBtn.style.top = `${tableY + tableHeight}px`
     rowAddBtn.style.transform = `translate(-${
       this.ROW_COL_QUICK_POSITION * scale
     }px, ${this.ROW_COL_QUICK_OFFSET * scale}px)`
+    rowAddBtn.style.pointerEvents = 'auto'
     // 快捷添加行
     rowAddBtn.onclick = () => {
       this.position.setPositionContext({
         index,
         isTable: true,
-        trIndex: trList!.length - 1,
+        trIndex: tableElement.trList!.length - 1,
         tdIndex: 0,
-        tableId: element.id
+        tableId: tableElement.id
       })
-      this.draw.getTableOperate().insertTableBottomRow()
+      tableOperate.insertTableBottomRow()
     }
-    this.container.append(rowAddBtn)
+    this.overlayHost.append(rowAddBtn)
     this.toolRowAddBtn = rowAddBtn
     // 渲染列工具
-    const colWidthList = colgroup!.map(col => col.width)
+    const colWidthList = renderColgroup.map(col => col.width)
     const colContainer = document.createElement('div')
     colContainer.classList.add(`${EDITOR_PREFIX}-table-tool__col`)
     colContainer.style.transform = `translateY(-${
       this.ROW_COL_OFFSET * scale
     }px)`
+    colContainer.style.pointerEvents = 'auto'
     for (let c = 0; c < colWidthList.length; c++) {
       const colWidth = colWidthList[c] * scale
       const colItem = document.createElement('div')
@@ -227,7 +329,7 @@ export class TableTool {
       colItem.onclick = () => {
         const tdList = this.draw
           .getTableParticle()
-          .getTdListByColIndex(trList!, c)
+          .getTdListByColIndex(tableElement.trList!, c)
         const firstTd = tdList[0]
         const lastTd = tdList[tdList.length - 1]
         this.position.setPositionContext({
@@ -235,12 +337,12 @@ export class TableTool {
           isTable: true,
           trIndex: firstTd.trIndex,
           tdIndex: firstTd.tdIndex,
-          tableId: element.id
+          tableId: tableElement.id
         })
         this.range.setRange(
           0,
           0,
-          element.id,
+          tableElement.id,
           firstTd.tdIndex,
           lastTd.tdIndex,
           firstTd.trIndex,
@@ -249,7 +351,8 @@ export class TableTool {
         this.draw.render({
           curIndex: 0,
           isCompute: false,
-          isSubmitHistory: false
+          isSubmitHistory: false,
+          pageRenderScope: 'visible'
         })
         this._setAnchorActive(colContainer, c)
       }
@@ -259,7 +362,7 @@ export class TableTool {
       colItemAnchor.onmousedown = evt => {
         this._mousedown({
           evt,
-          element,
+          element: tableElement,
           index: c,
           order: TableOrder.COL
         })
@@ -270,29 +373,29 @@ export class TableTool {
     }
     colContainer.style.left = `${tableX}px`
     colContainer.style.top = `${tableY}px`
-    this.container.append(colContainer)
+    this.overlayHost.append(colContainer)
     this.toolColContainer = colContainer
     // 添加列按钮
     const colAddBtn = document.createElement('div')
     colAddBtn.classList.add(`${EDITOR_PREFIX}-table-tool__quick__add`)
-    colAddBtn.style.height = `${tableHeight * scale}`
     colAddBtn.style.left = `${tableX + tableWidth}px`
     colAddBtn.style.top = `${tableY}px`
     colAddBtn.style.transform = `translate(${
       this.ROW_COL_QUICK_OFFSET * scale
     }px, -${this.ROW_COL_QUICK_POSITION * scale}px)`
+    colAddBtn.style.pointerEvents = 'auto'
     // 快捷添加列
     colAddBtn.onclick = () => {
       this.position.setPositionContext({
         index,
         isTable: true,
         trIndex: 0,
-        tdIndex: trList![0].tdList.length - 1 || 0,
-        tableId: element.id
+        tdIndex: tableElement.trList![0].tdList.length - 1 || 0,
+        tableId: tableElement.id
       })
-      this.draw.getTableOperate().insertTableRightCol()
+      tableOperate.insertTableRightCol()
     }
-    this.container.append(colAddBtn)
+    this.overlayHost.append(colAddBtn)
     this.toolColAddBtn = colAddBtn
     // 渲染单元格边框拖拽工具
     const borderContainer = document.createElement('div')
@@ -301,8 +404,8 @@ export class TableTool {
     borderContainer.style.width = `${tableWidth}px`
     borderContainer.style.left = `${tableX}px`
     borderContainer.style.top = `${tableY}px`
-    for (let r = 0; r < trList!.length; r++) {
-      const tr = trList![r]
+    for (let r = 0; r < renderTrList.length; r++) {
+      const tr = renderTrList[r]
       for (let d = 0; d < tr.tdList.length; d++) {
         const td = tr.tdList[d]
         const rowBorder = document.createElement('div')
@@ -317,7 +420,7 @@ export class TableTool {
         rowBorder.onmousedown = evt => {
           this._mousedown({
             evt,
-            element,
+            element: tableElement,
             index: td.rowIndex! + td.rowspan - 1,
             order: TableOrder.ROW
           })
@@ -335,7 +438,7 @@ export class TableTool {
         colBorder.onmousedown = evt => {
           this._mousedown({
             evt,
-            element,
+            element: tableElement,
             index: td.colIndex! + td.colspan - 1,
             order: TableOrder.COL
           })
@@ -343,7 +446,7 @@ export class TableTool {
         borderContainer.appendChild(colBorder)
       }
     }
-    this.container.append(borderContainer)
+    this.overlayHost.append(borderContainer)
     this.toolBorderContainer = borderContainer
   }
 
@@ -361,14 +464,12 @@ export class TableTool {
 
   private _mousedown(payload: IAnchorMouseDown) {
     const { evt, index, order, element } = payload
-    this.canvas = this.draw.getPage()
+    this.canvas = this.draw.getPage(this.currentPageNo)
     const { scale } = this.options
     const width = this.draw.getWidth()
     const height = this.draw.getHeight()
-    const pageGap = this.draw.getPageGap()
-    const prePageHeight = this.draw.getPageNo() * (height + pageGap)
-    this.mousedownX = evt.x
-    this.mousedownY = evt.y
+    this.mousedownX = evt.clientX
+    this.mousedownY = evt.clientY
     const target = evt.target as HTMLDivElement
     const canvasRect = this.canvas.getBoundingClientRect()
     // 改变光标
@@ -384,16 +485,17 @@ export class TableTool {
       anchorLine.classList.add(`${EDITOR_PREFIX}-table-anchor__line__row`)
       anchorLine.style.width = `${width}px`
       startX = 0
-      startY = prePageHeight + this.mousedownY - canvasRect.top
+      startY = this.mousedownY - canvasRect.top
     } else {
       anchorLine.classList.add(`${EDITOR_PREFIX}-table-anchor__line__col`)
       anchorLine.style.height = `${height}px`
       startX = this.mousedownX - canvasRect.left
-      startY = prePageHeight
+      startY = 0
     }
     anchorLine.style.left = `${startX}px`
     anchorLine.style.top = `${startY}px`
-    this.container.append(anchorLine)
+    anchorLine.style.pointerEvents = 'none'
+    ;(this.overlayHost || this.container).append(anchorLine)
     this.anchorLine = anchorLine
     // 追加全局事件
     let dx = 0
@@ -499,8 +601,8 @@ export class TableTool {
     startY: number
   ): { dx: number; dy: number } | null {
     if (!this.anchorLine) return null
-    const dx = evt.x - this.mousedownX
-    const dy = evt.y - this.mousedownY
+    const dx = evt.clientX - this.mousedownX
+    const dy = evt.clientY - this.mousedownY
     if (tableOrder === TableOrder.ROW) {
       this.anchorLine.style.top = `${startY + dy}px`
     } else {

@@ -4,6 +4,7 @@ import {
 } from '../../../../dataset/constant/Editor'
 import { EditorComponent } from '../../../../dataset/enum/Editor'
 import { IElementPosition } from '../../../../interface/Element'
+import { I18n } from '../../../i18n/I18n'
 import { Draw } from '../../Draw'
 
 export interface IDatePickerLang {
@@ -64,6 +65,7 @@ interface IRenderOption {
 
 export class DatePicker {
   private draw: Draw
+  private i18n: I18n
   private options: IDatePickerOption
   private now: Date
   private dom: IDatePickerDom
@@ -72,8 +74,9 @@ export class DatePicker {
   private pickDate: Date | null
   private lang: IDatePickerLang
 
-  constructor(draw: Draw, options: IDatePickerOption = {}) {
+  constructor(draw: Draw, i18n: I18n, options: IDatePickerOption = {}) {
     this.draw = draw
+    this.i18n = i18n
     this.options = options
     this.lang = this._getLang()
     this.now = new Date()
@@ -182,7 +185,7 @@ export class DatePicker {
     datePickerContainer.append(dateWrap)
     datePickerContainer.append(timeWrap)
     datePickerContainer.append(datePickerMenu)
-    this.draw.getContainer().append(datePickerContainer)
+    this.draw.getPageCanvasHost().getContainer().append(datePickerContainer)
     return {
       container: datePickerContainer,
       dateWrap,
@@ -296,7 +299,7 @@ export class DatePicker {
   }
 
   private _getLang() {
-    const i18n = this.draw.getI18n()
+    const i18n = this.i18n
     const t = i18n.t.bind(i18n)
     return {
       now: t('datePicker.now'),

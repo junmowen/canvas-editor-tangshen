@@ -20,44 +20,91 @@ import { Draw } from '../../Draw'
 import { DatePicker } from '../../particle/date/DatePicker'
 import { Control } from '../Control'
 
+/**
+ * 日期控件。
+ *
+ * 提供日期选择功能，通过日期选择器弹出选择日期。
+ */
 export class DateControl implements IControlInstance {
+  /** Draw 门面对象 */
   private draw: Draw
+  /** 控件元素 */
   private element: IElement
+  /** 控件管理器 */
   private control: Control
+  /** 是否已弹出日期选择器 */
   private isPopup: boolean
+  /** 日期选择器实例 */
   private datePicker: DatePicker | null
+  /** 编辑器选项 */
   private options: DeepRequired<IEditorOption>
 
+  /**
+   * 构造函数。
+   *
+   * @param element - 控件元素
+   * @param control - 控件管理器
+   */
   constructor(element: IElement, control: Control) {
     const draw = control.getDraw()
     this.draw = draw
     this.options = draw.getOptions()
     this.element = element
     this.control = control
+    // 初始化状态
     this.isPopup = false
     this.datePicker = null
   }
 
+  /**
+   * 设置控件元素。
+   *
+   * @param element - 新的控件元素
+   */
   public setElement(element: IElement) {
     this.element = element
   }
 
+  /**
+   * 获取控件元素。
+   *
+   * @returns 控件元素
+   */
   public getElement(): IElement {
     return this.element
   }
 
+  /**
+   * 判断日期选择器是否已弹出。
+   *
+   * @returns 是否已弹出
+   */
   public getIsPopup(): boolean {
     return this.isPopup
   }
 
+  /**
+   * 获取控件值的范围索引。
+   *
+   * @param context - 控件上下文
+   * @returns 控件值的起始和结束索引，不存在时返回 null
+   */
+  /**
+   * 获取控件值的范围索引。
+   *
+   * @param context - 控件上下文
+   * @returns 控件值的起始和结束索引，不存在时返回 null
+   */
   public getValueRange(context: IControlContext = {}): [number, number] | null {
     const elementList = context.elementList || this.control.getElementList()
-    const { startIndex } = context.range || this.control.getRange()
+    const { startIndex } =
+      context.range || this.control.getEditBoundaryRange()
     const startElement = elementList[startIndex]
-    // 向左查找
+    // 向左查找值元素范围
     let preIndex = startIndex
     while (preIndex > 0) {
       const preElement = elementList[preIndex]
+      // 遇到前缀或前文本时停止
       if (
         preElement.controlId !== startElement.controlId ||
         preElement.controlComponent === ControlComponent.PREFIX ||
@@ -67,10 +114,11 @@ export class DateControl implements IControlInstance {
       }
       preIndex--
     }
-    // 向右查找
+    // 向右查找值元素范围
     let nextIndex = startIndex + 1
     while (nextIndex < elementList.length) {
       const nextElement = elementList[nextIndex]
+      // 遇到后缀或后文本时停止
       if (
         nextElement.controlId !== startElement.controlId ||
         nextElement.controlComponent === ControlComponent.POSTFIX ||
@@ -80,14 +128,28 @@ export class DateControl implements IControlInstance {
       }
       nextIndex++
     }
+    // 如果范围为空，返回 null
     if (preIndex === nextIndex) return null
     return [preIndex, nextIndex - 1]
   }
 
+  /**
+   * 获取控件值。
+   *
+   * @param context - 控件上下文
+   * @returns 控件值元素列表
+   */
+  /**
+   * 获取控件值。
+   *
+   * @param context - 控件上下文
+   * @returns 控件值元素列表
+   */
   public getValue(context: IControlContext = {}): IElement[] {
     const elementList = context.elementList || this.control.getElementList()
     const range = this.getValueRange(context)
     if (!range) return []
+    // 收集值元素
     const data: IElement[] = []
     const [startIndex, endIndex] = range
     for (let i = startIndex; i <= endIndex; i++) {
@@ -99,6 +161,14 @@ export class DateControl implements IControlInstance {
     return data
   }
 
+  /**
+   * 设置控件值。
+   *
+   * @param data - 元素列表
+   * @param context - 控件上下文
+   * @param options - 控件规则选项
+   * @returns 新的光标位置
+   */
   public setValue(
     data: IElement[],
     context: IControlContext = {},
@@ -112,7 +182,7 @@ export class DateControl implements IControlInstance {
       return -1
     }
     const elementList = context.elementList || this.control.getElementList()
-    const range = context.range || this.control.getRange()
+    const range = context.range || this.control.getEditBoundaryRange()
     // 收缩边界到Value内
     this.control.shrinkBoundary(context)
     const { startIndex, endIndex } = range
@@ -145,6 +215,7 @@ export class DateControl implements IControlInstance {
         ...data[i],
         controlComponent: ControlComponent.VALUE
       }
+      // 格式化元素上下文
       formatElementContext(elementList, [newElement], startIndex, {
         editorOptions: this.options
       })
@@ -153,6 +224,13 @@ export class DateControl implements IControlInstance {
     return start + data.length - 1
   }
 
+  /**
+   * 清空选中状态。
+   *
+   * @param context - 控件上下文
+   * @param options - 控件规则选项
+   * @returns 新的光标位置
+   */
   public clearSelect(
     context: IControlContext = {},
     options: IControlRuleOption = {}
@@ -198,7 +276,7 @@ export class DateControl implements IControlInstance {
       return
     }
     const elementList = context.elementList || this.control.getElementList()
-    const range = context.range || this.control.getRange()
+    const range = context.range || this.control.getEditBoundaryRange()
     // 样式赋值元素-默认值的第一个字符样式，否则取默认样式
     const valueElement = this.getValue(context)[0]
     const styleElement = valueElement
@@ -248,7 +326,7 @@ export class DateControl implements IControlInstance {
       return null
     }
     const elementList = this.control.getElementList()
-    const range = this.control.getRange()
+    const range = this.control.getEditBoundaryRange()
     // 收缩边界到Value内
     this.control.shrinkBoundary()
     const { startIndex, endIndex } = range
@@ -333,7 +411,7 @@ export class DateControl implements IControlInstance {
       return -1
     }
     this.control.shrinkBoundary()
-    const { startIndex, endIndex } = this.control.getRange()
+    const { startIndex, endIndex } = this.control.getEditBoundaryRange()
     if (startIndex === endIndex) {
       return startIndex
     }
@@ -355,15 +433,17 @@ export class DateControl implements IControlInstance {
     ) {
       return
     }
-    const position = this.control.getPosition()
+    const positionList = this.control.getDraw().getPosition().getPositionList()
+    const { endIndex } = this.control.getEditBoundaryRange()
+    const position = positionList[endIndex] || null
     if (!position) return
     const elementList = this.draw.getElementList()
-    const { startIndex } = this.control.getRange()
+    const { startIndex } = this.control.getEditBoundaryRange()
     if (elementList[startIndex + 1]?.controlId !== this.element.controlId) {
       return
     }
     // 渲染日期控件
-    this.datePicker = new DatePicker(this.draw, {
+    this.datePicker = new DatePicker(this.draw, this.draw.getComponents().i18n, {
       onSubmit: this._setDate.bind(this)
     })
     const value =

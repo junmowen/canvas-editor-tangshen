@@ -1,0 +1,65 @@
+import { CanvasEvent } from '../../CanvasEvent'
+import { clearCrossRowColSelection } from '../shared/clearCrossRowColSelection'
+import { finalizeDeletion } from '../shared/finalizeDeletion'
+import { handleControlDeletion } from '../shared/handleControlDeletion'
+import { removeHiddenElements } from '../shared/removeHiddenElements'
+
+export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
+  const draw = host.getDraw()
+  const components = draw.getComponents()
+  if (draw.isReadonly()) return
+  const rangeManager = components.range
+  if (!rangeManager.getIsCanInput()) return
+  const { startIndex, endIndex, isCrossRowCol } =
+    rangeManager.getEditBoundaryRange()
+  const elementList = draw.getElementList()
+  const control = components.control
+  const tableNavigationService = components.tableNavigationService
+  if (rangeManager.getIsCollapsed()) {
+    removeHiddenElements(host, 'next')
+  }
+  let curIndex: number | null
+  if (isCrossRowCol) {
+    curIndex = clearCrossRowColSelection(draw)
+    if (curIndex === null) return
+  } else if (elementList[endIndex + 1]?.controlId) {
+    curIndex = control.removeControl(endIndex + 1)
+  } else {
+    curIndex = handleControlDeletion(
+      control,
+      evt,
+      () => !!(control.getActiveControl() && control.getIsRangeWithinControl())
+    )
+    if (curIndex === null) {
+      const position = components.position
+      const cursorPosition = position.getCursorPosition()
+      if (!cursorPosition) return
+      const { index } = cursorPosition
+      const positionContext = position.getPositionContext()
+      if (positionContext.isDirectHit && positionContext.isImage) {
+        draw.spliceElementList(elementList, index, 1)
+        curIndex = index - 1
+      } else {
+        const isCollapsed = rangeManager.getIsCollapsed()
+        if (!isCollapsed) {
+          draw.spliceElementList(
+            elementList,
+            startIndex + 1,
+            endIndex - startIndex
+          )
+        } else {
+          if (!elementList[index + 1]) return
+          draw.spliceElementList(elementList, index + 1, 1)
+        }
+        curIndex = isCollapsed
+          ? tableNavigationService.resolveFragmentTransitionIndex({
+              positionContext,
+              cursorIndex: index,
+              direction: 'next'
+            }) ?? index
+          : startIndex
+      }
+    }
+  }
+  finalizeDeletion({ draw, startIndex, curIndex })
+}

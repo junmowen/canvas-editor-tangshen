@@ -1,6 +1,5 @@
 import { IOverrideResult } from '../../override/Override'
 import { CanvasEvent } from '../CanvasEvent'
-import { pasteImage } from './paste'
 
 export function drop(evt: DragEvent, host: CanvasEvent) {
   const draw = host.getDraw()
@@ -21,7 +20,7 @@ export function drop(evt: DragEvent, host: CanvasEvent) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
       if (file.type.startsWith('image')) {
-        pasteImage(host, file)
+        host.getClipboardController().pasteImage(file)
       }
     }
   }

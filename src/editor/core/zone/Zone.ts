@@ -18,16 +18,16 @@ export class Zone {
   private currentZone: EditorZone
   private indicatorContainer: HTMLDivElement | null
 
-  constructor(draw: Draw) {
+  constructor(draw: Draw, i18n: I18n) {
     this.draw = draw
-    this.i18n = draw.getI18n()
-    this.options = draw.getOptions()
-    this.container = draw.getContainer()
+    this.i18n = i18n
+    this.options = draw.getRuntime().getOptions()
+    this.container = draw.getPageCanvasHost().getContainer()
     this.currentZone = EditorZone.MAIN
     this.indicatorContainer = null
     // 区域提示
     if (!this.options.zone.tipDisabled) {
-      new ZoneTip(draw, this)
+      new ZoneTip(draw, this, i18n)
     }
   }
 
@@ -47,6 +47,10 @@ export class Zone {
     return this.currentZone
   }
 
+  public replaceZone(payload: EditorZone) {
+    this.currentZone = payload
+  }
+
   public setZone(payload: EditorZone) {
     const { header, footer } = this.options
     if (
@@ -61,7 +65,8 @@ export class Zone {
     this.draw.render({
       isSubmitHistory: false,
       isSetCursor: false,
-      isCompute: false
+      isCompute: false,
+      pageRenderScope: 'visible'
     })
     // 指示器
     this.drawZoneIndicator()

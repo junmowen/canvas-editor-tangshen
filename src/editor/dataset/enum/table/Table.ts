@@ -6,6 +6,11 @@ export enum TableBorder {
   DASH = 'dash'
 }
 
+export enum TableDisplay {
+  BLOCK = 'block',
+  INLINE = 'inline'
+}
+
 export enum TdBorder {
   TOP = 'top',
   RIGHT = 'right',

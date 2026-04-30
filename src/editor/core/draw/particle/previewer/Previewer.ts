@@ -13,6 +13,8 @@ import { Draw } from '../../Draw'
 
 export class Previewer {
   private container: HTMLDivElement
+  private modalHost: HTMLDivElement
+  private overlayHost: HTMLDivElement | null
   private canvas: HTMLCanvasElement
   private draw: Draw
   private options: Required<IEditorOption>
@@ -38,15 +40,18 @@ export class Previewer {
   private mousedownX: number
   private mousedownY: number
   private curHandleIndex: number
+  private currentPageNo: number
   // 预览选区
   private previewerContainer: HTMLDivElement | null
   private previewerImage: HTMLImageElement | null
 
   constructor(draw: Draw) {
-    this.container = draw.getContainer()
-    this.canvas = draw.getPage()
+    this.container = draw.getPageCanvasHost().getContainer()
+    this.modalHost = draw.getPageCanvasHost().getModalHost()
+    this.overlayHost = null
+    this.canvas = draw.getPageCanvasHost().getPage(draw.getPageNo())
     this.draw = draw
-    this.options = draw.getOptions()
+    this.options = draw.getRuntime().getOptions()
     this.curElement = null
     this.curElementSrc = ''
     this.previewerDrawOption = {}
@@ -75,8 +80,31 @@ export class Previewer {
     this.mousedownX = 0
     this.mousedownY = 0
     this.curHandleIndex = 0 // 默认右下角
+    this.currentPageNo = 0
     this.previewerContainer = null
     this.previewerImage = null
+  }
+
+  private _resolvePageNo(
+    element: IElement,
+    position: IElementPosition | null = null
+  ): number {
+    return element.imgFloatPosition?.pageNo ?? position?.pageNo ?? this.draw.getPageNo()
+  }
+
+  private _resolveOverlayHost(pageNo: number): HTMLDivElement {
+    return this.draw.getPageCanvasHost().getPageOverlayHost(pageNo) || this.container
+  }
+
+  private _attachResizerHost(pageNo: number) {
+    this.currentPageNo = pageNo
+    this.overlayHost = this._resolveOverlayHost(pageNo)
+    if (this.resizerSelection.parentElement !== this.overlayHost) {
+      this.overlayHost.append(this.resizerSelection)
+    }
+    if (this.resizerImageContainer.parentElement !== this.overlayHost) {
+      this.overlayHost.append(this.resizerImageContainer)
+    }
   }
 
   private _getElementPosition(
@@ -86,14 +114,10 @@ export class Previewer {
     const { scale } = this.options
     let x = 0
     let y = 0
-    const height = this.draw.getHeight()
-    const pageGap = this.draw.getPageGap()
-    const pageNo = position?.pageNo ?? this.draw.getPageNo()
-    const preY = pageNo * (height + pageGap)
     // 优先使用浮动位置
     if (element.imgFloatPosition) {
       x = element.imgFloatPosition.x! * scale
-      y = element.imgFloatPosition.y * scale + preY
+      y = element.imgFloatPosition.y * scale
     } else if (position) {
       const {
         coordinate: {
@@ -102,7 +126,7 @@ export class Previewer {
         ascent
       } = position
       x = left
-      y = top + preY + ascent
+      y = top + ascent
     }
     return { x, y }
   }
@@ -159,11 +183,11 @@ export class Previewer {
   }
 
   private _mousedown(evt: MouseEvent) {
-    this.canvas = this.draw.getPage()
+    this.canvas = this.draw.getPage(this.currentPageNo)
     if (!this.curElement) return
     const { scale } = this.options
-    this.mousedownX = evt.x
-    this.mousedownY = evt.y
+    this.mousedownX = evt.clientX
+    this.mousedownY = evt.clientY
     const target = evt.target as HTMLDivElement
     this.curHandleIndex = Number(target.dataset.index)
     // 改变光标
@@ -218,47 +242,47 @@ export class Previewer {
     switch (this.curHandleIndex) {
       case 0:
         {
-          const offsetX = this.mousedownX - evt.x
-          const offsetY = this.mousedownY - evt.y
+          const offsetX = this.mousedownX - evt.clientX
+          const offsetY = this.mousedownY - evt.clientY
           dx = Math.cbrt(offsetX ** 3 + offsetY ** 3)
           dy = (this.curElement.height! * dx) / this.curElement.width!
         }
         break
       case 1:
-        dy = this.mousedownY - evt.y
+        dy = this.mousedownY - evt.clientY
         break
       case 2:
         {
-          const offsetX = evt.x - this.mousedownX
-          const offsetY = this.mousedownY - evt.y
+          const offsetX = evt.clientX - this.mousedownX
+          const offsetY = this.mousedownY - evt.clientY
           dx = Math.cbrt(offsetX ** 3 + offsetY ** 3)
           dy = (this.curElement.height! * dx) / this.curElement.width!
         }
         break
       case 4:
         {
-          const offsetX = evt.x - this.mousedownX
-          const offsetY = evt.y - this.mousedownY
+          const offsetX = evt.clientX - this.mousedownX
+          const offsetY = evt.clientY - this.mousedownY
           dx = Math.cbrt(offsetX ** 3 + offsetY ** 3)
           dy = (this.curElement.height! * dx) / this.curElement.width!
         }
         break
       case 3:
-        dx = evt.x - this.mousedownX
+        dx = evt.clientX - this.mousedownX
         break
       case 5:
-        dy = evt.y - this.mousedownY
+        dy = evt.clientY - this.mousedownY
         break
       case 6:
         {
-          const offsetX = this.mousedownX - evt.x
-          const offsetY = evt.y - this.mousedownY
+          const offsetX = this.mousedownX - evt.clientX
+          const offsetY = evt.clientY - this.mousedownY
           dx = Math.cbrt(offsetX ** 3 + offsetY ** 3)
           dy = (this.curElement.height! * dx) / this.curElement.width!
         }
         break
       case 7:
-        dx = this.mousedownX - evt.x
+        dx = this.mousedownX - evt.clientX
         break
     }
     // 图片实际宽高（变化大小除掉缩放比例）
@@ -391,23 +415,23 @@ export class Previewer {
     menuContainer.append(imageDownload)
     previewerContainer.append(menuContainer)
     this.previewerContainer = previewerContainer
-    document.body.append(previewerContainer)
+    this.modalHost.append(previewerContainer)
     // 拖拽调整位置
     let startX = 0
     let startY = 0
     let isAllowDrag = false
     img.onmousedown = evt => {
       isAllowDrag = true
-      startX = evt.x
-      startY = evt.y
+      startX = evt.clientX
+      startY = evt.clientY
       previewerContainer.style.cursor = 'move'
     }
     previewerContainer.onmousemove = (evt: MouseEvent) => {
       if (!isAllowDrag) return
-      x += evt.x - startX
-      y += evt.y - startY
-      startX = evt.x
-      startY = evt.y
+      x += evt.clientX - startX
+      y += evt.clientY - startY
+      startX = evt.clientX
+      startY = evt.clientY
       this._setPreviewerTransform(scaleSize, rotateSize, x, y)
     }
     previewerContainer.onmouseup = () => {
@@ -469,7 +493,6 @@ export class Previewer {
   private _clearPreviewer() {
     this.previewerContainer?.remove()
     this.previewerContainer = null
-    document.body.style.overflow = 'auto'
   }
 
   public _updateResizerRect(width: number, height: number) {
@@ -520,7 +543,6 @@ export class Previewer {
     this.curShowElement = this.curElement
     // 渲染预览框
     this._drawPreviewer()
-    document.body.style.overflow = 'hidden'
   }
 
   public drawResizer(
@@ -553,6 +575,9 @@ export class Previewer {
     position: IElementPosition | null = null
   ) {
     const { scale } = this.options
+    const pageNo = this._resolvePageNo(element, position)
+    this._attachResizerHost(pageNo)
+    this.canvas = this.draw.getPage(pageNo)
     const elementWidth = element.width! * scale
     const elementHeight = element.height! * scale
     // 尺寸预览

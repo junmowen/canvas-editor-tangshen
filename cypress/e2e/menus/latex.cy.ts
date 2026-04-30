@@ -4,7 +4,7 @@ describe('菜单-LaTeX', () => {
   beforeEach(() => {
     cy.visit('http://localhost:3000/canvas-editor/')
 
-    cy.get('canvas').first().as('canvas').should('have.length', 1)
+    cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
 
   const text = 'canvas-editor'

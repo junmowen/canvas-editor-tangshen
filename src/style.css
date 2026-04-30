@@ -430,6 +430,24 @@ ul {
   border-bottom: 1px solid #e2e6ed;
 }
 
+.menu-item .menu-item__table__collapse .table-display-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #3d4757;
+  cursor: pointer;
+  user-select: none;
+}
+
+.menu-item .menu-item__table__collapse .table-display-option input {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
 .table-title span {
   font-size: 12px;
   color: #3d4757;

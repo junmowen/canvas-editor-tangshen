@@ -57,19 +57,21 @@ export class TableParticle {
       .getPosition()
       .getPositionContext()
     if (!isTable) return null
+    const originalElementList = this.draw.getOriginalElementList()
+    const element = this.resolveRangeTableElement(originalElementList, index)
+    const curTrList = element?.trList
+    if (!curTrList?.length) return null
     const {
       isCrossRowCol,
       startTdIndex,
       endTdIndex,
       startTrIndex,
       endTrIndex
-    } = this.range.getRange()
-    const originalElementList = this.draw.getOriginalElementList()
-    const element = originalElementList[index!]
-    const curTrList = element.trList!
+    } = this.range.getEditBoundaryRange()
     // 非跨列直接返回光标所在单元格
     if (!isCrossRowCol) {
-      return [[curTrList[trIndex!].tdList[tdIndex!]]]
+      const td = curTrList[trIndex!]?.tdList?.[tdIndex!]
+      return td ? [[td]] : null
     }
     let startTd = curTrList[startTrIndex!]?.tdList[startTdIndex!]
     let endTd = curTrList[endTrIndex!]?.tdList[endTdIndex!]
@@ -106,6 +108,40 @@ export class TableParticle {
       }
     }
     return rowCol.length ? rowCol : null
+  }
+
+  private resolveRangeTableElement(
+    originalElementList: IElement[],
+    index?: number
+  ): IElement | null {
+    const directElement = index !== undefined ? originalElementList[index] : null
+    if (directElement?.trList?.length) {
+      return directElement
+    }
+
+    const positionContext = this.draw.getPosition().getPositionContext()
+    const activeSlice = this.draw
+      .getTableLayoutSnapshotAccessor()
+      .resolveSliceByPositionContext(positionContext)
+    const sliceElement =
+      activeSlice?.logicalTableIndex !== undefined
+        ? originalElementList[activeSlice.logicalTableIndex]
+        : null
+    if (sliceElement?.trList?.length) {
+      return sliceElement
+    }
+
+    const tableId = this.range.getEditBoundaryRange().tableId
+    if (tableId) {
+      const matchedElement = originalElementList.find(
+        element => element.type === ElementType.TABLE && element.id === tableId
+      )
+      if (matchedElement?.trList?.length) {
+        return matchedElement
+      }
+    }
+
+    return null
   }
 
   private _drawOuterBorder(payload: IDrawTableBorderOption) {
@@ -190,6 +226,7 @@ export class TableParticle {
     } = this.options
     const tableWidth = element.width! * scale
     const tableHeight = element.height! * scale
+    const isFragmentTable = !!(element as any).logicalTableId
     // 无边框
     const isEmptyBorderType = borderType === TableBorder.EMPTY
     // 仅外边框
@@ -240,6 +277,17 @@ export class TableParticle {
         ctx.beginPath()
         // 单元格边框
         if (td.borderTypes?.includes(TdBorder.TOP)) {
+          ctx.moveTo(x - width, y)
+          ctx.lineTo(x, y)
+          ctx.stroke()
+        }
+        if (
+          isFragmentTable &&
+          t === 0 &&
+          !isEmptyBorderType &&
+          !isInternalBorderType &&
+          !td.borderTypes?.includes(TdBorder.TOP)
+        ) {
           ctx.moveTo(x - width, y)
           ctx.lineTo(x, y)
           ctx.stroke()
@@ -563,33 +611,66 @@ export class TableParticle {
       endTdIndex,
       startTrIndex,
       endTrIndex
-    } = this.range.getRange()
-    // 存在跨行/列
+    } = this.range.getEditBoundaryRange()
     if (!isCrossRowCol) return
-    let startTd = trList[startTrIndex!]?.tdList[startTdIndex!]
-    let endTd = trList[endTrIndex!]?.tdList[endTdIndex!]
-    if (!startTd || !endTd) return
-    // 交换起始位置
-    if (startTd.x! > endTd.x! || startTd.y! > endTd.y!) {
-      // prettier-ignore
-      [startTd, endTd] = [endTd, startTd]
+
+    const minLogicalTdIndex = Math.min(startTdIndex ?? 0, endTdIndex ?? 0)
+    const maxLogicalTdIndex = Math.max(startTdIndex ?? 0, endTdIndex ?? 0)
+    const minLogicalTrIndex = Math.min(startTrIndex ?? 0, endTrIndex ?? 0)
+    const maxLogicalTrIndex = Math.max(startTrIndex ?? 0, endTrIndex ?? 0)
+    const isFragmentTable = !!(element as any).logicalTableId
+    let logicalTable = element
+
+    if (isFragmentTable) {
+      const logicalTableIndex = this.draw
+        .getTableLayoutSnapshotAccessor()
+        .resolveLogicalTableIndex((element as any).tableId || element.id)
+      if (logicalTableIndex !== null) {
+        logicalTable =
+          this.draw.getOriginalElementList()[logicalTableIndex] || logicalTable
+      }
     }
-    const startColIndex = startTd.colIndex!
-    const endColIndex = endTd.colIndex! + (endTd.colspan - 1)
-    const startRowIndex = startTd.rowIndex!
-    const endRowIndex = endTd.rowIndex! + (endTd.rowspan - 1)
+
     ctx.save()
     for (let t = 0; t < trList.length; t++) {
       const tr = trList[t]
       for (let d = 0; d < tr.tdList.length; d++) {
         const td = tr.tdList[d]
-        const tdColIndex = td.colIndex!
-        const tdRowIndex = td.rowIndex!
+        let tdColIndex = td.colIndex!
+        let tdRowIndex = td.rowIndex!
+        let tdColSpan = td.colspan
+        let tdRowSpan = td.rowspan
+
+        if (isFragmentTable) {
+          const activeSlice = this.draw
+            .getTableLayoutSnapshotAccessor()
+            .resolveSliceByFragmentContext({
+              tableId: (element as any).tableId || element.id!,
+              trId: tr.id!,
+              tdId: td.id!,
+              trIndex: t,
+              tdIndex: d
+            })
+          if (!activeSlice) {
+            continue
+          }
+          tdColIndex = activeSlice.logicalTdIndex
+          tdRowIndex = activeSlice.logicalTrIndex
+          const logicalTd =
+            logicalTable.trList?.[activeSlice.logicalTrIndex]?.tdList?.[
+              activeSlice.logicalTdIndex
+            ]
+          tdColSpan = logicalTd?.colspan || tdColSpan
+          tdRowSpan = logicalTd?.rowspan || tdRowSpan
+        }
+
+        const tdColEnd = tdColIndex + tdColSpan - 1
+        const tdRowEnd = tdRowIndex + tdRowSpan - 1
         if (
-          tdColIndex >= startColIndex &&
-          tdColIndex <= endColIndex &&
-          tdRowIndex >= startRowIndex &&
-          tdRowIndex <= endRowIndex
+          tdColEnd >= minLogicalTdIndex &&
+          tdColIndex <= maxLogicalTdIndex &&
+          tdRowEnd >= minLogicalTrIndex &&
+          tdRowIndex <= maxLogicalTrIndex
         ) {
           const x = td.x! * scale
           const y = td.y! * scale
@@ -612,5 +693,25 @@ export class TableParticle {
   ) {
     this._drawBackgroundColor(ctx, element, startX, startY)
     this._drawBorder(ctx, element, startX, startY)
+    if ((element as any).logicalTableId) {
+      const {
+        scale,
+        table: { defaultBorderColor }
+      } = this.options
+      const borderColor = element.borderColor || defaultBorderColor
+      const borderHeight = Math.max(
+        1,
+        Math.ceil((element.borderWidth || 1) * scale)
+      )
+      ctx.save()
+      ctx.fillStyle = borderColor
+      ctx.fillRect(
+        startX,
+        startY,
+        element.width! * scale,
+        borderHeight
+      )
+      ctx.restore()
+    }
   }
 }

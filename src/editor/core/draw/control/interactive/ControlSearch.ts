@@ -17,12 +17,18 @@ import { Control } from '../Control'
 
 type IHighlightMatchResult = (ISearchResult & IControlHighlightRule)[]
 
+interface IControlRenderMatch {
+  searchMatch: ISearchResult & IControlHighlightRule
+  position: IElementPosition
+}
+
 export class ControlSearch {
   private draw: Draw
   private control: Control
   private options: DeepRequired<IEditorOption>
   private highlightList: IControlHighlight[]
   private highlightMatchResult: IHighlightMatchResult
+  private highlightMatchPageMap: Map<number, IControlRenderMatch[]>
 
   constructor(control: Control) {
     this.draw = control.getDraw()
@@ -31,6 +37,7 @@ export class ControlSearch {
 
     this.highlightList = []
     this.highlightMatchResult = []
+    this.highlightMatchPageMap = new Map()
   }
 
   // 获取控件设置高亮信息
@@ -99,6 +106,10 @@ export class ControlSearch {
 
   public setHighlightList(payload: IControlHighlight[]) {
     this.highlightList = payload
+    if (!payload.length) {
+      this.highlightMatchResult = []
+      this.highlightMatchPageMap.clear()
+    }
   }
 
   public computeHighlightList() {
@@ -176,31 +187,19 @@ export class ControlSearch {
     }
     this.highlightMatchResult = []
     computeHighlight(this.draw.getOriginalMainElementList())
+    this._rebuildHighlightPageMap()
   }
 
   public renderHighlightList(ctx: CanvasRenderingContext2D, pageIndex: number) {
     if (!this.highlightMatchResult?.length) return
     const { searchMatchAlpha, searchMatchColor } = this.options
-    const positionList = this.draw.getPosition().getOriginalPositionList()
-    const elementList = this.draw.getOriginalElementList()
+    const pageMatchList = this.highlightMatchPageMap.get(pageIndex) || []
     ctx.save()
-    for (let s = 0; s < this.highlightMatchResult.length; s++) {
-      const searchMatch = this.highlightMatchResult[s]
-      let position: IElementPosition | null = null
-      if (searchMatch.tableId) {
-        const { tableIndex, trIndex, tdIndex, index } = searchMatch
-        position =
-          elementList[tableIndex!]?.trList![trIndex!].tdList[tdIndex!]
-            ?.positionList![index]
-      } else {
-        position = positionList[searchMatch.index]
-      }
-      if (!position) continue
+    for (let s = 0; s < pageMatchList.length; s++) {
+      const { searchMatch, position } = pageMatchList[s]
       const {
         coordinate: { leftTop, leftBottom, rightTop },
-        pageNo
       } = position
-      if (pageNo !== pageIndex) continue
       ctx.fillStyle = searchMatch.backgroundColor || searchMatchColor
       ctx.globalAlpha = searchMatch.alpha || searchMatchAlpha
       const x = leftTop[0]
@@ -210,5 +209,35 @@ export class ControlSearch {
       ctx.fillRect(x, y, width, height)
     }
     ctx.restore()
+  }
+
+  private _getPositionByHighlightMatch(
+    searchMatch: ISearchResult & IControlHighlightRule
+  ): IElementPosition | null {
+    const positionList = this.draw.getPosition().getOriginalPositionList()
+    const elementList = this.draw.getOriginalElementList()
+    if (searchMatch.tableId) {
+      const { tableIndex, trIndex, tdIndex, index } = searchMatch
+      return (
+        elementList[tableIndex!]?.trList?.[trIndex!].tdList?.[tdIndex!]
+          ?.positionList?.[index] || null
+      )
+    }
+    return positionList[searchMatch.index] || null
+  }
+
+  private _rebuildHighlightPageMap() {
+    this.highlightMatchPageMap.clear()
+    for (let i = 0; i < this.highlightMatchResult.length; i++) {
+      const searchMatch = this.highlightMatchResult[i]
+      const position = this._getPositionByHighlightMatch(searchMatch)
+      if (!position) continue
+      const pageMatchList = this.highlightMatchPageMap.get(position.pageNo) || []
+      pageMatchList.push({
+        searchMatch,
+        position
+      })
+      this.highlightMatchPageMap.set(position.pageNo, pageMatchList)
+    }
   }
 }

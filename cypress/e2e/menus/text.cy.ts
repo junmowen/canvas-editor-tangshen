@@ -1,10 +1,28 @@
 import Editor from '../../../src/editor'
 
+function findPlainTextRun(editor: Editor, target: string): number {
+  const draw = (editor as any).draw
+  const elementList = draw.getOriginalMainElementList()
+  const chars = target.split('')
+  for (let start = 0; start <= elementList.length - chars.length; start++) {
+    let matched = true
+    for (let offset = 0; offset < chars.length; offset++) {
+      if (elementList[start + offset]?.value !== chars[offset]) {
+        matched = false
+        break
+      }
+    }
+    if (!matched) continue
+    return start
+  }
+  return -1
+}
+
 describe('菜单-文本处理', () => {
   beforeEach(() => {
     cy.visit('http://localhost:3000/canvas-editor/')
 
-    cy.get('canvas').first().as('canvas').should('have.length', 1)
+    cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
 
   const text = 'canvas-editor'
@@ -299,6 +317,10 @@ describe('菜单-文本处理', () => {
       const data = editor.command.getValue().data.main
 
       expect(data[0].highlight).to.eq('red')
+
+      const startIndex = findPlainTextRun(editor, text)
+      expect(startIndex).to.be.greaterThan(-1)
+      editor.command.executeForceUpdate()
     })
   })
 })

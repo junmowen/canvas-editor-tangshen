@@ -14,8 +14,8 @@ export class HyperlinkParticle {
 
   constructor(draw: Draw) {
     this.draw = draw
-    this.options = draw.getOptions()
-    this.container = draw.getContainer()
+    this.options = draw.getRuntime().getOptions()
+    this.container = draw.getPageCanvasHost().getContainer()
     const { hyperlinkPopupContainer, hyperlinkDom } =
       this._createHyperlinkPopupDom()
     this.hyperlinkDom = hyperlinkDom

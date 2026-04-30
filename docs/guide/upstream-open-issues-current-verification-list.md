@@ -1,0 +1,110 @@
+# Canvas Editor 当前待验证 Issues 列表
+
+## 1. 用法
+
+这份文档从 [upstream-open-issues-solo-full-table.md](/D:/canvas-editor/docs/guide/upstream-open-issues-solo-full-table.md) 中只提取当前状态为 `未验证` 的条目。
+
+用途很简单：
+
+1. 你每天开工先看这份
+2. 每验证完一条，就回填总表
+3. 回填后把这份列表同步更新
+
+这样你不用每次重新扫全部 `50` 个 open issues。
+
+---
+
+## 2. 当前待验证列表
+
+| Issue | 标题 | 验证入口 | 建议优先级 |
+| --- | --- | --- | --- |
+| #41 | 表格分页 | 表格分页专项测试组 / 重构文档 | 高 |
+| #1385 | 官网的demo中 在文本、列举控件中 插入下划线 显示异常 | `RowRenderer.ts` / `format.cy.ts` | 高 |
+| #1404 | 插入表格的时候当colgroup未传入时，默认使用编辑器宽度平分 | `TableOperate.ts` / `table.cy.ts` | 高 |
+| #440 | 文档列表内容内无法取消或者增加子列表 | `ListParticle.ts` / `text.cy.ts` | 中 |
+| #425 | 文本控件内容中，再插入控件，页面{}显示有问题。 | `TextControl.ts` / control 测试 | 中 |
+| #837 | 大文本计算性能优化 | `DrawLayoutPipeline.ts` / 性能文档 | 中 |
+| #1372 | 图片浮动文字之上问题 | `Position.ts` / `image.cy.ts` | 中 |
+| #1200 | Smart Word Wrapping Around Images ("SURROUND") | `Position.ts` / `image.cy.ts` | 中 |
+| #1190 | tab缩进更多场景 | `tab.ts` / shortcut 文档 | 中 |
+| #1053 | 单元格框线设置 | `TableTool.ts` / `table-pagination-border.cy.ts` | 中 |
+| #877 | 分页符行为优化 | `PageBreakParticle.ts` / `pagebreak.cy.ts` | 中 |
+| #725 | 排版缩进 | `row.cy.ts` / `text.cy.ts` / shortcut 文档 | 中 |
+| #692 | 标点符号排版优化 | `TextParticle.ts` / `option.md` | 中 |
+| #621 | 支持序号元素或段落拖拽 | `drag.ts` / drag 能力 | 中 |
+| #390 | 是否可以生成如下的表格 | `table.cy.ts` / issue 具体内容 | 中 |
+
+---
+
+## 3. 推荐验证顺序
+
+### 第一组：先看核心链
+
+1. `#41`
+2. `#1404`
+3. `#1385`
+
+### 第二组：再看常见编辑能力
+
+1. `#440`
+2. `#425`
+3. `#725`
+4. `#1190`
+
+### 第三组：最后看样式、图片和性能细项
+
+1. `#837`
+2. `#1372`
+3. `#1200`
+4. `#1053`
+5. `#877`
+6. `#692`
+7. `#621`
+8. `#390`
+
+---
+
+## 4. 单人执行规则
+
+每次只拿 `1` 到 `3` 个 issue 做，不要同时开太多。
+
+推荐动作：
+
+1. 验证一条
+2. 立刻回填总表
+3. 如果仍存在，再拆开发任务
+
+不要先开一堆开发分支，再去补验证。
+
+---
+
+## 5. 自动化入口
+
+当前已补脚本入口：
+
+1. `npm run issues:verify:list`
+2. `npm run issues:verify:current`
+3. `npm run issues:verify -- --issue 41,813,1163`
+
+说明：
+
+1. 脚本会自动启动本地 Vite 服务
+2. 会按 issue 映射跑现有 Cypress specs
+3. 没有现成自动化覆盖的 issue，会打印为 `manual-only`
+
+当前已确认：
+
+1. `#94` 已补自动化样例并通过
+2. `#1399` 已补自动化样例并通过
+3. `#446` 使用 `painter.cy.ts` 通过
+4. `#813` 已验证仍存在：`pointer-debug-selection.cy.ts` 通过，`plain-text-selection.cy.ts` 仍有 2 个行为断言失败
+5. `#1163` 已按新增功能补行内表格样例并通过：`issue-inline-table-label.cy.ts` / `issue-1163-text-before-table.cy.ts` / `issue-left-blank-after-table-click.cy.ts` / `table.cy.ts`
+6. `#1385` 当前只有相关格式链路验证通过，仍需补下划线专项样例
+7. `#1404` 当前只有相关表格链路验证通过，仍需补缺省 `colgroup` 专项样例
+8. `#1190` 当前仍保留 `manual-only`
+9. `#621` 当前仍保留 `manual-only`
+
+当前开发候选：
+
+1. `#813`
+2. `#41`：`table-pagination-input.cy.ts` 仍有后续分页 fragment 导航断言失败

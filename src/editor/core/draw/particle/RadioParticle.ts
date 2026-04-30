@@ -34,7 +34,8 @@ export class RadioParticle {
     }
     this.draw.render({
       isCompute: false,
-      isSetCursor: false
+      isSetCursor: false,
+      pageRenderScope: 'visible'
     })
   }
 

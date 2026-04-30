@@ -8,6 +8,6 @@ export function positionContextChange(
   const { value, oldValue } = payload
   // 表格工具移除
   if (oldValue.isTable && !value.isTable) {
-    draw.getTableTool().dispose()
+    draw.getComponents().tableTool.dispose()
   }
 }

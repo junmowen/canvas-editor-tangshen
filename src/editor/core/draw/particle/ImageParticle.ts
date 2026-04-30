@@ -6,27 +6,55 @@ import { IElement } from '../../../interface/Element'
 import { convertStringToBase64 } from '../../../utils'
 import { Draw } from '../Draw'
 
+/**
+ * 图片粒子。
+ *
+ * 负责图片的渲染、缓存和浮动处理。
+ */
 export class ImageParticle {
+  /** Draw 门面对象 */
   private draw: Draw
+  /** 编辑器选项 */
   protected options: Required<IEditorOption>
+  /** 图片缓存 */
   protected imageCache: Map<string, HTMLImageElement>
+  /** 容器元素 */
   private container: HTMLDivElement
+  /** 浮动图片容器 */
   private floatImageContainer: HTMLDivElement | null
+  /** 浮动图片元素 */
   private floatImage: HTMLImageElement | null
 
+  /**
+   * 构造函数。
+   *
+   * @param draw - Draw 门面对象
+   */
   constructor(draw: Draw) {
     this.draw = draw
-    this.options = draw.getOptions()
-    this.container = draw.getContainer()
+    this.options = draw.getRuntime().getOptions()
+    // 获取容器
+    this.container = draw.getPageCanvasHost().getContainer()
+    // 初始化图片缓存
     this.imageCache = new Map()
+    // 初始化浮动图片状态
     this.floatImageContainer = null
     this.floatImage = null
   }
 
+  /**
+   * 获取原始正文中的图片列表。
+   *
+   * 递归遍历表格单元格，收集所有图片元素。
+   *
+   * @returns 图片元素列表
+   */
   public getOriginalMainImageList(): IElement[] {
     const imageList: IElement[] = []
+    // 递归遍历元素列表，收集图片
     const getImageList = (elementList: IElement[]) => {
       for (const element of elementList) {
+        // 如果是表格，递归处理单元格
         if (element.type === ElementType.TABLE) {
           const trList = element.trList!
           for (let r = 0; r < trList.length; r++) {
@@ -37,6 +65,7 @@ export class ImageParticle {
             }
           }
         } else if (element.type === ElementType.IMAGE) {
+          // 收集图片元素
           imageList.push(element)
         }
       }
@@ -46,6 +75,11 @@ export class ImageParticle {
     return imageList
   }
 
+  /**
+   * 创建浮动图片。
+   *
+   * @param element - 图片元素
+   */
   public createFloatImage(element: IElement) {
     const { scale } = this.options
     // 复用浮动元素
@@ -75,12 +109,12 @@ export class ImageParticle {
     floatImage.src = element.value
   }
 
-  public dragFloatImage(movementX: number, movementY: number) {
+  public dragFloatImage(deltaX: number, deltaY: number) {
     if (!this.floatImageContainer) return
     this.floatImageContainer.style.display = 'block'
     // 之前的坐标加移动长度
-    const x = parseFloat(this.floatImageContainer.style.left) + movementX
-    const y = parseFloat(this.floatImageContainer.style.top) + movementY
+    const x = parseFloat(this.floatImageContainer.style.left) + deltaX
+    const y = parseFloat(this.floatImageContainer.style.top) + deltaY
     this.floatImageContainer.style.left = `${x}px`
     this.floatImageContainer.style.top = `${y}px`
   }
@@ -130,7 +164,7 @@ export class ImageParticle {
       const img = this.imageCache.get(element.value)!
       ctx.drawImage(img, x, y, width, height)
     } else {
-      const cacheRenderCount = this.draw.getRenderCount()
+      const cacheRenderCount = this.draw.getViewState().getRenderCount()
       const imageLoadPromise = new Promise((resolve, reject) => {
         const img = new Image()
         img.setAttribute('crossOrigin', 'Anonymous')
@@ -139,13 +173,14 @@ export class ImageParticle {
           this.imageCache.set(element.value, img)
           resolve(element)
           // 因图片加载异步，图片加载后可能属于上一次渲染方法
-          if (cacheRenderCount !== this.draw.getRenderCount()) return
+          if (cacheRenderCount !== this.draw.getViewState().getRenderCount()) return
           // 衬于文字下方图片需要重新首先绘制
           if (element.imgDisplay === ImageDisplay.FLOAT_BOTTOM) {
             this.draw.render({
               isCompute: false,
               isSetCursor: false,
-              isSubmitHistory: false
+              isSubmitHistory: false,
+              pageRenderScope: 'visible'
             })
           } else {
             ctx.drawImage(img, x, y, width, height)

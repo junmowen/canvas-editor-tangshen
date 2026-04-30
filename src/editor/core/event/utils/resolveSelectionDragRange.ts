@@ -1,0 +1,300 @@
+import { ControlComponent } from '../../../dataset/enum/Control'
+import { ICurrentPosition, IPositionContext } from '../../../interface/Position'
+import { IRange } from '../../../interface/Range'
+import { Draw } from '../../draw/Draw'
+import { ITableLayoutCellSlice } from '../../table/layout/TableLayoutSnapshotTypes'
+
+export interface IResolvedSelectionDragRange {
+  range: IRange
+  positionContext?: IPositionContext
+  hasSelectionDrag: boolean
+}
+
+interface IResolveSelectionDragRangePayload {
+  draw: Draw
+  startPosition: ICurrentPosition
+  positionResult: ICurrentPosition
+  endBoundaryIndex: number
+  endHitTargetIndex?: number
+}
+
+interface IBaseTextHit {
+  boundaryIndex: number
+  hitIndex?: number
+}
+
+interface ITextHit extends IBaseTextHit {
+  object: 'text'
+}
+
+interface ITableTextHit extends IBaseTextHit {
+  object: 'table-text'
+  tableId?: string
+  trId?: string
+  tdId?: string
+  trIndex?: number
+  tdIndex?: number
+  slice?: ITableLayoutCellSlice | null
+}
+
+type TPointerHit = ITextHit | ITableTextHit
+
+function createTablePositionContext(payload: {
+  slice?: ITableLayoutCellSlice | null
+  logicalTableIndex?: number
+  logicalTrIndex?: number
+  logicalTdIndex?: number
+  fragmentTableId?: string
+  fragmentTrId?: string
+  fragmentTdId?: string
+}): IPositionContext {
+  const {
+    slice,
+    logicalTableIndex,
+    logicalTrIndex,
+    logicalTdIndex,
+    fragmentTableId,
+    fragmentTrId,
+    fragmentTdId
+  } = payload
+
+  return {
+    isTable: true,
+    index: slice?.logicalTableIndex ?? logicalTableIndex,
+    trIndex: slice?.logicalTrIndex ?? logicalTrIndex,
+    tdIndex: slice?.logicalTdIndex ?? logicalTdIndex,
+    tableId: fragmentTableId ?? slice?.fragmentTableId ?? slice?.logicalTableId,
+    trId: fragmentTrId ?? slice?.fragmentTrId ?? slice?.logicalTrId,
+    tdId: fragmentTdId ?? slice?.fragmentTdId ?? slice?.logicalTdId
+  }
+}
+
+function isTableTextHit(hit: TPointerHit): hit is ITableTextHit {
+  return hit.object === 'table-text'
+}
+
+function normalizeRange(startIndex: number, endIndex: number): IRange | null {
+  if (startIndex === endIndex) return null
+  return startIndex < endIndex
+    ? { startIndex, endIndex }
+    : { startIndex: endIndex, endIndex: startIndex }
+}
+
+function getTableSlice(draw: Draw, position: ICurrentPosition) {
+  if (!position.tableId || !position.trId || !position.tdId) return null
+  return draw.getTableLayoutSnapshotAccessor().resolveSliceByFragmentContext({
+    tableId: position.tableId,
+    trId: position.trId,
+    tdId: position.tdId,
+    trIndex: position.trIndex,
+    tdIndex: position.tdIndex
+  })
+}
+
+function toPointerHit(payload: {
+  draw: Draw
+  position: ICurrentPosition
+  boundaryIndex: number
+  hitIndex?: number
+}): TPointerHit {
+  const { draw, position, boundaryIndex, hitIndex } = payload
+  if (!position.isTable) {
+    return {
+      object: 'text',
+      boundaryIndex,
+      hitIndex
+    }
+  }
+  return {
+    object: 'table-text',
+    boundaryIndex,
+    hitIndex,
+    tableId: position.tableId,
+    trId: position.trId,
+    tdId: position.tdId,
+    trIndex: position.trIndex,
+    tdIndex: position.tdIndex,
+    slice: getTableSlice(draw, position)
+  }
+}
+
+function getLogicalTableCell(hit: ITableTextHit) {
+  return {
+    tableIndex: hit.slice?.logicalTableIndex,
+    trIndex: hit.slice?.logicalTrIndex ?? hit.trIndex,
+    tdIndex: hit.slice?.logicalTdIndex ?? hit.tdIndex,
+    tableId: hit.slice?.logicalTableId ?? hit.tableId
+  }
+}
+
+function isSameTextObject(startHit: TPointerHit, endHit: TPointerHit): boolean {
+  if (startHit.object !== endHit.object) return false
+  if (startHit.object === 'text' && endHit.object === 'text') return true
+  if (!isTableTextHit(startHit) || !isTableTextHit(endHit)) return false
+  const startCell = getLogicalTableCell(startHit)
+  const endCell = getLogicalTableCell(endHit)
+  return !!(
+    startCell.tableId &&
+    endCell.tableId &&
+    startCell.tableId === endCell.tableId &&
+    startCell.trIndex === endCell.trIndex &&
+    startCell.tdIndex === endCell.tdIndex
+  )
+}
+
+function isSameTableFragment(startHit: ITableTextHit, endHit: ITableTextHit): boolean {
+  return !!(
+    startHit.tableId &&
+    startHit.tableId === endHit.tableId &&
+    startHit.trId === endHit.trId &&
+    startHit.tdId === endHit.tdId
+  )
+}
+
+function shouldUseHitTextRange(startHit: TPointerHit, endHit: TPointerHit): boolean {
+  if (startHit.object === 'text' && endHit.object === 'text') return true
+  if (isTableTextHit(startHit) && isTableTextHit(endHit)) {
+    return isSameTableFragment(startHit, endHit)
+  }
+  return false
+}
+
+function resolveHitRangeStartBoundary(hit: TPointerHit): number {
+  if (hit.object === 'text' && hit.hitIndex !== undefined) {
+    return Math.max(0, hit.hitIndex - 1)
+  }
+  return hit.boundaryIndex
+}
+
+function resolveHitRangeEndBoundary(hit: TPointerHit): number {
+  if (hit.hitIndex !== undefined) {
+    return Math.max(hit.boundaryIndex, hit.hitIndex)
+  }
+  return hit.boundaryIndex
+}
+
+function resolveTextSelection(payload: {
+  startHit: TPointerHit
+  endHit: TPointerHit
+  useHitRange: boolean
+}): IRange | null {
+  const { startHit, endHit, useHitRange } = payload
+  if (
+    useHitRange &&
+    startHit.hitIndex !== undefined &&
+    endHit.hitIndex !== undefined
+  ) {
+    return normalizeRange(
+      Math.min(
+        resolveHitRangeStartBoundary(startHit),
+        resolveHitRangeStartBoundary(endHit)
+      ),
+      Math.max(
+        resolveHitRangeEndBoundary(startHit),
+        resolveHitRangeEndBoundary(endHit)
+      )
+    )
+  }
+  return normalizeRange(startHit.boundaryIndex, endHit.boundaryIndex)
+}
+
+function createTableContext(hit: ITableTextHit): IPositionContext {
+  return createTablePositionContext({
+    slice: hit.slice,
+    logicalTableIndex: hit.slice?.logicalTableIndex,
+    logicalTrIndex: hit.slice?.logicalTrIndex ?? hit.trIndex,
+    logicalTdIndex: hit.slice?.logicalTdIndex ?? hit.tdIndex,
+    fragmentTableId: hit.tableId,
+    fragmentTrId: hit.trId,
+    fragmentTdId: hit.tdId
+  })
+}
+
+function resolveTableCellSelection(payload: {
+  startHit: ITableTextHit
+  endHit: ITableTextHit
+}): IResolvedSelectionDragRange | null {
+  const { startHit, endHit } = payload
+  const startCell = getLogicalTableCell(startHit)
+  const endCell = getLogicalTableCell(endHit)
+  if (
+    startCell.tableId === undefined ||
+    startCell.trIndex === undefined ||
+    startCell.tdIndex === undefined ||
+    endCell.trIndex === undefined ||
+    endCell.tdIndex === undefined
+  ) {
+    return null
+  }
+  return {
+    range: {
+      startIndex: endHit.boundaryIndex,
+      endIndex: endHit.boundaryIndex,
+      tableId: startCell.tableId,
+      startTdIndex: startCell.tdIndex,
+      endTdIndex: endCell.tdIndex,
+      startTrIndex: startCell.trIndex,
+      endTrIndex: endCell.trIndex
+    },
+    positionContext: createTableContext(endHit),
+    hasSelectionDrag: false
+  }
+}
+
+function isPlaceholderRange(draw: Draw, range: IRange): boolean {
+  const elementList = draw.getElementList()
+  const startElement = elementList[range.startIndex + 1]
+  const endElement = elementList[range.endIndex]
+  return !!(
+    startElement?.controlComponent === ControlComponent.PLACEHOLDER &&
+    endElement?.controlComponent === ControlComponent.PLACEHOLDER &&
+    startElement.controlId === endElement.controlId
+  )
+}
+
+export function resolveSelectionDragRange(
+  payload: IResolveSelectionDragRangePayload
+): IResolvedSelectionDragRange | null {
+  const {
+    draw,
+    startPosition,
+    positionResult,
+    endBoundaryIndex,
+    endHitTargetIndex
+  } = payload
+
+  const startHit = toPointerHit({
+    draw,
+    position: startPosition,
+    boundaryIndex: startPosition.index,
+    hitIndex: startPosition.hitTargetIndex
+  })
+  const endHit = toPointerHit({
+    draw,
+    position: positionResult,
+    boundaryIndex: endBoundaryIndex,
+    hitIndex: endHitTargetIndex
+  })
+
+  if (isSameTextObject(startHit, endHit)) {
+    const range = resolveTextSelection({
+      startHit,
+      endHit,
+      useHitRange: shouldUseHitTextRange(startHit, endHit)
+    })
+    if (!range) return null
+    if (startHit.object === 'text' && isPlaceholderRange(draw, range)) return null
+    return {
+      range,
+      positionContext:
+        endHit.object === 'table-text' ? createTableContext(endHit) : undefined,
+      hasSelectionDrag: true
+    }
+  }
+
+  if (startHit.object === 'table-text' && endHit.object === 'table-text') {
+    return resolveTableCellSelection({ startHit, endHit })
+  }
+
+  return null
+}
