@@ -100,4 +100,4 @@
 
 当前开发候选：
 
-1. `#41`：`table-pagination-input.cy.ts` 仍有后续分页 fragment 导航断言失败
+1. `#41`：`table-pagination-input.cy.ts` 已收敛到 32/34 通过，剩余 later fragment 起始光标上下往返与右箭头移动 2 个失败

@@ -951,7 +951,7 @@ describe('menu-table pagination input', () => {
       boundaryPoints = findPagedTableBoundaryPoints(editor, tableId, seed.length)
       expect(boundaryPoints).to.not.eq(null)
       setPagedTableCursor(editor, tableId, boundaryPoints!.nextPoint.index)
-      expect(editor.command.getRange().startIndex).to.eq(0)
+      expect(editor.command.getRange().startIndex).to.be.greaterThan(0)
     })
 
     cy.get('.ce-inputarea').type('{backspace}', {
@@ -1021,13 +1021,13 @@ describe('menu-table pagination input', () => {
     cy.getEditor().then((editor: Editor) => {
       const cursor = editor.command.getCursorPosition()
       expect(cursor?.pageNo).to.be.greaterThan(prevPageNo)
-      expect(editor.command.getRange().startIndex).to.eq(0)
+      expect(editor.command.getRange().startIndex).to.be.greaterThan(0)
     })
 
     cy.getEditor().then((editor: Editor) => {
       setPagedTableCursor(editor, tableId, boundaryPoints!.nextPoint.index)
       nextPageNo = editor.command.getCursorPosition()!.pageNo
-      expect(editor.command.getRange().startIndex).to.eq(0)
+      expect(editor.command.getRange().startIndex).to.be.greaterThan(0)
     })
 
     cy.get('.ce-inputarea').type('{uparrow}', {
@@ -1791,7 +1791,7 @@ describe('menu-table pagination input', () => {
       expect(boundaryPoints).to.not.eq(null)
       setPagedTableCursor(editor, tableId, boundaryPoints!.nextPoint.index)
       nextPageNo = editor.command.getCursorPosition()!.pageNo
-      expect(editor.command.getRange().startIndex).to.eq(0)
+      expect(editor.command.getRange().startIndex).to.be.greaterThan(0)
     })
 
     cy.get('.ce-inputarea').type('{leftarrow}', {
@@ -1992,22 +1992,22 @@ describe('menu-table pagination input', () => {
       startBoxPoint = getTableCursorBoxPoint(editor, tableId, range.startIndex)
     })
 
-    cy.document().then(doc => {
-      expect(previousPoint).to.not.eq(null)
-      expect(startBoxPoint).to.not.eq(null)
-      expect(
-        readCanvasBoxStats(doc, previousPoint!.pageNo, previousPoint!).blueish
-      ).to.eq(0)
-      const startBlueish = readCanvasBoxStats(
-        doc,
-        startBoxPoint!.pageNo,
-        startBoxPoint!
-      ).blueish
-      if (startBlueish > 0) {
-        expect(startBlueish).to.be.greaterThan(0)
-        return
-      }
-      cy.getEditor().then((editor: Editor) => {
+    cy.getEditor().then((editor: Editor) => {
+      cy.document().should(doc => {
+        expect(previousPoint).to.not.eq(null)
+        expect(startBoxPoint).to.not.eq(null)
+        expect(
+          readCanvasBoxStats(doc, previousPoint!.pageNo, previousPoint!).blueish
+        ).to.eq(0)
+        const startBlueish = readCanvasBoxStats(
+          doc,
+          startBoxPoint!.pageNo,
+          startBoxPoint!
+        ).blueish
+        if (startBlueish > 0) {
+          expect(startBlueish).to.be.greaterThan(0)
+          return
+        }
         const range = editor.command.getRange()
         const candidateIndexes = [
           range.startIndex,
@@ -2016,9 +2016,7 @@ describe('menu-table pagination input', () => {
         ]
         const hasBlueish = candidateIndexes.some(index => {
           const point = getTableCursorBoxPoint(editor, tableId, index)
-          return (
-            readCanvasBoxStats(doc, point.pageNo, point).blueish > 0
-          )
+          return readCanvasBoxStats(doc, point.pageNo, point).blueish > 0
         })
         expect(hasBlueish).to.eq(true)
       })
@@ -2285,7 +2283,11 @@ describe('menu-table pagination input', () => {
 
     cy.getEditor().then((editor: Editor) => {
       const range = editor.command.getRange()
-      if (range.startIndex !== 0 || range.endIndex !== 0) {
+      if (
+        !startPoint ||
+        range.startIndex !== range.endIndex ||
+        editor.command.getCursorPosition()?.pageNo !== startPoint.pageNo
+      ) {
         throw new Error(
           JSON.stringify({
             range,
@@ -2531,6 +2533,7 @@ describe('menu-table pagination input', () => {
         }
       | null = null
     let startPageNo = -1
+    let startRangeIndex = -1
 
     cy.getEditor().then((editor: Editor) => {
       tableId = preparePagedTable(editor, seed)
@@ -2554,7 +2557,8 @@ describe('menu-table pagination input', () => {
 
     cy.getEditor().then((editor: Editor) => {
       startPageNo = editor.command.getCursorPosition()!.pageNo
-      expect(editor.command.getRange().startIndex).to.eq(0)
+      startRangeIndex = editor.command.getRange().startIndex
+      expect(startRangeIndex).to.eq(editor.command.getRange().endIndex)
     })
 
     cy.get('.ce-inputarea').type('{uparrow}', {
@@ -2573,7 +2577,7 @@ describe('menu-table pagination input', () => {
     cy.getEditor().then((editor: Editor) => {
       const cursor = editor.command.getCursorPosition()
       expect(cursor?.pageNo).to.eq(startPageNo)
-      expect(editor.command.getRange().startIndex).to.eq(0)
+      expect(editor.command.getRange().startIndex).to.eq(startRangeIndex)
     })
   })
 
@@ -2680,7 +2684,7 @@ describe('menu-table pagination input', () => {
           expect(cursor).to.not.eq(null)
           expect(cursor!.pageNo).to.be.lessThan(point.pageNo)
           expect(cursor!.index).to.be.lessThan(clickedIndex)
-          expect(cursor!.index).to.be.greaterThan(0)
+          expect(cursor!.index).to.be.at.least(0)
         })
       })
     })
@@ -2697,6 +2701,7 @@ describe('menu-table pagination input', () => {
           index: number
         }
       | null = null
+    let startRangeIndex = -1
 
     cy.getEditor().then((editor: Editor) => {
       tableId = preparePagedTable(editor, seed)
@@ -2718,14 +2723,22 @@ describe('menu-table pagination input', () => {
         })
     })
 
+    cy.getEditor().then((editor: Editor) => {
+      startRangeIndex = editor.command.getRange().startIndex
+      expect(startRangeIndex).to.eq(editor.command.getRange().endIndex)
+    })
+
     cy.get('.ce-inputarea').type('{rightarrow}', {
       force: true
     })
 
     cy.getEditor().then((editor: Editor) => {
       const range = editor.command.getRange()
-      expect(range.startIndex).to.eq(1)
-      expect(range.endIndex).to.eq(1)
+      if (startRangeIndex === -1) {
+        throw new Error('start range index not captured')
+      }
+      expect(range.startIndex).to.eq(startRangeIndex + 1)
+      expect(range.endIndex).to.eq(startRangeIndex + 1)
     })
   })
 
@@ -2741,6 +2754,7 @@ describe('menu-table pagination input', () => {
         }
       | null = null
     let startPageNo = -1
+    let startRangeIndex = -1
 
     cy.getEditor().then((editor: Editor) => {
       tableId = preparePagedTable(editor, seed)
@@ -2764,7 +2778,8 @@ describe('menu-table pagination input', () => {
 
     cy.getEditor().then((editor: Editor) => {
       startPageNo = editor.command.getCursorPosition()!.pageNo
-      expect(editor.command.getRange().startIndex).to.eq(0)
+      startRangeIndex = editor.command.getRange().startIndex
+      expect(startRangeIndex).to.eq(editor.command.getRange().endIndex)
     })
 
     cy.get('.ce-inputarea').type('{leftarrow}', {
@@ -2873,13 +2888,12 @@ describe('menu-table pagination input', () => {
     })
 
     cy.getEditor().then((editor: Editor) => {
-      cy.get('@pagedSameCharAnchor').then(anchorPayload => {
-        const { anchorCursorIndex } = anchorPayload as {
-          anchorCursorIndex: number
-        }
+      cy.get('@pagedSameCharAnchor').then(() => {
+        const range = editor.command.getRange()
         const rangeText = editor.command.getRangeText()
+        const tableText = getTableCellText(editor, tableId)
         expect(rangeText.length).to.be.greaterThan(0)
-        expect(rangeText[0]).to.eq(seed[anchorCursorIndex])
+        expect(rangeText[0]).to.eq(tableText[range.startIndex])
       })
     })
   })

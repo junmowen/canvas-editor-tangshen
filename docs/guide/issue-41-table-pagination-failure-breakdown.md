@@ -42,15 +42,52 @@
 2. `26` 个通过
 3. `8` 个失败
 
+### 第三轮公开 range 语义收口后
+
+1. `34` 个测试
+2. `32` 个通过
+3. `2` 个失败
+
 这说明：
 
 1. 前一轮大批失败里，确实有相当一部分是 helper 基线失效
 2. helper 两轮收口后，失败数从 `28` 级别收敛到了 `8`
-3. 当前剩余问题已经更像真实行为差异，而不是大面积测试点位漂移
+3. 公开 range 改为逻辑单元格索引后，跨页删除、跨页左右/上下边界、反向拖选、later fragment 首字符与 CJK 首字符均已转绿
+4. 当前剩余问题已经收敛到 later fragment 起始光标的垂直往返与右箭头移动
 
 ---
 
-## 3. 当前 8 个剩余失败点
+## 3. 当前 2 个剩余失败点
+
+在公开 range 断言改为逻辑单元格索引，并为表格文本拖选补充右边界命中语义后，`table-pagination-input.cy.ts` 当前剩余：
+
+### 3.1 later fragment 起始光标上下往返
+
+对应测试：
+
+- `still moves up and down from the later fragment start caret position`
+
+当前失败形态：
+
+1. 从 later fragment 起始光标按上箭头能进入前页
+2. 再按下箭头没有回到原 later fragment 页
+
+### 3.2 later fragment 起始光标右箭头
+
+对应测试：
+
+- `moves right from the later fragment start without skipping characters`
+
+当前失败形态：
+
+1. 起始光标按右箭头后公开 range 投影为 `0`
+2. 预期应从真实点击落点前进一个逻辑字符
+
+---
+
+## 4. 已转绿的旧 8 个失败点
+
+以下保留旧失败拆解，用于说明本轮收口范围。
 
 在 helper 改成 snapshot 语义、later-fragment 点位也继续收口后，`table-pagination-input.cy.ts` 当前剩余失败点可先收束为这 `8` 条：
 

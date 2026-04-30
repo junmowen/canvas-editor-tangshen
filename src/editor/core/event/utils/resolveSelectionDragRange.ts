@@ -99,18 +99,25 @@ function toPointerHit(payload: {
   hitIndex?: number
 }): TPointerHit {
   const { draw, position, boundaryIndex, hitIndex } = payload
-  if (!position.isTable) {
-    const hitPosition =
-      hitIndex !== undefined ? draw.getPosition().getPositionList()[hitIndex] : null
+  const resolveIsRightBoundaryHit = () => {
+    if (hitIndex === undefined || position.x === undefined) return false
+    if (position.isTable) {
+      const slice = getTableSlice(draw, position)
+      if (!slice) return false
+      const hitPosition = slice.positionList[hitIndex - slice.absoluteStart]
+      const rightX = hitPosition?.coordinate.rightTop[0]
+      return rightX !== undefined ? position.x >= rightX - 1 : false
+    }
+    const hitPosition = draw.getPosition().getPositionList()[hitIndex]
     const rightX = hitPosition?.coordinate.rightTop[0]
+    return rightX !== undefined ? position.x >= rightX - 1 : false
+  }
+  if (!position.isTable) {
     return {
       object: 'text',
       boundaryIndex,
       hitIndex,
-      isRightBoundaryHit:
-        rightX !== undefined && position.x !== undefined
-          ? position.x >= rightX - 1
-          : false
+      isRightBoundaryHit: resolveIsRightBoundaryHit()
     }
   }
   return {
@@ -122,7 +129,8 @@ function toPointerHit(payload: {
     tdId: position.tdId,
     trIndex: position.trIndex,
     tdIndex: position.tdIndex,
-    slice: getTableSlice(draw, position)
+    slice: getTableSlice(draw, position),
+    isRightBoundaryHit: resolveIsRightBoundaryHit()
   }
 }
 
@@ -168,10 +176,12 @@ function shouldUseHitTextRange(startHit: TPointerHit, endHit: TPointerHit): bool
 }
 
 function resolveHitRangeStartBoundary(hit: TPointerHit): number {
-  if (hit.object === 'text' && hit.hitIndex !== undefined) {
+  if (hit.hitIndex !== undefined) {
     if (hit.isRightBoundaryHit) {
       return hit.boundaryIndex
     }
+  }
+  if (hit.object === 'text' && hit.hitIndex !== undefined) {
     return Math.max(0, hit.hitIndex - 1)
   }
   return hit.boundaryIndex
