@@ -72,7 +72,7 @@
 | #605 按段落设置行布局方式 | `部分解决` | `代码走查` + `新增最小场景验证` | [row.cy.ts](/D:/canvas-editor/cypress/e2e/menus/row.cy.ts), [option.md](/D:/canvas-editor/docs/guide/option.md) | 有 row 测试 | 验证后决定是否拆细功能任务 |
 | #374 主线合并支持 svg、pdf 渲染层 | `部分解决` | `代码走查` | [README.md](/D:/canvas-editor/README.md), [start.md](/D:/canvas-editor/docs/guide/start.md) | README 明确是 feature 分支状态 | 建 backlog，不立即开发 |
 | #725 排版缩进 | `部分解决` | `现有测试回归` + `新增最小场景验证` | [shortcut-internal.md](/D:/canvas-editor/docs/guide/shortcut-internal.md), [row.cy.ts](/D:/canvas-editor/cypress/e2e/menus/row.cy.ts), [text.cy.ts](/D:/canvas-editor/cypress/e2e/menus/text.cy.ts) | 有相关文本/段落测试 | 验证后补专项测试 |
-| #1190 tab 缩进更多场景 | `部分解决` | `新增最小场景验证` | [TabIntent.ts](/D:/canvas-editor/src/editor/core/event/keyboard/intents/TabIntent.ts), [shortcut-internal.md](/D:/canvas-editor/docs/guide/shortcut-internal.md) | 无 issue 场景专测 | 验证后补专项测试 |
+| #1190 tab 缩进更多场景 | `已解决` | `新增最小场景验证` | [issue-1190-tab-indent-text.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-1190-tab-indent-text.cy.ts), [issue-440-list-sublevel.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-440-list-sublevel.cy.ts), [TabIntent.ts](/D:/canvas-editor/src/editor/core/event/keyboard/intents/TabIntent.ts), [shortcut-internal.md](/D:/canvas-editor/docs/guide/shortcut-internal.md) | 已补普通文本插入带样式 `TAB` 元素和列表 Tab/Shift+Tab 层级调整验证，当前 `3/3` 通过 | 验证后关闭本地任务 |
 
 ---
 

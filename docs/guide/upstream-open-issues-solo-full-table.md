@@ -46,7 +46,7 @@
 | #1256 | 日期如何自定义选择年或月 | 否 | 暂不处理 | `DatePicker.ts` / `date.cy.ts` | 跳过 |
 | #1237 | 分栏效果 | 否 | 暂不处理 | `DrawLayoutPipeline.ts` / 布局文档 | 跳过 |
 | #1200 | Smart Word Wrapping Around Images ("SURROUND") | 待判断 | 未验证 | `Position.ts` / `image.cy.ts` | 验证 |
-| #1190 | tab缩进更多场景 | 待判断 | 未验证 | `tab.ts` / shortcut 文档 | 验证 |
+| #1190 | tab缩进更多场景 | 是 | 已验证-本地已解决 | `issue-1190-tab-indent-text.cy.ts` / `issue-440-list-sublevel.cy.ts` / `TabIntent.ts` | 跳过 |
 | #1163 | 表格前如何添加文字 | 是 | 已验证-本地已解决 | `issue-inline-table-label.cy.ts` / `issue-1163-text-before-table.cy.ts` / `issue-left-blank-after-table-click.cy.ts` / `table.cy.ts` | 跳过 |
 | #1106 | Add Red Squiggly Underline Under Misspelled Words | 否 | 暂不处理 | `Underline.ts` / underline 能力 | 跳过 |
 | #1053 | 单元格框线设置 | 是 | 已验证-本地已解决 | `issue-1053-table-cell-border.cy.ts` / `table-pagination-border.cy.ts` / `TableTool.ts` | 跳过 |
