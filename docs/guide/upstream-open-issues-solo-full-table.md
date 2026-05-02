@@ -49,12 +49,12 @@
 | #1190 | tab缩进更多场景 | 待判断 | 未验证 | `tab.ts` / shortcut 文档 | 验证 |
 | #1163 | 表格前如何添加文字 | 是 | 已验证-本地已解决 | `issue-inline-table-label.cy.ts` / `issue-1163-text-before-table.cy.ts` / `issue-left-blank-after-table-click.cy.ts` / `table.cy.ts` | 跳过 |
 | #1106 | Add Red Squiggly Underline Under Misspelled Words | 否 | 暂不处理 | `Underline.ts` / underline 能力 | 跳过 |
-| #1053 | 单元格框线设置 | 待判断 | 未验证 | `TableTool.ts` / `table-pagination-border.cy.ts` | 验证 |
+| #1053 | 单元格框线设置 | 是 | 已验证-本地已解决 | `issue-1053-table-cell-border.cy.ts` / `table-pagination-border.cy.ts` / `TableTool.ts` | 跳过 |
 | #1051 | 增区域设置默认高度，类似单元格，可以拖拽一个高度作为默认高度 | 否 | 暂不处理 | `Area.ts` / area 能力 | 跳过 |
 | #1024 | 文档版本对比功能 | 否 | 暂不处理 | `Command.ts` / API 文档 | 跳过 |
 | #957 | 多个选区 | 否 | 暂不处理 | `RangeManager.ts` / selection 主链 | 跳过 |
 | #888 | 增加文本框功能 | 否 | 暂不处理 | `BlockParticle.ts` / schema 文档 | 跳过 |
-| #877 | 分页符行为优化 | 待判断 | 未验证 | `PageBreakParticle.ts` / `pagebreak.cy.ts` | 验证 |
+| #877 | 分页符行为优化 | 是 | 已验证-本地已解决 | `issue-877-pagebreak-behavior.cy.ts` / `pagebreak.cy.ts` / `PageBreakParticle.ts` | 跳过 |
 | #872 | 表格四周环绕 | 否 | 暂不处理 | `TableParticle.ts` / `Position.ts` | 跳过 |
 | #866 | 分节符 | 否 | 暂不处理 | `PageBreakParticle.ts` / schema 文档 | 跳过 |
 | #837 | 大文本计算性能优化 | 待判断 | 未验证 | `DrawLayoutPipeline.ts` / 性能文档 | 验证 |

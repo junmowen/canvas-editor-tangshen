@@ -83,12 +83,12 @@
 | #1190 | tab缩进更多场景 | `部分解决` | 本地已存在缩进相关快捷键与布局能力，见 [shortcut-internal.md](/D:/canvas-editor/docs/guide/shortcut-internal.md) 与 issue `#725` 同类方向，但“更多场景”未见明确完成。 | 列为部分覆盖需求。 |
 | #1163 | 表格前如何添加文字 | `已解决` | 已补表格前插入文字、行内表格标签、表格点击后左侧空白光标与基础表格回归；相关样例见 [issue-inline-table-label.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-inline-table-label.cy.ts)、[issue-1163-text-before-table.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-1163-text-before-table.cy.ts)、[issue-left-blank-after-table-click.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-left-blank-after-table-click.cy.ts) 和 [table.cy.ts](/D:/canvas-editor/cypress/e2e/menus/table.cy.ts)，当前 `15/15` 通过。 | 本地已验证，后续仅保留回归。 |
 | #1106 | Add Red Squiggly Underline Under Misspelled Words | `未见证据` | 本地有多种下划线样式，但未见拼写检查或红色波浪线拼写能力。 | 作为未实现需求列入 backlog。 |
-| #1053 | 单元格框线设置 | `部分解决` | 本地已有表格边框、边框拖拽与分页边框测试，见 [TableTool.ts](/D:/canvas-editor/src/editor/core/draw/particle/table/TableTool.ts) 和 `table-pagination-border.cy.ts`。但 issue 标题泛指“单元格框线设置”，能力范围需人工确认。 | 视为部分覆盖，补样例确认 UI/API 是否满足。 |
+| #1053 | 单元格框线设置 | `已解决` | 已补 [issue-1053-table-cell-border.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-1053-table-cell-border.cy.ts) 与 [table-pagination-border.cy.ts](/D:/canvas-editor/cypress/e2e/menus/table-pagination-border.cy.ts)，覆盖整表边框类型、边框颜色、单元格单边框设置/取消和分页 fragment 顶边框渲染；边框交互入口见 [TableTool.ts](/D:/canvas-editor/src/editor/core/draw/particle/table/TableTool.ts)。 | 本地已验证，后续仅保留回归。 |
 | #1051 | 增区域设置默认高度，类似单元格，可以拖拽一个高度作为默认高度 | `未见证据` | Area 能力存在，但未见“默认高度拖拽配置”文档或公开能力。 | 作为未实现需求列入 backlog。 |
 | #1024 | 文档版本对比功能 | `未见证据` | 文档、代码、README 未见文档 diff / compare 能力。 | 作为未实现需求列入 backlog。 |
 | #957 | 多个选区 | `未见证据` | 当前选区主链是单选区体系，未见多选区能力。 | 作为未实现需求列入 backlog。 |
 | #888 | 增加文本框功能 | `未见证据` | README 与文档未见独立文本框能力。 | 作为未实现需求列入 backlog。 |
-| #877 | 分页符行为优化 | `部分解决` | 本地已有分页符元素和分页模式，见 README、[start.md](/D:/canvas-editor/docs/guide/start.md)、[PageBreakParticle.ts](/D:/canvas-editor/src/editor/core/draw/particle/PageBreakParticle.ts)。但“行为优化”仍是 open issue。 | 视为已有能力但细节待验证。 |
+| #877 | 分页符行为优化 | `已解决` | 已补 [issue-877-pagebreak-behavior.cy.ts](/D:/canvas-editor/cypress/e2e/issues/issue-877-pagebreak-behavior.cy.ts) 与 [pagebreak.cy.ts](/D:/canvas-editor/cypress/e2e/menus/pagebreak.cy.ts)，覆盖分页符元素数据保留、后续内容新页渲染和菜单入口；渲染能力见 [PageBreakParticle.ts](/D:/canvas-editor/src/editor/core/draw/particle/PageBreakParticle.ts)。 | 本地已验证，后续仅保留回归。 |
 | #872 | 表格四周环绕 | `未见证据` | 本地有图片环绕，但未见表格四周环绕作为正式能力。 | 作为未实现需求列入 backlog。 |
 | #866 | 分节符 | `未见证据` | 未见 section break 能力入口。 | 作为未实现需求列入 backlog。 |
 | #837 | 大文本计算性能优化 | `部分解决` | 本地已有大量性能重构基础，见 [performance-optimization-plan.md](/D:/canvas-editor/docs/guide/performance-optimization-plan.md)、visible-only / overlay-only / invalidation 体系，但 issue 仍 open。 | 视为性能主线部分落地，需用大文本样例实测。 |
