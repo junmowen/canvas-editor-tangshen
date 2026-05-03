@@ -18,6 +18,17 @@ interface IDrawTableBorderOption {
   isDrawFullBorder?: boolean
 }
 
+interface IDrawTdBorderPayload {
+  ctx: CanvasRenderingContext2D
+  td: ITd
+  x: number
+  y: number
+  width: number
+  height: number
+  borderColor: string
+  borderWidth: number
+}
+
 interface IMergeSplittedTablePayload {
   elementList: IElement[]
   element: IElement
@@ -205,6 +216,38 @@ export class TableParticle {
     ctx.restore()
   }
 
+  private _drawTdExplicitBorder(payload: IDrawTdBorderPayload) {
+    const { ctx, td, x, y, width, height, borderColor, borderWidth } = payload
+    if (!td.borderTypes?.length) return
+    const previousLineWidth = ctx.lineWidth
+    const previousStrokeStyle: string | CanvasGradient | CanvasPattern =
+      ctx.strokeStyle
+
+    ctx.lineWidth = borderWidth
+    ctx.strokeStyle = borderColor
+    ctx.beginPath()
+    if (td.borderTypes.includes(TdBorder.TOP)) {
+      ctx.moveTo(x - width, y)
+      ctx.lineTo(x, y)
+    }
+    if (td.borderTypes.includes(TdBorder.RIGHT)) {
+      ctx.moveTo(x, y)
+      ctx.lineTo(x, y + height)
+    }
+    if (td.borderTypes.includes(TdBorder.BOTTOM)) {
+      ctx.moveTo(x, y + height)
+      ctx.lineTo(x - width, y + height)
+    }
+    if (td.borderTypes.includes(TdBorder.LEFT)) {
+      ctx.moveTo(x - width, y)
+      ctx.lineTo(x - width, y + height)
+    }
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.lineWidth = previousLineWidth
+    ctx.strokeStyle = previousStrokeStyle
+  }
+
   private _drawBorder(
     ctx: CanvasRenderingContext2D,
     element: IElement,
@@ -274,25 +317,9 @@ export class TableParticle {
         const y = Math.round(td.y! * scale + startY)
         const tableBorderColor = borderColor || defaultBorderColor
         const tableBorderWidth = borderWidth * scale
-        const tdBorderColor = td.borderColor || tableBorderColor
-        const tdBorderWidth = (td.borderWidth || borderWidth) * scale
         ctx.translate(0.5, 0.5)
         // 绘制线条
         ctx.beginPath()
-        // 单元格边框
-        if (td.borderTypes?.includes(TdBorder.TOP)) {
-          const previousLineWidth = ctx.lineWidth
-          const previousStrokeStyle: string | CanvasGradient | CanvasPattern =
-            ctx.strokeStyle
-          ctx.lineWidth = tdBorderWidth
-          ctx.strokeStyle = tdBorderColor
-          ctx.moveTo(x - width, y)
-          ctx.lineTo(x, y)
-          ctx.stroke()
-          ctx.beginPath()
-          ctx.lineWidth = previousLineWidth
-          ctx.strokeStyle = previousStrokeStyle
-        }
         if (
           isFragmentTable &&
           t === 0 &&
@@ -303,45 +330,6 @@ export class TableParticle {
           ctx.moveTo(x - width, y)
           ctx.lineTo(x, y)
           ctx.stroke()
-        }
-        if (td.borderTypes?.includes(TdBorder.RIGHT)) {
-          const previousLineWidth = ctx.lineWidth
-          const previousStrokeStyle: string | CanvasGradient | CanvasPattern =
-            ctx.strokeStyle
-          ctx.lineWidth = tdBorderWidth
-          ctx.strokeStyle = tdBorderColor
-          ctx.moveTo(x, y)
-          ctx.lineTo(x, y + height)
-          ctx.stroke()
-          ctx.beginPath()
-          ctx.lineWidth = previousLineWidth
-          ctx.strokeStyle = previousStrokeStyle
-        }
-        if (td.borderTypes?.includes(TdBorder.BOTTOM)) {
-          const previousLineWidth = ctx.lineWidth
-          const previousStrokeStyle: string | CanvasGradient | CanvasPattern =
-            ctx.strokeStyle
-          ctx.lineWidth = tdBorderWidth
-          ctx.strokeStyle = tdBorderColor
-          ctx.moveTo(x, y + height)
-          ctx.lineTo(x - width, y + height)
-          ctx.stroke()
-          ctx.beginPath()
-          ctx.lineWidth = previousLineWidth
-          ctx.strokeStyle = previousStrokeStyle
-        }
-        if (td.borderTypes?.includes(TdBorder.LEFT)) {
-          const previousLineWidth = ctx.lineWidth
-          const previousStrokeStyle: string | CanvasGradient | CanvasPattern =
-            ctx.strokeStyle
-          ctx.lineWidth = tdBorderWidth
-          ctx.strokeStyle = tdBorderColor
-          ctx.moveTo(x - width, y)
-          ctx.lineTo(x - width, y + height)
-          ctx.stroke()
-          ctx.beginPath()
-          ctx.lineWidth = previousLineWidth
-          ctx.strokeStyle = previousStrokeStyle
         }
         // 表格线
         if (!isEmptyBorderType && !isExternalBorderType) {
@@ -397,6 +385,30 @@ export class TableParticle {
           }
           ctx.stroke()
         }
+        ctx.translate(-0.5, -0.5)
+      }
+    }
+    // 显式单元格边框最后绘制，避免被整表线或相邻单元格覆盖。
+    for (let t = 0; t < trList.length; t++) {
+      const tr = trList[t]
+      for (let d = 0; d < tr.tdList.length; d++) {
+        const td = tr.tdList[d]
+        if (!td.borderTypes?.length) continue
+        const width = td.width! * scale
+        const height = td.height! * scale
+        const x = Math.round(td.x! * scale + startX + width)
+        const y = Math.round(td.y! * scale + startY)
+        ctx.translate(0.5, 0.5)
+        this._drawTdExplicitBorder({
+          ctx,
+          td,
+          x,
+          y,
+          width,
+          height,
+          borderColor: td.borderColor || borderColor || defaultBorderColor,
+          borderWidth: (td.borderWidth || borderWidth) * scale
+        })
         ctx.translate(-0.5, -0.5)
       }
     }

@@ -25,6 +25,14 @@ import { TableTool } from './TableTool'
 export interface IInsertTableOption {
   tableDisplay?: TableDisplay
 }
+
+const ALL_TD_BORDERS = [
+  TdBorder.TOP,
+  TdBorder.RIGHT,
+  TdBorder.BOTTOM,
+  TdBorder.LEFT
+]
+
 /**
  * 表格结构操作器。
  * 负责插入、删除、合并、拆分以及边框等表格结构编辑操作。
@@ -1076,6 +1084,9 @@ export class TableOperate {
     const rowCol = this.tableParticle.getRangeRowCol()
     if (!rowCol) return
     rowCol.flat().forEach(td => {
+      if (!td.borderTypes?.length) {
+        td.borderTypes = [...ALL_TD_BORDERS]
+      }
       td.borderColor = payload
     })
     const { endIndex } = this.range.getEditBoundaryRange()
@@ -1090,6 +1101,9 @@ export class TableOperate {
     const rowCol = this.tableParticle.getRangeRowCol()
     if (!rowCol) return
     rowCol.flat().forEach(td => {
+      if (!td.borderTypes?.length) {
+        td.borderTypes = [...ALL_TD_BORDERS]
+      }
       td.borderWidth = payload
     })
     const { endIndex } = this.range.getEditBoundaryRange()
