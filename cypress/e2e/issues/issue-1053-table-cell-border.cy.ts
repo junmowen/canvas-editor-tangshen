@@ -47,17 +47,21 @@ describe('issue #1053 table cell border settings', () => {
       editor.command.executeSetRange(0, 0)
 
       editor.command.executeTableBorderType(TableBorder.EXTERNAL)
-      editor.command.executeTableBorderColor('#FF0000')
+      editor.command.executeTableBorderColor('#0000FF')
       editor.command.executeTableTdBorderType(TdBorder.TOP)
       editor.command.executeTableTdBorderType(TdBorder.LEFT)
+      editor.command.executeTableTdBorderColor('#FF0000')
+      editor.command.executeTableTdBorderWidth(4)
 
       table = getTable(editor)
       const firstCell = table?.trList?.[0].tdList[0]
 
       expect(table?.borderType).to.eq(TableBorder.EXTERNAL)
-      expect(table?.borderColor).to.eq('#FF0000')
+      expect(table?.borderColor).to.eq('#0000FF')
       expect(firstCell?.borderTypes).to.include(TdBorder.TOP)
       expect(firstCell?.borderTypes).to.include(TdBorder.LEFT)
+      expect(firstCell?.borderColor).to.eq('#FF0000')
+      expect(firstCell?.borderWidth).to.eq(4)
 
       editor.command.executeTableTdBorderType(TdBorder.TOP)
 
@@ -66,6 +70,63 @@ describe('issue #1053 table cell border settings', () => {
         TdBorder.TOP
       )
       expect(table?.trList?.[0].tdList[0].borderTypes).to.include(TdBorder.LEFT)
+    })
+  })
+
+  it('round-trips per-cell border color and width through getValue and setValue', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        header: [],
+        main: [
+          {
+            type: 'table',
+            value: '',
+            borderType: TableBorder.EXTERNAL,
+            borderColor: '#0000FF',
+            trList: [
+              {
+                height: 40,
+                tdList: [
+                  {
+                    colspan: 1,
+                    rowspan: 1,
+                    borderTypes: [TdBorder.TOP],
+                    borderColor: '#FF0000',
+                    borderWidth: 4,
+                    value: [{ value: 'A' }]
+                  },
+                  {
+                    colspan: 1,
+                    rowspan: 1,
+                    value: [{ value: 'B' }]
+                  }
+                ]
+              }
+            ]
+          } as any
+        ],
+        footer: []
+      })
+
+      const value = editor.command.getValue().data.main
+      const firstCell = value[0].trList![0].tdList[0]
+
+      expect(firstCell.borderTypes).to.deep.eq([TdBorder.TOP])
+      expect(firstCell.borderColor).to.eq('#FF0000')
+      expect(firstCell.borderWidth).to.eq(4)
+
+      editor.command.executeSetValue({
+        header: [],
+        main: value,
+        footer: []
+      })
+
+      const roundTripCell = editor.command.getValue().data.main[0].trList![0]
+        .tdList[0]
+
+      expect(roundTripCell.borderTypes).to.deep.eq([TdBorder.TOP])
+      expect(roundTripCell.borderColor).to.eq('#FF0000')
+      expect(roundTripCell.borderWidth).to.eq(4)
     })
   })
 })

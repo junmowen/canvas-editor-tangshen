@@ -29,6 +29,8 @@ export interface ITd {
   verticalAlign?: VerticalAlign
   backgroundColor?: string
   borderTypes?: TdBorder[]
+  borderColor?: string
+  borderWidth?: number
   slashTypes?: TdSlash[]
   /** 内容高度加内边距后的主高度。 */
   mainHeight?: number

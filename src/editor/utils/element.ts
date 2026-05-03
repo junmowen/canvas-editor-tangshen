@@ -1326,7 +1326,9 @@ export function createDomFromElementList(
         tableDom.setAttribute('cellSpacing', '0')
         tableDom.setAttribute('cellpadding', '0')
         tableDom.setAttribute('border', '0')
-        const borderStyle = '1px solid #000000'
+        const tableBorderColor = element.borderColor || '#000000'
+        const tableBorderWidth = element.borderWidth || 1
+        const borderStyle = `${tableBorderWidth}px solid ${tableBorderColor}`
         // 表格边框
         if (!element.borderType || element.borderType === TableBorder.ALL) {
           tableDom.style.borderTop = borderStyle
@@ -1356,21 +1358,24 @@ export function createDomFromElementList(
               tdDom.style.borderBottom = tdDom.style.borderRight = '1px solid'
             }
             const td = tr.tdList[d]
+            const tdBorderColor = td.borderColor || tableBorderColor
+            const tdBorderWidth = td.borderWidth || tableBorderWidth
+            const tdBorderStyle = `${tdBorderWidth}px solid ${tdBorderColor}`
             tdDom.colSpan = td.colspan
             tdDom.rowSpan = td.rowspan
             tdDom.style.verticalAlign = td.verticalAlign || 'top'
             // 单元格边框
             if (td.borderTypes?.includes(TdBorder.TOP)) {
-              tdDom.style.borderTop = borderStyle
+              tdDom.style.borderTop = tdBorderStyle
             }
             if (td.borderTypes?.includes(TdBorder.RIGHT)) {
-              tdDom.style.borderRight = borderStyle
+              tdDom.style.borderRight = tdBorderStyle
             }
             if (td.borderTypes?.includes(TdBorder.BOTTOM)) {
-              tdDom.style.borderBottom = borderStyle
+              tdDom.style.borderBottom = tdBorderStyle
             }
             if (td.borderTypes?.includes(TdBorder.LEFT)) {
-              tdDom.style.borderLeft = borderStyle
+              tdDom.style.borderLeft = tdBorderStyle
             }
             const childDom = createDomFromElementList(td.value!, options)
             tdDom.innerHTML = childDom.innerHTML

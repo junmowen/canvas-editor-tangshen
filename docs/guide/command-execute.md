@@ -539,6 +539,26 @@ instance.command.executeTableBorderColor(payload: string)
 instance.command.executeTableTdBorderType(payload: TdBorder)
 ```
 
+## executeTableTdBorderColor
+
+功能：表格单元格边框颜色
+
+用法：
+
+```javascript
+instance.command.executeTableTdBorderColor(payload: string)
+```
+
+## executeTableTdBorderWidth
+
+功能：表格单元格边框宽度
+
+用法：
+
+```javascript
+instance.command.executeTableTdBorderWidth(payload: number)
+```
+
 ## executeTableTdSlashType
 
 功能：表格单元格内斜线

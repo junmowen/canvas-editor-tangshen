@@ -1072,6 +1072,34 @@ export class TableOperate {
     })
   }
 
+  public tableTdBorderColor(payload: string) {
+    const rowCol = this.tableParticle.getRangeRowCol()
+    if (!rowCol) return
+    rowCol.flat().forEach(td => {
+      td.borderColor = payload
+    })
+    const { endIndex } = this.range.getEditBoundaryRange()
+    this.draw.render({
+      curIndex: endIndex,
+      isCompute: false,
+      pageRenderScope: 'visible'
+    })
+  }
+
+  public tableTdBorderWidth(payload: number) {
+    const rowCol = this.tableParticle.getRangeRowCol()
+    if (!rowCol) return
+    rowCol.flat().forEach(td => {
+      td.borderWidth = payload
+    })
+    const { endIndex } = this.range.getEditBoundaryRange()
+    this.draw.render({
+      curIndex: endIndex,
+      isCompute: false,
+      pageRenderScope: 'visible'
+    })
+  }
+
   public tableTdSlashType(payload: TdSlash) {
     const rowCol = this.tableParticle.getRangeRowCol()
     if (!rowCol) return

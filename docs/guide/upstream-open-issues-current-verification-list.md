@@ -94,7 +94,7 @@
 9. `#621` 当前仍保留 `manual-only`
 10. `#440` 已补列表子层级能力并通过专项样例：`issue-440-list-sublevel.cy.ts`，覆盖 Tab 增加子列表、Shift+Tab 取消子列表层级、`getValue/setValue` 层级数据往返
 11. `#425` 已补文本控件值内嵌控件专项样例并通过：`issue-425-control-in-text-control.cy.ts` / `text.cy.ts`，保存恢复后保留子控件对象，子控件在渲染层保留独立 `controlId` 并可由 `getControlList()` 识别，避免空 `{}` 与双层括号。
-12. `#1053` 已补单元格边框设置专项样例并通过：`issue-1053-table-cell-border.cy.ts` / `table-pagination-border.cy.ts`，覆盖整表边框类型、边框颜色、单元格单边框设置/取消和分页 fragment 顶边框渲染。
+12. `#1053` 已补单元格边框设置实现与专项样例并通过：`issue-1053-table-cell-border.cy.ts` / `table-pagination-border.cy.ts`，覆盖整表边框类型/颜色、单元格单边框设置/取消、每个 td 独立 `borderColor` / `borderWidth` 数据往返和分页 fragment 顶边框渲染。
 13. `#877` 已补分页符行为专项样例并通过：`issue-877-pagebreak-behavior.cy.ts` / `pagebreak.cy.ts`，覆盖分页符元素数据保留、后续内容新页渲染和菜单入口。
 
 当前开发候选：

@@ -50,6 +50,8 @@ export class Command {
   public executeTableBorderType: CommandAdapt['tableBorderType']
   public executeTableBorderColor: CommandAdapt['tableBorderColor']
   public executeTableTdBorderType: CommandAdapt['tableTdBorderType']
+  public executeTableTdBorderColor: CommandAdapt['tableTdBorderColor']
+  public executeTableTdBorderWidth: CommandAdapt['tableTdBorderWidth']
   public executeTableTdSlashType: CommandAdapt['tableTdSlashType']
   public executeTableTdBackgroundColor: CommandAdapt['tableTdBackgroundColor']
   public executeTableSelectAll: CommandAdapt['tableSelectAll']
@@ -195,6 +197,8 @@ export class Command {
     this.executeTableBorderType = adapt.tableBorderType.bind(adapt)
     this.executeTableBorderColor = adapt.tableBorderColor.bind(adapt)
     this.executeTableTdBorderType = adapt.tableTdBorderType.bind(adapt)
+    this.executeTableTdBorderColor = adapt.tableTdBorderColor.bind(adapt)
+    this.executeTableTdBorderWidth = adapt.tableTdBorderWidth.bind(adapt)
     this.executeTableTdSlashType = adapt.tableTdSlashType.bind(adapt)
     this.executeTableTdBackgroundColor =
       adapt.tableTdBackgroundColor.bind(adapt)

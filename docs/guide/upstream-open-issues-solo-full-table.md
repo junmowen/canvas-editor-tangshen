@@ -49,7 +49,7 @@
 | #1190 | tab缩进更多场景 | 是 | 已验证-本地已解决 | `issue-1190-tab-indent-text.cy.ts` / `issue-440-list-sublevel.cy.ts` / `TabIntent.ts` | 跳过 |
 | #1163 | 表格前如何添加文字 | 是 | 已验证-本地已解决 | `issue-inline-table-label.cy.ts` / `issue-1163-text-before-table.cy.ts` / `issue-left-blank-after-table-click.cy.ts` / `table.cy.ts` | 跳过 |
 | #1106 | Add Red Squiggly Underline Under Misspelled Words | 否 | 暂不处理 | `Underline.ts` / underline 能力 | 跳过 |
-| #1053 | 单元格框线设置 | 是 | 已验证-本地已解决 | `issue-1053-table-cell-border.cy.ts` / `table-pagination-border.cy.ts` / `TableTool.ts` | 跳过 |
+| #1053 | 单元格框线设置 | 是 | 已实现-本地已解决 | `issue-1053-table-cell-border.cy.ts` / `table-pagination-border.cy.ts` / `executeTableTdBorderColor` / `executeTableTdBorderWidth` | 跳过 |
 | #1051 | 增区域设置默认高度，类似单元格，可以拖拽一个高度作为默认高度 | 否 | 暂不处理 | `Area.ts` / area 能力 | 跳过 |
 | #1024 | 文档版本对比功能 | 否 | 暂不处理 | `Command.ts` / API 文档 | 跳过 |
 | #957 | 多个选区 | 否 | 暂不处理 | `RangeManager.ts` / selection 主链 | 跳过 |

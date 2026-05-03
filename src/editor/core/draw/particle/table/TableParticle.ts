@@ -272,14 +272,26 @@ export class TableParticle {
         const height = td.height! * scale
         const x = Math.round(td.x! * scale + startX + width)
         const y = Math.round(td.y! * scale + startY)
+        const tableBorderColor = borderColor || defaultBorderColor
+        const tableBorderWidth = borderWidth * scale
+        const tdBorderColor = td.borderColor || tableBorderColor
+        const tdBorderWidth = (td.borderWidth || borderWidth) * scale
         ctx.translate(0.5, 0.5)
         // 绘制线条
         ctx.beginPath()
         // 单元格边框
         if (td.borderTypes?.includes(TdBorder.TOP)) {
+          const previousLineWidth = ctx.lineWidth
+          const previousStrokeStyle: string | CanvasGradient | CanvasPattern =
+            ctx.strokeStyle
+          ctx.lineWidth = tdBorderWidth
+          ctx.strokeStyle = tdBorderColor
           ctx.moveTo(x - width, y)
           ctx.lineTo(x, y)
           ctx.stroke()
+          ctx.beginPath()
+          ctx.lineWidth = previousLineWidth
+          ctx.strokeStyle = previousStrokeStyle
         }
         if (
           isFragmentTable &&
@@ -293,22 +305,48 @@ export class TableParticle {
           ctx.stroke()
         }
         if (td.borderTypes?.includes(TdBorder.RIGHT)) {
+          const previousLineWidth = ctx.lineWidth
+          const previousStrokeStyle: string | CanvasGradient | CanvasPattern =
+            ctx.strokeStyle
+          ctx.lineWidth = tdBorderWidth
+          ctx.strokeStyle = tdBorderColor
           ctx.moveTo(x, y)
           ctx.lineTo(x, y + height)
           ctx.stroke()
+          ctx.beginPath()
+          ctx.lineWidth = previousLineWidth
+          ctx.strokeStyle = previousStrokeStyle
         }
         if (td.borderTypes?.includes(TdBorder.BOTTOM)) {
+          const previousLineWidth = ctx.lineWidth
+          const previousStrokeStyle: string | CanvasGradient | CanvasPattern =
+            ctx.strokeStyle
+          ctx.lineWidth = tdBorderWidth
+          ctx.strokeStyle = tdBorderColor
           ctx.moveTo(x, y + height)
           ctx.lineTo(x - width, y + height)
           ctx.stroke()
+          ctx.beginPath()
+          ctx.lineWidth = previousLineWidth
+          ctx.strokeStyle = previousStrokeStyle
         }
         if (td.borderTypes?.includes(TdBorder.LEFT)) {
+          const previousLineWidth = ctx.lineWidth
+          const previousStrokeStyle: string | CanvasGradient | CanvasPattern =
+            ctx.strokeStyle
+          ctx.lineWidth = tdBorderWidth
+          ctx.strokeStyle = tdBorderColor
           ctx.moveTo(x - width, y)
           ctx.lineTo(x - width, y + height)
           ctx.stroke()
+          ctx.beginPath()
+          ctx.lineWidth = previousLineWidth
+          ctx.strokeStyle = previousStrokeStyle
         }
         // 表格线
         if (!isEmptyBorderType && !isExternalBorderType) {
+          ctx.lineWidth = tableBorderWidth
+          ctx.strokeStyle = tableBorderColor
           // 右边框
           if (
             !isInternalBorderType ||
