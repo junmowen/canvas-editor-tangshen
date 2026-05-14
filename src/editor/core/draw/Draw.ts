@@ -289,11 +289,11 @@ export class Draw {
     this.viewState.setPageNo(payload)
   }
 
-  public getPage(pageNo = -1): HTMLCanvasElement {
+  public getPage(pageNo = -1): HTMLCanvasElement | undefined {
     return this.pageCanvasHost.getPage(~pageNo ? pageNo : this.getPageNo())
   }
 
-  public getPageList(): HTMLCanvasElement[] {
+  public getPageList(): (HTMLCanvasElement | undefined)[] {
     return this.pageCanvasHost.getPageList()
   }
 

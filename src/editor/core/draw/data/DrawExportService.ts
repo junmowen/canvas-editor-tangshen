@@ -105,7 +105,7 @@ export class DrawExportService {
       // 等待所有图片加载完成
       await this.draw.getComponents().imageObserver.allSettled()
       // 将每页画布转换为 dataURL 并返回
-      return this.draw.getPageCanvasHost().getPageList().map(canvas => canvas.toDataURL())
+      return this.draw.getPageCanvasHost().getPageList().map(canvas => canvas!.toDataURL())
     } finally {
       // 无论成功与否，都恢复原始渲染状态
       this.draw.restoreExportRenderState(exportState)

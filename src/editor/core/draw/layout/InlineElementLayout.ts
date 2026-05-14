@@ -61,8 +61,8 @@ export class InlineElementLayout {
       defaultSize,
       defaultTabWidth
     } = payload
-    // 创建空的尺寸对象
-    const metrics = this.createMetrics()
+    // 复用已有 metrics 对象，避免垃圾回收停顿
+    const metrics = (element as any).metrics || this.createMetrics()
     const curRow = rowList[rowList.length - 1]
 
     // 非设计态下，隐藏元素不参与真实排版，但仍需继承前一个元素高度以维持行高稳定。
@@ -196,8 +196,12 @@ export class InlineElementLayout {
       element.actualSize = Math.ceil(size * 0.6)
     }
     metrics.height = (element.actualSize || size) * scale
-    // 设置字体
-    ctx.font = this.draw.getElementFont(element)
+    // 设置字体（缓存避免频繁触发 DOM setter）
+    const font = this.draw.getElementFont(element)
+    if ((ctx as any)._currentFont !== font) {
+      ctx.font = font
+      ;(ctx as any)._currentFont = font
+    }
     // 测量文本
     const fontMetrics = this.draw.getTextParticle().measureText(ctx, element)
     metrics.width = fontMetrics.width * scale

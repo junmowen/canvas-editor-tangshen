@@ -59,6 +59,9 @@ export class Position {
   private positionContext: IPositionContext
   private positionList: IElementPosition[]
   private floatPositionList: IFloatPosition[]
+  private positionListPool: IElementPosition[]
+  private poolIndex: number
+  private isComputingAllPositions: boolean
   private positionLookupMapCache: WeakMap<IElementPosition[], Map<string, IElementPosition>>
   private pageRowBandsLookupMapCache: WeakMap<IElementPosition[], Map<number, TPageRowBand[]>>
 
@@ -69,6 +72,9 @@ export class Position {
   constructor(draw: Draw) {
     this.positionList = []
     this.floatPositionList = []
+    this.positionListPool = []
+    this.poolIndex = 0
+    this.isComputingAllPositions = false
     this.cursorPosition = null
     this.positionContext = {
       isTable: false,
@@ -338,26 +344,82 @@ export class Position {
         }
         const elementPreX = x
         const elementPreY = y
-        const positionItem: IElementPosition = {
-          pageNo,
-          index,
-          value: element.value,
-          element,
-          tableFragment:
-            element.type === ElementType.TABLE ? curRow.tableFragment : undefined,
-          rowIndex: startRowIndex + i,
-          rowNo: i,
-          metrics,
-          left: element.left || 0,
-          ascent: offsetY,
-          lineHeight: curRow.height,
-          isFirstLetter: j === 0,
-          isLastLetter: j === curRow.elementList.length - 1,
-          coordinate: {
-            leftTop: [x, y],
-            leftBottom: [x, y + curRow.height],
-            rightTop: [x + metrics.width, y],
-            rightBottom: [x + metrics.width, y + curRow.height]
+        
+        let positionItem: IElementPosition
+        if (this.isComputingAllPositions) {
+          const pooledItem = this.positionListPool[this.poolIndex]
+          if (pooledItem) {
+            positionItem = pooledItem
+            positionItem.pageNo = pageNo
+            positionItem.index = index
+            positionItem.value = element.value
+            positionItem.element = element
+            positionItem.tableFragment = element.type === ElementType.TABLE ? curRow.tableFragment : undefined
+            positionItem.rowIndex = startRowIndex + i
+            positionItem.rowNo = i
+            positionItem.metrics = metrics
+            positionItem.left = element.left || 0
+            positionItem.ascent = offsetY
+            positionItem.lineHeight = curRow.height
+            positionItem.isFirstLetter = j === 0
+            positionItem.isLastLetter = j === curRow.elementList.length - 1
+            
+            positionItem.coordinate.leftTop[0] = x
+            positionItem.coordinate.leftTop[1] = y
+            positionItem.coordinate.leftBottom[0] = x
+            positionItem.coordinate.leftBottom[1] = y + curRow.height
+            positionItem.coordinate.rightTop[0] = x + metrics.width
+            positionItem.coordinate.rightTop[1] = y
+            positionItem.coordinate.rightBottom[0] = x + metrics.width
+            positionItem.coordinate.rightBottom[1] = y + curRow.height
+          } else {
+            positionItem = {
+              pageNo,
+              index,
+              value: element.value,
+              element,
+              tableFragment:
+                element.type === ElementType.TABLE ? curRow.tableFragment : undefined,
+              rowIndex: startRowIndex + i,
+              rowNo: i,
+              metrics,
+              left: element.left || 0,
+              ascent: offsetY,
+              lineHeight: curRow.height,
+              isFirstLetter: j === 0,
+              isLastLetter: j === curRow.elementList.length - 1,
+              coordinate: {
+                leftTop: [x, y],
+                leftBottom: [x, y + curRow.height],
+                rightTop: [x + metrics.width, y],
+                rightBottom: [x + metrics.width, y + curRow.height]
+              }
+            }
+            this.positionListPool.push(positionItem)
+          }
+          this.poolIndex++
+        } else {
+          positionItem = {
+            pageNo,
+            index,
+            value: element.value,
+            element,
+            tableFragment:
+              element.type === ElementType.TABLE ? curRow.tableFragment : undefined,
+            rowIndex: startRowIndex + i,
+            rowNo: i,
+            metrics,
+            left: element.left || 0,
+            ascent: offsetY,
+            lineHeight: curRow.height,
+            isFirstLetter: j === 0,
+            isLastLetter: j === curRow.elementList.length - 1,
+            coordinate: {
+              leftTop: [x, y],
+              leftBottom: [x, y + curRow.height],
+              rightTop: [x + metrics.width, y],
+              rightBottom: [x + metrics.width, y + curRow.height]
+            }
           }
         }
         // 缓存浮动元素信息
@@ -492,6 +554,8 @@ export class Position {
   }
 
   public computePositionList() {
+    this.isComputingAllPositions = true
+    this.poolIndex = 0
     // 置空原位置信息
     this.positionLookupMapCache = new WeakMap()
     this.pageRowBandsLookupMapCache = new WeakMap()
@@ -521,6 +585,7 @@ export class Position {
       })
       startRowIndex += rowList.length
     }
+    this.isComputingAllPositions = false
   }
 
   public computeRowPosition(

@@ -28,7 +28,6 @@ export class CanvasEvent {
   public compositionInfo: ICompositionInfo | null
   private draw: Draw
   private pageContainer: HTMLDivElement
-  private pageList: HTMLCanvasElement[]
   private range: RangeManager
   private position: Position
   private pointerSession: IPointerSession
@@ -40,7 +39,6 @@ export class CanvasEvent {
   constructor(draw: Draw) {
     this.draw = draw
     this.pageContainer = draw.getPageCanvasHost().getPageContainer()
-    this.pageList = draw.getPageCanvasHost().getPageList()
     this.range = draw.getRange()
     this.position = draw.getPosition()
 
@@ -99,9 +97,7 @@ export class CanvasEvent {
   }
 
   public clearPainterStyle() {
-    this.pageList.forEach(p => {
-      p.style.cursor = 'text'
-    })
+    this.draw.getPageCanvasHost().setBaseCursor('text')
     this.draw.setPainterStyle(null)
   }
 

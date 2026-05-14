@@ -57,7 +57,7 @@ export class ScrollObserver {
   }
 
   public getPageVisibleInfo(): IPageVisibleInfo {
-    const pageList = this.draw.getPageList()
+    const pageList = this.draw.getPageCanvasHost().getPageWrapperList()
     const visiblePageNoList: number[] = []
     let intersectionPageNo = 0
     let intersectionMaxHeight = 0

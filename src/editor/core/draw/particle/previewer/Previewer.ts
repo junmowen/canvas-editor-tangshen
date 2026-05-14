@@ -49,7 +49,7 @@ export class Previewer {
     this.container = draw.getPageCanvasHost().getContainer()
     this.modalHost = draw.getPageCanvasHost().getModalHost()
     this.overlayHost = null
-    this.canvas = draw.getPageCanvasHost().getPage(draw.getPageNo())
+    this.canvas = draw.getPageCanvasHost().getPage(draw.getPageNo())!
     this.draw = draw
     this.options = draw.getRuntime().getOptions()
     this.curElement = null
@@ -183,7 +183,7 @@ export class Previewer {
   }
 
   private _mousedown(evt: MouseEvent) {
-    this.canvas = this.draw.getPage(this.currentPageNo)
+    this.canvas = this.draw.getPage(this.currentPageNo)!
     if (!this.curElement) return
     const { scale } = this.options
     this.mousedownX = evt.clientX
@@ -577,7 +577,7 @@ export class Previewer {
     const { scale } = this.options
     const pageNo = this._resolvePageNo(element, position)
     this._attachResizerHost(pageNo)
-    this.canvas = this.draw.getPage(pageNo)
+    this.canvas = this.draw.getPage(pageNo)!
     const elementWidth = element.width! * scale
     const elementHeight = element.height! * scale
     // 尺寸预览

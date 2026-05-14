@@ -41,10 +41,10 @@ export class PageRenderer {
     }
   }
 
-  /** 清空指定页面基础画布。 */
   public clearPage(pageNo: number) {
     const ctx = this.draw.getPageCanvasHost().getCtxList()[pageNo]
-    const pageDom = this.draw.getPageList()[pageNo]
+    const pageDom = this.draw.getPageCanvasHost().getPage(pageNo)
+    if (!ctx || !pageDom) return
     ctx.clearRect(
       0,
       0,
@@ -69,6 +69,8 @@ export class PageRenderer {
     const isPrintMode = this.draw.getMode() === EditorMode.PRINT
     const innerWidth = this.draw.getInnerWidth()
     const ctx = this.draw.getPageCanvasHost().getCtxList()[pageNo]
+    if (!ctx) return // Canvas 未挂载时不渲染
+
     // 分页模式下，基础正文走 base canvas，
     // 选区 / 搜索 / 控件高亮优先走 overlay canvas。
     const selectionCtx = this.draw.getTableOverlayRenderer().prepareSelectionContext(pageNo)
@@ -147,36 +149,50 @@ export class PageRenderer {
 
   /** 使用 requestAnimationFrame 延迟触发渲染。 */
   public lazyRender() {
-    const positionList = this.draw.getPosition().getLayoutMainPositionList()
-    const elementList = this.draw.getLayoutMainElementList()
-    this.draw.disconnectLazyRender()
-    this.draw.setLazyRenderObserver(
-      new IntersectionObserver(entries => {
+    let observer = this.draw.getLazyRenderObserver()
+    
+    if (!observer) {
+      observer = new IntersectionObserver(entries => {
         entries.forEach(entry => {
+          const index = Number(
+            (entry.target as HTMLDivElement).dataset.index
+          )
           if (entry.isIntersecting) {
-            const index = Number(
-              (entry.target as HTMLCanvasElement).dataset.index
-            )
-            this.drawPage({
-              elementList,
-              positionList,
-              rowList: this.draw.getPageRowList()[index],
-              pageNo: index
-            })
+            // 先从画布池挂载画布
+            this.draw.getPageCanvasHost().mountCanvas(index)
+
+            const currentPositionList = this.draw.getPosition().getLayoutMainPositionList()
+            const currentElementList = this.draw.getLayoutMainElementList()
+            const currentRowList = this.draw.getPageRowList()[index]
+
+            if (currentRowList) {
+              this.drawPage({
+                elementList: currentElementList,
+                positionList: currentPositionList,
+                rowList: currentRowList,
+                pageNo: index
+              })
+            }
+          } else {
+            // 移出可视区后释放画布到池中
+            this.draw.getPageCanvasHost().unmountCanvas(index)
           }
         })
       })
-    )
-    this.draw.getPageList().forEach(el => {
-      this.draw.getLazyRenderObserver()!.observe(el)
+      this.draw.setLazyRenderObserver(observer)
+    }
+
+    this.draw.disconnectLazyRender()
+    this.draw.getPageCanvasHost().getPageWrapperList().forEach(el => {
+      observer!.observe(el)
     })
   }
 
-  /** 立即渲染所有页面。 */
   public immediateRender() {
     const positionList = this.draw.getPosition().getLayoutMainPositionList()
     const elementList = this.draw.getLayoutMainElementList()
     for (let i = 0; i < this.draw.getPageRowList().length; i++) {
+      this.draw.getPageCanvasHost().mountCanvas(i)
       this.drawPage({
         elementList,
         positionList,
@@ -197,6 +213,7 @@ export class PageRenderer {
     for (let i = 0; i < pageNoList.length; i++) {
       const pageNo = pageNoList[i]
       if (!this.draw.getPageRowList()[pageNo]) continue
+      this.draw.getPageCanvasHost().mountCanvas(pageNo)
       this.drawPage({
         elementList,
         positionList,

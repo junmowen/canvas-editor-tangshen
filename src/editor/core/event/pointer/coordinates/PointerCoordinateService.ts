@@ -61,13 +61,13 @@ export class PointerCoordinateService {
   public resolvePagePoint(
     viewport: IViewportPoint
   ): IResolvedPagePoint | null {
-    const pageList = this.draw.getPageCanvasHost().getPageList()
-    let exactPage: HTMLCanvasElement | null = null
-    let nearestPage: HTMLCanvasElement | null = null
+    const pageWrapperList = this.draw.getPageCanvasHost().getPageWrapperList()
+    let exactPage: HTMLDivElement | null = null
+    let nearestPage: HTMLDivElement | null = null
     let nearestDistance = Number.POSITIVE_INFINITY
 
-    for (let i = 0; i < pageList.length; i++) {
-      const page = pageList[i]
+    for (let i = 0; i < pageWrapperList.length; i++) {
+      const page = pageWrapperList[i]
       const rect = page.getBoundingClientRect()
       if (viewport.x < rect.left || viewport.x > rect.right) continue
       if (viewport.y >= rect.top && viewport.y <= rect.bottom) {
@@ -110,7 +110,7 @@ export class PointerCoordinateService {
   }
 
   private normalizePagePoint(
-    page: HTMLCanvasElement,
+    page: HTMLDivElement,
     rawX: number,
     rawY: number,
     isExactPage: boolean

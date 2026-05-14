@@ -1,4 +1,4 @@
-import { EDITOR_COMPONENT, EDITOR_PREFIX } from '../../../dataset/constant/Editor'
+﻿import { EDITOR_COMPONENT, EDITOR_PREFIX } from '../../../dataset/constant/Editor'
 import { EditorComponent } from '../../../dataset/enum/Editor'
 
 export interface IPageCanvasHostMetrics {
@@ -19,25 +19,25 @@ export interface IPageCanvasHostState {
 }
 
 export class PageCanvasHost {
-  /** 主容器元素，包含所有页面相关元素 */
+  /** 涓诲鍣ㄥ厓绱狅紝鍖呭惈鎵€鏈夐〉闈㈢浉鍏冲厓绱?*/
   private container: HTMLDivElement
-  /** 模态框宿主元素，用于放置弹窗等覆盖层 */
+  /** 妯℃€佹瀹夸富鍏冪礌锛岀敤浜庢斁缃脊绐楃瓑瑕嗙洊灞?*/
   private modalHost: HTMLDivElement
-  /** 页面容器元素，包含所有页面包装器 */
+  /** 椤甸潰瀹瑰櫒鍏冪礌锛屽寘鍚墍鏈夐〉闈㈠寘瑁呭櫒 */
   private pageContainer: HTMLDivElement
-  /** 页面包装器列表，每个包装器包含一页的所有层 */
+  /** 椤甸潰鍖呰鍣ㄥ垪琛紝姣忎釜鍖呰鍣ㄥ寘鍚竴椤电殑鎵€鏈夊眰 */
   private pageWrapperList: HTMLDivElement[]
-  /** 主画布列表，只存储当前已挂载的可视画布 */
+  /** 涓荤敾甯冨垪琛紝鍙瓨鍌ㄥ綋鍓嶅凡鎸傝浇鐨勫彲瑙嗙敾甯?*/
   private pageList: (HTMLCanvasElement | undefined)[]
-  /** 覆盖层画布列表，只存储当前已挂载的可视画布 */
+  /** 瑕嗙洊灞傜敾甯冨垪琛紝鍙瓨鍌ㄥ綋鍓嶅凡鎸傝浇鐨勫彲瑙嗙敾甯?*/
   private overlayPageList: (HTMLCanvasElement | undefined)[]
-  /** 覆盖层宿主列表，用于放置覆盖层画布 */
+  /** 瑕嗙洊灞傚涓诲垪琛紝鐢ㄤ簬鏀剧疆瑕嗙洊灞傜敾甯?*/
   private pageOverlayHostList: HTMLDivElement[]
-  /** 主画布上下文列表 */
+  /** 涓荤敾甯冧笂涓嬫枃鍒楄〃 */
   private ctxList: (CanvasRenderingContext2D | undefined)[]
-  /** 覆盖层画布上下文列表 */
+  /** 瑕嗙洊灞傜敾甯冧笂涓嬫枃鍒楄〃 */
   private overlayCtxList: (CanvasRenderingContext2D | undefined)[]
-  /** 画布虚拟化资源池 */
+  /** 鐢诲竷铏氭嫙鍖栬祫婧愭睜 */
   private canvasPool: {
     baseCanvas: HTMLCanvasElement
     baseCtx: CanvasRenderingContext2D
@@ -45,17 +45,14 @@ export class PageCanvasHost {
     overlayCtx: CanvasRenderingContext2D
   }[]
   /**
-   * 构造函数。
-   *
-   * @param rootContainer - 根容器元素，用于挂载编辑器
-   * @param metrics - 页面画布宿主指标，提供尺寸和配置信息
+   * 鏋勯€犲嚱鏁般€?   *
+   * @param rootContainer - 鏍瑰鍣ㄥ厓绱狅紝鐢ㄤ簬鎸傝浇缂栬緫鍣?   * @param metrics - 椤甸潰鐢诲竷瀹夸富鎸囨爣锛屾彁渚涘昂瀵稿拰閰嶇疆淇℃伅
    */
   constructor(
     rootContainer: HTMLElement,
     private readonly metrics: IPageCanvasHostMetrics
   ) {
-    // 初始化所有数组
-    this.pageWrapperList = []
+    // 鍒濆鍖栨墍鏈夋暟缁?    this.pageWrapperList = []
     this.pageList = []
     this.overlayPageList = []
     this.pageOverlayHostList = []
@@ -63,68 +60,59 @@ export class PageCanvasHost {
     this.overlayCtxList = []
     this.canvasPool = []
 
-    // 包装容器并格式化
+    // 鍖呰瀹瑰櫒骞舵牸寮忓寲
     this.container = this._wrapContainer(rootContainer)
     this._formatContainer()
-    // 创建模态框宿主和页面容器
-    this.modalHost = this._createModalHost()
+    // 鍒涘缓妯℃€佹瀹夸富鍜岄〉闈㈠鍣?    this.modalHost = this._createModalHost()
     this.pageContainer = this._createPageContainer()
-    // 初始化至少一页
-    this.setPageCount(1)
+    // 鍒濆鍖栬嚦灏戜竴椤?    this.setPageCount(1)
   }
 
   /**
-   * 获取主容器元素。
-   *
-   * @returns 主容器元素
-   */
+   * 鑾峰彇涓诲鍣ㄥ厓绱犮€?   *
+   * @returns 涓诲鍣ㄥ厓绱?   */
   public getContainer(): HTMLDivElement {
     return this.container
   }
 
   /**
-   * 获取模态框宿主元素。
-   *
-   * @returns 模态框宿主元素
+   * 鑾峰彇妯℃€佹瀹夸富鍏冪礌銆?   *
+   * @returns 妯℃€佹瀹夸富鍏冪礌
    */
   public getModalHost(): HTMLDivElement {
     return this.modalHost
   }
 
   /**
-   * 获取页面容器元素。
-   *
-   * @returns 页面容器元素
+   * 鑾峰彇椤甸潰瀹瑰櫒鍏冪礌銆?   *
+   * @returns 椤甸潰瀹瑰櫒鍏冪礌
    */
   public getPageContainer(): HTMLDivElement {
     return this.pageContainer
   }
 
   /**
-   * 获取指定页面的主画布。
-   *
-   * @param pageNo - 页码
-   * @returns 指定页面的主画布
+   * 鑾峰彇鎸囧畾椤甸潰鐨勪富鐢诲竷銆?   *
+   * @param pageNo - 椤电爜
+   * @returns 鎸囧畾椤甸潰鐨勪富鐢诲竷
    */
   public getPage(pageNo: number): HTMLCanvasElement | undefined {
     return this.pageList[pageNo]
   }
 
   /**
-   * 获取指定页面的覆盖层画布。
-   *
-   * @param pageNo - 页码
-   * @returns 指定页面的覆盖层画布
+   * 鑾峰彇鎸囧畾椤甸潰鐨勮鐩栧眰鐢诲竷銆?   *
+   * @param pageNo - 椤电爜
+   * @returns 鎸囧畾椤甸潰鐨勮鐩栧眰鐢诲竷
    */
   public getOverlayPage(pageNo: number): HTMLCanvasElement | undefined {
     return this.overlayPageList[pageNo]
   }
 
   /**
-   * 获取指定页面的覆盖层宿主元素。
-   *
-   * @param pageNo - 页码
-   * @returns 指定页面的覆盖层宿主元素
+   * 鑾峰彇鎸囧畾椤甸潰鐨勮鐩栧眰瀹夸富鍏冪礌銆?   *
+   * @param pageNo - 椤电爜
+   * @returns 鎸囧畾椤甸潰鐨勮鐩栧眰瀹夸富鍏冪礌
    */
   public getPageOverlayHost(pageNo: number): HTMLDivElement {
     return this.pageOverlayHostList[pageNo]
@@ -135,95 +123,79 @@ export class PageCanvasHost {
   }
 
   /**
-   * 获取所有页面的主画布列表（未挂载时为 undefined）。
-   *
-   * @returns 主画布列表
-   */
+   * 鑾峰彇鎵€鏈夐〉闈㈢殑涓荤敾甯冨垪琛紙鏈寕杞芥椂涓?undefined锛夈€?   *
+   * @returns 涓荤敾甯冨垪琛?   */
   public getPageList(): (HTMLCanvasElement | undefined)[] {
     return this.pageList
   }
 
   /**
-   * 获取所有页面的覆盖层画布列表。
-   *
-   * @returns 覆盖层画布列表
-   */
+   * 鑾峰彇鎵€鏈夐〉闈㈢殑瑕嗙洊灞傜敾甯冨垪琛ㄣ€?   *
+   * @returns 瑕嗙洊灞傜敾甯冨垪琛?   */
   public getOverlayPageList(): (HTMLCanvasElement | undefined)[] {
     return this.overlayPageList
   }
 
   /**
-   * 获取所有页面的覆盖层宿主元素列表。
-   *
-   * @returns 覆盖层宿主元素列表
-   */
+   * 鑾峰彇鎵€鏈夐〉闈㈢殑瑕嗙洊灞傚涓诲厓绱犲垪琛ㄣ€?   *
+   * @returns 瑕嗙洊灞傚涓诲厓绱犲垪琛?   */
   public getPageOverlayHostList(): HTMLDivElement[] {
     return this.pageOverlayHostList
   }
 
   /**
-   * 获取所有主画布的上下文列表。
-   *
-   * @returns 主画布上下文列表
+   * 鑾峰彇鎵€鏈変富鐢诲竷鐨勪笂涓嬫枃鍒楄〃銆?   *
+   * @returns 涓荤敾甯冧笂涓嬫枃鍒楄〃
    */
   public getCtxList(): (CanvasRenderingContext2D | undefined)[] {
     return this.ctxList
   }
 
   /**
-   * 获取所有覆盖层画布的上下文列表。
-   *
-   * @returns 覆盖层画布上下文列表
+   * 鑾峰彇鎵€鏈夎鐩栧眰鐢诲竷鐨勪笂涓嬫枃鍒楄〃銆?   *
+   * @returns 瑕嗙洊灞傜敾甯冧笂涓嬫枃鍒楄〃
    */
   public getOverlayCtxList(): (CanvasRenderingContext2D | undefined)[] {
     return this.overlayCtxList
   }
 
   /**
-   * 获取页面数量。
-   *
-   * @returns 当前页面数量
+   * 鑾峰彇椤甸潰鏁伴噺銆?   *
+   * @returns 褰撳墠椤甸潰鏁伴噺
    */
   public getPageCount(): number {
     return this.pageList.length
   }
 
   /**
-   * 同步容器宽度。
-   *
-   * 根据指标中的宽度值更新容器宽度。
-   */
+   * 鍚屾瀹瑰櫒瀹藉害銆?   *
+   * 鏍规嵁鎸囨爣涓殑瀹藉害鍊兼洿鏂板鍣ㄥ搴︺€?   */
   public syncContainerWidth() {
-    // 根据指标设置容器宽度
+    // 鏍规嵁鎸囨爣璁剧疆瀹瑰櫒瀹藉害
     this.container.style.width = `${this.metrics.getWidth()}px`
   }
 
   /**
-   * 设置基础光标样式。
-   *
-   * 为所有主画布设置统一的鼠标光标样式。
-   *
-   * @param cursor - 光标样式字符串
-   */
+   * 璁剧疆鍩虹鍏夋爣鏍峰紡銆?   *
+   * 涓烘墍鏈変富鐢诲竷璁剧疆缁熶竴鐨勯紶鏍囧厜鏍囨牱寮忋€?   *
+   * @param cursor - 鍏夋爣鏍峰紡瀛楃涓?   */
   public setBaseCursor(cursor: string) {
-    // 为每个主画布设置光标样式
+    // 涓烘瘡涓富鐢诲竷璁剧疆鍏夋爣鏍峰紡
     this.pageList.forEach(page => {
       if (page) page.style.cursor = cursor
     })
   }
 
   /**
-   * 设置页面数量。
-   *
-   * 根据指定的数量创建或删除页面。
-   *
-   * @param count - 目标页面数量
+   * 璁剧疆椤甸潰鏁伴噺銆?   *
+   * 鏍规嵁鎸囧畾鐨勬暟閲忓垱寤烘垨鍒犻櫎椤甸潰銆?   *
+   * @param count - 鐩爣椤甸潰鏁伴噺
    */
   public setPageCount(count: number) {
     while (this.pageWrapperList.length < count) {
       this._createPage(this.pageWrapperList.length)
     }
-    // 如果当前页面数量多于目标数量，移除多余的页面
+    // 濡傛灉褰撳墠椤甸潰鏁伴噺澶氫簬鐩爣鏁伴噺锛岀Щ闄ゅ浣欑殑椤甸潰
     while (this.pageWrapperList.length > count) {
       const pageNo = this.pageWrapperList.length - 1
       if (this.pageList[pageNo]) {
@@ -235,25 +207,21 @@ export class PageCanvasHost {
       this.pageOverlayHostList.pop()
       this.ctxList.pop()
       this.overlayCtxList.pop()
-      // 从 DOM 中移除页面包装器
+      // 浠?DOM 涓Щ闄ら〉闈㈠寘瑁呭櫒
       pageWrapper?.remove()
     }
   }
 
   /**
-   * 同步所有页面的尺寸指标。
-   *
-   * 根据当前指标更新所有页面的尺寸。
-   */
+   * 鍚屾鎵€鏈夐〉闈㈢殑灏哄鎸囨爣銆?   *
+   * 鏍规嵁褰撳墠鎸囨爣鏇存柊鎵€鏈夐〉闈㈢殑灏哄銆?   */
   public syncPageMetrics() {
-    // 先同步容器宽度
-    this.syncContainerWidth()
-    // 获取尺寸指标
+    // 鍏堝悓姝ュ鍣ㄥ搴?    this.syncContainerWidth()
+    // 鑾峰彇灏哄鎸囨爣
     const width = this.metrics.getWidth()
     const height = this.metrics.getHeight()
     const dpr = this.metrics.getPagePixelRatio()
     const pageGap = this.metrics.getPageGap()
-    for (let i = 0; i < this.pageWrapperList.length; i++) {
       if (this.pageList[i]) {
         this._applyPageMetrics(i, width, height, dpr, pageGap)
       } else {
@@ -269,13 +237,11 @@ export class PageCanvasHost {
   }
 
   /**
-   * 调整指定页面的高度。
-   *
-   * @param pageNo - 页码
-   * @param height - 新的高度值
-   */
+   * 璋冩暣鎸囧畾椤甸潰鐨勯珮搴︺€?   *
+   * @param pageNo - 椤电爜
+   * @param height - 鏂扮殑楂樺害鍊?   */
   public resizePageHeight(pageNo: number, height: number) {
-    // 获取尺寸指标
+    // 鑾峰彇灏哄鎸囨爣
     const width = this.metrics.getWidth()
     const dpr = this.metrics.getPagePixelRatio()
     const pageGap = this.metrics.getPageGap()
@@ -291,26 +257,19 @@ export class PageCanvasHost {
   }
 
   /**
-   * 调整连续页面的高度。
-   *
-   * 确保页面高度不小于最小高度。
-   *
-   * @param pageNo - 页码
-   * @param pageHeight - 目标高度
-   * @param minHeight - 最小高度
-   */
+   * 璋冩暣杩炵画椤甸潰鐨勯珮搴︺€?   *
+   * 纭繚椤甸潰楂樺害涓嶅皬浜庢渶灏忛珮搴︺€?   *
+   * @param pageNo - 椤电爜
+   * @param pageHeight - 鐩爣楂樺害
+   * @param minHeight - 鏈€灏忛珮搴?   */
   public resizeContinuousPage(pageNo: number, pageHeight: number, minHeight: number) {
-    // 使用目标高度和最小高度中的较大值
-    this.resizePageHeight(pageNo, Math.max(pageHeight, minHeight))
+    // 浣跨敤鐩爣楂樺害鍜屾渶灏忛珮搴︿腑鐨勮緝澶у€?    this.resizePageHeight(pageNo, Math.max(pageHeight, minHeight))
   }
 
   /**
-   * 捕获当前页面画布宿主状态。
-   *
-   * 用于导出或状态恢复。
-   *
-   * @returns 页面画布宿主状态对象
-   */
+   * 鎹曡幏褰撳墠椤甸潰鐢诲竷瀹夸富鐘舵€併€?   *
+   * 鐢ㄤ簬瀵煎嚭鎴栫姸鎬佹仮澶嶃€?   *
+   * @returns 椤甸潰鐢诲竷瀹夸富鐘舵€佸璞?   */
   public captureState(): IPageCanvasHostState {
     return {
       pageContainer: this.pageContainer,
@@ -324,15 +283,12 @@ export class PageCanvasHost {
   }
 
   /**
-   * 替换为分离状态。
-   *
-   * 创建新的空白状态，用于导出场景。
-   */
+   * 鏇挎崲涓哄垎绂荤姸鎬併€?   *
+   * 鍒涘缓鏂扮殑绌虹櫧鐘舵€侊紝鐢ㄤ簬瀵煎嚭鍦烘櫙銆?   */
   public replaceWithDetachedState() {
-    // 创建新的空白页面容器
+    // 鍒涘缓鏂扮殑绌虹櫧椤甸潰瀹瑰櫒
     this.pageContainer = document.createElement('div')
-    // 清空所有数组
-    this.pageWrapperList = []
+    // 娓呯┖鎵€鏈夋暟缁?    this.pageWrapperList = []
     this.pageList = []
     this.overlayPageList = []
     this.pageOverlayHostList = []
@@ -342,10 +298,8 @@ export class PageCanvasHost {
   }
 
   /**
-   * 恢复页面画布宿主状态。
-   *
-   * @param state - 之前捕获的状态对象
-   */
+   * 鎭㈠椤甸潰鐢诲竷瀹夸富鐘舵€併€?   *
+   * @param state - 涔嬪墠鎹曡幏鐨勭姸鎬佸璞?   */
   public restoreState(state: IPageCanvasHostState) {
     this.pageContainer = state.pageContainer
     this.pageWrapperList = state.pageWrapperList
@@ -357,144 +311,116 @@ export class PageCanvasHost {
   }
 
   /**
-   * 包装根容器。
-   *
-   * @param rootContainer - 根容器元素
-   * @returns 包装后的容器元素
+   * 鍖呰鏍瑰鍣ㄣ€?   *
+   * @param rootContainer - 鏍瑰鍣ㄥ厓绱?   * @returns 鍖呰鍚庣殑瀹瑰櫒鍏冪礌
    */
   private _wrapContainer(rootContainer: HTMLElement): HTMLDivElement {
-    // 创建容器并添加到根容器
-    const container = document.createElement('div')
+    // 鍒涘缓瀹瑰櫒骞舵坊鍔犲埌鏍瑰鍣?    const container = document.createElement('div')
     rootContainer.append(container)
     return container
   }
 
   /**
-   * 格式化容器样式。
-   *
-   * 设置容器的位置、宽度和属性标识。
-   */
+   * 鏍煎紡鍖栧鍣ㄦ牱寮忋€?   *
+   * 璁剧疆瀹瑰櫒鐨勪綅缃€佸搴﹀拰灞炴€ф爣璇嗐€?   */
   private _formatContainer() {
-    // 设置容器相对定位
+    // 璁剧疆瀹瑰櫒鐩稿瀹氫綅
     this.container.style.position = 'relative'
-    // 根据指标设置容器宽度
+    // 鏍规嵁鎸囨爣璁剧疆瀹瑰櫒瀹藉害
     this.container.style.width = `${this.metrics.getWidth()}px`
-    // 设置编辑器组件标识
-    this.container.setAttribute(EDITOR_COMPONENT, EditorComponent.MAIN)
+    // 璁剧疆缂栬緫鍣ㄧ粍浠舵爣璇?    this.container.setAttribute(EDITOR_COMPONENT, EditorComponent.MAIN)
   }
 
   /**
-   * 创建模态框宿主元素。
-   *
-   * @returns 模态框宿主元素
+   * 鍒涘缓妯℃€佹瀹夸富鍏冪礌銆?   *
+   * @returns 妯℃€佹瀹夸富鍏冪礌
    */
   private _createModalHost(): HTMLDivElement {
-    // 创建模态框宿主
+    // 鍒涘缓妯℃€佹瀹夸富
     const modalHost = document.createElement('div')
     modalHost.style.position = 'relative'
     modalHost.style.zIndex = '1000'
-    // 添加到容器
-    this.container.append(modalHost)
+    // 娣诲姞鍒板鍣?    this.container.append(modalHost)
     return modalHost
   }
 
   /**
-   * 创建页面容器元素。
-   *
-   * @returns 页面容器元素
+   * 鍒涘缓椤甸潰瀹瑰櫒鍏冪礌銆?   *
+   * @returns 椤甸潰瀹瑰櫒鍏冪礌
    */
   private _createPageContainer(): HTMLDivElement {
-    // 创建页面容器
+    // 鍒涘缓椤甸潰瀹瑰櫒
     const pageContainer = document.createElement('div')
-    // 添加页面容器类名
+    // 娣诲姞椤甸潰瀹瑰櫒绫诲悕
     pageContainer.classList.add(`${EDITOR_PREFIX}-page-container`)
-    // 添加到容器
-    this.container.append(pageContainer)
+    // 娣诲姞鍒板鍣?    this.container.append(pageContainer)
     return pageContainer
   }
 
   /**
-   * 创建页面包装器元素。
-   *
-   * 页面包装器是页面的容器，包含主画布、覆盖层画布等。
-   *
-   * @param pageNo - 页码
-   * @returns 页面包装器元素
-   */
+   * 鍒涘缓椤甸潰鍖呰鍣ㄥ厓绱犮€?   *
+   * 椤甸潰鍖呰鍣ㄦ槸椤甸潰鐨勫鍣紝鍖呭惈涓荤敾甯冦€佽鐩栧眰鐢诲竷绛夈€?   *
+   * @param pageNo - 椤电爜
+   * @returns 椤甸潰鍖呰鍣ㄥ厓绱?   */
   private _createPageWrapper(pageNo: number): HTMLDivElement {
-    // 获取尺寸指标
+    // 鑾峰彇灏哄鎸囨爣
     const width = this.metrics.getWidth()
     const height = this.metrics.getHeight()
-    // 创建页面包装器
-    const pageWrapper = document.createElement('div')
+    // 鍒涘缓椤甸潰鍖呰鍣?    const pageWrapper = document.createElement('div')
     pageWrapper.style.position = 'relative'
     pageWrapper.style.width = `${width}px`
     pageWrapper.style.height = `${height}px`
-    // 设置页面间距
+    // 璁剧疆椤甸潰闂磋窛
     pageWrapper.style.marginBottom = `${this.metrics.getPageGap()}px`
-    // 设置页码数据属性
-    pageWrapper.setAttribute('data-index', String(pageNo))
-    // 添加到页面容器
-    this.pageContainer.append(pageWrapper)
-    // 保存到列表
-    this.pageWrapperList.push(pageWrapper)
+    // 璁剧疆椤电爜鏁版嵁灞炴€?    pageWrapper.setAttribute('data-index', String(pageNo))
+    // 娣诲姞鍒伴〉闈㈠鍣?    this.pageContainer.append(pageWrapper)
+    // 淇濆瓨鍒板垪琛?    this.pageWrapperList.push(pageWrapper)
     return pageWrapper
   }
 
   /**
-   * 创建页面覆盖层宿主元素。
-   *
-   * 覆盖层宿主用于放置覆盖层画布。
-   *
-   * @param pageWrapper - 页面包装器元素
-   * @param pageNo - 页码
-   * @returns 覆盖层宿主元素
-   */
+   * 鍒涘缓椤甸潰瑕嗙洊灞傚涓诲厓绱犮€?   *
+   * 瑕嗙洊灞傚涓荤敤浜庢斁缃鐩栧眰鐢诲竷銆?   *
+   * @param pageWrapper - 椤甸潰鍖呰鍣ㄥ厓绱?   * @param pageNo - 椤电爜
+   * @returns 瑕嗙洊灞傚涓诲厓绱?   */
   private _createPageOverlayHost(
     pageWrapper: HTMLDivElement,
     pageNo: number
   ): HTMLDivElement {
-    // 获取尺寸指标
+    // 鑾峰彇灏哄鎸囨爣
     const width = this.metrics.getWidth()
     const height = this.metrics.getHeight()
-    // 创建覆盖层宿主
-    const overlayHost = document.createElement('div')
+    // 鍒涘缓瑕嗙洊灞傚涓?    const overlayHost = document.createElement('div')
     overlayHost.style.position = 'absolute'
     overlayHost.style.left = '0'
     overlayHost.style.top = '0'
     overlayHost.style.width = `${width}px`
     overlayHost.style.height = `${height}px`
     overlayHost.style.zIndex = '2'
-    // 不响应鼠标事件
-    overlayHost.style.pointerEvents = 'none'
-    // 设置覆盖层宿主索引数据属性
-    overlayHost.setAttribute('data-overlay-host-index', String(pageNo))
-    // 添加到页面包装器
+    // 涓嶅搷搴旈紶鏍囦簨浠?    overlayHost.style.pointerEvents = 'none'
+    // 璁剧疆瑕嗙洊灞傚涓荤储寮曟暟鎹睘鎬?    overlayHost.setAttribute('data-overlay-host-index', String(pageNo))
+    // 娣诲姞鍒伴〉闈㈠寘瑁呭櫒
     pageWrapper.append(overlayHost)
-    // 保存到列表
-    this.pageOverlayHostList.push(overlayHost)
+    // 淇濆瓨鍒板垪琛?    this.pageOverlayHostList.push(overlayHost)
     return overlayHost
   }
 
   /**
-   * 创建图层画布。
-   *
-   * 创建主画布或覆盖层画布，根据参数决定。
-   *
-   * @param pageWrapper - 页面包装器元素
-   * @param pageNo - 页码
-   * @param isOverlay - 是否为覆盖层画布，默认为 false
-   * @returns 画布和上下文对象
+   * 鍒涘缓鍥惧眰鐢诲竷銆?   *
+   * 鍒涘缓涓荤敾甯冩垨瑕嗙洊灞傜敾甯冿紝鏍规嵁鍙傛暟鍐冲畾銆?   *
+   * @param pageWrapper - 椤甸潰鍖呰鍣ㄥ厓绱?   * @param pageNo - 椤电爜
+   * @param isOverlay - 鏄惁涓鸿鐩栧眰鐢诲竷锛岄粯璁や负 false
+   * @returns 鐢诲竷鍜屼笂涓嬫枃瀵硅薄
    */
   private _createLayerCanvas(
     pageWrapper: HTMLDivElement,
     pageNo: number,
     isOverlay = false
   ) {
-    // 获取尺寸指标
+    // 鑾峰彇灏哄鎸囨爣
     const width = this.metrics.getWidth()
     const height = this.metrics.getHeight()
-    // 创建画布
+    // 鍒涘缓鐢诲竷
     const canvas = document.createElement('canvas')
     canvas.style.position = 'absolute'
     canvas.style.left = '0'
@@ -502,32 +428,27 @@ export class PageCanvasHost {
     canvas.style.width = `${width}px`
     canvas.style.height = `${height}px`
     canvas.style.display = 'block'
-    // 设置层级：覆盖层在上，主画布在下
+    // 璁剧疆灞傜骇锛氳鐩栧眰鍦ㄤ笂锛屼富鐢诲竷鍦ㄤ笅
     canvas.style.zIndex = isOverlay ? '1' : '0'
-    // 设置背景色：覆盖层透明，主画布白色
+    // 璁剧疆鑳屾櫙鑹诧細瑕嗙洊灞傞€忔槑锛屼富鐢诲竷鐧借壊
     canvas.style.backgroundColor = isOverlay ? 'transparent' : '#ffffff'
-    // 覆盖层不响应鼠标事件，主画布响应
+    // 瑕嗙洊灞備笉鍝嶅簲榧犳爣浜嬩欢锛屼富鐢诲竷鍝嶅簲
     canvas.style.pointerEvents = isOverlay ? 'none' : 'auto'
     if (isOverlay) {
-      // 覆盖层画布标识
-      canvas.setAttribute('data-layer', 'overlay')
+      // 瑕嗙洊灞傜敾甯冩爣璇?      canvas.setAttribute('data-layer', 'overlay')
       canvas.setAttribute('data-overlay-index', String(pageNo))
       pageWrapper.append(canvas)
     } else {
-      // 主画布标识
-      canvas.setAttribute('data-layer', 'base')
+      // 涓荤敾甯冩爣璇?      canvas.setAttribute('data-layer', 'base')
       canvas.setAttribute('data-index', String(pageNo))
-      // 主画布使用文本光标
-      canvas.style.cursor = 'text'
+      // 涓荤敾甯冧娇鐢ㄦ枃鏈厜鏍?      canvas.style.cursor = 'text'
       pageWrapper.append(canvas)
     }
-    // 根据设备像素比设置实际尺寸
-    const dpr = this.metrics.getPagePixelRatio()
+    // 鏍规嵁璁惧鍍忕礌姣旇缃疄闄呭昂瀵?    const dpr = this.metrics.getPagePixelRatio()
     canvas.width = width * dpr
     canvas.height = height * dpr
-    // 获取画布上下文
-    const ctx = canvas.getContext('2d')!
-    // 初始化画布上下文
+    // 鑾峰彇鐢诲竷涓婁笅鏂?    const ctx = canvas.getContext('2d')!
+    // 鍒濆鍖栫敾甯冧笂涓嬫枃
     this._initPageContext(ctx)
     return {
       canvas,
@@ -536,34 +457,27 @@ export class PageCanvasHost {
   }
 
   /**
-   * 创建页面。
-   *
-   * 为指定页码创建完整的页面结构，包括包装器、主画布和覆盖层画布。
-   *
-   * @param pageNo - 页码
+   * 鍒涘缓椤甸潰銆?   *
+   * 涓烘寚瀹氶〉鐮佸垱寤哄畬鏁寸殑椤甸潰缁撴瀯锛屽寘鎷寘瑁呭櫒銆佷富鐢诲竷鍜岃鐩栧眰鐢诲竷銆?   *
+   * @param pageNo - 椤电爜
    */
   private _createPage(pageNo: number) {
-    // 创建页面包装器
-    const pageWrapper = this._createPageWrapper(pageNo)
-    // 在虚拟模式下，这仅仅是创建空壳 div
+    // 鍒涘缓椤甸潰鍖呰鍣?    const pageWrapper = this._createPageWrapper(pageNo)
+    // 鍦ㄨ櫄鎷熸ā寮忎笅锛岃繖浠呬粎鏄垱寤虹┖澹?div
     this.pageList.push(undefined)
     this.ctxList.push(undefined)
     this.overlayPageList.push(undefined)
     this.overlayCtxList.push(undefined)
-    // 创建覆盖层宿主
-    this._createPageOverlayHost(pageWrapper, pageNo)
+    // 鍒涘缓瑕嗙洊灞傚涓?    this._createPageOverlayHost(pageWrapper, pageNo)
   }
 
   /**
-   * 挂载指定页面的 Canvas。
-   *
-   * 将 Canvas 从池中取出并挂载到 pageWrapper 中，如果池为空则创建新的。
-   *
-   * @param pageNo - 页码
+   * 鎸傝浇鎸囧畾椤甸潰鐨?Canvas銆?   *
+   * 灏?Canvas 浠庢睜涓彇鍑哄苟鎸傝浇鍒?pageWrapper 涓紝濡傛灉姹犱负绌哄垯鍒涘缓鏂扮殑銆?   *
+   * @param pageNo - 椤电爜
    */
   public mountCanvas(pageNo: number) {
-    if (this.pageList[pageNo]) return // 已挂载
-
+    if (this.pageList[pageNo]) return // 宸叉寕杞?
     let poolItem = this.canvasPool.pop()
     const pageWrapper = this.pageWrapperList[pageNo]
 
@@ -597,15 +511,12 @@ export class PageCanvasHost {
   }
 
   /**
-   * 卸载指定页面的 Canvas。
-   *
-   * 从 pageWrapper 中移除 Canvas，并将其归还到画布池中。
-   *
-   * @param pageNo - 页码
+   * 鍗歌浇鎸囧畾椤甸潰鐨?Canvas銆?   *
+   * 浠?pageWrapper 涓Щ闄?Canvas锛屽苟灏嗗叾褰掕繕鍒扮敾甯冩睜涓€?   *
+   * @param pageNo - 椤电爜
    */
   public unmountCanvas(pageNo: number) {
-    if (!this.pageList[pageNo]) return // 未挂载
-
+    if (!this.pageList[pageNo]) return // 鏈寕杞?
     const baseCanvas = this.pageList[pageNo]!
     const baseCtx = this.ctxList[pageNo]!
     const overlayCanvas = this.overlayPageList[pageNo]!
@@ -628,15 +539,12 @@ export class PageCanvasHost {
   }
 
   /**
-   * 应用页面尺寸指标。
-   *
-   * 更新指定页面的所有层和包装器的尺寸。
-   *
-   * @param pageNo - 页码
-   * @param width - 宽度
-   * @param height - 高度
-   * @param dpr - 设备像素比
-   * @param pageGap - 页面间距
+   * 搴旂敤椤甸潰灏哄鎸囨爣銆?   *
+   * 鏇存柊鎸囧畾椤甸潰鐨勬墍鏈夊眰鍜屽寘瑁呭櫒鐨勫昂瀵搞€?   *
+   * @param pageNo - 椤电爜
+   * @param width - 瀹藉害
+   * @param height - 楂樺害
+   * @param dpr - 璁惧鍍忕礌姣?   * @param pageGap - 椤甸潰闂磋窛
    */
   private _applyPageMetrics(
     pageNo: number,
@@ -645,53 +553,41 @@ export class PageCanvasHost {
     dpr: number,
     pageGap: number
   ) {
-    // 获取页面的各层元素
-    const page = this.pageList[pageNo]
+    // 鑾峰彇椤甸潰鐨勫悇灞傚厓绱?    const page = this.pageList[pageNo]
     const overlayPage = this.overlayPageList[pageNo]
     const overlayHost = this.pageOverlayHostList[pageNo]
     const pageWrapper = this.pageWrapperList[pageNo]
 
-    // 更新主画布的实际尺寸和显示尺寸
-    page!.width = width * dpr
+    // 鏇存柊涓荤敾甯冪殑瀹為檯灏哄鍜屾樉绀哄昂瀵?    page!.width = width * dpr
     page!.height = height * dpr
     page!.style.width = `${width}px`
     page!.style.height = `${height}px`
-    // 重新初始化主画布上下文
-    this._initPageContext(this.ctxList[pageNo]!)
+    // 閲嶆柊鍒濆鍖栦富鐢诲竷涓婁笅鏂?    this._initPageContext(this.ctxList[pageNo]!)
 
-    // 更新覆盖层画布的实际尺寸和显示尺寸
-    overlayPage!.width = width * dpr
+    // 鏇存柊瑕嗙洊灞傜敾甯冪殑瀹為檯灏哄鍜屾樉绀哄昂瀵?    overlayPage!.width = width * dpr
     overlayPage!.height = height * dpr
     overlayPage!.style.width = `${width}px`
     overlayPage!.style.height = `${height}px`
-    // 重新初始化覆盖层画布上下文
-    this._initPageContext(this.overlayCtxList[pageNo]!)
+    // 閲嶆柊鍒濆鍖栬鐩栧眰鐢诲竷涓婁笅鏂?    this._initPageContext(this.overlayCtxList[pageNo]!)
 
-    // 更新覆盖层宿主尺寸
-    overlayHost.style.width = `${width}px`
+    // 鏇存柊瑕嗙洊灞傚涓诲昂瀵?    overlayHost.style.width = `${width}px`
     overlayHost.style.height = `${height}px`
 
-    // 更新页面包装器尺寸和间距
+    // 鏇存柊椤甸潰鍖呰鍣ㄥ昂瀵稿拰闂磋窛
     pageWrapper.style.width = `${width}px`
     pageWrapper.style.height = `${height}px`
     pageWrapper.style.marginBottom = `${pageGap}px`
   }
 
   /**
-   * 初始化页面画布上下文。
-   *
-   * 设置画布的基本属性，包括缩放、字间距、词间距和方向。
-   *
-   * @param ctx - 画布上下文
-   */
+   * 鍒濆鍖栭〉闈㈢敾甯冧笂涓嬫枃銆?   *
+   * 璁剧疆鐢诲竷鐨勫熀鏈睘鎬э紝鍖呮嫭缂╂斁銆佸瓧闂磋窛銆佽瘝闂磋窛鍜屾柟鍚戙€?   *
+   * @param ctx - 鐢诲竷涓婁笅鏂?   */
   private _initPageContext(ctx: CanvasRenderingContext2D) {
-    // 根据设备像素比设置缩放
-    const dpr = this.metrics.getPagePixelRatio()
+    // 鏍规嵁璁惧鍍忕礌姣旇缃缉鏀?    const dpr = this.metrics.getPagePixelRatio()
     ctx.scale(dpr, dpr)
-    // 设置字间距和词间距
-    ctx.letterSpacing = '0px'
+    // 璁剧疆瀛楅棿璺濆拰璇嶉棿璺?    ctx.letterSpacing = '0px'
     ctx.wordSpacing = '0px'
-    // 设置文本方向为从左到右
-    ctx.direction = 'ltr'
+    // 璁剧疆鏂囨湰鏂瑰悜涓轰粠宸﹀埌鍙?    ctx.direction = 'ltr'
   }
 }

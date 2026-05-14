@@ -77,6 +77,7 @@ export class RowLayoutEngine {
     let listIndex = 0
     const listIndexMap = new Map<string, number>()
     let controlRealWidth = 0
+    const rowElementRect = { x: 0, y: 0, width: 0, height: 0 }
 
     for (let i = 0; i < elementList.length; i++) {
       const curRow = rowList[rowList.length - 1]
@@ -132,11 +133,11 @@ export class RowLayoutEngine {
         metrics.boundingBoxAscent +
         metrics.boundingBoxDescent +
         rowMargin
-      const rowElement: IRowElement = Object.assign(element, {
-        metrics,
-        left: 0,
-        style: this.draw.getElementFont(element, scale)
-      })
+      
+      const rowElement = element as IRowElement
+      rowElement.metrics = metrics
+      rowElement.left = 0
+      rowElement.style = this.draw.getElementFont(element, scale)
 
       if (rowElement.control?.minWidth) {
         if (rowElement.controlComponent) {
@@ -202,16 +203,16 @@ export class RowLayoutEngine {
       }
       listId = element.listId
 
+      rowElementRect.x = x
+      rowElementRect.y = y
+      rowElementRect.width = metrics.width
+      rowElementRect.height = height
+
       const surroundPosition = this.draw.getPosition().setSurroundPosition({
         pageNo,
         rowElement,
         row: curRow,
-        rowElementRect: {
-          x,
-          y,
-          height,
-          width: metrics.width
-        },
+        rowElementRect,
         availableWidth,
         surroundElementList
       })
@@ -336,16 +337,17 @@ export class RowLayoutEngine {
         }
         rowElement.left = 0
         const nextRow = rowList[rowList.length - 1]
+        
+        rowElementRect.x = x
+        rowElementRect.y = y
+        rowElementRect.width = metrics.width
+        rowElementRect.height = height
+
         const surroundPosition = this.draw.getPosition().setSurroundPosition({
           pageNo,
           rowElement,
           row: nextRow,
-          rowElementRect: {
-            x,
-            y,
-            height,
-            width: metrics.width
-          },
+          rowElementRect,
           availableWidth,
           surroundElementList
         })

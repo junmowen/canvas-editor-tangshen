@@ -52,8 +52,14 @@ export class TextParticle {
   constructor(draw: Draw) {
     this.draw = draw
     this.options = draw.getOptions()
-    // 获取当前页的画布上下文
-    this.ctx = draw.getPageCanvasHost().getCtxList()[draw.getPageNo()]
+    // 尝试获取当前页的画布上下文
+    let pageCtx = draw.getPageCanvasHost().getCtxList()[draw.getPageNo()]
+    if (!pageCtx) {
+      // 虚拟化渲染模式下，如果该页未渲染，则创建一个离线 canvas 提供 measureText 专用 context
+      const offlineCanvas = document.createElement('canvas')
+      pageCtx = offlineCanvas.getContext('2d')!
+    }
+    this.ctx = pageCtx
     // 初始化状态
     this.curX = -1
     this.curY = -1

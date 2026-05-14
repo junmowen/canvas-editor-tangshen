@@ -111,6 +111,7 @@ export class Background {
       this._renderBackgroundImage(ctx, width, height)
     } else {
       const page = this.draw.getPage(pageNo)
+      if (!page) return
       const width = page.width
       const height = page.height
       this._renderBackgroundColor(ctx, color, width, height)

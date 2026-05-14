@@ -51,7 +51,7 @@ export class TableTool {
 
   constructor(draw: Draw) {
     this.draw = draw
-    this.canvas = draw.getPage()
+    this.canvas = draw.getPage()!
     this.options = draw.getOptions()
     this.position = draw.getPosition()
     this.range = draw.getRange()
@@ -168,7 +168,7 @@ export class TableTool {
     this.currentPageNo = toolPageNo
     this.overlayHost =
       this.draw.getPageCanvasHost().getPageOverlayHost(toolPageNo) || this.container
-    this.canvas = this.draw.getPageCanvasHost().getPage(toolPageNo)
+    this.canvas = this.draw.getPageCanvasHost().getPage(toolPageNo)!
     const td = renderTd
     const rowIndex = td.rowIndex
     const colIndex = td.colIndex
@@ -464,7 +464,7 @@ export class TableTool {
 
   private _mousedown(payload: IAnchorMouseDown) {
     const { evt, index, order, element } = payload
-    this.canvas = this.draw.getPage(this.currentPageNo)
+    this.canvas = this.draw.getPage(this.currentPageNo)!
     const { scale } = this.options
     const width = this.draw.getWidth()
     const height = this.draw.getHeight()
