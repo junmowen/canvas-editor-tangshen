@@ -132,6 +132,7 @@ export class DrawRenderFacadeService {
         this.tableTypingRenderHelper.markTableCellChunkDirty(tableTypingEditIndex)
       }
     }
+    this.finalizeService.syncContinuousPageHeight()
     this.finalizeService.refreshRuntime({
       isLazy,
       pageRenderScope
@@ -218,6 +219,7 @@ export class DrawRenderFacadeService {
         finalPatchResult.affectedPageNoList ||
         (finalPatchResult.pageNo !== undefined ? [finalPatchResult.pageNo] : [])
       this.typingPatchCoordinator.logPatchResult(finalPatchResult)
+      this.finalizeService.syncContinuousPageHeight()
       this.surfaceInvalidator.applyTypingPatchInvalidation({
         affectedPageNoList,
         requiresSurfaceClear: finalPatchResult.requiresSurfaceClear,
@@ -331,6 +333,7 @@ export class DrawRenderFacadeService {
       renderInvalidationManager.markLayoutDirty()
       renderInvalidationManager.markBaseBitmapDirty()
       this.draw.getComponents().position.setCursorLogicalIndex(curIndex ?? null)
+      this.finalizeService.syncContinuousPageHeight()
     } else {
       this.draw.getPageCanvasHost().invalidateAllBitmapCache()
       const layoutResult = this.draw.getServices().layoutPipeline.compute()
@@ -343,6 +346,7 @@ export class DrawRenderFacadeService {
         ...oldTablePageNoList,
         ...this.tableTypingRenderHelper.resolveCurrentLogicalTablePageNoList()
       ])
+      this.finalizeService.syncContinuousPageHeight()
     }
     this.tableTypingRenderHelper.markTableCellChunkDirty(editIndex)
     this.finalizeService.refreshRuntime({

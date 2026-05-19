@@ -1,5 +1,6 @@
 import { EditorMode, EditorZone, PageMode, PaperDirection } from '../../../dataset/enum/Editor'
 import { IMargin } from '../../../interface/Margin'
+import { deepClone } from '../../../utils'
 import type { Draw } from '../Draw'
 
 export class DrawPageSetupService {
@@ -28,6 +29,7 @@ export class DrawPageSetupService {
     if (payload === PageMode.PAGING) {
       this.draw.getPageCanvasHost().syncPageMetrics()
     } else {
+      this.restoreFullMainDataBeforeContinuityLayout()
       this.draw.disconnectLazyRender()
       this.draw.getComponents().header.recovery()
       this.draw.getComponents().footer.recovery()
@@ -54,6 +56,19 @@ export class DrawPageSetupService {
         this.draw.getEventBus().emit('pageModeChange', payload)
       }
     })
+  }
+
+  /**
+   * 旧分页链路会在 maxPageNo 命中时把正文 store 裁短。
+   * 连页模式必须以完整文档为输入；若当前 store 比文档树快照短，先恢复再布局。
+   */
+  private restoreFullMainDataBeforeContinuityLayout() {
+    const snapshotMain = this.draw.getEditor2DocumentTree().main || []
+    const currentMain = this.draw.getOriginalMainElementList()
+    if (snapshotMain.length <= currentMain.length) {
+      return
+    }
+    this.draw.replaceMainElementList(deepClone(snapshotMain))
   }
 
   public setPageScale(payload: number) {

@@ -10,6 +10,8 @@ export interface IRenderSurface {
   width: number
   /** CSS 逻辑高度，单位为 px。 */
   height: number
+  /** 连页分块渲染时，该 surface 在逻辑页内的 Y 偏移。 */
+  offsetY?: number
   /** 当前 surface 的设备像素比。 */
   dpr: number
   /** surface 挂载的 DOM 宿主，当前阶段通常是 page wrapper。 */

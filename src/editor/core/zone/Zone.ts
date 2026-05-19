@@ -84,13 +84,13 @@ export class Zone {
     })
   }
 
-  public getZoneByY(y: number): EditorZone {
+  public getZoneByY(y: number, pageNo = this.draw.getPageNo()): EditorZone {
     // 页眉底部距离页面顶部距离
     const header = this.draw.getHeader()
     const headerBottomY = header.getHeaderTop() + header.getHeight()
     // 页脚上部距离页面顶部距离
     const footer = this.draw.getFooter()
-    const pageHeight = this.draw.getHeight()
+    const pageHeight = this.draw.getPageCanvasHost().getPageHeight(pageNo)
     const footerTopY =
       pageHeight - (footer.getFooterBottom() + footer.getHeight())
     // 页眉：当前位置小于页眉底部位置

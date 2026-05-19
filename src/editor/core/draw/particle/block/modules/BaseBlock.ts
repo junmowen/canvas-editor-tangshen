@@ -58,9 +58,7 @@ export class BaseBlock {
 
   public setClientRects(pageNo: number, x: number, y: number) {
     this.pageNo = pageNo
-    const height = this.draw.getHeight()
-    const pageGap = this.draw.getPageGap()
-    const preY = pageNo * (height + pageGap)
+    const preY = this.draw.getPageCanvasHost().getPageTop(pageNo)
     // 尺寸
     const { metrics } = this.element
     this.blockItem.style.width = `${metrics.width}px`

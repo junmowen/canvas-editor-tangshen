@@ -25,7 +25,7 @@ export class PagePartitioner {
     const pageContentHeight = height - marginHeight
     let pageHeight = marginHeight
     let pageNo = 0
-    let nextMainElementList = mainElementList
+    let isPageLimitReached = false
 
     if (pageMode === PageMode.CONTINUITY) {
       pageRowList[0] = rowList
@@ -35,13 +35,16 @@ export class PagePartitioner {
       )
       return {
         pageRowList,
-        mainElementList: nextMainElementList,
+        mainElementList,
         layoutElementList: rowList.flatMap(row => row.elementList),
         continuousPageHeight: pageHeight
       }
     }
 
     for (let i = 0; i < rowList.length; i++) {
+      if (isPageLimitReached) {
+        break
+      }
       const row = rowList[i]
       const rowOffsetY = row.offsetY || 0
       const rowTableElement = row.elementList[0] as IElement | undefined
@@ -64,7 +67,7 @@ export class PagePartitioner {
 
         if ((startOnNewPage || rowList[i - 1]?.isPageBreak) && pageRowList[pageNo].length) {
           if (Number.isInteger(maxPageNo) && pageNo >= maxPageNo!) {
-            nextMainElementList = nextMainElementList.slice(0, row.startIndex)
+            isPageLimitReached = true
             break
           }
           pageNo++
@@ -81,7 +84,7 @@ export class PagePartitioner {
             pageRowList[pageNo].length
           ) {
             if (Number.isInteger(maxPageNo) && pageNo >= maxPageNo!) {
-              nextMainElementList = nextMainElementList.slice(0, row.startIndex)
+              isPageLimitReached = true
               break
             }
             pageNo++
@@ -101,7 +104,6 @@ export class PagePartitioner {
 
       if (row.height + rowOffsetY + pageHeight > height || rowList[i - 1]?.isPageBreak) {
         if (Number.isInteger(maxPageNo) && pageNo >= maxPageNo!) {
-          nextMainElementList = nextMainElementList.slice(0, row.startIndex)
           break
         }
         pageHeight = marginHeight + row.height + rowOffsetY
@@ -119,7 +121,7 @@ export class PagePartitioner {
 
     return {
       pageRowList: filteredPageRowList,
-      mainElementList: nextMainElementList,
+      mainElementList,
       layoutElementList: filteredPageRowList.flatMap(pageRows =>
         pageRows.flatMap(row => row.elementList)
       )

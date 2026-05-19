@@ -792,7 +792,7 @@ export class Position {
     const curPageNo = payload.pageNo ?? this.draw.getPageNo()
     const isMainActive = zoneManager.isMainActive()
     const currentZone = zoneManager.getZone()
-    const pointerZone = zoneManager.getZoneByY(y)
+    const pointerZone = zoneManager.getZoneByY(y, curPageNo)
     if (pointerZone !== currentZone) {
       return {
         index: -1,
@@ -1024,7 +1024,7 @@ export class Position {
     const header = this.draw.getHeader()
     const headerBottomY = header.getHeaderTop() + header.getHeight()
     const footer = this.draw.getFooter()
-    const pageHeight = this.draw.getHeight()
+    const pageHeight = this.draw.getPageCanvasHost().getPageHeight(curPageNo)
     const footerTopY =
       pageHeight - (footer.getFooterBottom() + footer.getHeight())
 

@@ -1,3 +1,5 @@
+import { ElementType } from '../../../dataset/enum/Element'
+import { PageMode } from '../../../dataset/enum/Editor'
 import { nextTick } from '../../../utils'
 import type { Draw } from '../Draw'
 
@@ -12,6 +14,7 @@ export class DrawRenderFinalizeService {
   }) {
     this.draw.getComponents().imageObserver.clearAll()
     this.draw.getComponents().cursor.recoveryCursor()
+    this.syncContinuousPageHeight()
     this.draw.getPageCanvasHost().setPageCount(this.draw.getPageRowList().length)
     this.draw.getServices().renderPipeline.render({
       isLazy: payload.isLazy,
@@ -81,5 +84,65 @@ export class DrawRenderFinalizeService {
         payload.oldPageSize
       )
     })
+  }
+
+  /** 连页模式下，根据当前 runtime 里的真实 bottom 同步第 0 页高度。 */
+  public syncContinuousPageHeight() {
+    if (this.draw.getOptions().pageMode !== PageMode.CONTINUITY) {
+      return
+    }
+    const pageNo = 0
+    const bottomMargin = this.draw.getMargins()[2]
+    const rowListHeight = this.draw
+      .getRowList()
+      .reduce((total, row) => total + row.height + (row.offsetY || 0), 0)
+    let maxBottom = this.draw.getMainOuterHeight() + rowListHeight
+    const visitElementList = (elementList: ReturnType<Draw['getLayoutMainElementList']>) => {
+      for (let i = 0; i < elementList.length; i++) {
+        const element = elementList[i]
+        if (element.type === ElementType.TABLE) {
+          element.trList?.forEach(tr => {
+            tr.tdList.forEach(td => {
+              td.positionList?.forEach((position: any) => {
+                maxBottom = Math.max(
+                  maxBottom,
+                  position.coordinate.leftBottom[1] + bottomMargin,
+                  position.coordinate.rightBottom[1] + bottomMargin
+                )
+              })
+              visitElementList(td.value || [])
+            })
+          })
+        }
+      }
+    }
+    this.draw.getPosition().getLayoutMainPositionList().forEach(position => {
+      maxBottom = Math.max(
+        maxBottom,
+        position.coordinate.leftBottom[1] + bottomMargin,
+        position.coordinate.rightBottom[1] + bottomMargin
+      )
+    })
+    visitElementList(this.draw.getLayoutMainElementList())
+    this.draw.getPosition().getFloatPositionList().forEach(floatPosition => {
+      const element = floatPosition.element
+      if (!element.imgFloatPosition || !element.height) {
+        return
+      }
+      maxBottom = Math.max(
+        maxBottom,
+        (element.imgFloatPosition.y + element.height) *
+          this.draw.getOptions().scale +
+          bottomMargin
+      )
+    })
+    this.draw.getPageCanvasHost().resizeContinuousPage(
+      pageNo,
+      Math.ceil(maxBottom),
+      this.draw.getHeight()
+    )
+    if (!this.draw.getOptions().footer.disabled) {
+      this.draw.getFooter().syncPositionForPage(pageNo)
+    }
   }
 }

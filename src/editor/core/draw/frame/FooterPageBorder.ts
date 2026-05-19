@@ -16,7 +16,10 @@ export class FooterPageBorder {
     this.options = draw.getRuntime().getOptions()
   }
 
-  public getBottom(): number {
+  public getBottom(
+    pageNo = this.draw.getPageNo(),
+    pageHeight = this.draw.getPageCanvasHost().getPageHeight(pageNo)
+  ): number {
     const {
       scale,
       pageBorder: { padding }
@@ -26,7 +29,7 @@ export class FooterPageBorder {
     const bottomGapRatio = 0.25
     return Math.max(
       0,
-      this.draw.getHeight() -
+      pageHeight -
         margins[2] -
         footerExtraHeight * bottomGapRatio +
         padding[2] * scale

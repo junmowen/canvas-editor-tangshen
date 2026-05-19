@@ -117,7 +117,8 @@ export class PointerCoordinateService {
   ): IResolvedPagePoint {
     const rect = page.getBoundingClientRect()
     const x = Math.min(Math.max(rawX, 1), rect.width - 1)
-    const pageHeight = this.draw.getHeight()
+    const pageNo = Number(page.getAttribute('data-index') || 0)
+    const pageHeight = this.draw.getPageCanvasHost().getPageHeight(pageNo)
     const headerBottomY =
       this.draw.getHeader().getHeaderTop() + this.draw.getHeader().getHeight()
     const footerTopY =
@@ -132,7 +133,7 @@ export class PointerCoordinateService {
     const pageIndex = page.getAttribute('data-index')
     return {
       pageIndex,
-      pageNo: Number(pageIndex),
+      pageNo,
       x,
       y,
       isExactPage

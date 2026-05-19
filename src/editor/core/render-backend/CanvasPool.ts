@@ -349,6 +349,10 @@ export class CanvasPool {
     canvas.style.left = '0'
     canvas.style.top = '0'
     canvas.style.display = 'block'
+    canvas.style.margin = '0'
+    canvas.style.border = '0'
+    canvas.style.outline = '0'
+    canvas.style.boxShadow = 'none'
     canvas.style.zIndex = layer === RenderLayer.OVERLAY ? '1' : '0'
     canvas.style.backgroundColor =
       layer === RenderLayer.BASE ? '#ffffff' : 'transparent'

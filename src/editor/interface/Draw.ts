@@ -72,6 +72,10 @@ export interface IDrawRowPayload {
 export interface IDrawFloatPayload {
   pageNo: number
   imgDisplays: ImageDisplay[]
+  /** 仅渲染指定区域的浮动元素；不传则按页码并兼容页眉页脚浮动元素。 */
+  zoneList?: EditorZone[]
+  /** 未指定 zoneList 时，是否同时渲染页眉页脚浮动元素。 */
+  includeHeaderFooter?: boolean
   /** 导出绘制标记：浮动图片也需要禁用 WebGL 运行时路径。 */
   isExport?: boolean
 }

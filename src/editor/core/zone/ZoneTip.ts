@@ -53,7 +53,7 @@ export class ZoneTip {
           this._updateZoneTip(false)
           return
         }
-        const mousemoveZone = this.zone.getZoneByY(pagePoint.y)
+        const mousemoveZone = this.zone.getZoneByY(pagePoint.y, pagePoint.pageNo)
         if (!watchZones.includes(mousemoveZone)) {
           this._updateZoneTip(false)
           return

@@ -13,14 +13,23 @@ export class PageContentPainter {
   public drawFloat(ctx: CanvasRenderingContext2D, payload: IDrawFloatPayload) {
     const { scale } = this.draw.getOptions()
     const floatPositionList = this.draw.getPosition().getFloatPositionList()
-    const { imgDisplays, pageNo } = payload
+    const {
+      imgDisplays,
+      pageNo,
+      zoneList,
+      includeHeaderFooter = !zoneList
+    } = payload
     for (let e = 0; e < floatPositionList.length; e++) {
       const floatPosition = floatPositionList[e]
       const element = floatPosition.element
+      const shouldRenderByZone = zoneList
+        ? zoneList.includes(floatPosition.zone!)
+        : pageNo === floatPosition.pageNo ||
+          (includeHeaderFooter &&
+            (floatPosition.zone === EditorZone.HEADER ||
+              floatPosition.zone === EditorZone.FOOTER))
       if (
-        (pageNo === floatPosition.pageNo ||
-          floatPosition.zone === EditorZone.HEADER ||
-          floatPosition.zone === EditorZone.FOOTER) &&
+        shouldRenderByZone &&
         element.imgDisplay &&
         imgDisplays.includes(element.imgDisplay) &&
         element.type === ElementType.IMAGE
@@ -35,6 +44,119 @@ export class PageContentPainter {
             isExport: payload.isExport
           }
         )
+      }
+    }
+  }
+
+  private renderHeaderFooterFloatList(
+    ctx: CanvasRenderingContext2D,
+    payload: IDrawPagePayload,
+    imgDisplays: ImageDisplay[]
+  ) {
+    this.drawFloat(ctx, {
+      pageNo: payload.pageNo,
+      imgDisplays,
+      zoneList: [EditorZone.HEADER, EditorZone.FOOTER],
+      isExport: payload.isExport
+    })
+  }
+
+  private getVisibleSegmentRange(surface: IRenderSurface, offsetY: number) {
+    const pageHeight = this.draw.getHeight()
+    const surfaceHeight = surface.height || surface.canvas.clientHeight || pageHeight
+    const pageCount = Math.max(
+      1,
+      Math.ceil(this.draw.getPageCanvasHost().getPageHeight(surface.pageNo) / pageHeight)
+    )
+    const start = Math.max(0, Math.floor(offsetY / pageHeight))
+    const end = Math.min(
+      pageCount - 1,
+      Math.floor((offsetY + surfaceHeight - 1) / pageHeight)
+    )
+    return { start, end, pageHeight }
+  }
+
+  private renderPagedFrame(
+    ctx: CanvasRenderingContext2D,
+    payload: IDrawPagePayload
+  ) {
+    const {
+      header,
+      footer,
+      pageNumber,
+      lineNumber,
+      pageBorder
+    } = this.draw.getOptions()
+    const isPrintMode = this.draw.getMode() === EditorMode.PRINT
+
+    if (!isPrintMode) {
+      this.draw.getMargin().render(ctx, payload.pageNo)
+    }
+    if (!header.disabled) {
+      this.draw.getHeader().render(ctx, payload.pageNo)
+    }
+    if (!pageNumber.disabled) {
+      this.draw.getPageNumber().render(ctx, payload.pageNo)
+    }
+    if (!footer.disabled) {
+      this.draw.getFooter().render(ctx, payload.pageNo)
+    }
+    if (!lineNumber.disabled) {
+      this.draw.getLineNumber().render(ctx, payload.pageNo)
+    }
+    if (!pageBorder.disabled) {
+      this.draw.getPageBorder().render(ctx, payload.pageNo)
+    }
+    this.draw.getBadge().render(ctx, payload.pageNo)
+    if (this.draw.getOptions().watermark.data) {
+      this.draw.getWaterMark().render(ctx, payload.pageNo)
+    }
+  }
+
+  private renderContinuousFrame(
+    ctx: CanvasRenderingContext2D,
+    payload: IDrawPagePayload,
+    surface: IRenderSurface,
+    offsetY: number
+  ) {
+    const { header, footer, pageBorder } = this.draw.getOptions()
+    const isPrintMode = this.draw.getMode() === EditorMode.PRINT
+    const { start, end, pageHeight } = this.getVisibleSegmentRange(surface, offsetY)
+    const totalHeight = this.draw
+      .getPageCanvasHost()
+      .getPageHeight(payload.pageNo)
+
+    if (!isPrintMode) {
+      this.draw.getMargin().render(ctx, payload.pageNo, totalHeight)
+    }
+    this.renderHeaderFooterFloatList(ctx, payload, [ImageDisplay.FLOAT_BOTTOM])
+    if (!header.disabled) {
+      this.draw.getHeader().render(ctx, payload.pageNo)
+    }
+    if (!footer.disabled) {
+      this.draw.getFooter().render(ctx, payload.pageNo, {
+        pageHeight: totalHeight
+      })
+    }
+    this.renderHeaderFooterFloatList(ctx, payload, [
+      ImageDisplay.FLOAT_TOP,
+      ImageDisplay.SURROUND,
+      ImageDisplay.TIGHT
+    ])
+    if (!pageBorder.disabled) {
+      this.draw.getPageBorder().render(ctx, payload.pageNo, totalHeight)
+    }
+    this.draw.getBadge().render(ctx, payload.pageNo)
+    for (let segmentIndex = start; segmentIndex <= end; segmentIndex++) {
+      const segmentTop = segmentIndex * pageHeight
+      ctx.save()
+      ctx.translate(0, segmentTop)
+      try {
+        if (this.draw.getOptions().watermark.data) {
+          this.draw.getWaterMark().render(ctx, segmentIndex)
+        }
+      } finally {
+        ctx.restore()
       }
     }
   }
@@ -63,97 +185,85 @@ export class PageContentPainter {
   public drawPageToSurface(
     payload: IDrawPagePayload,
     surface: IRenderSurface,
-    selectionCtx: CanvasRenderingContext2D | null = null
+    selectionCtx: CanvasRenderingContext2D | null = null,
+    options: { offsetY?: number } = {}
   ) {
     const { elementList, positionList, rowList, pageNo } = payload
     const {
       inactiveAlpha,
-      pageMode,
-      header,
-      footer,
-      pageNumber,
-      lineNumber,
-      pageBorder
+      pageMode
     } = this.draw.getOptions()
     const isPrintMode = this.draw.getMode() === EditorMode.PRINT
     const innerWidth = this.draw.getInnerWidth()
     const ctx = surface.ctx2d
+    const offsetY = options.offsetY || 0
 
     // 分页模式下，基础正文走 base canvas，
     // 选区 / 搜索 / 控件高亮优先走 overlay canvas。
-    ctx.globalAlpha = !this.draw.getZone().isMainActive() ? inactiveAlpha : 1
     this.clearBaseSurface(surface)
-    this.draw.getBackground().render(ctx, pageNo)
-    if (!isPrintMode) {
-      this.draw.getArea().render(ctx, pageNo)
+    ctx.save()
+    if (offsetY) {
+      ctx.translate(0, -offsetY)
     }
-    if (!isPrintMode) {
-      this.draw.getMargin().render(ctx, pageNo)
-    }
-    this.drawFloat(ctx, {
-      pageNo,
-      imgDisplays: [ImageDisplay.FLOAT_BOTTOM],
-      isExport: payload.isExport
-    })
-    if (!isPrintMode) {
-      this.draw.getControl().renderHighlightList(selectionCtx || ctx, pageNo)
-    }
-    // 行绘制只消费当前页切片后的位置列表，
-    // 不再让 RowRenderer 自己在整份 positionList 上做 pageNo 过滤。
-    const pagePositionList =
-      pageNo >= 0
-        ? this.draw.getPosition().getLayoutMainPositionListByPage(pageNo)
-        : positionList
-    const index = rowList[0]?.startIndex
-    this.draw.drawRow(ctx, {
-      elementList,
-      positionList: pagePositionList,
-      rowList,
-      pageNo,
-      startIndex: index,
-      innerWidth,
-      isExport: payload.isExport,
-      selectionCtx,
-      zone: EditorZone.MAIN
-    })
-    if (this.draw.isPagingPageMode()) {
-      if (!header.disabled) {
-        this.draw.getHeader().render(ctx, pageNo)
+    try {
+      ctx.globalAlpha = !this.draw.getZone().isMainActive() ? inactiveAlpha : 1
+      this.draw.getBackground().render(ctx, pageNo)
+      if (!isPrintMode) {
+        this.draw.getArea().render(ctx, pageNo)
       }
-      if (!pageNumber.disabled) {
-        this.draw.getPageNumber().render(ctx, pageNo)
+      if (!isPrintMode && pageMode !== PageMode.CONTINUITY) {
+        this.draw.getMargin().render(ctx, pageNo)
       }
-      if (!footer.disabled) {
-        this.draw.getFooter().render(ctx, pageNo)
+      this.drawFloat(ctx, {
+        pageNo,
+        imgDisplays: [ImageDisplay.FLOAT_BOTTOM],
+        includeHeaderFooter: pageMode !== PageMode.CONTINUITY,
+        isExport: payload.isExport
+      })
+      if (!isPrintMode) {
+        this.draw.getControl().renderHighlightList(selectionCtx || ctx, pageNo)
       }
-    }
-    this.drawFloat(ctx, {
-      pageNo,
-      imgDisplays: [ImageDisplay.FLOAT_TOP, ImageDisplay.SURROUND, ImageDisplay.TIGHT],
-      isExport: payload.isExport
-    })
-    if (!isPrintMode && this.draw.getSearch().getSearchKeyword()) {
-      this.draw.getSearch().render(selectionCtx || ctx, pageNo)
-    }
-    if (
-      this.draw.getOriginalMainElementList().length <= 1 &&
-      !this.draw.getOriginalMainElementList()[0]?.listId
-    ) {
-      this.draw.getPlaceholder().render(ctx)
-    }
-    if (!lineNumber.disabled) {
-      this.draw.getLineNumber().render(ctx, pageNo)
-    }
-    if (!pageBorder.disabled) {
-      this.draw.getPageBorder().render(ctx)
-    }
-    this.draw.getBadge().render(ctx, pageNo)
-    if (
-      pageMode !== PageMode.CONTINUITY &&
-      this.draw.getOptions().watermark.data
-    ) {
-      // 水印放到整页内容最后绘制，保证正文文字不会把水印压在下面。
-      this.draw.getWaterMark().render(ctx, pageNo)
+      // 行绘制只消费当前页切片后的位置列表，
+      // 不再让 RowRenderer 自己在整份 positionList 上做 pageNo 过滤。
+      const pagePositionList =
+        pageNo >= 0
+          ? this.draw.getPosition().getLayoutMainPositionListByPage(pageNo)
+          : positionList
+      const index = rowList[0]?.startIndex
+      this.draw.drawRow(ctx, {
+        elementList,
+        positionList: pagePositionList,
+        rowList,
+        pageNo,
+        startIndex: index,
+        innerWidth,
+        isExport: payload.isExport,
+        selectionCtx,
+        zone: EditorZone.MAIN
+      })
+      if (pageMode !== PageMode.CONTINUITY) {
+        this.renderPagedFrame(ctx, payload)
+      }
+      this.drawFloat(ctx, {
+        pageNo,
+        imgDisplays: [ImageDisplay.FLOAT_TOP, ImageDisplay.SURROUND, ImageDisplay.TIGHT],
+        includeHeaderFooter: pageMode !== PageMode.CONTINUITY,
+        isExport: payload.isExport
+      })
+      if (!isPrintMode && this.draw.getSearch().getSearchKeyword()) {
+        this.draw.getSearch().render(selectionCtx || ctx, pageNo)
+      }
+      if (
+        this.draw.getOriginalMainElementList().length <= 1 &&
+        !this.draw.getOriginalMainElementList()[0]?.listId
+      ) {
+        this.draw.getPlaceholder().render(ctx)
+      }
+      if (pageMode === PageMode.CONTINUITY) {
+        this.renderContinuousFrame(ctx, payload, surface, offsetY)
+      }
+    } finally {
+      ctx.restore()
     }
   }
 }

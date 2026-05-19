@@ -1,9 +1,9 @@
 import { pickSurroundElementList } from '../../../utils/element'
 import { ZERO } from '../../../dataset/constant/Common'
 import { IDrawLayoutPatch } from '../../../interface/Draw'
-import { IElement } from '../../../interface/Element'
+import { IElement, IElementPosition } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
-import { EditorMode } from '../../../dataset/enum/Editor'
+import { EditorMode, PageMode } from '../../../dataset/enum/Editor'
 import { ElementType } from '../../../dataset/enum/Element'
 import type { Draw } from '../Draw'
 import { PagePartitioner } from './PagePartitioner'
@@ -140,7 +140,7 @@ export class DrawLayoutPipeline {
     this.draw.getComponents().position.setFloatPositionList([])
 
     // 如果是分页模式，计算页眉和页脚
-    if (isPagingMode) {
+    if (isPagingMode || this.draw.getOptions().pageMode === PageMode.CONTINUITY) {
       // 计算页眉（如果未禁用）
       if (!header.disabled) {
         this.draw.getComponents().header.compute()
@@ -199,6 +199,10 @@ export class DrawLayoutPipeline {
     const positionStartTime = performance.now()
     this.draw.getComponents().position.computePositionList()
     this.lastPositionDuration = performance.now() - positionStartTime
+    const continuousPageHeight =
+      partitionResult.continuousPageHeight !== undefined
+        ? this.resolveContinuousPageHeight(partitionResult.continuousPageHeight)
+        : undefined
     // 重建表格布局快照
     const snapshotStartTime = performance.now()
     this.draw.replaceTableLayoutSnapshot(
@@ -247,8 +251,56 @@ export class DrawLayoutPipeline {
       layoutElementList: partitionResult.layoutElementList,
       mainElementList: partitionResult.mainElementList,
       tableLayoutSnapshotVersion: nextSnapshotVersion,
-      continuousPageHeight: partitionResult.continuousPageHeight
+      continuousPageHeight
     }
+  }
+
+  private resolveContinuousPageHeight(baseHeight: number): number {
+    if (this.draw.getIsPagingMode()) {
+      return baseHeight
+    }
+    const bottomMargin = this.draw.getMargins()[2]
+    let maxBottom = 0
+    const visitPositionList = (positionList?: IElementPosition[]) => {
+      if (!positionList?.length) {
+        return
+      }
+      for (let i = 0; i < positionList.length; i++) {
+        const position = positionList[i]
+        if (!position) continue
+        maxBottom = Math.max(
+          maxBottom,
+          position.coordinate.leftBottom[1],
+          position.coordinate.rightBottom[1]
+        )
+      }
+    }
+    const visitElementList = (elementList: IElement[]) => {
+      for (let i = 0; i < elementList.length; i++) {
+        const element = elementList[i]
+        if (element.type === ElementType.TABLE) {
+          element.trList?.forEach(tr => {
+            tr.tdList.forEach(td => {
+              visitPositionList(td.positionList)
+              visitElementList(td.value || [])
+            })
+          })
+        }
+      }
+    }
+    visitPositionList(this.draw.getPosition().getLayoutMainPositionList())
+    visitElementList(this.draw.getLayoutMainElementList())
+    const { scale } = this.draw.getRuntime().getOptions()
+    this.draw.getPosition().getFloatPositionList().forEach(floatPosition => {
+      const element = floatPosition.element
+      if (element.imgFloatPosition && element.height) {
+        maxBottom = Math.max(
+          maxBottom,
+          (element.imgFloatPosition.y + element.height) * scale
+        )
+      }
+    })
+    return Math.max(baseHeight, Math.ceil(maxBottom + bottomMargin))
   }
 
   private scanFeaturePresence(elementList: IElement[]) {
@@ -336,7 +388,7 @@ export class DrawLayoutPipeline {
       footer
     } = this.draw.getRuntime().getOptions()
     const isPagingMode = this.draw.getIsPagingMode()
-    if (isPagingMode) {
+    if (isPagingMode || this.draw.getOptions().pageMode === PageMode.CONTINUITY) {
       if (!header.disabled) {
         this.draw.getComponents().header.compute()
       }

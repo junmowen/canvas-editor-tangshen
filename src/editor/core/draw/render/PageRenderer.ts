@@ -160,6 +160,38 @@ export class PageRenderer {
       .getPageCanvasHost()
       .getSurface(pageNo, RenderLayer.BASE)
     if (!surface) return // Canvas 未挂载时不渲染
+    const tileSurfaceList = this.draw
+      .getPageCanvasHost()
+      .prepareLayerTileSurfaces(pageNo, RenderLayer.BASE)
+    if (!this.draw.isPagingPageMode() && tileSurfaceList.length > 1) {
+      this.draw.getPageCanvasHost().invalidateBitmapCache(pageNo, RenderLayer.BASE)
+      this.draw.getServices().workerRenderScheduler.cancelPage(
+        pageNo,
+        'continuous page rendered by tiled sync backend'
+      )
+      this.draw.getComponents().blockParticle.clearPage(pageNo)
+      tileSurfaceList.forEach(tileSurface => {
+        this.draw.getServices().renderBackendManager.render(tileSurface, {
+          pageNo,
+          layer: RenderLayer.BASE,
+          reason: 'base-visible',
+          priority: 'sync',
+          isCurrentPage: pageNo === this.draw.getPageNo(),
+          isInteractive: true,
+          pagePayload: payload,
+          execute: currentSurface => {
+            this.contentPainter.drawPageToSurface(
+              payload,
+              currentSurface,
+              null,
+              { offsetY: currentSurface.offsetY || 0 }
+            )
+          }
+        })
+      })
+      this.recordBaseRenderSource('canvas-2d-render', pageNo)
+      return
+    }
     if (this.bitmapCacheController.restoreBaseSurfaceFromBitmapCache(surface)) {
       this.renderDomBlockHosts(payload)
       // base 命中缓存后仍需刷新 overlay，避免选区、搜索和控件高亮丢失。

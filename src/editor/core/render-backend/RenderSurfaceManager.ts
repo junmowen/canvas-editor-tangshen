@@ -70,6 +70,8 @@ export interface IRenderSurfaceResizeOptions {
   width: number
   /** 页面 CSS 逻辑高度。 */
   height: number
+  /** surface 自身 CSS 逻辑高度。用于连页长文档按 canvas tile 承载。 */
+  surfaceHeight?: number
   /** 当前设备像素比。 */
   dpr: number
   /** 页面间距。 */
@@ -243,6 +245,7 @@ export class RenderSurfaceManager {
       pageNo,
       width,
       height,
+      surfaceHeight = height,
       dpr,
       pageGap,
       pageWrapper,
@@ -251,16 +254,18 @@ export class RenderSurfaceManager {
     const state = this.surfacePageStateList[pageNo]
     // 已挂载页需要同步 backing store，未挂载页只更新 DOM host 尺寸。
     if (state?.base) {
-      if (this.hasSurfaceSizeChanged(state.base, width, height, dpr)) {
+      if (this.hasSurfaceSizeChanged(state.base, width, surfaceHeight, dpr)) {
         this.invalidateBitmapCache({ pageNo, layer: RenderLayer.BASE })
       }
-      this.resizeSurface(state.base, width, height, dpr)
+      this.resizeSurface(state.base, width, surfaceHeight, dpr)
+      state.base.offsetY = 0
     }
     if (state?.overlay) {
-      if (this.hasSurfaceSizeChanged(state.overlay, width, height, dpr)) {
+      if (this.hasSurfaceSizeChanged(state.overlay, width, surfaceHeight, dpr)) {
         this.invalidateBitmapCache({ pageNo, layer: RenderLayer.OVERLAY })
       }
-      this.resizeSurface(state.overlay, width, height, dpr)
+      this.resizeSurface(state.overlay, width, surfaceHeight, dpr)
+      state.overlay.offsetY = 0
     }
     overlayHost.style.width = `${width}px`
     overlayHost.style.height = `${height}px`

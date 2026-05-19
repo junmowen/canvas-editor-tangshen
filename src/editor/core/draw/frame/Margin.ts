@@ -1,6 +1,5 @@
 import { PageMode } from '../../../dataset/enum/Editor'
 import { IEditorOption } from '../../../interface/Editor'
-import { RenderLayer } from '../../render-backend'
 import { Draw } from '../Draw'
 
 /** 页边距指示器渲染器，负责在当前页绘制四角边距标记。 */
@@ -21,17 +20,14 @@ export class Margin {
    * @param ctx - 当前页 base surface 的 2D 上下文
    * @param pageNo - 当前页码
    */
-  public render(ctx: CanvasRenderingContext2D, pageNo: number) {
+  public render(ctx: CanvasRenderingContext2D, pageNo: number, pageHeight?: number) {
     const { marginIndicatorColor, pageMode } = this.options
     const width = this.draw.getWidth()
-    // 页高从渲染后端 surface 读取，保持虚拟页和 canvas 池生命周期一致。
-    const pageSurface = this.draw
-      .getPageCanvasHost()
-      .getSurface(pageNo, RenderLayer.BASE)
     const height =
-      pageMode === PageMode.CONTINUITY
-        ? (pageSurface?.canvas.height ?? ctx.canvas.height) /
-          this.draw.getPagePixelRatio()
+      pageHeight !== undefined
+        ? pageHeight
+        : pageMode === PageMode.CONTINUITY
+        ? this.draw.getPageCanvasHost().getPageHeight(pageNo)
         : this.draw.getHeight()
     const margins = this.draw.getMargins()
     const marginIndicatorSize =

@@ -18,6 +18,10 @@ export interface IPageCanvasHostMetrics {
 }
 
 export class PageCanvasHost {
+  /** 单块 canvas 的最大物理高度，避免连页长文档撞浏览器 canvas 尺寸上限。 */
+  private static readonly MAX_CANVAS_TILE_PHYSICAL_HEIGHT = 8192
+  /** 兼容旧版 canvas 阴影视觉；连页分块时阴影必须挂在 wrapper 上。 */
+  private static readonly PAGE_SHADOW = 'rgb(158 161 165 / 40%) 0px 2px 12px 0px'
   /** 主容器元素，包含所有页面相关元素 */
   private container: HTMLDivElement
   /** 模态框宿主元素，用于放置弹窗等覆盖层 */
@@ -26,10 +30,14 @@ export class PageCanvasHost {
   private pageContainer: HTMLDivElement
   /** 页面包装器列表，每个包装器包含一页的所有层 */
   private pageWrapperList: HTMLDivElement[]
+  /** 页面自定义高度。连页模式会把第 0 页拉高，挂载 canvas 时必须沿用。 */
+  private pageHeightOverrideList: Array<number | undefined>
   /** 覆盖层宿主列表，用于放置覆盖层画布 */
   private pageOverlayHostList: HTMLDivElement[]
   /** 渲染 surface 管理器，负责 canvas / ctx / pool 生命周期。 */
   private surfaceManager: RenderSurfaceManager
+  /** 连页长文档的额外 canvas tile；首块仍由 surfaceManager 的 page surface 承载。 */
+  private readonly layerTileSurfaceMap = new Map<string, IRenderSurface[]>()
   /**
    * 构造函数。
    *
@@ -42,6 +50,7 @@ export class PageCanvasHost {
   ) {
     // 初始化所有数组
     this.pageWrapperList = []
+    this.pageHeightOverrideList = []
     this.pageOverlayHostList = []
     this.surfaceManager = new RenderSurfaceManager(metrics)
 
@@ -340,6 +349,7 @@ export class PageCanvasHost {
    * 释放所有已挂载 surface、测量 surface 和 canvas 池空闲资源。
    */
   public dispose() {
+    this.releaseAllLayerTileSurfaces()
     this.surfaceManager.dispose()
   }
 
@@ -380,7 +390,9 @@ export class PageCanvasHost {
       const pageNo = this.pageWrapperList.length - 1
       this.unmountCanvas(pageNo)
       const pageWrapper = this.pageWrapperList.pop()
+      this.pageHeightOverrideList.pop()
       this.pageOverlayHostList.pop()
+      this.releaseLayerTileSurfaces(pageNo)
       this.surfaceManager.removeLastPage()
       // 从 DOM 中移除页面包装器
       pageWrapper?.remove()
@@ -395,8 +407,11 @@ export class PageCanvasHost {
   public syncPageMetrics() {
     // 先同步容器宽度
     this.syncContainerWidth()
+    // 同步基础页面指标时回到纸张高度；连页高度会在下一次布局后重新写入。
+    this.pageHeightOverrideList = this.pageHeightOverrideList.map(() => undefined)
     // 页面度量变化后，测量 surface 需要重新申请，避免沿用旧尺寸缓存。
     this.releaseMeasureSurface()
+    this.releaseAllLayerTileSurfaces()
     // 获取尺寸指标
     const width = this.metrics.getWidth()
     const height = this.metrics.getHeight()
@@ -424,18 +439,24 @@ export class PageCanvasHost {
    * @param height - 新的高度值
    */
   public resizePageHeight(pageNo: number, height: number) {
+    const nextHeight = Math.max(1, height)
+    if (this.getPageHeight(pageNo) === nextHeight) {
+      this.pageHeightOverrideList[pageNo] = nextHeight
+      return
+    }
+    this.pageHeightOverrideList[pageNo] = nextHeight
     // 获取尺寸指标
     const width = this.metrics.getWidth()
     const dpr = this.metrics.getPagePixelRatio()
     const pageGap = this.metrics.getPageGap()
     if (this.surfaceManager.getSurface(pageNo, RenderLayer.BASE)) {
-      this._applyPageMetrics(pageNo, width, height, dpr, pageGap)
+      this._applyPageMetrics(pageNo, width, nextHeight, dpr, pageGap)
     } else {
       const pageWrapper = this.pageWrapperList[pageNo]
       const overlayHost = this.pageOverlayHostList[pageNo]
-      pageWrapper.style.height = `${height}px`
+      pageWrapper.style.height = `${nextHeight}px`
       pageWrapper.style.marginBottom = `${pageGap}px`
-      overlayHost.style.height = `${height}px`
+      overlayHost.style.height = `${nextHeight}px`
     }
   }
 
@@ -585,6 +606,7 @@ export class PageCanvasHost {
     const pageWrapper = this._createPageWrapper(pageNo)
     // 在虚拟模式下，这仅仅是创建空壳 div
     this.surfaceManager.addPage()
+    this.pageHeightOverrideList.push(undefined)
     // 创建覆盖层宿主
     this._createPageOverlayHost(pageWrapper, pageNo)
   }
@@ -605,7 +627,7 @@ export class PageCanvasHost {
     })
 
     const width = this.metrics.getWidth()
-    const height = this.metrics.getHeight()
+    const height = this.getPageHeight(pageNo)
     const dpr = this.metrics.getPagePixelRatio()
     const pageGap = this.metrics.getPageGap()
     this._applyPageMetrics(pageNo, width, height, dpr, pageGap)
@@ -620,7 +642,71 @@ export class PageCanvasHost {
    */
   public unmountCanvas(pageNo: number) {
     this.metrics.onPageUnmount?.(pageNo)
+    this.releaseLayerTileSurfaces(pageNo)
     this.surfaceManager.unmountPage(pageNo)
+  }
+
+  /** 获取页面当前 CSS 逻辑高度。连页模式可能大于纸张高度。 */
+  public getPageHeight(pageNo: number): number {
+    return this.pageHeightOverrideList[pageNo] ?? this.metrics.getHeight()
+  }
+
+  /** 获取页面 wrapper 相对宿主容器顶部的 CSS 偏移。 */
+  public getPageTop(pageNo: number): number {
+    const pageWrapper = this.pageWrapperList[pageNo]
+    if (!pageWrapper) {
+      return pageNo * (this.metrics.getHeight() + this.metrics.getPageGap())
+    }
+    return pageWrapper.offsetTop
+  }
+
+  /**
+   * 准备指定页 / 层的 canvas tile 列表。
+   *
+   * 普通页面只返回 surfaceManager 管理的首块 surface；连页长文档会额外挂载
+   * 多块 transient surface，避免单个 canvas 过高导致浏览器裁剪或清空。
+   */
+  public prepareLayerTileSurfaces(
+    pageNo: number,
+    layer: RenderLayer
+  ): IRenderSurface[] {
+    const primarySurface = this.surfaceManager.getSurface(pageNo, layer)
+    if (!primarySurface) {
+      this.releaseLayerTileSurfaces(pageNo, layer)
+      return []
+    }
+    const totalHeight = this.getPageHeight(pageNo)
+    const width = this.metrics.getWidth()
+    const dpr = this.metrics.getPagePixelRatio()
+    const tileHeight = this.getCanvasTileCssHeight(totalHeight, dpr)
+    primarySurface.offsetY = 0
+    this.formatTileCanvas(primarySurface.canvas, layer, 0, 0)
+    if (totalHeight <= tileHeight) {
+      this.releaseLayerTileSurfaces(pageNo, layer)
+      this.applyPageFrameShadow(pageNo, false)
+      primarySurface.canvas.style.boxShadow = ''
+      return [primarySurface]
+    }
+
+    const pageWrapper = this.pageWrapperList[pageNo]
+    if (!pageWrapper) {
+      this.releaseLayerTileSurfaces(pageNo, layer)
+      return [primarySurface]
+    }
+    const tileCount = Math.ceil(totalHeight / tileHeight)
+    this.applyPageFrameShadow(pageNo, true)
+    primarySurface.canvas.style.boxShadow = 'none'
+    const extraTileList = this.rebuildExtraLayerTileSurfaces({
+      pageNo,
+      layer,
+      width,
+      totalHeight,
+      tileHeight,
+      tileCount,
+      dpr,
+      pageWrapper
+    })
+    return [primarySurface, ...extraTileList]
   }
 
   /**
@@ -643,15 +729,134 @@ export class PageCanvasHost {
   ) {
     const overlayHost = this.pageOverlayHostList[pageNo]
     const pageWrapper = this.pageWrapperList[pageNo]
+    const surfaceHeight = this.getCanvasTileCssHeight(height, dpr)
 
     this.surfaceManager.resizePage({
       pageNo,
       width,
       height,
+      surfaceHeight,
       dpr,
       pageGap,
       pageWrapper,
       overlayHost
     })
+  }
+
+  private getCanvasTileCssHeight(totalHeight: number, dpr: number): number {
+    const maxCssHeight = Math.max(
+      1,
+      Math.floor(
+        PageCanvasHost.MAX_CANVAS_TILE_PHYSICAL_HEIGHT / Math.max(1, dpr)
+      )
+    )
+    return Math.max(1, Math.min(totalHeight, maxCssHeight))
+  }
+
+  private rebuildExtraLayerTileSurfaces(payload: {
+    pageNo: number
+    layer: RenderLayer
+    width: number
+    totalHeight: number
+    tileHeight: number
+    tileCount: number
+    dpr: number
+    pageWrapper: HTMLDivElement
+  }): IRenderSurface[] {
+    const { pageNo, layer, width, totalHeight, tileHeight, tileCount, dpr, pageWrapper } =
+      payload
+    this.releaseLayerTileSurfaces(pageNo, layer)
+    const tileList: IRenderSurface[] = []
+    for (let tileIndex = 1; tileIndex < tileCount; tileIndex++) {
+      const offsetY = tileIndex * tileHeight
+      const surfaceHeight = Math.max(1, Math.min(tileHeight, totalHeight - offsetY))
+      const surface = this.surfaceManager.createTransientSurface({
+        pageNo,
+        layer,
+        width,
+        height: surfaceHeight,
+        dpr,
+        mounted: true
+      })
+      surface.offsetY = offsetY
+      surface.host = pageWrapper
+      this.formatTileCanvas(surface.canvas, layer, tileIndex, offsetY)
+      surface.canvas.style.boxShadow = 'none'
+      pageWrapper.append(surface.canvas)
+      tileList.push(surface)
+    }
+    this.layerTileSurfaceMap.set(this.getLayerTileKey(pageNo, layer), tileList)
+    return tileList
+  }
+
+  private formatTileCanvas(
+    canvas: HTMLCanvasElement,
+    layer: RenderLayer,
+    tileIndex: number,
+    offsetY: number
+  ) {
+    canvas.style.top = `${offsetY}px`
+    this.clearCanvasFrameStyle(canvas)
+    canvas.setAttribute('data-tile-index', String(tileIndex))
+    if (layer === RenderLayer.BASE) {
+      canvas.setAttribute('data-index', canvas.getAttribute('data-index') || '0')
+      canvas.removeAttribute('data-overlay-index')
+    } else if (layer === RenderLayer.OVERLAY) {
+      canvas.setAttribute(
+        'data-overlay-index',
+        canvas.getAttribute('data-overlay-index') || '0'
+      )
+      canvas.removeAttribute('data-index')
+    }
+  }
+
+  private releaseLayerTileSurfaces(pageNo: number, layer?: RenderLayer) {
+    const layers = layer ? [layer] : [RenderLayer.BASE, RenderLayer.OVERLAY]
+    layers.forEach(currentLayer => {
+      const key = this.getLayerTileKey(pageNo, currentLayer)
+      const tileList = this.layerTileSurfaceMap.get(key)
+      if (!tileList) return
+      tileList.forEach(surface => {
+        this.surfaceManager.releaseTransientSurface(surface)
+      })
+      this.layerTileSurfaceMap.delete(key)
+    })
+  }
+
+  private applyPageFrameShadow(pageNo: number, isTiled: boolean) {
+    const pageWrapper = this.pageWrapperList[pageNo]
+    if (!pageWrapper) return
+    pageWrapper.style.backgroundColor = isTiled ? '#ffffff' : ''
+    pageWrapper.style.boxShadow = isTiled ? PageCanvasHost.PAGE_SHADOW : ''
+    pageWrapper.style.overflow = isTiled ? 'hidden' : ''
+    if (isTiled) {
+      this.clearPageCanvasFrameStyle(pageWrapper)
+    }
+  }
+
+  private clearPageCanvasFrameStyle(pageWrapper: HTMLDivElement) {
+    pageWrapper.querySelectorAll('canvas').forEach(canvas => {
+      this.clearCanvasFrameStyle(canvas as HTMLCanvasElement)
+    })
+  }
+
+  private clearCanvasFrameStyle(canvas: HTMLCanvasElement) {
+    canvas.style.margin = '0'
+    canvas.style.border = '0'
+    canvas.style.outline = '0'
+    canvas.style.boxShadow = 'none'
+  }
+
+  private releaseAllLayerTileSurfaces() {
+    this.layerTileSurfaceMap.forEach(tileList => {
+      tileList.forEach(surface => {
+        this.surfaceManager.releaseTransientSurface(surface)
+      })
+    })
+    this.layerTileSurfaceMap.clear()
+  }
+
+  private getLayerTileKey(pageNo: number, layer: RenderLayer): string {
+    return `${layer}:${pageNo}`
   }
 }

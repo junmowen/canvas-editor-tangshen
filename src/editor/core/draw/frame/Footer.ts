@@ -75,8 +75,15 @@ export class Footer {
     this.recovery()
     // 计算行列表
     this._computeRowList()
-    // 计算位置列表
-    this._computePositionList()
+    this.positionList = this._createPositionList(0, this.draw.getHeight())
+  }
+
+  /** 连页高度变化后，同步页脚位置到真实页面底部。 */
+  public syncPositionForPage(pageNo = 0) {
+    this.positionList = this._createPositionList(
+      pageNo,
+      this.draw.getPageCanvasHost().getPageHeight(pageNo)
+    )
   }
 
   /**
@@ -113,21 +120,21 @@ export class Footer {
    *
    * 计算每个元素的位置信息。
    */
-  private _computePositionList() {
+  private _createPositionList(pageNo: number, pageHeight: number) {
+    const positionList: IElementPosition[] = []
     // 获取页脚底部位置
     const footerBottom = this.getFooterBottom()
     const innerWidth = this.draw.getInnerWidth()
     const margins = this.draw.getMargins()
     const startX = margins[3]
     // 计算起始 Y 坐标（页面底部 - 页脚底部距离 - 页脚高度）
-    const pageHeight = this.draw.getHeight()
     const footerHeight = this.getHeight()
     const startY = pageHeight - footerBottom - footerHeight
     // 计算位置列表
     this.position.computePageRowPosition({
-      positionList: this.positionList,
+      positionList,
       rowList: this.rowList,
-      pageNo: 0,
+      pageNo,
       startRowIndex: 0,
       startIndex: 0,
       startX,
@@ -135,6 +142,7 @@ export class Footer {
       innerWidth,
       zone: EditorZone.FOOTER
     })
+    return positionList
   }
 
   public getFooterBottom(): number {
@@ -179,7 +187,11 @@ export class Footer {
    * @param ctx - 画布上下文
    * @param pageNo - 页码
    */
-  public render(ctx: CanvasRenderingContext2D, pageNo: number) {
+  public render(
+    ctx: CanvasRenderingContext2D,
+    pageNo: number,
+    options: { pageHeight?: number } = {}
+  ) {
     ctx.save()
     ctx.globalAlpha = this.zone.isFooterActive()
       ? 1
@@ -197,9 +209,13 @@ export class Footer {
       rowList.push(row)
       curRowHeight += row.height
     }
+    const positionList =
+      options.pageHeight !== undefined
+        ? this._createPositionList(pageNo, options.pageHeight)
+        : this.positionList
     this.draw.drawRow(ctx, {
       elementList: this.elementList,
-      positionList: this.positionList,
+      positionList,
       rowList,
       pageNo,
       startIndex: 0,

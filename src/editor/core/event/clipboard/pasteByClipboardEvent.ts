@@ -5,6 +5,7 @@ import { CanvasEvent } from '../CanvasEvent'
 import { applyPasteElements } from './applyPasteElements'
 import { pasteHtml } from './pasteHtml'
 import { pasteImageFile } from './pasteImageFile'
+import { pastePlainText } from './pastePlainText'
 
 export function pasteByClipboardEvent(host: CanvasEvent, evt: ClipboardEvent) {
   const draw = host.getDraw()
@@ -41,7 +42,7 @@ export function pasteByClipboardEvent(host: CanvasEvent, evt: ClipboardEvent) {
     if (item.kind === 'string') {
       if (item.type === 'text/plain' && !isHTML) {
         item.getAsString(plainText => {
-          host.input(plainText)
+          pastePlainText(host, plainText)
         })
         break
       }

@@ -15,7 +15,7 @@ export class PageBorder {
     this.options = draw.getRuntime().getOptions()
   }
 
-  public render(ctx: CanvasRenderingContext2D) {
+  public render(ctx: CanvasRenderingContext2D, pageNo = 0, pageHeight?: number) {
     const {
       scale,
       pageBorder: { color, lineWidth }
@@ -27,7 +27,7 @@ export class PageBorder {
     const x = this.headerBorder.getLeft()
     const y = this.headerBorder.getTop()
     const width = this.headerBorder.getWidth()
-    const height = Math.max(0, this.footerBorder.getBottom() - y)
+    const height = Math.max(0, this.footerBorder.getBottom(pageNo, pageHeight) - y)
     ctx.rect(x, y, width, height)
     ctx.stroke()
     ctx.restore()

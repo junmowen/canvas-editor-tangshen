@@ -5,6 +5,7 @@ import { CanvasEvent } from '../CanvasEvent'
 import { applyPasteElements } from './applyPasteElements'
 import { pasteHtml } from './pasteHtml'
 import { pasteImageFile } from './pasteImageFile'
+import { pastePlainText } from './pastePlainText'
 
 export async function pasteByClipboardApi(
   host: CanvasEvent,
@@ -26,7 +27,7 @@ export async function pasteByClipboardApi(
   removeClipboardData()
   if (options?.isPlainText) {
     if (clipboardText) {
-      host.input(clipboardText)
+      pastePlainText(host, clipboardText)
     }
     return
   }
@@ -43,7 +44,7 @@ export async function pasteByClipboardApi(
       const textBlob = await item.getType('text/plain')
       const text = await textBlob.text()
       if (text) {
-        host.input(text)
+        pastePlainText(host, text)
       }
     } else if (item.types.includes('text/html') && isHTML) {
       const htmlTextBlob = await item.getType('text/html')
