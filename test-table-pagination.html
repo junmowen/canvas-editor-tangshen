@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>测试表格分页</title>
+  <style>
+    body { margin: 20px; }
+    #editor { border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <div id="editor"></div>
+  <script type="module">
+    import Editor from './src/editor/index.ts'
+    
+    // 创建大量内容，让表格出现在第二页或第三页
+    const content = []
+    
+    // 添加足够多的段落，让表格被推到后面的页
+    for (let i = 0; i < 50; i++) {
+      content.push({
+        value: `这是第 ${i + 1} 段内容，用于填充页面，让表格出现在后面的页面。`
+      })
+    }
+    
+    // 添加表格
+    content.push({
+      type: 'table',
+      trList: [
+        {
+          tdList: [
+            { value: [{ value: '电子签名：【' }, { value: '离十一' }, { value: '】' }] },
+            { value: [] }
+          ]
+        },
+        {
+          tdList: [
+            { value: [{ value: '其他记录：是否同意以上内容：{' }, { value: '☑' }, { value: ' 同意  ☐ 否定}' }] },
+            { value: [] }
+          ]
+        },
+        {
+          tdList: [
+            { value: [{ value: '医学公式：' }, { value: 'E_k=hw-W_o', type: 'latex' }] },
+            { value: [] }
+          ]
+        },
+        {
+          tdList: [
+            { value: [{ value: '签署日期：{2022-08-10 17:30:01}' }] },
+            { value: [] }
+          ]
+        },
+        {
+          tdList: [
+            { value: [{ value: '患者签名：_______________' }] },
+            { value: [] }
+          ]
+        },
+        {
+          tdList: [
+            { value: [{ value: '    EOF' }] },
+            { value: [] }
+          ]
+        },
+        { tdList: [{ value: [] }, { value: [] }] },
+        { tdList: [{ value: [] }, { value: [] }] },
+        { tdList: [{ value: [] }, { value: [] }] },
+        { tdList: [{ value: [] }, { value: [] }] }
+      ],
+      colgroup: [{ width: 300 }, { width: 300 }]
+    })
+    
+    const editor = new Editor('#editor', {
+      data: { main: content },
+      pageMode: 'paging'
+    })
+  </script>
+</body>
+</html>

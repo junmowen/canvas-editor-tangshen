@@ -77,11 +77,11 @@
 }
 
 .ce-render-backend-debug-panel {
-  position: absolute;
+  position: fixed;
   right: 8px;
-  bottom: 8px;
-  z-index: 20;
-  max-width: min(560px, calc(100% - 16px));
+  bottom: 38px;
+  z-index: 30;
+  max-width: min(560px, calc(100vw - 16px));
   padding: 6px 8px;
   border: 1px solid #d0d7de;
   border-radius: 4px;

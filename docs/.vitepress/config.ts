@@ -50,6 +50,10 @@ export default defineConfig({
             link: '/guide/canvas-pool-render-backend-plan'
           },
           {
+            text: '渲染后端调试面板',
+            link: '/guide/canvas-pool-render-backend-debug-panel'
+          },
+          {
             text: 'Canvas 后端架构',
             link: '/guide/canvas-pool-render-backend-architecture'
           },

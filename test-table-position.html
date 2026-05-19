@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Table Position Test</title>
+  <style>
+    body { margin: 20px; font-family: Arial; }
+    #container { border: 1px solid #ccc; }
+    .info { margin: 10px 0; padding: 10px; background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>Table Position Test</h1>
+  <div class="info">
+    <p>Steps to reproduce:</p>
+    <ol>
+      <li>Type some text before the table</li>
+      <li>Press Enter multiple times to push content down</li>
+      <li>Check if the table moves down correctly</li>
+    </ol>
+  </div>
+  <div id="container"></div>
+  
+  <script type="module">
+    import Editor from './src/editor/index.ts'
+    
+    const container = document.getElementById('container')
+    const instance = new Editor(container, {
+      height: 800,
+      data: {
+        main: [
+          { value: 'Text before table' },
+          { value: '\n' },
+          {
+            type: 'table',
+            trList: [
+              {
+                tdList: [
+                  { value: [{ value: 'Cell 1' }] },
+                  { value: [{ value: 'Cell 2' }] }
+                ]
+              },
+              {
+                tdList: [
+                  { value: [{ value: 'Cell 3' }] },
+                  { value: [{ value: 'Cell 4' }] }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    })
+    
+    console.log('Editor initialized')
+  </script>
+</body>
+</html>
