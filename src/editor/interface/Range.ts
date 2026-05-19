@@ -27,6 +27,7 @@ export type RangeContext = {
   endPageNo: number
   startRowNo: number
   endRowNo: number
+  startParagraphNo: number
   startColNo: number
   endColNo: number
   rangeRects: RangeRect[]

@@ -93,6 +93,7 @@ export class Command {
   public executeSetAreaBadge: CommandAdapt['setAreaBadge']
   public executeInsertElementList: CommandAdapt['insertElementList']
   public executeInsertArea: CommandAdapt['insertArea']
+  public executeDeleteArea: CommandAdapt['deleteArea']
   public executeSetAreaValue: CommandAdapt['setAreaValue']
   public executeSetAreaProperties: CommandAdapt['setAreaProperties']
   public executeLocationArea: CommandAdapt['locationArea']
@@ -120,6 +121,11 @@ export class Command {
   public executeLocationControl: CommandAdapt['locationControl']
   public executeInsertControl: CommandAdapt['insertControl']
   public executeUpdateOptions: CommandAdapt['updateOptions']
+  public executeSetTrackChange: CommandAdapt['setTrackChange']
+  public executeAcceptTrackChange: CommandAdapt['acceptTrackChange']
+  public executeRejectTrackChange: CommandAdapt['rejectTrackChange']
+  public executeAcceptAllTrackChange: CommandAdapt['acceptAllTrackChange']
+  public executeRejectAllTrackChange: CommandAdapt['rejectAllTrackChange']
   public executeInsertTitle: CommandAdapt['insertTitle']
   public executeFocus: CommandAdapt['focus']
   public getCatalog: CommandAdapt['getCatalog']
@@ -143,12 +149,14 @@ export class Command {
   public getSearchNavigateInfo: CommandAdapt['getSearchNavigateInfo']
   public getLocale: CommandAdapt['getLocale']
   public getGroupIds: CommandAdapt['getGroupIds']
+  public getGroupRectList: CommandAdapt['getGroupRectList']
   public getControlValue: CommandAdapt['getControlValue']
   public getControlList: CommandAdapt['getControlList']
   public getContainer: CommandAdapt['getContainer']
   public getTitleValue: CommandAdapt['getTitleValue']
   public getPositionContextByEvent: CommandAdapt['getPositionContextByEvent']
   public getElementById: CommandAdapt['getElementById']
+  public getTrackChangeList: CommandAdapt['getTrackChangeList']
 
   constructor(adapt: CommandAdapt) {
     // 全局命令
@@ -253,6 +261,7 @@ export class Command {
     // 区域
     this.getAreaValue = adapt.getAreaValue.bind(adapt)
     this.executeInsertArea = adapt.insertArea.bind(adapt)
+    this.executeDeleteArea = adapt.deleteArea.bind(adapt)
     this.executeSetAreaValue = adapt.setAreaValue.bind(adapt)
     this.executeSetAreaProperties = adapt.setAreaProperties.bind(adapt)
     this.executeLocationArea = adapt.locationArea.bind(adapt)
@@ -273,6 +282,11 @@ export class Command {
     this.executeLocationGroup = adapt.locationGroup.bind(adapt)
     this.executeSetZone = adapt.setZone.bind(adapt)
     this.executeUpdateOptions = adapt.updateOptions.bind(adapt)
+    this.executeSetTrackChange = adapt.setTrackChange.bind(adapt)
+    this.executeAcceptTrackChange = adapt.acceptTrackChange.bind(adapt)
+    this.executeRejectTrackChange = adapt.rejectTrackChange.bind(adapt)
+    this.executeAcceptAllTrackChange = adapt.acceptAllTrackChange.bind(adapt)
+    this.executeRejectAllTrackChange = adapt.rejectAllTrackChange.bind(adapt)
     this.executeInsertTitle = adapt.insertTitle.bind(adapt)
     this.executeFocus = adapt.focus.bind(adapt)
     // 获取
@@ -296,10 +310,12 @@ export class Command {
     this.getSearchNavigateInfo = adapt.getSearchNavigateInfo.bind(adapt)
     this.getLocale = adapt.getLocale.bind(adapt)
     this.getGroupIds = adapt.getGroupIds.bind(adapt)
+    this.getGroupRectList = adapt.getGroupRectList.bind(adapt)
     this.getContainer = adapt.getContainer.bind(adapt)
     this.getTitleValue = adapt.getTitleValue.bind(adapt)
     this.getPositionContextByEvent = adapt.getPositionContextByEvent.bind(adapt)
     this.getElementById = adapt.getElementById.bind(adapt)
+    this.getTrackChangeList = adapt.getTrackChangeList.bind(adapt)
     // 控件
     this.executeSetControlValue = adapt.setControlValue.bind(adapt)
     this.executeSetControlValueList = adapt.setControlValueList.bind(adapt)

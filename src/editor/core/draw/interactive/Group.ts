@@ -1,4 +1,4 @@
-import { EditorZone } from '../../../dataset/enum/Editor'
+import { EditorMode, EditorZone } from '../../../dataset/enum/Editor'
 import { ElementType } from '../../../dataset/enum/Element'
 import { DeepRequired } from '../../../interface/Common'
 import { IEditorOption } from '../../../interface/Editor'
@@ -24,12 +24,12 @@ export class Group {
 
   public setGroup(): string | null {
     if (
-      this.draw.isReadonly() ||
+      (this.draw.isReadonly() && this.draw.getMode() !== EditorMode.FORM) ||
       this.draw.getZone().getZone() !== EditorZone.MAIN
     ) {
       return null
     }
-    const selection = this.range.getSelection()
+    const selection = this.getGroupSelection()
     if (!selection) return null
     const groupId = getUUID()
     selection.forEach(el => {
@@ -44,6 +44,30 @@ export class Group {
       pageRenderScope: 'visible'
     })
     return groupId
+  }
+
+  private getGroupSelection(): IElement[] | null {
+    const selection = this.range.getSelection()
+    if (selection) return selection
+    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
+    if (startIndex === endIndex || !~startIndex || !~endIndex) return null
+    const start = Math.min(startIndex, endIndex) + 1
+    const end = Math.max(startIndex, endIndex)
+    const positionContext = this.draw.getPosition().getPositionContext()
+    if (positionContext.isTable) {
+      const { index, trIndex, tdIndex } = positionContext
+      const tableElement = this.draw.getOriginalMainElementList()[index!]
+      return (
+        tableElement?.trList?.[trIndex!]?.tdList?.[tdIndex!]?.value
+          .slice(start, end + 1)
+          .filter(element => !element.control?.disabled) || null
+      )
+    }
+    if (this.draw.getMode() !== EditorMode.FORM) return null
+    return this.draw
+      .getOriginalMainElementList()
+      .slice(start, end + 1)
+      .filter(element => !element.control?.disabled)
   }
 
   public getElementListByGroupId(

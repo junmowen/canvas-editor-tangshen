@@ -26,6 +26,13 @@ interface IElement {
   extension?: unknown;
   externalId?: string;
   hide?: boolean;
+  trackChange?: {
+    id: string; // 同一次修订操作的唯一标识
+    type: 'insert' | 'delete'; // 修订类型：插入或删除
+    author?: string; // 修订作者
+    timestamp: number; // 修订发生时间戳
+    color?: string; // 当前痕迹显示颜色
+  };
   // 样式
   font?: string;
   size?: number;
@@ -209,3 +216,21 @@ interface IElement {
   };
 }
 ```
+
+## 修订留痕数据
+
+当开启 `trackChange.enabled` 后，编辑产生的修订会保存在元素的 `trackChange` 字段上。
+
+```typescript
+interface ITrackChange {
+  id: string
+  type: 'insert' | 'delete'
+  author?: string
+  timestamp: number
+  color?: string
+}
+```
+
+- `insert`：表示该元素是新增内容。接受修订时会移除 `trackChange` 标记，拒绝修订时会移除该元素。
+- `delete`：表示该元素是被删除内容。接受修订时会移除该元素，拒绝修订时会移除 `trackChange` 标记并保留原文。
+- 同一次插入或删除产生的多个元素会使用相同的 `id`，便于按批次接受或拒绝。

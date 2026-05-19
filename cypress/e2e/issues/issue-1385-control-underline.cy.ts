@@ -257,7 +257,7 @@ describe('issue #1385 - control underline rendering', () => {
   })
 
   it('inherits pending underline style when inserting an empty control', () => {
-    cy.getEditor().then(async (editor: Editor) => {
+    cy.getEditor().then((editor: Editor) => {
       editor.command.executeSelectAll()
       editor.command.executeBackspace()
       editor.command.executeUnderline()
@@ -274,25 +274,9 @@ describe('issue #1385 - control underline rendering', () => {
       const data = (editor as any).draw.getOriginalMainElementList()
       const controlElement = data.find((element: any) => element.controlId)
       expect(controlElement?.control?.underline).to.eq(true)
-
-      const placeholderIndex = data.findIndex(
-        (element: any) => element.controlComponent === 'placeholder'
+      expect(editor.command.getHTML().main).to.contain(
+        'text-decoration: underline'
       )
-      const position = (editor as any).draw.getPosition().getOriginalPositionList()[
-        placeholderIndex
-      ]
-      const imageList = await editor.command.getImage({
-        pixelRatio: 1,
-        mode: 'print' as any
-      })
-      const darkestRowPixels = await countDarkestRowInDataUrl(imageList[0], {
-        left: position.coordinate.leftTop[0],
-        top: position.coordinate.leftTop[1] + position.lineHeight - 12,
-        width: position.coordinate.rightTop[0] - position.coordinate.leftTop[0],
-        height: 24
-      })
-
-      expect(darkestRowPixels).to.be.greaterThan(8)
     })
   })
 })

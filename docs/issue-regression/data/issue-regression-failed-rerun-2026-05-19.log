@@ -1,0 +1,423 @@
+
+
+DevTools listening on ws://127.0.0.1:50492/devtools/browser/667da867-42f9-49d2-8ac2-22f0e44be9b1
+(node:23308) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("file%3A///C%3A/Users/e4442/AppData/Local/Cypress/Cache/13.6.0/Cypress/resources/app/node_modules/ts-node/esm/transpile-only.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23308) [DEP0180] DeprecationWarning: fs.Stats constructor is deprecated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Warning: We failed to trash the existing run results.
+
+This error will not affect or change the exit code.
+
+Error: Command failed: C:\Users\e4442\AppData\Local\Cypress\Cache\13.6.0\Cypress\resources\app\node_modules\trash\lib\win-trash.exe D:\canvas-editor-tangshen\cypress\screenshots\performance
+
+    at ChildProcess.exithandler (node:child_process:430:12)
+    at ChildProcess.emit (node:events:513:28)
+    at maybeClose (node:internal/child_process:1091:16)
+    at Process.onexit (node:internal/child_process:302:5)
+
+====================================================================================================
+
+  (Run Starting)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Cypress:        13.6.0                                                                         │
+  │ Browser:        Electron 114 (headless)                                                        │
+  │ Node Version:   v25.5.0 (D:\devtool\flyenv\PhpWebStudy-Data\env\node\node.exe)                 │
+  │ Specs:          7 found (issue-1053-table-cell-border.cy.ts, issue-1385-control-underline.cy.t │
+  │                 s, issue-837-large-document-performance.cy.ts, issue-877-pagebreak-behavior.cy │
+  │                 .ts, issue-catalog-position-miss.cy.ts, issue-inline-table-label.cy.ts, issue- │
+  │                 table-fragment-uses-re...)                                                     │
+  │ Searched:       D:\canvas-editor-tangshen\cypress\e2e\issues\issue-1053-table-cell-border.cy.t │
+  │                 s, D:\canvas-editor-tangshen\cypress\e2e\issues\issue-1385-control-underline.c │
+  │                 y.ts, D:\canvas-editor-tangshen\cypress\e2e\issues\issue-837-large-document-pe │
+  │                 rformance.cy.ts, D:\canvas-editor-tangshen\cypress\e2e\issues\issue-877-pagebr │
+  │                 eak-behavior.cy.ts, D:\canvas-editor-tangshen\cypress\e2e\issues\issue-catalog │
+  │                 -position-miss.cy.ts, D:\canvas-editor-tangshen\cypress\e2e\issues\issue-inlin │
+  │                 e-table-label.cy.ts, D:\canvas-editor-tangshen\cypress\e2e\issues\issue-table- │
+  │                 fragment-uses-remaining-space.cy.ts                                            │
+  │ Experiments:    experimentalRunAllSpecs=true                                                   │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  issue-1053-table-cell-border.cy.ts                                              (1 of 7)
+
+
+  issue #1053 table cell border settings
+    √ sets table border type, border color and selected cell border types (2684ms)
+    √ sets table and cell border styles from the context menu (5774ms)
+    √ repaints the visible canvas after border color and width changes (1910ms)
+    √ shows all borders when only selected cell border color and width are set (1985ms)
+    √ round-trips per-cell border color and width through getValue and setValue (1966ms)
+    √ renders a single cell border with its own color and width (2366ms)
+    √ clears existing cell borders when switching the table to no border (2327ms)
+    √ does not keep the paged fragment top border after switching to no border (4005ms)
+    √ does not draw a paged fragment top border for internal-only borders (3373ms)
+    √ keeps table cell text inside thick borders (1817ms)
+    √ resizes table rows and columns by dragging table tool handles (2136ms)
+    √ adds table rows and columns from quick add buttons (1798ms)
+    √ removes internal horizontal lines after switching to external border (1534ms)
+    √ keeps internal vertical borders inside the table bottom (1900ms)
+    √ keeps dashed table top border visible (1654ms)
+    1) places later table fragments below a header bottom separator
+    √ wraps punctuation inside table cells without changing ordinary text hanging (1788ms)
+
+
+  16 passing (44s)
+  1 failing
+
+  1) issue #1053 table cell border settings
+       places later table fragments below a header bottom separator:
+
+      AssertionError: expected 0 to be above 0
+      + expected - actual
+
+
+      at Context.eval (webpack://@hufe921/canvas-editor/./cypress/e2e/issues/issue-1053-table-cell-border.cy.ts:1325:32)
+
+
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        17                                                                               │
+  │ Passing:      16                                                                               │
+  │ Failing:      1                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  1                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     44 seconds                                                                       │
+  │ Spec Ran:     issue-1053-table-cell-border.cy.ts                                               │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Screenshots)
+
+  -  D:\canvas-editor-tangshen\cypress\screenshots\issue-1053-table-cell-border.cy.ts     (1280x720)
+     \issue #1053 table cell border settings -- places later table fragments below a                
+     header bottom separator (failed).png                                                           
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  issue-1385-control-underline.cy.ts                                              (2 of 7)
+
+
+  issue #1385 - control underline rendering
+    √ keeps underline on text control values and HTML output (2216ms)
+    √ keeps underline after selecting an option in select control (1708ms)
+    √ renders underline in print image output (1616ms)
+    √ renders blank underline for empty underlined controls in print image output (1897ms)
+    1) inherits pending underline style when inserting an empty control
+
+
+  4 passing (12s)
+  1 failing
+
+  1) issue #1385 - control underline rendering
+       inherits pending underline style when inserting an empty control:
+     TypeError: Cannot read properties of undefined (reading 'coordinate')
+      at eval (webpack://@hufe921/canvas-editor/./cypress/e2e/issues/issue-1385-control-underline.cy.ts:289:23)
+      at step (http://localhost:3000/__cypress/tests?p=cypress\e2e\issues\issue-1385-control-underline.cy.ts:55:23)
+      at Object.eval [as next] (http://localhost:3000/__cypress/tests?p=cypress\e2e\issues\issue-1385-control-underline.cy.ts:36:53)
+      at fulfilled (http://localhost:3000/__cypress/tests?p=cypress\e2e\issues\issue-1385-control-underline.cy.ts:27:58)
+
+
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        5                                                                                │
+  │ Passing:      4                                                                                │
+  │ Failing:      1                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  1                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     11 seconds                                                                       │
+  │ Spec Ran:     issue-1385-control-underline.cy.ts                                               │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Screenshots)
+
+  -  D:\canvas-editor-tangshen\cypress\screenshots\issue-1385-control-underline.cy.ts     (1280x720)
+     \issue #1385 - control underline rendering -- inherits pending underline style w               
+     hen inserting an empty control (failed).png                                                    
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  issue-837-large-document-performance.cy.ts                                      (3 of 7)
+
+
+  issue #837 large document performance baseline
+    √ renders a paged large document without blank pages (4417ms)
+    √ keeps non-compute visible refresh scoped to visible and active pages (2707ms)
+    √ keeps typing refresh scoped to visible pages in a 30-page document (3387ms)
+    1) coalesces rapid typing refreshes before repainting a 30-page document
+
+
+  3 passing (16s)
+  1 failing
+
+  1) issue #837 large document performance baseline
+       coalesces rapid typing refreshes before repainting a 30-page document:
+     AssertionError: coalesced render count: expected 0 to equal 1
+      at Context.eval (webpack://@hufe921/canvas-editor/./cypress/e2e/issues/issue-837-large-document-performance.cy.ts:177:55)
+
+
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        4                                                                                │
+  │ Passing:      3                                                                                │
+  │ Failing:      1                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  1                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     16 seconds                                                                       │
+  │ Spec Ran:     issue-837-large-document-performance.cy.ts                                       │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Screenshots)
+
+  -  D:\canvas-editor-tangshen\cypress\screenshots\issue-837-large-document-performan     (1280x720)
+     ce.cy.ts\issue #837 large document performance baseline -- coalesces rapid typin               
+     g refreshes before repainting a 30-page document (failed).png                                  
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  issue-877-pagebreak-behavior.cy.ts                                              (4 of 7)
+
+
+  issue #877 page break behavior
+    1) keeps the page break element in data and starts following content on a new page
+
+
+  0 passing (8s)
+  1 failing
+
+  1) issue #877 page break behavior
+       keeps the page break element in data and starts following content on a new page:
+
+      AssertionError: Timed out retrying after 4000ms: Not enough elements found. Found '1', expected '2'.
+      + expected - actual
+
+      -1
+      +2
+      
+      at Context.eval (webpack://@hufe921/canvas-editor/./cypress/e2e/issues/issue-877-pagebreak-behavior.cy.ts:35:33)
+
+
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        1                                                                                │
+  │ Passing:      0                                                                                │
+  │ Failing:      1                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  1                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     7 seconds                                                                        │
+  │ Spec Ran:     issue-877-pagebreak-behavior.cy.ts                                               │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Screenshots)
+
+  -  D:\canvas-editor-tangshen\cypress\screenshots\issue-877-pagebreak-behavior.cy.ts     (1280x720)
+     \issue #877 page break behavior -- keeps the page break element in data and star               
+     ts following content on a new page (failed).png                                                
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  issue-catalog-position-miss.cy.ts                                               (5 of 7)
+
+
+  目录位置容错
+    1) does not crash catalog worker after chunk typing
+
+
+  0 passing (6s)
+  1 failing
+
+  1) 目录位置容错
+       does not crash catalog worker after chunk typing:
+
+      AssertionError: expected 0 to be above 0
+      + expected - actual
+
+
+      at Context.eval (webpack://@hufe921/canvas-editor/./cypress/e2e/issues/issue-catalog-position-miss.cy.ts:45:60)
+
+
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        1                                                                                │
+  │ Passing:      0                                                                                │
+  │ Failing:      1                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  1                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     5 seconds                                                                        │
+  │ Spec Ran:     issue-catalog-position-miss.cy.ts                                                │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Screenshots)
+
+  -  D:\canvas-editor-tangshen\cypress\screenshots\issue-catalog-position-miss.cy.ts\     (1280x720)
+     目录位置容错 -- does not crash catalog worker after chunk typing (failed).png                  
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  issue-inline-table-label.cy.ts                                                  (6 of 7)
+
+
+  inline table label layout
+    √ places a text label and an inline table on the same row (2137ms)
+    √ supports table operations when the inline table context index is stale (1776ms)
+    √ keeps inline table cell hit bounds aligned after leading text (1625ms)
+    1) does not highlight another inline table with the same row and column indexes
+    2) draws inline table range from the table origin instead of the row origin
+    √ keeps the first inline table fragment on the current page when a tall cell is split (1561ms)
+    √ supports merging cells in an inline table (1480ms)
+
+
+  5 passing (14s)
+  2 failing
+
+  1) inline table label layout
+       does not highlight another inline table with the same row and column indexes:
+     TypeError: draw.getPage is not a function
+      at eval (webpack://@hufe921/canvas-editor/./cypress/e2e/issues/issue-inline-table-label.cy.ts:390:34)
+      at eval (webpack://@hufe921/canvas-editor/./cypress/e2e/issues/issue-inline-table-label.cy.ts:389:31)
+      at Context.eval (webpack://@hufe921/canvas-editor/./cypress/e2e/issues/issue-inline-table-label.cy.ts:388:21)
+
+  2) inline table label layout
+       draws inline table range from the table origin instead of the row origin:
+     TypeError: draw.getPage is not a function
+      at Context.eval (webpack://@hufe921/canvas-editor/./cypress/e2e/issues/issue-inline-table-label.cy.ts:493:24)
+
+
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        7                                                                                │
+  │ Passing:      5                                                                                │
+  │ Failing:      2                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  2                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     13 seconds                                                                       │
+  │ Spec Ran:     issue-inline-table-label.cy.ts                                                   │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Screenshots)
+
+  -  D:\canvas-editor-tangshen\cypress\screenshots\issue-inline-table-label.cy.ts\inl     (1280x720)
+     ine table label layout -- does not highlight another inline table with the same                
+     row and column indexes (failed).png                                                            
+  -  D:\canvas-editor-tangshen\cypress\screenshots\issue-inline-table-label.cy.ts\inl     (1280x720)
+     ine table label layout -- draws inline table range from the table origin instead               
+      of the row origin (failed).png                                                                
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  issue-table-fragment-uses-remaining-space.cy.ts                                 (7 of 7)
+
+
+  table pagination remaining space
+    1) keeps the first splittable table fragment on the current page when space remains
+
+
+  0 passing (4s)
+  1 failing
+
+  1) table pagination remaining space
+       keeps the first splittable table fragment on the current page when space remains:
+
+      AssertionError: expected 3 to be below 2
+      + expected - actual
+
+      -3
+      +2
+      
+      at Context.eval (webpack://@hufe921/canvas-editor/./cypress/e2e/issues/issue-table-fragment-uses-remaining-space.cy.ts:52:37)
+
+
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        1                                                                                │
+  │ Passing:      0                                                                                │
+  │ Failing:      1                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  1                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     3 seconds                                                                        │
+  │ Spec Ran:     issue-table-fragment-uses-remaining-space.cy.ts                                  │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Screenshots)
+
+  -  D:\canvas-editor-tangshen\cypress\screenshots\issue-table-fragment-uses-remainin     (1280x720)
+     g-space.cy.ts\table pagination remaining space -- keeps the first splittable tab               
+     le fragment on the current page when space remains (failed).png                                
+
+
+====================================================================================================
+
+  (Run Finished)
+
+
+       Spec                                              Tests  Passing  Failing  Pending  Skipped  
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ ×  issue-1053-table-cell-border.cy.ts       00:44       17       16        1        -        - │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ×  issue-1385-control-underline.cy.ts       00:11        5        4        1        -        - │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ×  issue-837-large-document-performanc      00:16        4        3        1        -        - │
+  │    e.cy.ts                                                                                     │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ×  issue-877-pagebreak-behavior.cy.ts       00:07        1        -        1        -        - │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ×  issue-catalog-position-miss.cy.ts        00:05        1        -        1        -        - │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ×  issue-inline-table-label.cy.ts           00:13        7        5        2        -        - │
+  ├────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ ×  issue-table-fragment-uses-remaining      00:03        1        -        1        -        - │
+  │    -space.cy.ts                                                                                │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+    ×  7 of 7 failed (100%)                     01:43       36       28        8        -        -  
+

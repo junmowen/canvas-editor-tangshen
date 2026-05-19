@@ -79,8 +79,22 @@ interface IEditorOption {
   pageBorder?: IPageBorderOption // 页面边框配置。{color?:string; lineWidth:number; padding?:IPadding; disabled?:boolean;}
   badge?: IBadgeOption // 徽章配置。{top?:number; left?:number}
   modeRule?: IModeRule // 编辑器模式规则配置。{print:{imagePreviewerDisabled?: boolean}; readonly:{imagePreviewerDisabled?: boolean}; form:{controlDeletableDisabled?: boolean}}
+  trackChange?: ITrackChangeOption // 修订留痕配置。{enabled?:boolean; author?:string; insertColor?:string; deleteColor?:string}
 }
 ```
+
+## 修订留痕配置
+
+```typescript
+interface ITrackChangeOption {
+  enabled?: boolean // 是否开启修订留痕。默认：false
+  author?: string // 当前修订作者。默认：''
+  insertColor?: string // 插入痕迹颜色。默认：#047857
+  deleteColor?: string // 删除痕迹颜色。默认：#DC2626
+}
+```
+
+开启后，新增内容会写入 `trackChange.type = 'insert'`；删除内容不会立即从文档数组移除，而是写入 `trackChange.type = 'delete'`。可通过 `executeAcceptTrackChange`、`executeRejectTrackChange`、`executeAcceptAllTrackChange`、`executeRejectAllTrackChange` 处理修订。
 
 ## 表格配置
 

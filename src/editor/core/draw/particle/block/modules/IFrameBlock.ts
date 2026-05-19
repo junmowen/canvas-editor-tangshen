@@ -1,7 +1,16 @@
 import { IRowElement } from '../../../../../interface/Row'
 
 export class IFrameBlock {
-  public static readonly sandbox = ['allow-scripts', 'allow-same-origin']
+  public static readonly sandbox = [
+    'allow-scripts',
+    'allow-same-origin',
+    'allow-presentation'
+  ]
+  private static readonly popupSandbox = [
+    'allow-popups',
+    'allow-popups-to-escape-sandbox',
+    'allow-top-navigation-by-user-activation'
+  ]
   private element: IRowElement
 
   constructor(element: IRowElement) {
@@ -26,6 +35,15 @@ export class IFrameBlock {
     const iframe = document.createElement('iframe')
     iframe.setAttribute('data-id', this.element.id!)
     iframe.sandbox.add(...IFrameBlock.sandbox)
+    const allowPopup = block.iframeBlock?.allowPopup !== false
+    const allowFullscreen = block.iframeBlock?.allowFullscreen !== false
+    if (allowPopup) {
+      iframe.sandbox.add(...IFrameBlock.popupSandbox)
+    }
+    if (allowFullscreen) {
+      iframe.allowFullscreen = true
+      iframe.allow = 'fullscreen; picture-in-picture'
+    }
     iframe.style.border = 'none'
     iframe.style.width = '100%'
     iframe.style.height = '100%'
@@ -37,5 +55,21 @@ export class IFrameBlock {
     blockItemContainer.append(iframe)
     // 重新定义iframe上属性
     this._defineIframeProperties(iframe.contentWindow!)
+  }
+
+  public syncSrcdocFromDom(): boolean {
+    const iframe = document.querySelector<HTMLIFrameElement>(
+      `iframe[data-id="${this.element.id}"]`
+    )
+    const iframeBlock = this.element.block?.iframeBlock
+    if (!iframe || !iframeBlock || !iframeBlock.srcdoc) return false
+    try {
+      const doc = iframe.contentDocument
+      if (!doc) return false
+      iframeBlock.srcdoc = doc.documentElement.outerHTML
+      return true
+    } catch {
+      return false
+    }
   }
 }

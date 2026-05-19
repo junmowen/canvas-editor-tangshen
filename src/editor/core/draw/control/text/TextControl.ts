@@ -146,12 +146,29 @@ export class TextControl implements IControlInstance {
         ? this.convertNestedControlToValueElementList(item, startElement)
         : item
     )
+    const isStartPlaceholderOnlyControl =
+      startElement.controlComponent === ControlComponent.PLACEHOLDER &&
+      !elementList[startIndex - 1]?.controlId
     // 移除选区元素
     if (startIndex !== endIndex) {
+      let placeholderEndIndex = startIndex
+      if (isStartPlaceholderOnlyControl) {
+        while (
+          placeholderEndIndex + 1 < elementList.length &&
+          elementList[placeholderEndIndex + 1]?.controlId ===
+            startElement.controlId &&
+          elementList[placeholderEndIndex + 1]?.controlComponent ===
+            ControlComponent.PLACEHOLDER
+        ) {
+          placeholderEndIndex++
+        }
+      }
       draw.spliceElementList(
         elementList,
-        startIndex + 1,
-        endIndex - startIndex,
+        isStartPlaceholderOnlyControl ? startIndex : startIndex + 1,
+        isStartPlaceholderOnlyControl
+          ? placeholderEndIndex - startIndex + 1
+          : endIndex - startIndex,
         [],
         {
           isIgnoreDeletedRule: options.isIgnoreDeletedRule
@@ -174,7 +191,8 @@ export class TextControl implements IControlInstance {
           ])
         : omitObject(startElement, ['type'])
     // 插入起始位置
-    const start = range.startIndex + 1
+    const start =
+      isStartPlaceholderOnlyControl ? range.startIndex : range.startIndex + 1
     for (let i = 0; i < insertData.length; i++) {
       const newElement: IElement = {
         ...anchorElement,

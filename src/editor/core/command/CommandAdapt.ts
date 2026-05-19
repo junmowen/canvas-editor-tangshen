@@ -5,6 +5,7 @@ import {
   EDITOR_ELEMENT_STYLE_ATTR,
   EDITOR_ROW_ATTR,
   LIST_CONTEXT_ATTR,
+  TITLE_CONTEXT_ATTR,
   TABLE_CONTEXT_ATTR
 } from '../../dataset/constant/Element'
 import {
@@ -79,7 +80,11 @@ import {
 import { IMargin } from '../../interface/Margin'
 import { ILocationPosition, IPositionContext } from '../../interface/Position'
 import { IRange, RangeContext, RangeRect } from '../../interface/Range'
-import { IReplaceOption, ISearchResultContext } from '../../interface/Search'
+import {
+  IReplaceOption,
+  ISearchOption,
+  ISearchResultContext
+} from '../../interface/Search'
 import { ITextDecoration } from '../../interface/Text'
 import {
   IGetTitleValueOption,
@@ -121,13 +126,17 @@ import { Zone } from '../zone/Zone'
 import {
   IGetAreaValueOption,
   IGetAreaValueResult,
+  IDeleteAreaOption,
   IInsertAreaOption,
   ILocationAreaOption,
   ISetAreaPropertiesOption,
   ISetAreaValueOption
 } from '../../interface/Area'
 import { IAreaBadge, IBadge } from '../../interface/Badge'
-import { IRichtextOption } from '../../interface/Command'
+import {
+  IRichtextOption,
+  ISetTrackChangeOption
+} from '../../interface/Command'
 
 /**
  * 命令适配层。
@@ -238,6 +247,16 @@ export class CommandAdapt {
       this.draw.getComponents().cursor.focus()
       return
     }
+    if (this.draw.getTrackChange().isEnabled()) {
+      // 留痕删除不会缩短数组，不能复用负增量 typing patch，改走可见页正式重排。
+      this.draw.render({
+        curIndex,
+        isLazy: false,
+        pageRenderScope: 'visible'
+      })
+      this.draw.getComponents().cursor.focus()
+      return
+    }
     // 命令层折叠退格属于高频编辑路径，必须避免在大文档下同步触发整篇排版。
     this.queueProgrammaticBackspaceRender({
       curIndex,
@@ -344,6 +363,7 @@ export class CommandAdapt {
       endTrIndex ?? positionContext.trIndex
     const targetEndTdIndex =
       endTdIndex ?? positionContext.tdIndex
+    let targetTableCellMaxIndex = maxEditableIndex
     if (
       targetTableId &&
       targetStartTrIndex !== undefined &&
@@ -362,20 +382,25 @@ export class CommandAdapt {
         tableElement?.trList?.[targetStartTrIndex]?.tdList?.[targetStartTdIndex]
       const leadingOffset =
         td?.value?.[0]?.value === ZERO && td.value[1] ? 1 : 0
-      nextStartIndex += leadingOffset
-      nextEndIndex += leadingOffset
+      if (nextStartIndex === nextEndIndex) {
+        nextStartIndex += leadingOffset
+        nextEndIndex += leadingOffset
+      }
+      if (td?.value?.length) {
+        targetTableCellMaxIndex = td.value.length - 1
+      }
     }
-    nextStartIndex = Math.min(nextStartIndex, maxEditableIndex)
-    nextEndIndex = Math.min(nextEndIndex, maxEditableIndex)
+    nextStartIndex = Math.min(nextStartIndex, targetTableCellMaxIndex)
+    nextEndIndex = Math.min(nextEndIndex, targetTableCellMaxIndex)
     if (nextEndIndex < nextStartIndex) return
     this.range.setRange(
       nextStartIndex,
       nextEndIndex,
-      tableId,
-      startTdIndex,
-      endTdIndex,
-      startTrIndex,
-      endTrIndex
+      targetTableId,
+      targetStartTdIndex,
+      targetEndTdIndex,
+      targetStartTrIndex,
+      targetEndTrIndex
     )
     if (
       targetTableId &&
@@ -1423,6 +1448,7 @@ export class CommandAdapt {
     const { valueList, url } = payload
     const hyperlinkId = getUUID()
     const newElementList = valueList?.map<IElement>(v => ({
+      ...v,
       url,
       hyperlinkId,
       value: v.value,
@@ -1675,11 +1701,11 @@ export class CommandAdapt {
     return imageId
   }
 
-  public search(payload: string | null) {
+  public search(payload: string | null, options?: ISearchOption) {
     this.draw.flushAsyncInsertTransaction('command-search')
     this.searchManager.setSearchKeyword(payload)
     if (payload) {
-      this.searchManager.compute(payload)
+      this.searchManager.compute(payload, options)
     }
     this.draw.refreshVisibleOverlay({
       isSearchDirty: true
@@ -2044,7 +2070,7 @@ export class CommandAdapt {
       const preElement = elementList[scanIndex - 1]
       if (curElement.titleId && curElement.titleId !== preElement?.titleId) {
         titleId = curElement.titleId
-        titleStartPageNo = positionList[scanIndex].pageNo
+        titleStartPageNo = positionList[scanIndex]?.pageNo ?? null
         break
       }
       scanIndex--
@@ -2090,6 +2116,8 @@ export class CommandAdapt {
     const endPageNo = endPosition.pageNo
     const startRowNo = startPosition.rowIndex
     const endRowNo = endPosition.rowIndex
+    const startParagraphNo =
+      this.range.getRangeParagraphInfo()?.startIndex ?? startIndex
     const startRow = rowList[startRowNo] || rowList[0]
     const endRow = rowList[endRowNo] || rowList[rowList.length - 1]
     if (!startRow || !endRow) return null
@@ -2140,6 +2168,7 @@ export class CommandAdapt {
       endPageNo,
       startRowNo,
       endRowNo,
+      startParagraphNo,
       startColNo,
       endColNo,
       rangeRects,
@@ -2322,6 +2351,9 @@ export class CommandAdapt {
             }
           }
         }
+        if (element.valueList?.length) {
+          getElementInfoById(element.valueList)
+        }
         if (
           (id && element.id === id) ||
           (conceptId && element.conceptId === conceptId)
@@ -2348,17 +2380,23 @@ export class CommandAdapt {
       const { elementList, index } = updateElementInfoList[i]
       // 重新格式化元素
       const oldElement = elementList[index]
-      const newElement = zipElementList(
-        [
+      const newElement = [
+        pickElementAttr(
           {
             ...oldElement,
             ...payload.properties
+          },
+          {
+            extraPickAttrs: [
+              'id',
+              ...LIST_CONTEXT_ATTR,
+              ...TITLE_CONTEXT_ATTR,
+              ...TABLE_CONTEXT_ATTR,
+              ...AREA_CONTEXT_ATTR
+            ]
           }
-        ],
-        {
-          extraPickAttrs: ['id']
-        }
-      )
+        )
+      ]
       // 区域上下文提取
       cloneProperty<IElement>(AREA_CONTEXT_ATTR, oldElement, newElement[0])
       formatElementList(newElement, {
@@ -2435,13 +2473,27 @@ export class CommandAdapt {
             }
           }
         }
+        if (element.valueList?.length) {
+          getElement(element.valueList)
+        }
         if (
           (id && element.id !== id) ||
           (conceptId && element.conceptId !== conceptId)
         ) {
           continue
         }
-        result.push(element)
+        const matchedElement = deepClone(element)
+        if (id && matchedElement.type !== ElementType.LIST) {
+          LIST_CONTEXT_ATTR.forEach(attr => {
+            delete matchedElement[attr]
+          })
+        }
+        if (id && matchedElement.type !== ElementType.TITLE) {
+          TITLE_CONTEXT_ATTR.forEach(attr => {
+            delete matchedElement[attr]
+          })
+        }
+        result.push(matchedElement)
       }
     }
     const data = [
@@ -2452,9 +2504,11 @@ export class CommandAdapt {
     for (const elementList of data) {
       getElement(elementList)
     }
-    return zipElementList(result, {
-      extraPickAttrs: ['id']
-    })
+    return result.map(element =>
+      pickElementAttr(element, {
+        extraPickAttrs: ['id']
+      })
+    )
   }
 
   public setValue(payload: Partial<IEditorData>, options?: ISetValueOption) {
@@ -2676,7 +2730,7 @@ export class CommandAdapt {
 
   public setGroup(): string | null {
     const isReadonly = this.draw.isReadonly()
-    if (isReadonly) return null
+    if (isReadonly && this.draw.getMode() !== EditorMode.FORM) return null
     return this.draw.getGroup().setGroup()
   }
 
@@ -2688,6 +2742,24 @@ export class CommandAdapt {
 
   public getGroupIds(): Promise<string[]> {
     return this.workerManager.getGroupIds()
+  }
+
+  /** 获取批注分组当前在正文中的可视矩形，供外部审阅卡片绘制关联线。 */
+  public getGroupRectList(groupId: string) {
+    const pageCanvasHost = this.draw.getPageCanvasHost()
+    return this.position
+      .getLayoutMainPositionList()
+      .filter(position => position.element?.groupIds?.includes(groupId))
+      .map(position => {
+        const { leftTop, rightBottom } = position.coordinate
+        return {
+          pageNo: position.pageNo,
+          x: leftTop[0],
+          y: pageCanvasHost.getPageTop(position.pageNo) + leftTop[1],
+          width: Math.max(1, rightBottom[0] - leftTop[0]),
+          height: Math.max(1, rightBottom[1] - leftTop[1])
+        }
+      })
   }
 
   public locationGroup(groupId: string) {
@@ -2764,6 +2836,55 @@ export class CommandAdapt {
       Reflect.set(this.options, key, value)
     })
     this.forceUpdate()
+  }
+
+  public setTrackChange(payload: ISetTrackChangeOption) {
+    this.draw.getTrackChange().setOptions(payload)
+  }
+
+  /** 获取当前文档中的修订批次列表。 */
+  public getTrackChangeList() {
+    return this.draw.getTrackChange().getRecordList()
+  }
+
+  /** 接受指定修订批次。 */
+  public acceptTrackChange(id: string) {
+    if (!this.draw.getTrackChange().acceptChange(id)) return
+    this.renderTrackChangeResolution()
+  }
+
+  /** 拒绝指定修订批次。 */
+  public rejectTrackChange(id: string) {
+    if (!this.draw.getTrackChange().rejectChange(id)) return
+    this.renderTrackChangeResolution()
+  }
+
+  /** 接受所有修订。 */
+  public acceptAllTrackChange() {
+    if (!this.draw.getTrackChange().getRecordList().length) return
+    this.draw.getTrackChange().acceptAll()
+    this.renderTrackChangeResolution()
+  }
+
+  /** 拒绝所有修订。 */
+  public rejectAllTrackChange() {
+    if (!this.draw.getTrackChange().getRecordList().length) return
+    this.draw.getTrackChange().rejectAll()
+    this.renderTrackChangeResolution()
+  }
+
+  /** 修订状态变化后重绘并提交历史。 */
+  private renderTrackChangeResolution() {
+    const { startIndex } = this.range.getEditBoundaryRange()
+    const elementList = this.draw.getElementList()
+    const curIndex = Math.min(startIndex, Math.max(0, elementList.length - 1))
+    this.range.setRange(curIndex, curIndex)
+    this.draw.render({
+      curIndex,
+      isSubmitHistory: true,
+      isLazy: false,
+      pageRenderScope: 'visible'
+    })
   }
 
   public getControlList(): IElement[] {
@@ -3169,6 +3290,10 @@ export class CommandAdapt {
 
   public setAreaProperties(payload: ISetAreaPropertiesOption) {
     this.draw.getArea().setAreaProperties(payload)
+  }
+
+  public deleteArea(payload?: IDeleteAreaOption) {
+    return this.draw.getArea().deleteArea(payload)
   }
 
   public locationArea(areaId: string, options?: ILocationAreaOption) {

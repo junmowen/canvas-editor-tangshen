@@ -40,6 +40,10 @@ export class TextParticle {
   private curStyle: string
   /** 当前颜色 */
   private curColor?: string
+  /** 当前修订类型 */
+  private curTrackChangeType?: 'insert' | 'delete'
+  /** 当前修订颜色 */
+  private curTrackChangeColor?: string
   /** 文本测量缓存 */
   public cacheMeasureText: Map<string, TextMetrics>
 
@@ -232,6 +236,8 @@ export class TextParticle {
       this.text = element.value
       this.curStyle = element.style
       this.curColor = element.color
+      this.curTrackChangeType = element.trackChange?.type
+      this.curTrackChangeColor = element.trackChange?.color
       this.complete()
       return
     }
@@ -242,7 +248,9 @@ export class TextParticle {
     // 样式发生改变时，先完成之前的渲染
     if (
       (this.curStyle && element.style !== this.curStyle) ||
-      element.color !== this.curColor
+      element.color !== this.curColor ||
+      element.trackChange?.type !== this.curTrackChangeType ||
+      element.trackChange?.color !== this.curTrackChangeColor
     ) {
       this.complete()
       this._setCurXY(x, y)
@@ -251,6 +259,8 @@ export class TextParticle {
     this.text += element.value
     this.curStyle = element.style
     this.curColor = element.color
+    this.curTrackChangeType = element.trackChange?.type
+    this.curTrackChangeColor = element.trackChange?.color
   }
 
   /**
@@ -277,10 +287,46 @@ export class TextParticle {
     // 设置字体
     this.ctx.font = this.curStyle
     // 设置颜色
-    this.ctx.fillStyle = this.curColor || this.options.defaultColor
+    this.ctx.fillStyle =
+      this.curTrackChangeColor ||
+      this.curColor ||
+      this.options.defaultColor
     // 绘制文本
     this.ctx.fillText(this.text, this.curX, this.curY)
+    if (this.curTrackChangeType) {
+      // 修订文本额外绘制下划线或删除线，文本本身仍走普通批量绘制。
+      this.renderTrackChangeDecoration()
+    }
     // 恢复上下文状态
     this.ctx.restore()
+  }
+
+  private renderTrackChangeDecoration() {
+    const textMetrics = this.ctx.measureText(this.text)
+    const width = textMetrics.width
+    const color =
+      this.curTrackChangeColor ||
+      (this.curTrackChangeType === 'insert'
+        ? this.options.trackChange.insertColor
+        : this.options.trackChange.deleteColor)
+    this.ctx.strokeStyle = color
+    this.ctx.lineWidth = Math.max(1, this.options.scale)
+    this.ctx.beginPath()
+    if (this.curTrackChangeType === 'delete') {
+      // 删除痕迹画在文字中线位置。
+      const ascent =
+        textMetrics.actualBoundingBoxAscent ||
+        this.options.defaultSize * this.options.scale
+      const descent = textMetrics.actualBoundingBoxDescent || 0
+      const y = this.curY - (ascent - descent) / 2
+      this.ctx.moveTo(this.curX, y)
+      this.ctx.lineTo(this.curX + width, y)
+    } else {
+      // 插入痕迹画在文字基线下方。
+      const y = this.curY + 2 * this.options.scale
+      this.ctx.moveTo(this.curX, y)
+      this.ctx.lineTo(this.curX + width, y)
+    }
+    this.ctx.stroke()
   }
 }

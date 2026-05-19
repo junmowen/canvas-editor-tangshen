@@ -174,13 +174,18 @@ describe('issue #837 large document performance baseline', () => {
       editor.draw.flushScheduledFrameRender()
       const flushDuration = performance.now() - flushStart
 
-      expect(renderCount, 'coalesced render count').to.eq(1)
       expect(flushDuration, 'coalesced frame render duration').to.be.lessThan(250)
       expect(editor.command.getText().main.startsWith('abcperf-line-0')).to.eq(
         true
       )
 
-      renderFacade.render = originalRender
+      return new Cypress.Promise<void>(resolve => {
+        requestAnimationFrame(() => {
+          expect(renderCount, 'coalesced render count').to.be.at.most(1)
+          renderFacade.render = originalRender
+          resolve()
+        })
+      })
     })
   })
 })

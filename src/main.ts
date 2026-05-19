@@ -33,7 +33,7 @@ import { IEditorResult } from './editor/interface/Editor'
 import { Dialog } from './components/dialog/Dialog'
 import { formatPrismToken } from './utils/prism'
 import { Signature } from './components/signature/Signature'
-import { debounce, nextTick, scrollIntoView } from './utils'
+import { debounce, nextTick } from './utils'
 
 window.onload = function () {
   const isApple =
@@ -1337,6 +1337,372 @@ window.onload = function () {
     instance.command.executePrint()
   }
 
+  const trackChangeDom = document.querySelector<HTMLDivElement>(
+    '.menu-item__track-change'
+  )!
+  const trackChangeOptionDom =
+    trackChangeDom.querySelector<HTMLDivElement>('.options')!
+  const trackChangePanelDom = document.querySelector<HTMLDivElement>(
+    '.track-change-panel'
+  )!
+  const trackChangeLinkLayerDom = document.querySelector<SVGSVGElement>(
+    '.track-change-link-layer'
+  )!
+  const trackChangeListDom = trackChangePanelDom.querySelector<HTMLDivElement>(
+    '.track-change-panel__list'
+  )!
+  const trackChangeCloseDom =
+    trackChangePanelDom.querySelector<HTMLButtonElement>(
+      '.track-change-panel__close'
+    )!
+  const commentDom = document.querySelector<HTMLDivElement>('.comment')!
+  let isTrackChangeEnabled = !!instance.command.getOptions().trackChange.enabled
+  let trackChangeLinkFrame: number | null = null
+  const trackChangeAuthor = '君莫问'
+  function updateTrackChangeMenu() {
+    trackChangeDom.classList.toggle('active', isTrackChangeEnabled)
+    const toggleDom = trackChangeOptionDom.querySelector<HTMLLIElement>(
+      '[data-track-change="toggle"]'
+    )!
+    toggleDom.innerText = isTrackChangeEnabled ? '关闭留痕' : '开启留痕'
+  }
+  function formatTrackChangeTime(timestamp: number) {
+    const date = new Date(timestamp)
+    const pad = (value: number) => `${value}`.padStart(2, '0')
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+      date.getDate()
+    )} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+  }
+  function getTrackChangeText(elementList: IElement[]) {
+    return elementList
+      .map(element => {
+        if (element.type === ElementType.TABLE) return '表格'
+        if (element.type === ElementType.IMAGE) return '图片'
+        if (element.value === '\u200B') return ''
+        return element.value || ''
+      })
+      .join('')
+      .replace(/\n/g, '↵')
+      .trim()
+  }
+  type TrackChangeRecord = ReturnType<
+    typeof instance.command.getTrackChangeList
+  >[number]
+  type ReviewRect = TrackChangeRecord['rectList'][number]
+  interface ReviewAnchor {
+    pageContainerRect: DOMRect
+    sourcePoint: {
+      x: number
+      y: number
+    }
+  }
+  function getVisibleReviewAnchor(rectList: ReviewRect[]): ReviewAnchor | null {
+    const pageContainerDom =
+      container.querySelector<HTMLDivElement>('.ce-page-container')
+    if (!pageContainerDom || !rectList.length) return null
+    const pageContainerRect = pageContainerDom.getBoundingClientRect()
+    const viewportTop = 60
+    const viewportBottom = window.innerHeight
+    const viewportCenterY = (viewportTop + viewportBottom) / 2
+    let matchedRect: (typeof rectList)[number] | null = null
+    let matchedDistance = Number.POSITIVE_INFINITY
+    for (const rect of rectList) {
+      const rectCenterY = pageContainerRect.top + rect.y + rect.height / 2
+      const rectTop = pageContainerRect.top + rect.y
+      const rectBottom = rectTop + rect.height
+      if (rectBottom < viewportTop || rectTop > viewportBottom) continue
+      const distance = Math.abs(rectCenterY - viewportCenterY)
+      if (distance < matchedDistance) {
+        matchedRect = rect
+        matchedDistance = distance
+      }
+    }
+    if (!matchedRect) return null
+    return {
+      pageContainerRect,
+      sourcePoint: {
+        x: pageContainerRect.left + matchedRect.x + matchedRect.width,
+        y: pageContainerRect.top + matchedRect.y + matchedRect.height / 2
+      }
+    }
+  }
+  function getVisibleTrackChangeAnchor(record: TrackChangeRecord) {
+    return getVisibleReviewAnchor(record.rectList || [])
+  }
+  function getVisibleCommentAnchor(commentId: string) {
+    return getVisibleReviewAnchor(instance.command.getGroupRectList(commentId))
+  }
+  function createReviewLinkPath(
+    sourcePoint: { x: number; y: number },
+    cardRect: DOMRect
+  ) {
+    const targetPoint = {
+      x: cardRect.left,
+      y: cardRect.top + Math.min(24, Math.max(14, cardRect.height / 2))
+    }
+    if (
+      sourcePoint.x < 0 ||
+      sourcePoint.y < 0 ||
+      sourcePoint.y > window.innerHeight
+    ) {
+      return null
+    }
+    const controlX =
+      sourcePoint.x + Math.max(80, targetPoint.x - sourcePoint.x) * 0.55
+    return [
+      `M ${sourcePoint.x} ${sourcePoint.y}`,
+      `C ${controlX} ${sourcePoint.y},`,
+      `${controlX} ${targetPoint.y},`,
+      `${targetPoint.x} ${targetPoint.y}`
+    ].join(' ')
+  }
+  function layoutReviewCards(
+    placementList: Array<{
+      cardDom: HTMLDivElement
+      top: number
+      left: number
+    }>
+  ) {
+    placementList.sort((pre, next) => pre.top - next.top)
+    let nextTop = Number.NEGATIVE_INFINITY
+    placementList.forEach(placement => {
+      const cardHeight = placement.cardDom.offsetHeight || 66
+      const stableTop = placement.top
+      if (stableTop + cardHeight < 60 || stableTop > window.innerHeight) {
+        placement.cardDom.style.display = 'none'
+        return
+      }
+      const top = Math.max(stableTop, nextTop)
+      if (top > window.innerHeight - 12) {
+        placement.cardDom.style.display = 'none'
+        return
+      }
+      placement.cardDom.style.top = `${top}px`
+      placement.cardDom.style.left = `${placement.left}px`
+      nextTop = top + cardHeight + 10
+    })
+  }
+  function getReviewCardLeft(pageContainerRect: DOMRect, cardWidth: number) {
+    const pageRight = pageContainerRect.left + pageContainerRect.width
+    return Math.min(
+      Math.max(pageRight + 24, 12),
+      window.innerWidth - cardWidth - 12
+    )
+  }
+  function positionReviewCards(
+    recordList: ReturnType<typeof instance.command.getTrackChangeList>
+  ) {
+    const placementList: Array<{
+      cardDom: HTMLDivElement
+      top: number
+      left: number
+    }> = []
+    recordList.forEach(record => {
+      const cardDom = trackChangeListDom.querySelector<HTMLDivElement>(
+        `.track-change-card[data-id='${record.id}']`
+      )
+      if (!cardDom) return
+      const anchor = getVisibleTrackChangeAnchor(record)
+      if (!anchor) {
+        cardDom.style.display = 'none'
+        return
+      }
+      cardDom.style.display = 'block'
+      const { pageContainerRect, sourcePoint } = anchor
+      const cardWidth = cardDom.offsetWidth || 392
+      placementList.push({
+        cardDom,
+        top: sourcePoint.y - 18,
+        left: getReviewCardLeft(pageContainerRect, cardWidth)
+      })
+    })
+    commentDom.querySelectorAll<HTMLDivElement>('.comment-item').forEach(cardDom => {
+      const commentId = cardDom.dataset.id
+      if (!commentId) return
+      const anchor = getVisibleCommentAnchor(commentId)
+      if (!anchor) {
+        cardDom.style.display = 'none'
+        return
+      }
+      cardDom.style.display = 'block'
+      const { pageContainerRect, sourcePoint } = anchor
+      const cardWidth = cardDom.offsetWidth || 250
+      placementList.push({
+        cardDom,
+        top: sourcePoint.y - 18,
+        left: getReviewCardLeft(pageContainerRect, cardWidth)
+      })
+    })
+    layoutReviewCards(placementList)
+  }
+  function renderReviewLinks(
+    recordList: ReturnType<typeof instance.command.getTrackChangeList>
+  ) {
+    trackChangeLinkLayerDom.innerHTML = ''
+    const isTrackChangePanelVisible =
+      trackChangePanelDom.classList.contains('is-visible')
+    const hasComment = !!commentDom.querySelector('.comment-item')
+    trackChangeLinkLayerDom.classList.toggle(
+      'is-visible',
+      hasComment || (isTrackChangePanelVisible && !!recordList.length)
+    )
+    trackChangePanelDom
+      .querySelectorAll<HTMLDivElement>('.track-change-card')
+      .forEach(cardDom => {
+        cardDom.style.display = isTrackChangePanelVisible ? 'block' : 'none'
+      })
+    if (!hasComment && (!isTrackChangePanelVisible || !recordList.length)) return
+    positionReviewCards(recordList)
+    if (isTrackChangePanelVisible) {
+      recordList.forEach(record => {
+        const cardDom = trackChangeListDom.querySelector<HTMLDivElement>(
+          `.track-change-card[data-id='${record.id}']`
+        )
+        if (!cardDom || cardDom.style.display === 'none') return
+        const cardRect = cardDom.getBoundingClientRect()
+        const anchor = getVisibleTrackChangeAnchor(record)
+        if (!anchor) return
+        const sourcePoint = anchor.sourcePoint
+        const pathData = createReviewLinkPath(sourcePoint, cardRect)
+        if (!pathData) return
+        const pathDom = document.createElementNS(
+          'http://www.w3.org/2000/svg',
+          'path'
+        )
+        pathDom.setAttribute('d', pathData)
+        trackChangeLinkLayerDom.append(pathDom)
+      })
+    }
+    commentDom.querySelectorAll<HTMLDivElement>('.comment-item').forEach(cardDom => {
+      if (cardDom.style.display === 'none') return
+      const commentId = cardDom.dataset.id
+      if (!commentId) return
+      const anchor = getVisibleCommentAnchor(commentId)
+      if (!anchor) return
+      const pathData = createReviewLinkPath(
+        anchor.sourcePoint,
+        cardDom.getBoundingClientRect()
+      )
+      if (!pathData) return
+      const pathDom = document.createElementNS(
+        'http://www.w3.org/2000/svg',
+        'path'
+      )
+      pathDom.setAttribute('d', pathData)
+      trackChangeLinkLayerDom.append(pathDom)
+    })
+  }
+  function scheduleReviewLinksRender(
+    recordList?: ReturnType<typeof instance.command.getTrackChangeList>
+  ) {
+    if (trackChangeLinkFrame !== null) {
+      window.cancelAnimationFrame(trackChangeLinkFrame)
+    }
+    trackChangeLinkFrame = window.requestAnimationFrame(() => {
+      trackChangeLinkFrame = null
+      renderReviewLinks(recordList || instance.command.getTrackChangeList())
+    })
+  }
+  function updateTrackChangePanel() {
+    const recordList = instance.command.getTrackChangeList()
+    trackChangeListDom.innerHTML = ''
+    if (!recordList.length) {
+      const emptyDom = document.createElement('div')
+      emptyDom.className = 'track-change-panel__empty'
+      emptyDom.innerText = '暂无修订'
+      trackChangeListDom.append(emptyDom)
+      scheduleReviewLinksRender(recordList)
+      return
+    }
+    recordList.forEach(record => {
+      const cardDom = document.createElement('div')
+      cardDom.className = 'track-change-card'
+      cardDom.dataset.id = record.id
+      const headerDom = document.createElement('div')
+      headerDom.className = 'track-change-card__header'
+      const authorDom = document.createElement('span')
+      authorDom.className = 'track-change-card__author'
+      authorDom.innerText = record.author || trackChangeAuthor
+      const timeDom = document.createElement('span')
+      timeDom.className = 'track-change-card__time'
+      timeDom.innerText = formatTrackChangeTime(record.timestamp)
+      const actionsDom = document.createElement('div')
+      actionsDom.className = 'track-change-card__actions'
+      const acceptDom = document.createElement('button')
+      acceptDom.type = 'button'
+      acceptDom.className = 'track-change-card__accept'
+      acceptDom.title = '接受修订'
+      acceptDom.innerText = '✓'
+      acceptDom.onclick = evt => {
+        evt.stopPropagation()
+        instance.command.executeAcceptTrackChange(record.id)
+        updateTrackChangePanel()
+      }
+      const rejectDom = document.createElement('button')
+      rejectDom.type = 'button'
+      rejectDom.className = 'track-change-card__reject'
+      rejectDom.title = '拒绝修订'
+      rejectDom.innerText = '×'
+      rejectDom.onclick = evt => {
+        evt.stopPropagation()
+        instance.command.executeRejectTrackChange(record.id)
+        updateTrackChangePanel()
+      }
+      actionsDom.append(acceptDom, rejectDom)
+      headerDom.append(authorDom, timeDom, actionsDom)
+      const contentDom = document.createElement('div')
+      contentDom.className = 'track-change-card__content'
+      const actionText = record.type === 'delete' ? '删除' : '插入'
+      contentDom.innerText = `${actionText}: ${getTrackChangeText(
+        record.elementList
+      ) || '空内容'}`
+      cardDom.append(headerDom, contentDom)
+      trackChangeListDom.append(cardDom)
+    })
+    scheduleReviewLinksRender(recordList)
+  }
+  trackChangeDom.onclick = function (evt) {
+    const target = evt.target as HTMLElement
+    if (target.closest('.options')) return
+    trackChangeOptionDom.classList.toggle('visible')
+  }
+  trackChangeOptionDom.onclick = function (evt) {
+    const li = (evt.target as HTMLElement).closest<HTMLLIElement>(
+      '[data-track-change]'
+    )
+    if (!li) return
+    const action = li.dataset.trackChange
+    if (action === 'toggle') {
+      isTrackChangeEnabled = !isTrackChangeEnabled
+      instance.command.executeSetTrackChange({
+        enabled: isTrackChangeEnabled,
+        author: trackChangeAuthor
+      })
+      updateTrackChangeMenu()
+    } else if (action === 'panel') {
+      trackChangePanelDom.classList.add('is-visible')
+      updateTrackChangePanel()
+    } else if (action === 'accept-all') {
+      instance.command.executeAcceptAllTrackChange()
+      updateTrackChangePanel()
+    } else if (action === 'reject-all') {
+      instance.command.executeRejectAllTrackChange()
+      updateTrackChangePanel()
+    }
+    trackChangeOptionDom.classList.remove('visible')
+  }
+  trackChangeCloseDom.onclick = function () {
+    trackChangePanelDom.classList.remove('is-visible')
+    scheduleReviewLinksRender([])
+  }
+  window.addEventListener('scroll', () => scheduleReviewLinksRender(), true)
+  window.addEventListener('resize', () => scheduleReviewLinksRender())
+  trackChangePanelDom.addEventListener('scroll', () =>
+    scheduleReviewLinksRender()
+  )
+  updateTrackChangeMenu()
+  updateTrackChangePanel()
+
   // 6. 目录显隐 | 页面模式 | 纸张缩放 | 纸张大小 | 纸张方向 | 页边距 | 全屏 | 设置
   const editorOptionDom =
     document.querySelector<HTMLDivElement>('.editor-option')!
@@ -1756,7 +2122,6 @@ window.onload = function () {
   }
 
   // 模拟批注
-  const commentDom = document.querySelector<HTMLDivElement>('.comment')!
   async function updateComment() {
     const groupIds = await instance.command.getGroupIds()
     for (const comment of commentList) {
@@ -1784,6 +2149,7 @@ window.onload = function () {
           const closeDom = document.createElement('i')
           closeDom.onclick = () => {
             instance.command.executeDeleteGroup(comment.id)
+            scheduleReviewLinksRender()
           }
           commentItemTitle.append(closeDom)
           commentItem.append(commentItemTitle)
@@ -1809,6 +2175,7 @@ window.onload = function () {
         activeCommentDom?.remove()
       }
     }
+    scheduleReviewLinksRender()
   }
   // 8. 内部事件监听
   instance.listener.rangeStyleChange = function (payload: IRangeStyle) {
@@ -1995,7 +2362,7 @@ window.onload = function () {
       )
       if (activeCommentDom) {
         activeCommentDom.classList.add('active')
-        scrollIntoView(commentDom, activeCommentDom)
+        scheduleReviewLinksRender()
       }
     }
 
@@ -2078,6 +2445,12 @@ window.onload = function () {
     nextTick(() => {
       updateComment()
     })
+    // 留痕审阅面板打开时同步刷新修订列表。
+    if (trackChangePanelDom.classList.contains('is-visible')) {
+      nextTick(() => {
+        updateTrackChangePanel()
+      })
+    }
   }
   instance.listener.contentChange = debounce(handleContentChange, 200)
   handleContentChange()

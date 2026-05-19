@@ -1116,6 +1116,59 @@ instance.command.executeInsertControl(payload: IElement)
 instance.command.executeUpdateOptions(payload: IUpdateOption)
 ```
 
+## executeSetTrackChange
+
+功能：设置修订留痕开关和当前作者。开启后，新增内容会标记为插入痕迹，删除内容会保留在文档中并标记为删除痕迹。
+
+用法：
+
+```javascript
+instance.command.executeSetTrackChange({
+  enabled: true,
+  author: '张三'
+})
+```
+
+## executeAcceptTrackChange
+
+功能：接受指定修订批次。插入痕迹会去除标记，删除痕迹会从文档中移除。
+
+用法：
+
+```javascript
+instance.command.executeAcceptTrackChange(id: string)
+```
+
+## executeRejectTrackChange
+
+功能：拒绝指定修订批次。插入痕迹会从文档中移除，删除痕迹会去除标记并保留原文。
+
+用法：
+
+```javascript
+instance.command.executeRejectTrackChange(id: string)
+```
+
+## executeAcceptAllTrackChange
+
+功能：接受所有修订。
+
+用法：
+
+```javascript
+instance.command.executeAcceptAllTrackChange()
+```
+
+## executeRejectAllTrackChange
+
+功能：拒绝所有修订。
+
+用法：
+
+```javascript
+instance.command.executeRejectAllTrackChange()
+```
+
 ## executeInsertTitle
 
 功能：插入标题

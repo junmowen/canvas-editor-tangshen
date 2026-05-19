@@ -639,7 +639,9 @@ export class Control {
     const value = this.activeControlValue
     const activeElement = this.activeControl.getElement()
     if (value?.length) {
-      control = zipElementList(value)[0].control!
+      control =
+        zipElementList(value)[0]?.control ||
+        pickElementAttr(deepClone(activeElement)).control!
     } else {
       control = pickElementAttr(deepClone(activeElement)).control!
       control.value = []
@@ -1011,6 +1013,23 @@ export class Control {
     const startElement = elementList[startIndex]
     const control = startElement.control!
     if (!control.placeholder) return
+    let scanIndex = startIndex
+    while (scanIndex >= 0 && elementList[scanIndex]?.controlId === startElement.controlId) {
+      if (elementList[scanIndex].controlComponent === ControlComponent.PLACEHOLDER) {
+        return
+      }
+      scanIndex--
+    }
+    scanIndex = startIndex + 1
+    while (
+      scanIndex < elementList.length &&
+      elementList[scanIndex]?.controlId === startElement.controlId
+    ) {
+      if (elementList[scanIndex].controlComponent === ControlComponent.PLACEHOLDER) {
+        return
+      }
+      scanIndex++
+    }
     const placeholderStrList = splitText(control.placeholder)
     // 优先使用默认控件样式
     const anchorElementStyleAttr = pickObject(startElement, CONTROL_STYLE_ATTR)
@@ -1241,8 +1260,12 @@ export class Control {
   public getValueById(payload: IGetControlValueOption): IGetControlValueResult {
     const { id, conceptId, areaId } = payload
     const result: IGetControlValueResult = []
-    if (!id && !conceptId) return result
-    const getValue = (elementList: IElement[], zone: EditorZone) => {
+    if (!id && !conceptId && !areaId) return result
+    const getValue = (
+      elementList: IElement[],
+      zone: EditorZone,
+      scopeAreaId?: string
+    ) => {
       let i = 0
       while (i < elementList.length) {
         const element = elementList[i]
@@ -1254,13 +1277,22 @@ export class Control {
             const tr = trList[r]
             for (let d = 0; d < tr.tdList.length; d++) {
               const td = tr.tdList[d]
-              getValue(td.value, zone)
+              getValue(td.value, zone, scopeAreaId)
             }
           }
         }
+        if (element.type === ElementType.AREA && element.valueList?.length) {
+          getValue(element.valueList, zone, element.areaId || scopeAreaId)
+        }
+        const isControlEntry =
+          element.controlComponent === ControlComponent.PREFIX ||
+          (element.controlComponent === ControlComponent.VALUE &&
+            !elementList[i - 2]?.controlId) ||
+          (element.controlComponent === ControlComponent.PLACEHOLDER &&
+            !elementList[i - 2]?.controlId)
         if (
           element.controlComponent &&
-          element.controlComponent !== ControlComponent.PREFIX
+          !isControlEntry
         ) {
           continue
         }
@@ -1268,7 +1300,7 @@ export class Control {
           !element.control ||
           (id && element.controlId !== id) ||
           (conceptId && element.control.conceptId !== conceptId) ||
-          (areaId && element.areaId !== areaId)
+          (areaId && element.areaId !== areaId && scopeAreaId !== areaId)
         ) {
           continue
         }
@@ -1280,6 +1312,15 @@ export class Control {
         let j = i
         let textControlValue = ''
         const textControlElementList = []
+        if (
+          (type === ControlType.TEXT ||
+            type === ControlType.DATE ||
+            type === ControlType.NUMBER) &&
+          element.controlComponent === ControlComponent.VALUE
+        ) {
+          textControlValue += element.value
+          textControlElementList.push(omitObject(element, CONTROL_CONTEXT_ATTR))
+        }
         while (j < elementList.length) {
           const nextElement = elementList[j]
           if (nextElement.controlId !== element.controlId) break
@@ -1356,7 +1397,7 @@ export class Control {
     let isExistSet = false
     let isExistSubmitHistory = false
     // 设置值
-    const setValue = (elementList: IElement[]) => {
+    const setValue = (elementList: IElement[], scopeAreaId?: string) => {
       let i = 0
       while (i < elementList.length) {
         const element = elementList[i]
@@ -1368,14 +1409,23 @@ export class Control {
             const tr = trList[r]
             for (let d = 0; d < tr.tdList.length; d++) {
               const td = tr.tdList[d]
-              setValue(td.value)
+              setValue(td.value, scopeAreaId)
             }
           }
         }
+        if (element.type === ElementType.AREA && element.valueList?.length) {
+          setValue(element.valueList, element.areaId || scopeAreaId)
+        }
         if (!element.control) continue
+        const isControlEntry =
+          element.controlComponent === ControlComponent.PREFIX ||
+          (element.controlComponent === ControlComponent.VALUE &&
+            !elementList[i - 2]?.controlId) ||
+          (element.controlComponent === ControlComponent.PLACEHOLDER &&
+            !elementList[i - 2]?.controlId)
         if (
           element.controlComponent &&
-          element.controlComponent !== ControlComponent.PREFIX
+          !isControlEntry
         ) {
           continue
         }
@@ -1384,7 +1434,7 @@ export class Control {
           p =>
             (p.id && element.controlId === p.id) ||
             (p.conceptId && element.control!.conceptId === p.conceptId) ||
-            (p.areaId && element.areaId === p.areaId)
+            (p.areaId && (element.areaId === p.areaId || scopeAreaId === p.areaId))
         )
         if (!payloadItem) continue
         if (this.isNestedControlValueElement(element)) {

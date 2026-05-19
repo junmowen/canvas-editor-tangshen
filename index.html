@@ -373,6 +373,17 @@
         <div class="menu-item__print" data-menu="print">
           <i></i>
         </div>
+        <div class="menu-item__track-change" data-menu="track-change">
+          <i title="留痕"></i>
+          <div class="options">
+            <ul>
+              <li data-track-change="toggle">开启留痕</li>
+              <li data-track-change="panel">显示留痕</li>
+              <li data-track-change="accept-all">接受所有修订</li>
+              <li data-track-change="reject-all">拒绝所有修订</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
     <div class="catalog" editor-component="catalog">
@@ -386,6 +397,14 @@
     </div>
     <div class="editor"></div>
     <div class="comment" editor-component="comment"></div>
+    <div class="track-change-panel" editor-component="track-change">
+      <div class="track-change-panel__header">
+        <span>留痕</span>
+        <button type="button" class="track-change-panel__close">×</button>
+      </div>
+      <div class="track-change-panel__list"></div>
+    </div>
+    <svg class="track-change-link-layer" editor-component="track-change-link"></svg>
     <div class="footer" editor-component="footer">
       <div>
         <div class="catalog-mode" title="目录">

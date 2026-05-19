@@ -17,19 +17,23 @@ export class KeyboardController {
       return
     }
     if (evt.key === KeyMap.Enter) {
+      draw.getTrackChange().endEditSession()
       runEnterIntent(evt, this.host)
       return
     }
     if (runKeyboardNavigationIntent(evt, this.host)) {
+      draw.getTrackChange().endEditSession()
       return
     }
     if (isMod(evt) && evt.key.toLocaleLowerCase() === KeyMap.Z) {
       if (draw.isReadonly() && draw.getMode() !== EditorMode.FORM) return
+      draw.getTrackChange().endEditSession()
       draw.flushAsyncInsertTransaction('keyboard-undo')
       draw.getHistoryManager().undo()
       evt.preventDefault()
     } else if (isMod(evt) && evt.key.toLocaleLowerCase() === KeyMap.Y) {
       if (draw.isReadonly() && draw.getMode() !== EditorMode.FORM) return
+      draw.getTrackChange().endEditSession()
       draw.flushAsyncInsertTransaction('keyboard-redo')
       draw.getHistoryManager().redo()
       evt.preventDefault()
@@ -54,6 +58,7 @@ export class KeyboardController {
       }
       evt.preventDefault()
     } else if (evt.key === KeyMap.ESC) {
+      draw.getTrackChange().endEditSession()
       this.host.clearPainterStyle()
       const zoneManager = draw.getZone()
       if (!zoneManager.isMainActive()) {
@@ -61,6 +66,7 @@ export class KeyboardController {
       }
       evt.preventDefault()
     } else if (evt.key === KeyMap.TAB) {
+      draw.getTrackChange().endEditSession()
       runTabIntent(evt, this.host)
     }
   }

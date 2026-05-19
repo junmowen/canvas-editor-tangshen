@@ -19,6 +19,7 @@ import {
   EDITOR_ELEMENT_ZIP_ATTR,
   EDITOR_ROW_ATTR,
   INLINE_NODE_NAME,
+  LIST_CONTEXT_ATTR,
   TABLE_CONTEXT_ATTR,
   TABLE_TD_ZIP_ATTR,
   TEXTLIKE_ELEMENT_TYPE,
@@ -161,6 +162,8 @@ export function formatElementList(
           value.listType = el.listType
           value.listStyle = el.listStyle
           value.listLevel = value.listLevel ?? el.listLevel ?? 0
+          value.extension = value.extension ?? el.extension
+          value.externalId = value.externalId ?? el.externalId
           elementList.splice(i, 0, value)
           i++
         }
@@ -357,9 +360,12 @@ export function formatElementList(
         color: editorOptions.control.bracketColor
       }
       // 前缀
+      const prefixValue = prefix ?? controlOption.prefix
       const prefixStrList = isOnlyNestedControlValue
         ? ['']
-        : splitText(prefix || controlOption.prefix)
+        : prefixValue
+        ? splitText(prefixValue)
+        : []
       for (let p = 0; p < prefixStrList.length; p++) {
         const value = prefixStrList[p]
         elementList.splice(i, 0, {
@@ -585,9 +591,12 @@ export function formatElementList(
         }
       }
       // 后缀
+      const postfixValue = postfix ?? controlOption.postfix
       const postfixStrList = isOnlyNestedControlValue
         ? ['']
-        : splitText(postfix || controlOption.postfix)
+        : postfixValue
+        ? splitText(postfixValue)
+        : []
       for (let p = 0; p < postfixStrList.length; p++) {
         const value = postfixStrList[p]
         elementList.splice(i, 0, {
@@ -656,6 +665,23 @@ function getControlInlineValueText(
   editorOptions: DeepRequired<IEditorOption>
 ): string {
   const control = element.control!
+  if (
+    (control.type === ControlType.SELECT ||
+      control.type === ControlType.CHECKBOX ||
+      control.type === ControlType.RADIO) &&
+    Array.isArray(control.valueSets)
+  ) {
+    if (control.code) {
+      const codeList = control.code.split(',')
+      const valueList = control.valueSets
+        .filter(valueSet => codeList.includes(valueSet.code))
+        .map(valueSet => valueSet.value)
+      if (valueList.length) {
+        return valueList.join(control.multiSelectDelimiter || '、')
+      }
+    }
+    return control.placeholder || ''
+  }
   if (Array.isArray(control.value) && control.value.length) {
     return control.value
       .map(valueElement =>
@@ -664,21 +690,6 @@ function getControlInlineValueText(
           : valueElement.value
       )
       .join('')
-  }
-  if (
-    (control.type === ControlType.SELECT ||
-      control.type === ControlType.CHECKBOX ||
-      control.type === ControlType.RADIO) &&
-    control.code &&
-    Array.isArray(control.valueSets)
-  ) {
-    const codeList = control.code.split(',')
-    const valueList = control.valueSets
-      .filter(valueSet => codeList.includes(valueSet.code))
-      .map(valueSet => valueSet.value)
-    if (valueList.length) {
-      return valueList.join(control.multiSelectDelimiter || '、')
-    }
   }
   return control.placeholder || ''
 }
@@ -830,7 +841,9 @@ export function zipElementList(
           listId,
           listType,
           listStyle,
-          listLevel
+          listLevel,
+          extension: element.extension,
+          externalId: element.externalId
         }
         const valueList: IElement[] = []
         while (e < elementList.length) {
@@ -908,10 +921,7 @@ export function zipElementList(
             const zipTd: ITd = {
               colspan: td.colspan,
               rowspan: td.rowspan,
-              value: zipElementList(td.value, {
-                ...options,
-                isClassifyArea: false
-              })
+              value: zipElementList(td.value, options)
             }
             // 压缩单元格属性
             TABLE_TD_ZIP_ATTR.forEach(attr => {
@@ -1022,6 +1032,38 @@ export function zipElementList(
           element = pickElementAttr(controlElement, { extraPickAttrs })
           // 控件元素数量 - 1（当前元素）
           e += start - e - 1
+        } else {
+          const controlElementList = valueList.filter(element =>
+            [
+              ControlComponent.VALUE,
+              ControlComponent.PRE_TEXT,
+              ControlComponent.POST_TEXT,
+              ControlComponent.PLACEHOLDER
+            ].includes(element.controlComponent!)
+          )
+          const controlElement = controlElementList[0]
+          if (controlElement) {
+            const control = {
+              ...controlElement.control!,
+              value: zipElementList(
+                controlElementList.filter(
+                  element => element.controlComponent === ControlComponent.VALUE
+                ),
+                options
+              )
+            }
+            element = pickElementAttr(
+              {
+                ...pickObject(controlElement, EDITOR_ROW_ATTR),
+                type: ElementType.CONTROL,
+                value: '',
+                control,
+                controlId
+              },
+              { extraPickAttrs }
+            )
+            e += start - e - 1
+          }
         }
       }
       // 不完整的控件元素不转化为控件，如果不是文本则直接忽略
@@ -1171,15 +1213,23 @@ export function formatElementContext(
       const cloneAttr = [
         ...TABLE_CONTEXT_ATTR,
         ...EDITOR_ROW_ATTR,
-        ...AREA_CONTEXT_ATTR
+        ...AREA_CONTEXT_ATTR.filter(attr => targetElement[attr] === undefined)
       ]
       cloneProperty<IElement>(cloneAttr, copyElement!, targetElement)
       targetElement.valueList?.forEach(valueItem => {
-        cloneProperty<IElement>(cloneAttr, copyElement!, valueItem)
+        const valueCloneAttr = [
+          ...TABLE_CONTEXT_ATTR,
+          ...EDITOR_ROW_ATTR,
+          ...AREA_CONTEXT_ATTR.filter(attr => valueItem[attr] === undefined)
+        ]
+        cloneProperty<IElement>(valueCloneAttr, copyElement!, valueItem)
       })
       continue
     }
-    if (targetElement.valueList?.length) {
+    if (
+      targetElement.valueList?.length &&
+      targetElement.type !== ElementType.AREA
+    ) {
       formatElementContext(
         sourceElementList,
         targetElement.valueList,
@@ -1188,9 +1238,16 @@ export function formatElementContext(
       )
     }
     // 非块类元素，需处理行属性
-    const cloneAttr = [...EDITOR_ELEMENT_CONTEXT_ATTR]
+    const cloneAttr = [
+      ...TABLE_CONTEXT_ATTR,
+      ...TITLE_CONTEXT_ATTR.filter(attr => targetElement[attr] === undefined),
+      ...LIST_CONTEXT_ATTR,
+      ...AREA_CONTEXT_ATTR.filter(attr => targetElement[attr] === undefined)
+    ]
     if (!getIsBlockElement(targetElement)) {
-      cloneAttr.push(...EDITOR_ROW_ATTR)
+      cloneAttr.push(
+        ...EDITOR_ROW_ATTR.filter(attr => targetElement[attr] === undefined)
+      )
     }
     cloneProperty<IElement>(cloneAttr, copyElement, targetElement)
   }
@@ -1211,6 +1268,9 @@ export function convertElementToDom(
   if (element.rowFlex) {
     dom.style.textAlign = convertRowFlexToTextAlign(element.rowFlex)
   }
+  if (element.groupIds?.length) {
+    dom.dataset.groupIds = element.groupIds.join(',')
+  }
   if (element.rowIndentLeft) {
     dom.style.marginLeft = `${element.rowIndentLeft}px`
   }
@@ -1224,6 +1284,21 @@ export function convertElementToDom(
     dom.style.paddingLeft = `${element.rowHangingIndent}px`
     const textIndent = element.rowIndent || 0
     dom.style.textIndent = `${textIndent - element.rowHangingIndent}px`
+  }
+  if (element.rowMargin) {
+    dom.style.lineHeight = `${element.rowMargin}`
+  }
+  if (element.lineSpacing) {
+    dom.style.lineHeight =
+      element.lineSpacingType === 'multiple'
+        ? `${element.lineSpacing}`
+        : `${element.lineSpacing}px`
+  }
+  if (element.spaceBefore) {
+    dom.style.marginTop = `${element.spaceBefore}px`
+  }
+  if (element.spaceAfter) {
+    dom.style.marginBottom = `${element.spaceAfter}px`
   }
   if (element.color) {
     dom.style.color = element.color
@@ -1366,6 +1441,9 @@ export function createDomFromElementList(
     const clipboardDom = document.createElement('div')
     for (let e = 0; e < payload.length; e++) {
       const element = payload[e]
+      if (element.hide || element.control?.hide || element.area?.hide) {
+        continue
+      }
       // 构造表格
       if (element.type === ElementType.TABLE) {
         const tableDom: HTMLTableElement = document.createElement('table')
@@ -1489,6 +1567,15 @@ export function createDomFromElementList(
           if (src || srcdoc) {
             const iframe = document.createElement('iframe')
             iframe.sandbox.add(...IFrameBlock.sandbox)
+            if (element.block.iframeBlock?.allowPopup !== false) {
+              iframe.sandbox.add('allow-popups')
+              iframe.sandbox.add('allow-popups-to-escape-sandbox')
+              iframe.sandbox.add('allow-top-navigation-by-user-activation')
+            }
+            if (element.block.iframeBlock?.allowFullscreen !== false) {
+              iframe.allowFullscreen = true
+              iframe.allow = 'fullscreen; picture-in-picture'
+            }
             iframe.style.display = 'block'
             iframe.style.border = 'none'
             if (src) {
@@ -1538,9 +1625,26 @@ export function createDomFromElementList(
         tab.innerHTML = `${NON_BREAKING_SPACE}${NON_BREAKING_SPACE}`
         clipboardDom.append(tab)
       } else if (element.type === ElementType.CONTROL) {
-        const controlElement = document.createElement('span')
-        const childDom = buildDom(element.control?.value || [])
-        controlElement.innerHTML = childDom.innerHTML
+        const controlElement = convertElementToDom(
+          {
+            ...element,
+            value: ''
+          },
+          editorOptions
+        )
+        const controlText = element.control
+          ? getControlInlineContentText(element, editorOptions)
+          : ''
+        const isChoiceControl =
+          element.control?.type === ControlType.SELECT ||
+          element.control?.type === ControlType.CHECKBOX ||
+          element.control?.type === ControlType.RADIO
+        if (controlText) {
+          controlElement.innerText = controlText
+        } else if (element.control?.value?.length && !isChoiceControl) {
+          const childDom = buildDom(element.control.value)
+          controlElement.innerHTML = childDom.innerHTML
+        }
         clipboardDom.append(controlElement)
       } else if (
         !element.type ||
@@ -1639,10 +1743,18 @@ export function convertTextNodeToElement(
   if (!value || anchorNode.nodeName === 'STYLE') return null
   const element: IElement = {
     value,
+    font: style.fontFamily.replace(/^["']|["']$/g, ''),
     color: style.color,
     bold: Number(style.fontWeight) > 500,
     italic: style.fontStyle.includes('italic'),
     size: Math.floor(parseFloat(style.fontSize))
+  }
+  const groupIds = anchorNode.dataset.groupIds
+  if (groupIds) {
+    element.groupIds = groupIds
+      .split(',')
+      .map(groupId => groupId.trim())
+      .filter(Boolean)
   }
   // 元素类型-默认文本
   if (anchorNode.nodeName === 'SUB' || style.verticalAlign === 'sub') {
@@ -1696,7 +1808,9 @@ export interface IGetElementListByHTMLOption {
 
 export function getElementListByHTML(
   htmlText: string,
-  options: IGetElementListByHTMLOption
+  options: IGetElementListByHTMLOption = {
+    innerWidth: window.innerWidth
+  }
 ): IElement[] {
   const elementList: IElement[] = []
   function findTextNode(dom: Element | Node) {
@@ -1785,12 +1899,17 @@ export function getElementListByHTML(
         } else if (node.nodeName === 'IMG') {
           const { src, width, height } = node as HTMLImageElement
           if (src && width && height) {
-            elementList.push({
+            const imageElement: IElement = {
               width,
               height,
               value: src,
               type: ElementType.IMAGE
-            })
+            }
+            const rowFlex = convertTextAlignToRowFlex(node.parentElement!)
+            if (rowFlex !== RowFlex.LEFT) {
+              imageElement.rowFlex = rowFlex
+            }
+            elementList.push(imageElement)
           }
         } else if (node.nodeName === 'VIDEO') {
           const { src, width, height } = node as HTMLVideoElement

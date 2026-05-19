@@ -41,6 +41,10 @@ export interface ISetAreaPropertiesOption {
   properties: IArea
 }
 
+export interface IDeleteAreaOption {
+  id?: string
+}
+
 export interface IGetAreaValueOption {
   id?: string
 }

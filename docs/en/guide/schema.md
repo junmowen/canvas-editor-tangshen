@@ -26,6 +26,13 @@ interface IElement {
   extension?: unknown;
   externalId?: string;
   hide?: boolean;
+  trackChange?: {
+    id: string; // Unique id for one change batch
+    type: 'insert' | 'delete'; // Change type
+    author?: string; // Change author
+    timestamp: number; // Change timestamp
+    color?: string; // Display color
+  };
   // style
   font?: string;
   size?: number;
@@ -206,3 +213,21 @@ interface IElement {
   };
 }
 ```
+
+## Track Change Data
+
+When `trackChange.enabled` is enabled, revisions are stored on each changed element in `trackChange`.
+
+```typescript
+interface ITrackChange {
+  id: string
+  type: 'insert' | 'delete'
+  author?: string
+  timestamp: number
+  color?: string
+}
+```
+
+- `insert`: the element is newly inserted. Accepting the change removes the marker; rejecting the change removes the element.
+- `delete`: the element is deleted but still kept in the document. Accepting the change removes the element; rejecting the change removes the marker and restores the text.
+- Elements created by the same insert or delete operation share the same `id`, so they can be accepted or rejected as a batch.

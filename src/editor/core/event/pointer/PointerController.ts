@@ -31,6 +31,7 @@ export class PointerController {
 
   /** 分发鼠标按下事件。 */
   public mousedown(evt: MouseEvent): void {
+    this.host.getDraw().getTrackChange().endEditSession()
     mousedown(evt, this.host)
   }
 
@@ -66,6 +67,7 @@ export class PointerController {
 
   /** 分发右键菜单事件。 */
   public contextmenu(evt: MouseEvent): void {
+    this.host.getDraw().getTrackChange().endEditSession()
     contextmenu(evt, this.host)
   }
 
@@ -86,6 +88,7 @@ export class PointerController {
 
   /** 分发拖放完成事件。 */
   public drop(evt: DragEvent): void {
+    this.host.getDraw().getTrackChange().endEditSession()
     drop(evt, this.host)
   }
 

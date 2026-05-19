@@ -96,6 +96,8 @@ export class DrawMutationService {
       isHandleFirstElement: false,
       editorOptions: this.draw.getRuntime().getOptions()
     })
+    // 留痕开启时，新插入元素以 insert 标记保留在正文中。
+    this.draw.getTrackChange().markInsertList(payload)
     let curIndex = -1
     // 获取当前激活的控件
     let activeControl = components.control.getActiveControl()
@@ -298,6 +300,8 @@ export class DrawMutationService {
       isHandleFirstElement: false,
       editorOptions: this.draw.getRuntime().getOptions()
     })
+    // 追加内容也走同一套插入痕迹语义。
+    this.draw.getTrackChange().markInsertList(elementList)
     let curIndex: number
     const { isPrepend, isSubmitHistory = true } = options
     // 获取正文元素列表
@@ -352,7 +356,10 @@ export class DrawMutationService {
     const { isIgnoreDeletedRule = false } = options || {}
     const { group, modeRule } = this.draw.getRuntime().getOptions()
     // 如果有需要删除的元素
-    if (deleteCount > 0) {
+    if (deleteCount > 0 && this.draw.getTrackChange().isEnabled()) {
+      // 留痕删除只打 delete 标记，不立即从文档数组移除。
+      this.draw.getTrackChange().applyDelete(elementList, start, deleteCount)
+    } else if (deleteCount > 0) {
       // 计算结束索引
       const endIndex = start + deleteCount
       const endElement = elementList[endIndex]
@@ -445,6 +452,8 @@ export class DrawMutationService {
     // 如果有需要插入的元素
     if (items?.length) {
       // 粘贴和批量输入必须一次移动数组尾部，不能逐元素 splice 整篇文档。
+      // 底层 splice 入口可能被表格、控件等路径直接调用，因此这里也兜底打插入痕迹。
+      this.draw.getTrackChange().markInsertList(items)
       this.insertElementListByChunks(elementList, start, items)
     }
     if (isMainElementListMutation) {

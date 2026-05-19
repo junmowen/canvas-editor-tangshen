@@ -394,9 +394,23 @@ export class RowRenderer {
       if (element.left) {
         textParticle.complete()
       }
+      if (element.trackChange) {
+        // 修订元素先刷新文本批次，确保不同修订颜色不会和普通文本合批。
+        textParticle.complete()
+        ctx.save()
+        ctx.fillStyle =
+          element.trackChange.color ||
+          (element.trackChange.type === 'insert'
+            ? options.trackChange.insertColor
+            : options.trackChange.deleteColor)
+      }
       textParticle.record(ctx, element, x, y + offsetY)
       if (element.width || element.letterSpacing || PUNCTUATION_REG.test(element.value)) {
         textParticle.complete()
+      }
+      if (element.trackChange) {
+        textParticle.complete()
+        ctx.restore()
       }
     }
 

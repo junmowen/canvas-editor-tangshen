@@ -70,6 +70,7 @@ export const EDITOR_ELEMENT_COPY_ATTR: Array<keyof IElement> = [
 ]
 
 export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
+  'id',
   'type',
   'font',
   'size',
@@ -108,6 +109,7 @@ export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
   'block',
   'level',
   'title',
+  'titleId',
   'listType',
   'listStyle',
   'listLevel',
@@ -138,8 +140,13 @@ export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
   'textEnclosure',
   'textRuby',
   'textCombine',
+  'trackChange',
   'extension',
   'externalId',
+  'spaceBefore',
+  'spaceAfter',
+  'lineSpacing',
+  'lineSpacingType',
   'areaId',
   'area',
   'hide'

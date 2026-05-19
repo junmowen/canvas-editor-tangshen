@@ -33,6 +33,10 @@ const ISSUE_SPECS = {
       'cypress/e2e/control/text.cy.ts'
     ]
   },
+  1146: {
+    title: '文本控件内嵌控件回写后保留 prefix/postfix',
+    specs: ['cypress/e2e/issues/issue-425-control-in-text-control.cy.ts']
+  },
   440: {
     title: '文档列表内容内无法取消或者增加子列表',
     specs: ['cypress/e2e/issues/issue-440-list-sublevel.cy.ts']
@@ -44,6 +48,10 @@ const ISSUE_SPECS = {
   605: {
     title: '按段落设置行布局方式',
     specs: ['cypress/e2e/issues/issue-605-paragraph-row-layout.cy.ts']
+  },
+  604: {
+    title: 'executeInsertElementList 插入标题保留 conceptId',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
   621: {
     title: '支持序号元素或段落拖拽',
@@ -106,9 +114,93 @@ const ISSUE_SPECS = {
       'cypress/e2e/issues/issue-440-list-sublevel.cy.ts'
     ]
   },
+  942: {
+    title: 'Tab占位后，设置样式无效（字体字号加粗等）',
+    specs: ['cypress/e2e/issues/issue-1190-tab-indent-text.cy.ts']
+  },
+  974: {
+    title: 'Tab占位后，设置样式无效（字体字号加粗等）',
+    specs: ['cypress/e2e/issues/issue-1190-tab-indent-text.cy.ts']
+  },
   1200: {
     title: 'Smart Word Wrapping Around Images ("SURROUND")',
     specs: ['cypress/e2e/issues/issue-1372-1200-image-surround.cy.ts']
+  },
+  1202: {
+    title: 'getValue 获取表格 id',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1212: {
+    title: 'executeLocationArea OUTER_AFTER 定位到区域外部',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1216: {
+    title: 'getCatalog 支持表格单元格内标题',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1147: {
+    title: 'area setValue/getValue 保留内部样式',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1119: {
+    title: '只读和打印模式下普通编辑命令不能修改 AREA 内容',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1410: {
+    title: '隐藏元素导出时整行不占位',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1305: {
+    title: '表格内触发全选时选中整篇文档',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1317: {
+    title: 'AREA 元素支持在表格单元格中保留',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1194: {
+    title: '图片元素隐藏设置',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1180: {
+    title: '区域末尾追加内容',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1195: {
+    title: 'executeLocationArea AFTER 后追加到区域末尾',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1223: {
+    title: 'executeInsertArea 支持按光标插入并保留 id',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1281: {
+    title: 'executeInsertElementList 插入 area 后可 executeSetAreaValue',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1243: {
+    title: '按 areaId 批量更新区域内控件值',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1261: {
+    title: '表格单元格内按 range 插入 AREA 保留 area 属性',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1227: {
+    title: 'executeSetRange 表格参数可选中单元格文字并添加批注',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1368: {
+    title: 'executeInsertElementList 可插入 AREA',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1377: {
+    title: '按 id 删除指定 AREA 区域',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  1381: {
+    title: '表格单元格首个列表不产生额外前导换行',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
   },
   1372: {
     title: '图片浮动文字之上问题',
@@ -132,12 +224,184 @@ const ISSUE_SPECS = {
       'cypress/e2e/issues/issue-form-control-deletion-disabled.cy.ts'
     ]
   },
+  1400: {
+    title: '选中CONTROL类型的内容，向前删除executeBackspace无效',
+    specs: ['cypress/e2e/issues/issue-1399-control-backspace.cy.ts']
+  },
   1404: {
     title: '插入表格的时候当colgroup未传入时，默认使用编辑器宽度平分',
     specs: [
       'cypress/e2e/issues/issue-1404-table-colgroup-default.cy.ts',
       'cypress/e2e/menus/table.cy.ts'
     ]
+  },
+  1398: {
+    title: '列表内元素按 id 获取和更新',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1393: {
+    title: '表格背景色导出后没了',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1357: {
+    title: 'HTML 导入导出保留 groupIds',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1365: {
+    title: '自定义粘贴可委托非图片内容走内置流程',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1369: {
+    title: 'iframe block 内部 HTML 变更后 getValue 同步 srcdoc',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1354: {
+    title: 'HTML 转元素时图片继承 rowFlex',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1335: {
+    title: '存在选区时执行搜索不抢光标',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1336: {
+    title: '支持在选定内容内搜索',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1346: {
+    title: '单选控件候选文字搜索不影响后续匹配',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1311: {
+    title: 'executeInsertElementList rowFlex option not working',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1308: {
+    title: '搜索支持正则表达式',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1296: {
+    title: 'Element 里的 id 属性保留',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1282: {
+    title: 'executeHyperlink 插入链接保留文字样式',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1286: {
+    title: 'getElementListByHTML 支持无 options 解析表格',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1260: {
+    title: 'iframe block 支持 fullscreen 与 popup 跳转权限',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1264: {
+    title: 'executeSetHTML 保留 font-family',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1088: {
+    title: 'executeSetHTML 回显保留 font-family',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  305: {
+    title: 'executeSetControlValue 支持表格内控件',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  988: {
+    title: 'executeSetControlValue 支持 null 清空控件值',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  323: {
+    title: 'executeSetControlExtension 支持表格内控件',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  628: {
+    title: 'getControlList 返回表格内控件',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  653: {
+    title: 'executeSetControlProperties 支持表格内控件',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  884: {
+    title: '表格内控件 executeSetControlValue 不报错并生效',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1140: {
+    title: 'number/select 控件值高亮处理',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1319: {
+    title: 'NUMBER 控件阻止回车写入换行',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1360: {
+    title: 'getRangeContext 返回段落起始索引',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1353: {
+    title: 'disabled 控件定位不聚焦到 postfix',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1150: {
+    title: 'getRangeContext 返回起止列号',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1219: {
+    title: '控件支持空 prefix/postfix 去掉括号',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1225: {
+    title: '加载列举、复选、单选控件时展示已选文字',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1136: {
+    title: 'date 控件支持 IElement[] 值样式',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1143: {
+    title: '表单模式下控件结构删除保护',
+    specs: ['cypress/e2e/issues/issue-form-control-deletion-disabled.cy.ts']
+  },
+  1128: {
+    title: '未选中 checkbox 控件值保持为空',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1073: {
+    title: 'getHTML 仅输出 checkbox 已选项',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1071: {
+    title: '控件全局 prefix/postfix 为空字符串时可正常插入和设值',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1037: {
+    title: '批量设置控件属性和值',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1251: {
+    title: 'executeSetHTML 保留表格行高',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1135: {
+    title: 'getHTML 导出段落行距样式',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1039: {
+    title: '列表元素 getValue 保留 extension/externalId',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1067: {
+    title: 'getValueAsync 返回与 getValue 一致的数据结构',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1049: {
+    title: 'getValue 保留 titleId',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
+  1389: {
+    title: '相邻列表 setValue/getValue 不插入额外换行',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   }
 }
 

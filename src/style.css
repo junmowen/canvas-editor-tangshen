@@ -802,6 +802,30 @@ ul {
   background-image: url('./assets/images/print.svg');
 }
 
+.menu-item__track-change {
+  position: relative;
+}
+
+.menu-item__track-change i {
+  color: #d93f32;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.menu-item__track-change i::before {
+  content: '痕';
+}
+
+.menu-item__track-change.active {
+  background: rgba(217, 63, 50, .1);
+}
+
+.menu-item .menu-item__track-change .options {
+  width: 118px;
+}
+
 .catalog {
   width: 250px;
   position: fixed;
@@ -924,25 +948,23 @@ ul {
 }
 
 .comment {
-  width: 250px;
-  height: 650px;
   position: fixed;
-  transform: translateX(420px);
-  top: 200px;
-  left: 50%;
-  overflow-y: auto;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
 }
 
 .comment-item {
+  width: 250px;
   background: #ffffff;
   border: 1px solid #e2e6ed;
-  position: relative;
+  position: fixed;
+  box-sizing: border-box;
   border-radius: 8px;
   padding: 15px;
   font-size: 14px;
-  margin-bottom: 20px;
   cursor: pointer;
-  transition: all .5s;
+  pointer-events: auto;
 }
 
 .comment-item:hover {
@@ -1010,6 +1032,155 @@ ul {
 
 .comment-item__content {
   line-height: 22px;
+}
+
+.track-change-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.track-change-link-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 7;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  display: none;
+  overflow: visible;
+}
+
+.track-change-link-layer.is-visible {
+  display: block;
+}
+
+.track-change-link-layer path {
+  fill: none;
+  stroke: #f14b43;
+  stroke-width: 2;
+  stroke-dasharray: 7 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.track-change-panel.is-visible {
+  display: block;
+}
+
+.track-change-panel__header {
+  width: 392px;
+  height: 36px;
+  position: fixed;
+  top: 56px;
+  right: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  padding: 0 8px;
+  margin-bottom: 6px;
+  color: #3d4757;
+  font-size: 14px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, .92);
+  border: 1px solid #f0b1aa;
+  pointer-events: auto;
+}
+
+.track-change-panel__close {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: #d93f32;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 24px;
+}
+
+.track-change-panel__list {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.track-change-panel__empty {
+  width: 392px;
+  position: fixed;
+  top: 98px;
+  right: 36px;
+  box-sizing: border-box;
+  padding: 14px 8px;
+  color: #909399;
+  font-size: 13px;
+  background: rgba(255, 255, 255, .92);
+  border: 1px solid #f0b1aa;
+  pointer-events: auto;
+}
+
+.track-change-card {
+  width: 392px;
+  position: fixed;
+  box-sizing: border-box;
+  padding: 8px 10px 10px;
+  background: rgba(255, 255, 255, .96);
+  border: 1px solid #f14b43;
+  color: #101828;
+  font-size: 13px;
+  line-height: 22px;
+  pointer-events: auto;
+}
+
+.track-change-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.track-change-card__author {
+  color: #d93f32;
+  font-weight: 700;
+}
+
+.track-change-card__time {
+  margin-left: auto;
+  color: #9aa3b2;
+  white-space: nowrap;
+}
+
+.track-change-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.track-change-card__actions button {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.track-change-card__accept {
+  color: #14883e;
+}
+
+.track-change-card__reject {
+  color: #d93f32;
+}
+
+.track-change-card__content {
+  color: #111827;
+  word-break: break-word;
 }
 
 .footer {

@@ -315,6 +315,59 @@ instance.eventBus.on(
 const elementList = await instance.command.getElementById(payload: IGetElementByIdOption)
 ```
 
+## getTrackChangeList
+
+功能：获取当前文档中的修订留痕批次列表。
+
+用法：
+
+```javascript
+const trackChangeList = instance.command.getTrackChangeList()
+```
+
+返回值：
+
+```typescript
+interface ITrackChangeRecord {
+  id: string // 同一次修订操作的唯一标识
+  type: 'insert' | 'delete' // 修订类型
+  author?: string // 修订作者
+  timestamp: number // 修订发生时间戳
+  elementList: IElement[] // 当前修订批次包含的元素快照
+  rectList: ITrackChangeRect[] // 当前修订批次在文档中的可视矩形
+}
+
+interface ITrackChangeRect {
+  pageNo: number // 页码，从 0 开始
+  x: number // 相对编辑器页面容器左上角的横坐标
+  y: number // 相对编辑器页面容器左上角的纵坐标
+  width: number // 矩形宽度
+  height: number // 矩形高度
+}
+```
+
+## getGroupRectList
+
+功能：获取指定批注分组在当前文档中的可视矩形，常用于绘制批注卡片与正文的关联线。
+
+用法：
+
+```javascript
+const rectList = instance.command.getGroupRectList(groupId: string)
+```
+
+返回值：
+
+```typescript
+interface ITrackChangeRect {
+  pageNo: number
+  x: number
+  y: number
+  width: number
+  height: number
+}
+```
+
 ## getAreaValue
 
 功能: 获取区域数据

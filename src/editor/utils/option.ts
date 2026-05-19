@@ -26,7 +26,8 @@ import { ICursorOption } from '../interface/Cursor'
 import {
   IEditorOption,
   IModeRule,
-  IRenderBackendOption
+  IRenderBackendOption,
+  ITrackChangeOption
 } from '../interface/Editor'
 import { IFooter } from '../interface/Footer'
 import { IGroup } from '../interface/Group'
@@ -54,7 +55,10 @@ import {
 } from '../dataset/enum/Editor'
 import { defaultBadgeOption } from '../dataset/constant/Badge'
 import { IBadgeOption } from '../interface/Badge'
-import { defaultModeRuleOption } from '../dataset/constant/Editor'
+import {
+  defaultModeRuleOption,
+  defaultTrackChangeOption
+} from '../dataset/constant/Editor'
 
 export function mergeOption(
   options: IEditorOption = {}
@@ -181,6 +185,10 @@ export function mergeOption(
       ...options.renderBackend?.svgDom
     }
   }
+  const trackChangeOptions: Required<ITrackChangeOption> = {
+    ...defaultTrackChangeOption,
+    ...options.trackChange
+  }
 
   return {
     mode: EditorMode.EDIT,
@@ -253,6 +261,7 @@ export function mergeOption(
     pageBorder: pageBorderOptions,
     badge: badgeOptions,
     modeRule: modeRuleOption,
-    renderBackend: renderBackendOptions
+    renderBackend: renderBackendOptions,
+    trackChange: trackChangeOptions
   }
 }

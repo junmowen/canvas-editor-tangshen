@@ -79,6 +79,12 @@ export class BlockParticle {
     })
   }
 
+  public syncIframeSrcdocFromDom() {
+    this.blockMap.forEach(block => {
+      block.syncIframeSrcdocFromDom()
+    })
+  }
+
   /** 清理指定页的 DOM/SVG block host，页面卸载或滚动回收时使用。 */
   public clearPage(pageNo: number) {
     if (!this.blockMap.size) return

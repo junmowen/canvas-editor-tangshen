@@ -87,6 +87,7 @@ import { DrawRuntime } from './runtime/DrawRuntime'
 import { DrawComponentRegistry } from './runtime/DrawComponentRegistry'
 import { DrawServiceRegistry } from './runtime/DrawServiceRegistry'
 import { IPointerCoordinatePayload } from '../event/pointer/coordinates/PointerCoordinateTypes'
+import { TrackChangeService } from './track-change/TrackChangeService'
 
 export class Draw {
   private runtime: DrawRuntime
@@ -557,6 +558,10 @@ export class Draw {
 
   public getServices(): DrawServiceRegistry {
     return this.services
+  }
+
+  public getTrackChange(): TrackChangeService {
+    return this.services.trackChangeService
   }
 
   public getComponents(): DrawComponentRegistry {
@@ -1045,11 +1050,13 @@ export class Draw {
     options: IGetOriginValueOption = {}
   ): Required<IEditorData> {
     this.flushAsyncInsertTransaction('get-origin-value')
+    this.getBlockParticle().syncIframeSrcdocFromDom()
     return this.services.valueService.getOriginValue(options)
   }
 
   public getValue(options: IGetValueOption = {}): IEditorResult {
     this.flushAsyncInsertTransaction('get-value')
+    this.getBlockParticle().syncIframeSrcdocFromDom()
     return this.services.valueService.getValue(options)
   }
 

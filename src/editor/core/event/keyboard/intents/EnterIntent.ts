@@ -4,7 +4,7 @@ import {
   EDITOR_ELEMENT_STYLE_ATTR,
   EDITOR_ROW_ATTR
 } from '../../../../dataset/constant/Element'
-import { ControlComponent } from '../../../../dataset/enum/Control'
+import { ControlComponent, ControlType } from '../../../../dataset/enum/Control'
 import { IElement } from '../../../../interface/Element'
 import { omitObject } from '../../../../utils'
 import { CanvasEvent } from '../../CanvasEvent'
@@ -68,6 +68,11 @@ export function runEnterIntent(evt: KeyboardEvent, host: CanvasEvent) {
   }
 
   const control = draw.getControl()
+  const activeControlElement = control.getActiveControl()?.getElement()
+  if (activeControlElement?.control?.type === ControlType.NUMBER) {
+    evt.preventDefault()
+    return
+  }
   let curIndex: number
   const controlInsertIndex = insertIntoActiveControl(control, [enterText])
   if (controlInsertIndex !== null) {

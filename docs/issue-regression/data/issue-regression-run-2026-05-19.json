@@ -1,0 +1,74 @@
+{
+  "date": "2026-05-19",
+  "issueSnapshot": {
+    "source": "https://github.com/Hufe921/canvas-editor/issues",
+    "issues": 1097,
+    "open": 46,
+    "closed": 1051,
+    "comments": 1814
+  },
+  "commands": [
+    "npm run type:check",
+    "npx cypress run --spec \"cypress/e2e/issues/**/*.cy.ts\""
+  ],
+  "typecheck": "passed",
+  "cypress": {
+    "specs": 32,
+    "tests": 100,
+    "passed": 92,
+    "failed": 8,
+    "failedSpecs": 7
+  },
+  "failed": [
+    {
+      "spec": "issue-1053-table-cell-border.cy.ts",
+      "tests": [
+        "places later table fragments below a header bottom separator"
+      ],
+      "doc": "problems/issue-1053-table-fragment-header-separator.md"
+    },
+    {
+      "spec": "issue-1385-control-underline.cy.ts",
+      "tests": [
+        "inherits pending underline style when inserting an empty control"
+      ],
+      "doc": "problems/issue-1385-control-underline-empty-control.md"
+    },
+    {
+      "spec": "issue-837-large-document-performance.cy.ts",
+      "tests": [
+        "coalesces rapid typing refreshes before repainting a 30-page document"
+      ],
+      "doc": "problems/issue-837-typing-refresh-coalescing.md"
+    },
+    {
+      "spec": "issue-877-pagebreak-behavior.cy.ts",
+      "tests": [
+        "keeps the page break element in data and starts following content on a new page"
+      ],
+      "doc": "problems/issue-877-pagebreak-new-page.md"
+    },
+    {
+      "spec": "issue-catalog-position-miss.cy.ts",
+      "tests": [
+        "does not crash catalog worker after chunk typing"
+      ],
+      "doc": "problems/issue-catalog-position-miss.md"
+    },
+    {
+      "spec": "issue-inline-table-label.cy.ts",
+      "tests": [
+        "does not highlight another inline table with the same row and column indexes",
+        "draws inline table range from the table origin instead of the row origin"
+      ],
+      "doc": "problems/issue-inline-table-label-range.md"
+    },
+    {
+      "spec": "issue-table-fragment-uses-remaining-space.cy.ts",
+      "tests": [
+        "keeps the first splittable table fragment on the current page when space remains"
+      ],
+      "doc": "problems/issue-table-fragment-remaining-space.md"
+    }
+  ]
+}

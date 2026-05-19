@@ -1,5 +1,5 @@
 import { DeepRequired } from '../../interface/Common'
-import { IModeRule } from '../../interface/Editor'
+import { IModeRule, ITrackChangeOption } from '../../interface/Editor'
 
 export const EDITOR_COMPONENT = 'editor-component'
 export const EDITOR_PREFIX = 'ce'
@@ -15,4 +15,11 @@ export const defaultModeRuleOption: Readonly<DeepRequired<IModeRule>> = {
   form: {
     controlDeletableDisabled: false
   }
+}
+
+export const defaultTrackChangeOption: Readonly<Required<ITrackChangeOption>> = {
+  enabled: false,
+  author: '',
+  insertColor: '#047857',
+  deleteColor: '#DC2626'
 }

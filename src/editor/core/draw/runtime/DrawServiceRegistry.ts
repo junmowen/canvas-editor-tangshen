@@ -12,6 +12,7 @@ import { DrawMetricsService } from '../layout/DrawMetricsService'
 import { DrawRenderFacadeService } from '../render/DrawRenderFacadeService'
 import { DrawPainterService } from './DrawPainterService'
 import { DrawLifecycleService } from './DrawLifecycleService'
+import { TrackChangeService } from '../track-change/TrackChangeService'
 import { TableLayoutSnapshotBuilder } from '../../table/layout/TableLayoutSnapshotBuilder'
 import { TableLayoutSnapshotAccessor } from '../../table/layout/TableLayoutSnapshotAccessor'
 import { RowLayoutEngine } from '../layout/RowLayoutEngine'
@@ -126,6 +127,8 @@ export class DrawServiceRegistry {
   public readonly painterService: DrawPainterService
   /** 生命周期相关服务。 */
   public readonly lifecycleService: DrawLifecycleService
+  /** 修订留痕服务。 */
+  public readonly trackChangeService: TrackChangeService
 
   /**
    * 统一初始化所有流程型 service。
@@ -182,5 +185,6 @@ export class DrawServiceRegistry {
     this.renderFacadeService = new DrawRenderFacadeService(draw)
     this.painterService = new DrawPainterService(draw)
     this.lifecycleService = new DrawLifecycleService(draw)
+    this.trackChangeService = new TrackChangeService(draw)
   }
 }

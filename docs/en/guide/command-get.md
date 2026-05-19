@@ -316,6 +316,59 @@ Usage:
 const elementList = await instance.command.getElementById(payload: IGetElementByIdOption)
 ```
 
+## getTrackChangeList
+
+Feature: Get all track-change batches in the current document.
+
+Usage:
+
+```javascript
+const trackChangeList = instance.command.getTrackChangeList()
+```
+
+Return:
+
+```typescript
+interface ITrackChangeRecord {
+  id: string // Unique id for one change batch
+  type: 'insert' | 'delete' // Change type
+  author?: string // Change author
+  timestamp: number // Change timestamp
+  elementList: IElement[] // Element snapshots in this change batch
+  rectList: ITrackChangeRect[] // Visible rectangles of this change batch
+}
+
+interface ITrackChangeRect {
+  pageNo: number // Page number, starts from 0
+  x: number // X relative to the editor page container
+  y: number // Y relative to the editor page container
+  width: number // Rectangle width
+  height: number // Rectangle height
+}
+```
+
+## getGroupRectList
+
+Feature: Get visible rectangles of a comment group in the current document. It is commonly used to draw connector lines between comment cards and document content.
+
+Usage:
+
+```javascript
+const rectList = instance.command.getGroupRectList(groupId: string)
+```
+
+Return:
+
+```typescript
+interface ITrackChangeRect {
+  pageNo: number
+  x: number
+  y: number
+  width: number
+  height: number
+}
+```
+
 ## getAreaValue
 
 Feature: Get area value

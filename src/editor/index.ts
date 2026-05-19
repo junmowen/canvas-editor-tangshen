@@ -6,6 +6,11 @@ import {
   IRenderBackendOption
 } from './interface/Editor'
 import { IElement } from './interface/Element'
+import { ISetTrackChangeOption } from './interface/Command'
+import {
+  ITrackChangeRecord,
+  ITrackChangeRect
+} from './core/draw/track-change/TrackChangeService'
 import { Draw } from './core/draw/Draw'
 import { Command } from './core/command/Command'
 import { CommandAdapt } from './core/command/CommandAdapt'
@@ -266,5 +271,8 @@ export type {
   IRange,
   IRangeStyle,
   IBadge,
-  IGetElementListByHTMLOption
+  IGetElementListByHTMLOption,
+  ISetTrackChangeOption,
+  ITrackChangeRecord,
+  ITrackChangeRect
 }

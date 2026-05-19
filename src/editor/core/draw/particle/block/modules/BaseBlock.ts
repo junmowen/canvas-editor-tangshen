@@ -71,4 +71,9 @@ export class BaseBlock {
   public remove() {
     this.blockItem.remove()
   }
+
+  public syncIframeSrcdocFromDom(): boolean {
+    if (!(this.block instanceof IFrameBlock)) return false
+    return this.block.syncSrcdocFromDom()
+  }
 }

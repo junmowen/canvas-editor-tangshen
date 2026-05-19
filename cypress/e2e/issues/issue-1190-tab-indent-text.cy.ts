@@ -21,21 +21,24 @@ function getOriginalElements(editor: Editor) {
   return (editor as any).draw.getOriginalMainElementList()
 }
 
-describe('issue #1190 tab indentation scenarios', () => {
+describe('tab indentation scenarios', () => {
   beforeEach(() => {
     cy.visit('http://localhost:3000/canvas-editor/')
     cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
 
-  it('inserts a styled tab element in normal text when pressing Tab', () => {
+  it('issues #1190, #942, and #974 insert a styled tab element in normal text when pressing Tab', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSelectAll()
       editor.command.executeBackspace()
       editor.command.executeInsertElementList([
         {
           value: 'before',
+          font: 'Microsoft YaHei',
+          size: 28,
           bold: true,
-          color: '#FF0000'
+          color: '#FF0000',
+          strikeout: true
         }
       ])
     })
@@ -49,8 +52,11 @@ describe('issue #1190 tab indentation scenarios', () => {
 
       expect(tabElement).to.not.eq(undefined)
       expect(tabElement.value).to.eq('')
+      expect(tabElement.font).to.eq('Microsoft YaHei')
+      expect(tabElement.size).to.eq(28)
       expect(tabElement.bold).to.eq(true)
       expect(tabElement.color).to.eq('#FF0000')
+      expect(tabElement.strikeout).to.eq(true)
     })
   })
 })

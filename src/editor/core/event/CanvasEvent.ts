@@ -126,6 +126,10 @@ export class CanvasEvent {
     if (control.selectAllValue()) {
       return
     }
+    this.position.setPositionContext({
+      isTable: false,
+      isControl: false
+    })
     const position = this.position.getPositionList()
     this.range.setRange(0, position.length - 1)
     this.draw.render({

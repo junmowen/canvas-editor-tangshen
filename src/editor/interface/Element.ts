@@ -27,6 +27,24 @@ export interface IElementBasic {
   pagingId?: string
   /** 分页片段在逻辑元素中的顺序索引。 */
   pagingIndex?: number
+  /** 修订留痕信息，用于记录插入和删除痕迹。 */
+  trackChange?: ITrackChange
+}
+
+export type TrackChangeType = 'insert' | 'delete'
+
+/** 单个元素上的修订留痕信息。 */
+export interface ITrackChange {
+  /** 同一次修订操作的唯一标识，用于按批接受或拒绝。 */
+  id: string
+  /** 修订类型：插入或删除。 */
+  type: TrackChangeType
+  /** 修订作者。 */
+  author?: string
+  /** 修订发生时间戳。 */
+  timestamp: number
+  /** 当前痕迹显示颜色。 */
+  color?: string
 }
 
 export interface IElementStyle {

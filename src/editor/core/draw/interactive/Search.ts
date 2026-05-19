@@ -6,6 +6,7 @@ import { ElementType } from '../../../dataset/enum/Element'
 import { IEditorOption } from '../../../interface/Editor'
 import { IElement, IElementPosition } from '../../../interface/Element'
 import {
+  ISearchOption,
   IReplaceOption,
   ISearchResult,
   ISearchResultRestArgs
@@ -185,10 +186,14 @@ export class Search {
 
   public getMatchList(
     payload: string,
-    originalElementList: IElement[]
+    originalElementList: IElement[],
+    options: ISearchOption = {}
   ): ISearchResult[] {
-    const keyword = payload.toLocaleLowerCase()
+    const keyword = options.isIgnoreCase === false ? payload : payload.toLocaleLowerCase()
     const searchMatchList: ISearchResult[] = []
+    const reg = options.isRegEnable
+      ? new RegExp(payload, options.isIgnoreCase === false ? 'g' : 'gi')
+      : null
     // 分组
     const elementListGroup: {
       type: EditorContext
@@ -237,7 +242,7 @@ export class Search {
       restArgs?: ISearchResultRestArgs
     ) {
       if (!payload) return
-      const text = elementList
+      const rawText = elementList
         .map(e =>
           !e.type ||
           (TEXTLIKE_ELEMENT_TYPE.includes(e.type) &&
@@ -250,18 +255,32 @@ export class Search {
         )
         .filter(Boolean)
         .join('')
-        .toLocaleLowerCase()
+      const text =
+        options.isIgnoreCase === false ? rawText : rawText.toLocaleLowerCase()
       const matchStartIndexList = []
-      let index = text.indexOf(payload)
-      while (index !== -1) {
-        matchStartIndexList.push(index)
-        index = text.indexOf(payload, index + payload.length)
+      if (reg) {
+        for (const match of text.matchAll(reg)) {
+          if (match.index === undefined) continue
+          matchStartIndexList.push({
+            index: match.index,
+            length: match[0].length
+          })
+        }
+      } else {
+        let index = text.indexOf(payload)
+        while (index !== -1) {
+          matchStartIndexList.push({
+            index,
+            length: payload.length
+          })
+          index = text.indexOf(payload, index + payload.length)
+        }
       }
       for (let m = 0; m < matchStartIndexList.length; m++) {
-        const startIndex = matchStartIndexList[m]
+        const matchStart = matchStartIndexList[m]
         const groupId = getUUID()
-        for (let i = 0; i < payload.length; i++) {
-          const index = startIndex + i + (restArgs?.startIndex || 0)
+        for (let i = 0; i < matchStart.length; i++) {
+          const index = matchStart.index + i + (restArgs?.startIndex || 0)
           searchMatchList.push({
             type,
             index,
@@ -298,12 +317,40 @@ export class Search {
     return searchMatchList
   }
 
-  public compute(payload: string) {
-    this.searchMatchList = this.getMatchList(
+  public compute(payload: string, options: ISearchOption = {}) {
+    const matchList = this.getMatchList(
       payload,
-      this.draw.getOriginalElementList()
+      this.draw.getOriginalElementList(),
+      options
     )
+    this.searchMatchList = this.filterMatchListBySelection(matchList, options)
     this._rebuildSearchMatchPageMap()
+  }
+
+  private filterMatchListBySelection(
+    matchList: ISearchResult[],
+    options: ISearchOption
+  ): ISearchResult[] {
+    if (!options.isLimitSelection) return matchList
+    const range = this.draw.getRange().getEditBoundaryRange()
+    const { startIndex, endIndex, tableId, startTrIndex, startTdIndex } = range
+    if (startIndex === endIndex) return matchList
+    return matchList.filter(match => {
+      if (tableId) {
+        return (
+          match.tableId === tableId &&
+          match.trIndex === startTrIndex &&
+          match.tdIndex === startTdIndex &&
+          match.index >= startIndex &&
+          match.index < endIndex
+        )
+      }
+      return (
+        match.type === EditorContext.PAGE &&
+        match.index >= startIndex &&
+        match.index < endIndex
+      )
+    })
   }
 
   public render(ctx: CanvasRenderingContext2D, pageIndex: number) {
@@ -455,7 +502,9 @@ export class Search {
         if (
           !isDesignMode &&
           (tableElement?.control?.deletable === false ||
-            tableElement?.title?.deletable === false)
+            tableElement?.control?.disabled ||
+            tableElement?.title?.deletable === false ||
+            tableElement?.title?.disabled)
         ) {
           continue
         }
@@ -496,7 +545,9 @@ export class Search {
         if (
           (!isDesignMode &&
             (element?.control?.deletable === false ||
-              element?.title?.deletable === false)) ||
+              element?.control?.disabled ||
+              element?.title?.deletable === false ||
+              element?.title?.disabled)) ||
           (element.type === ElementType.CONTROL &&
             element.controlComponent !== ControlComponent.VALUE)
         ) {

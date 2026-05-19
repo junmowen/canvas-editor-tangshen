@@ -4,6 +4,7 @@ import { ElementType } from '../../../dataset/enum/Element'
 import {
   IArea,
   IAreaInfo,
+  IDeleteAreaOption,
   IGetAreaValueOption,
   IGetAreaValueResult,
   IInsertAreaOption,
@@ -172,17 +173,44 @@ export class Area {
       const element = elementList[e]
       const areaId = element.areaId
       if (areaId) {
+        const position =
+          positionList[e] ||
+          ({
+            pageNo: 0,
+            index: e,
+            value: element.value,
+            element,
+            rowIndex: 0,
+            rowNo: 0,
+            ascent: 0,
+            lineHeight: 0,
+            left: 0,
+            metrics: {
+              width: 0,
+              height: 0,
+              boundingBoxAscent: 0,
+              boundingBoxDescent: 0
+            },
+            isFirstLetter: false,
+            isLastLetter: false,
+            coordinate: {
+              leftTop: [0, 0],
+              leftBottom: [0, 0],
+              rightTop: [0, 0],
+              rightBottom: [0, 0]
+            }
+          } as IElementPosition)
         const areaInfo = this.areaInfoMap.get(areaId)
         if (!areaInfo) {
           this.areaInfoMap.set(areaId, {
             id: areaId,
             area: element.area!,
             elementList: [element],
-            positionList: [positionList[e]]
+            positionList: [position]
           })
         } else {
           areaInfo.elementList.push(element)
-          areaInfo.positionList.push(positionList[e])
+          areaInfo.positionList.push(position)
         }
       }
     }
@@ -193,7 +221,11 @@ export class Area {
   ): IGetAreaValueResult | null {
     const areaId = options.id || this.getActiveAreaId()
     if (!areaId) return null
-    const areaInfo = this.areaInfoMap.get(areaId)
+    let areaInfo = this.areaInfoMap.get(areaId)
+    if (!areaInfo) {
+      this.compute()
+      areaInfo = this.areaInfoMap.get(areaId)
+    }
     if (!areaInfo) return null
     return {
       area: areaInfo.area,
@@ -247,11 +279,16 @@ export class Area {
   public setAreaProperties(payload: ISetAreaPropertiesOption) {
     const areaId = payload.id || this.getActiveAreaId()
     if (!areaId) return
-    const areaInfo = this.areaInfoMap.get(areaId)
+    let areaInfo = this.areaInfoMap.get(areaId)
+    if (!areaInfo) {
+      this.compute()
+      areaInfo = this.areaInfoMap.get(areaId)
+    }
     if (!areaInfo) return
     if (!areaInfo.area) {
       areaInfo.area = {}
     }
+    const area = areaInfo.area
     // 需要计算的属性
     let isCompute = false
     const computeProps: Array<keyof IArea> = ['top', 'hide']
@@ -259,7 +296,7 @@ export class Area {
     Object.entries(payload.properties).forEach(([key, value]) => {
       if (isNonValue(value)) return
       const propKey = key as keyof IArea
-      areaInfo.area[propKey] = value
+      area[propKey] = value
       if (computeProps.includes(propKey)) {
         isCompute = true
       }
@@ -271,10 +308,42 @@ export class Area {
     })
   }
 
+  public deleteArea(payload: IDeleteAreaOption = {}): boolean {
+    const areaId = payload.id || this.getActiveAreaId()
+    if (!areaId) return false
+    let areaInfo = this.areaInfoMap.get(areaId)
+    if (!areaInfo) {
+      this.compute()
+      areaInfo = this.areaInfoMap.get(areaId)
+    }
+    if (!areaInfo || areaInfo.area?.deletable === false) return false
+
+    const { positionList } = areaInfo
+    const elementList = this.draw.getOriginalMainElementList()
+    this.draw.spliceElementList(
+      elementList,
+      positionList[0].index,
+      positionList.length,
+      [],
+      {
+        isIgnoreDeletedRule: true
+      }
+    )
+    this.draw.render({
+      isCompute: true,
+      isSetCursor: false
+    })
+    return true
+  }
+
   public setAreaValue(payload: ISetAreaValueOption) {
     const areaId = payload.id || this.getActiveAreaId()
     if (!areaId) return
-    const areaInfo = this.areaInfoMap.get(areaId)
+    let areaInfo = this.areaInfoMap.get(areaId)
+    if (!areaInfo) {
+      this.compute()
+      areaInfo = this.areaInfoMap.get(areaId)
+    }
     if (!areaInfo) return
     // 删除旧数据并替换新的格式化数据
     const { positionList } = areaInfo

@@ -1,0 +1,573 @@
+[
+  {
+    "spec": "issue-1053-single-cell-drag-selection.cy.ts",
+    "issueNumbers": [
+      1053
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/1053"
+    ]
+  },
+  {
+    "spec": "issue-1053-table-cell-border.cy.ts",
+    "issueNumbers": [
+      42,
+      50,
+      80,
+      120,
+      150,
+      200,
+      220,
+      235,
+      240,
+      260,
+      290,
+      1053
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/42",
+      "https://github.com/Hufe921/canvas-editor/issues/50",
+      "https://github.com/Hufe921/canvas-editor/issues/80",
+      "https://github.com/Hufe921/canvas-editor/issues/120",
+      "https://github.com/Hufe921/canvas-editor/issues/150",
+      "https://github.com/Hufe921/canvas-editor/issues/200",
+      "https://github.com/Hufe921/canvas-editor/issues/220",
+      "https://github.com/Hufe921/canvas-editor/issues/235",
+      "https://github.com/Hufe921/canvas-editor/issues/240",
+      "https://github.com/Hufe921/canvas-editor/issues/260",
+      "https://github.com/Hufe921/canvas-editor/issues/290",
+      "https://github.com/Hufe921/canvas-editor/issues/1053"
+    ]
+  },
+  {
+    "spec": "issue-1163-text-before-table.cy.ts",
+    "issueNumbers": [
+      200,
+      1163
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/200",
+      "https://github.com/Hufe921/canvas-editor/issues/1163"
+    ]
+  },
+  {
+    "spec": "issue-1190-tab-indent-text.cy.ts",
+    "issueNumbers": [
+      942,
+      974,
+      1190
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/942",
+      "https://github.com/Hufe921/canvas-editor/issues/974",
+      "https://github.com/Hufe921/canvas-editor/issues/1190"
+    ]
+  },
+  {
+    "spec": "issue-1372-1200-image-surround.cy.ts",
+    "issueNumbers": [
+      80,
+      120,
+      130,
+      195,
+      200,
+      766,
+      1200,
+      1372
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/80",
+      "https://github.com/Hufe921/canvas-editor/issues/120",
+      "https://github.com/Hufe921/canvas-editor/issues/130",
+      "https://github.com/Hufe921/canvas-editor/issues/195",
+      "https://github.com/Hufe921/canvas-editor/issues/200",
+      "https://github.com/Hufe921/canvas-editor/issues/766",
+      "https://github.com/Hufe921/canvas-editor/issues/1200",
+      "https://github.com/Hufe921/canvas-editor/issues/1372"
+    ]
+  },
+  {
+    "spec": "issue-1385-control-underline.cy.ts",
+    "issueNumbers": [
+      80,
+      1385
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/80",
+      "https://github.com/Hufe921/canvas-editor/issues/1385"
+    ]
+  },
+  {
+    "spec": "issue-1399-control-backspace.cy.ts",
+    "issueNumbers": [
+      1399,
+      1400
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/1399",
+      "https://github.com/Hufe921/canvas-editor/issues/1400"
+    ]
+  },
+  {
+    "spec": "issue-1404-table-colgroup-default.cy.ts",
+    "issueNumbers": [
+      50,
+      400,
+      500,
+      1404
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/50",
+      "https://github.com/Hufe921/canvas-editor/issues/400",
+      "https://github.com/Hufe921/canvas-editor/issues/500",
+      "https://github.com/Hufe921/canvas-editor/issues/1404"
+    ]
+  },
+  {
+    "spec": "issue-390-dynamic-table-data.cy.ts",
+    "issueNumbers": [
+      15,
+      50,
+      72,
+      120,
+      154,
+      300,
+      390,
+      532
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/15",
+      "https://github.com/Hufe921/canvas-editor/issues/50",
+      "https://github.com/Hufe921/canvas-editor/issues/72",
+      "https://github.com/Hufe921/canvas-editor/issues/120",
+      "https://github.com/Hufe921/canvas-editor/issues/154",
+      "https://github.com/Hufe921/canvas-editor/issues/300",
+      "https://github.com/Hufe921/canvas-editor/issues/390",
+      "https://github.com/Hufe921/canvas-editor/issues/532"
+    ]
+  },
+  {
+    "spec": "issue-425-control-in-text-control.cy.ts",
+    "issueNumbers": [
+      425,
+      1146
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/425",
+      "https://github.com/Hufe921/canvas-editor/issues/1146"
+    ]
+  },
+  {
+    "spec": "issue-440-list-sublevel.cy.ts",
+    "issueNumbers": [
+      200,
+      440
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/200",
+      "https://github.com/Hufe921/canvas-editor/issues/440"
+    ]
+  },
+  {
+    "spec": "issue-605-paragraph-row-layout.cy.ts",
+    "issueNumbers": [
+      200,
+      605
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/200",
+      "https://github.com/Hufe921/canvas-editor/issues/605"
+    ]
+  },
+  {
+    "spec": "issue-621-list-drag-reorder.cy.ts",
+    "issueNumbers": [
+      80,
+      200,
+      621
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/80",
+      "https://github.com/Hufe921/canvas-editor/issues/200",
+      "https://github.com/Hufe921/canvas-editor/issues/621"
+    ]
+  },
+  {
+    "spec": "issue-692-punctuation-hanging.cy.ts",
+    "issueNumbers": [
+      200,
+      692
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/200",
+      "https://github.com/Hufe921/canvas-editor/issues/692"
+    ]
+  },
+  {
+    "spec": "issue-725-row-indent.cy.ts",
+    "issueNumbers": [
+      48,
+      200,
+      725
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/48",
+      "https://github.com/Hufe921/canvas-editor/issues/200",
+      "https://github.com/Hufe921/canvas-editor/issues/725"
+    ]
+  },
+  {
+    "spec": "issue-837-large-document-performance.cy.ts",
+    "issueNumbers": [
+      80,
+      837,
+      1000,
+      1200
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/80",
+      "https://github.com/Hufe921/canvas-editor/issues/837",
+      "https://github.com/Hufe921/canvas-editor/issues/1000",
+      "https://github.com/Hufe921/canvas-editor/issues/1200"
+    ]
+  },
+  {
+    "spec": "issue-877-pagebreak-behavior.cy.ts",
+    "issueNumbers": [
+      877
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/877"
+    ]
+  },
+  {
+    "spec": "issue-94-continuity-large-doc.cy.ts",
+    "issueNumbers": [
+      42,
+      56,
+      80,
+      94,
+      120,
+      130,
+      150,
+      180,
+      220,
+      240,
+      260,
+      300,
+      360,
+      500,
+      600,
+      1000,
+      1123
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/42",
+      "https://github.com/Hufe921/canvas-editor/issues/56",
+      "https://github.com/Hufe921/canvas-editor/issues/80",
+      "https://github.com/Hufe921/canvas-editor/issues/94",
+      "https://github.com/Hufe921/canvas-editor/issues/120",
+      "https://github.com/Hufe921/canvas-editor/issues/130",
+      "https://github.com/Hufe921/canvas-editor/issues/150",
+      "https://github.com/Hufe921/canvas-editor/issues/180",
+      "https://github.com/Hufe921/canvas-editor/issues/220",
+      "https://github.com/Hufe921/canvas-editor/issues/240",
+      "https://github.com/Hufe921/canvas-editor/issues/260",
+      "https://github.com/Hufe921/canvas-editor/issues/300",
+      "https://github.com/Hufe921/canvas-editor/issues/360",
+      "https://github.com/Hufe921/canvas-editor/issues/500",
+      "https://github.com/Hufe921/canvas-editor/issues/600",
+      "https://github.com/Hufe921/canvas-editor/issues/1000",
+      "https://github.com/Hufe921/canvas-editor/issues/1123"
+    ]
+  },
+  {
+    "spec": "issue-area-table-api-regressions.cy.ts",
+    "issueNumbers": [
+      1119,
+      1147,
+      1180,
+      1194,
+      1195,
+      1202,
+      1212,
+      1216,
+      1223,
+      1227,
+      1243,
+      1261,
+      1281,
+      1305,
+      1317,
+      1368,
+      1377,
+      1381,
+      1410
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/1119",
+      "https://github.com/Hufe921/canvas-editor/issues/1147",
+      "https://github.com/Hufe921/canvas-editor/issues/1180",
+      "https://github.com/Hufe921/canvas-editor/issues/1194",
+      "https://github.com/Hufe921/canvas-editor/issues/1195",
+      "https://github.com/Hufe921/canvas-editor/issues/1202",
+      "https://github.com/Hufe921/canvas-editor/issues/1212",
+      "https://github.com/Hufe921/canvas-editor/issues/1216",
+      "https://github.com/Hufe921/canvas-editor/issues/1223",
+      "https://github.com/Hufe921/canvas-editor/issues/1227",
+      "https://github.com/Hufe921/canvas-editor/issues/1243",
+      "https://github.com/Hufe921/canvas-editor/issues/1261",
+      "https://github.com/Hufe921/canvas-editor/issues/1281",
+      "https://github.com/Hufe921/canvas-editor/issues/1305",
+      "https://github.com/Hufe921/canvas-editor/issues/1317",
+      "https://github.com/Hufe921/canvas-editor/issues/1368",
+      "https://github.com/Hufe921/canvas-editor/issues/1377",
+      "https://github.com/Hufe921/canvas-editor/issues/1381",
+      "https://github.com/Hufe921/canvas-editor/issues/1410"
+    ]
+  },
+  {
+    "spec": "issue-blank-area-dblclick.cy.ts",
+    "issueNumbers": [
+      200
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/200"
+    ]
+  },
+  {
+    "spec": "issue-catalog-position-miss.cy.ts",
+    "issueNumbers": [
+      1200
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/1200"
+    ]
+  },
+  {
+    "spec": "issue-colon-input.cy.ts",
+    "issueNumbers": [
+      200
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/200"
+    ]
+  },
+  {
+    "spec": "issue-control-api-regressions.cy.ts",
+    "issueNumbers": [
+      305,
+      323,
+      628,
+      653,
+      884,
+      988,
+      1037,
+      1071,
+      1073,
+      1128,
+      1136,
+      1140,
+      1150,
+      1219,
+      1225,
+      1319,
+      1353,
+      1360
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/305",
+      "https://github.com/Hufe921/canvas-editor/issues/323",
+      "https://github.com/Hufe921/canvas-editor/issues/628",
+      "https://github.com/Hufe921/canvas-editor/issues/653",
+      "https://github.com/Hufe921/canvas-editor/issues/884",
+      "https://github.com/Hufe921/canvas-editor/issues/988",
+      "https://github.com/Hufe921/canvas-editor/issues/1037",
+      "https://github.com/Hufe921/canvas-editor/issues/1071",
+      "https://github.com/Hufe921/canvas-editor/issues/1073",
+      "https://github.com/Hufe921/canvas-editor/issues/1128",
+      "https://github.com/Hufe921/canvas-editor/issues/1136",
+      "https://github.com/Hufe921/canvas-editor/issues/1140",
+      "https://github.com/Hufe921/canvas-editor/issues/1150",
+      "https://github.com/Hufe921/canvas-editor/issues/1219",
+      "https://github.com/Hufe921/canvas-editor/issues/1225",
+      "https://github.com/Hufe921/canvas-editor/issues/1319",
+      "https://github.com/Hufe921/canvas-editor/issues/1353",
+      "https://github.com/Hufe921/canvas-editor/issues/1360"
+    ]
+  },
+  {
+    "spec": "issue-delete-chain-consistency.cy.ts",
+    "issueNumbers": [],
+    "issueLinks": []
+  },
+  {
+    "spec": "issue-form-control-deletion-disabled.cy.ts",
+    "issueNumbers": [
+      1143
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/1143"
+    ]
+  },
+  {
+    "spec": "issue-header-footer-dblclick.cy.ts",
+    "issueNumbers": [],
+    "issueLinks": []
+  },
+  {
+    "spec": "issue-inline-table-label.cy.ts",
+    "issueNumbers": [
+      80,
+      180,
+      220,
+      260,
+      420,
+      500,
+      760,
+      900
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/80",
+      "https://github.com/Hufe921/canvas-editor/issues/180",
+      "https://github.com/Hufe921/canvas-editor/issues/220",
+      "https://github.com/Hufe921/canvas-editor/issues/260",
+      "https://github.com/Hufe921/canvas-editor/issues/420",
+      "https://github.com/Hufe921/canvas-editor/issues/500",
+      "https://github.com/Hufe921/canvas-editor/issues/760",
+      "https://github.com/Hufe921/canvas-editor/issues/900"
+    ]
+  },
+  {
+    "spec": "issue-left-blank-after-table-click.cy.ts",
+    "issueNumbers": [
+      200,
+      360,
+      640
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/200",
+      "https://github.com/Hufe921/canvas-editor/issues/360",
+      "https://github.com/Hufe921/canvas-editor/issues/640"
+    ]
+  },
+  {
+    "spec": "issue-plain-text-drag-consistency.cy.ts",
+    "issueNumbers": [],
+    "issueLinks": []
+  },
+  {
+    "spec": "issue-range-paragraph-boundary.cy.ts",
+    "issueNumbers": [],
+    "issueLinks": []
+  },
+  {
+    "spec": "issue-recent-api-regressions.cy.ts",
+    "issueNumbers": [
+      604,
+      1039,
+      1049,
+      1067,
+      1088,
+      1135,
+      1251,
+      1260,
+      1264,
+      1282,
+      1286,
+      1296,
+      1308,
+      1311,
+      1335,
+      1336,
+      1346,
+      1354,
+      1357,
+      1365,
+      1369,
+      1389,
+      1393,
+      1398
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/604",
+      "https://github.com/Hufe921/canvas-editor/issues/1039",
+      "https://github.com/Hufe921/canvas-editor/issues/1049",
+      "https://github.com/Hufe921/canvas-editor/issues/1067",
+      "https://github.com/Hufe921/canvas-editor/issues/1088",
+      "https://github.com/Hufe921/canvas-editor/issues/1135",
+      "https://github.com/Hufe921/canvas-editor/issues/1251",
+      "https://github.com/Hufe921/canvas-editor/issues/1260",
+      "https://github.com/Hufe921/canvas-editor/issues/1264",
+      "https://github.com/Hufe921/canvas-editor/issues/1282",
+      "https://github.com/Hufe921/canvas-editor/issues/1286",
+      "https://github.com/Hufe921/canvas-editor/issues/1296",
+      "https://github.com/Hufe921/canvas-editor/issues/1308",
+      "https://github.com/Hufe921/canvas-editor/issues/1311",
+      "https://github.com/Hufe921/canvas-editor/issues/1335",
+      "https://github.com/Hufe921/canvas-editor/issues/1336",
+      "https://github.com/Hufe921/canvas-editor/issues/1346",
+      "https://github.com/Hufe921/canvas-editor/issues/1354",
+      "https://github.com/Hufe921/canvas-editor/issues/1357",
+      "https://github.com/Hufe921/canvas-editor/issues/1365",
+      "https://github.com/Hufe921/canvas-editor/issues/1369",
+      "https://github.com/Hufe921/canvas-editor/issues/1389",
+      "https://github.com/Hufe921/canvas-editor/issues/1393",
+      "https://github.com/Hufe921/canvas-editor/issues/1398"
+    ]
+  },
+  {
+    "spec": "issue-selection-table-bleed.cy.ts",
+    "issueNumbers": [
+      80,
+      300,
+      600
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/80",
+      "https://github.com/Hufe921/canvas-editor/issues/300",
+      "https://github.com/Hufe921/canvas-editor/issues/600"
+    ]
+  },
+  {
+    "spec": "issue-table-fragment-uses-remaining-space.cy.ts",
+    "issueNumbers": [
+      80,
+      240
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/80",
+      "https://github.com/Hufe921/canvas-editor/issues/240"
+    ]
+  },
+  {
+    "spec": "issue-table-row-height-range-context.cy.ts",
+    "issueNumbers": [
+      120
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/120"
+    ]
+  },
+  {
+    "spec": "issue-table-typing-chunk-isolation.cy.ts",
+    "issueNumbers": [
+      80,
+      120,
+      180,
+      200,
+      240,
+      360,
+      420
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/80",
+      "https://github.com/Hufe921/canvas-editor/issues/120",
+      "https://github.com/Hufe921/canvas-editor/issues/180",
+      "https://github.com/Hufe921/canvas-editor/issues/200",
+      "https://github.com/Hufe921/canvas-editor/issues/240",
+      "https://github.com/Hufe921/canvas-editor/issues/360",
+      "https://github.com/Hufe921/canvas-editor/issues/420"
+    ]
+  }
+]

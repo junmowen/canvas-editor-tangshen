@@ -79,8 +79,22 @@ interface IEditorOption {
   pageBorder?: IPageBorderOption // PageBorder option. {color?:string; lineWidth:number; padding?:IPadding; disabled?:boolean;}
   badge?: IBadgeOption // Badge option. {top?:number; left?:number}
   modeRule?: IModeRule // mode rule option. {print:{imagePreviewerDisabled?: boolean}; readonly:{imagePreviewerDisabled?: boolean}; form:{controlDeletableDisabled?: boolean}}
+  trackChange?: ITrackChangeOption // Track-change option. {enabled?:boolean; author?:string; insertColor?:string; deleteColor?:string}
 }
 ```
+
+## Track Change Configuration
+
+```typescript
+interface ITrackChangeOption {
+  enabled?: boolean // Whether to enable track changes. default: false
+  author?: string // Current change author. default: ''
+  insertColor?: string // Insertion color. default: #047857
+  deleteColor?: string // Deletion color. default: #DC2626
+}
+```
+
+When enabled, inserted content gets `trackChange.type = 'insert'`; deleted content is not removed immediately and gets `trackChange.type = 'delete'`. Use `executeAcceptTrackChange`, `executeRejectTrackChange`, `executeAcceptAllTrackChange`, and `executeRejectAllTrackChange` to resolve changes.
 
 ## Table Configuration
 

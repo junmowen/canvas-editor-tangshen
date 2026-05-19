@@ -44,6 +44,10 @@ export default defineConfig({
       {
         text: '技术方案',
         items: [
+          {
+            text: 'Issue 回归管理',
+            link: '/issue-regression/'
+          },
           { text: '性能优化方案', link: '/guide/performance-optimization-plan' },
           {
             text: 'Canvas 池与多引擎渲染后端',

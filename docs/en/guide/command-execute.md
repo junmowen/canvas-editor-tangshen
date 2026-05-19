@@ -1054,6 +1054,59 @@ Usage:
 instance.command.executeUpdateOptions(payload: IUpdateOption)
 ```
 
+## executeSetTrackChange
+
+Feature: Set track-change state and current author. When enabled, inserted content is marked as an insertion and deleted content is kept in the document as a deletion.
+
+Usage:
+
+```javascript
+instance.command.executeSetTrackChange({
+  enabled: true,
+  author: 'Alice'
+})
+```
+
+## executeAcceptTrackChange
+
+Feature: Accept a track-change batch. Insertions are kept and deletions are removed from the document.
+
+Usage:
+
+```javascript
+instance.command.executeAcceptTrackChange(id: string)
+```
+
+## executeRejectTrackChange
+
+Feature: Reject a track-change batch. Insertions are removed and deletions are restored.
+
+Usage:
+
+```javascript
+instance.command.executeRejectTrackChange(id: string)
+```
+
+## executeAcceptAllTrackChange
+
+Feature: Accept all track changes.
+
+Usage:
+
+```javascript
+instance.command.executeAcceptAllTrackChange()
+```
+
+## executeRejectAllTrackChange
+
+Feature: Reject all track changes.
+
+Usage:
+
+```javascript
+instance.command.executeRejectAllTrackChange()
+```
+
 ## executeInsertTitle
 
 Feature: Insert title

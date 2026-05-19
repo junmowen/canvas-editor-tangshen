@@ -58,6 +58,18 @@ export interface IRenderBackendOption {
   }
 }
 
+/** 修订留痕渲染与默认作者配置。 */
+export interface ITrackChangeOption {
+  /** 是否默认开启留痕。 */
+  enabled?: boolean
+  /** 当前修订作者。 */
+  author?: string
+  /** 插入痕迹颜色。 */
+  insertColor?: string
+  /** 删除痕迹颜色。 */
+  deleteColor?: string
+}
+
 export interface IEditorOption {
   mode?: EditorMode
   locale?: string
@@ -129,6 +141,7 @@ export interface IEditorOption {
   badge?: IBadgeOption
   modeRule?: IModeRule
   renderBackend?: IRenderBackendOption
+  trackChange?: ITrackChangeOption
 }
 
 export interface IEditorResult {
