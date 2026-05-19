@@ -224,6 +224,14 @@ function findMockEmptyRowCellPoints(win: Window, editor: Editor) {
 describe('menu-table pagination mock', () => {
   beforeEach(() => {
     cy.visit('http://localhost:3000/canvas-editor/index.html')
+    cy.getEditor().then((editor: any) => {
+      const draw = editor.draw
+      const pageCount = draw.getPageCanvasHost().getPageCount()
+      expect(pageCount).to.be.greaterThan(2)
+      // canvas 池改造后默认只挂载可视页；
+      // 该专项会按跨页坐标直接访问指定页 canvas，因此测试前显式渲染全部页。
+      draw.getServices().pageRenderer.immediateRender()
+    })
     cy.get('canvas[data-index]').should($canvas => {
       expect($canvas.length).to.be.greaterThan(2)
     })

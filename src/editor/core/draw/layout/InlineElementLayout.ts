@@ -1,9 +1,11 @@
 import { ZERO } from '../../../dataset/constant/Common'
 import { ImageDisplay } from '../../../dataset/enum/Common'
+import { BlockType } from '../../../dataset/enum/Block'
 import { ControlComponent } from '../../../dataset/enum/Control'
 import { ElementType } from '../../../dataset/enum/Element'
 import { IElement, IElementMetrics } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
+import { convertStringToBase64 } from '../../../utils'
 import type { Draw } from '../Draw'
 
 /**
@@ -87,6 +89,7 @@ export class InlineElementLayout {
       // 浮动图片不占用行内空间
       if (
         element.imgDisplay === ImageDisplay.SURROUND ||
+        element.imgDisplay === ImageDisplay.TIGHT ||
         element.imgDisplay === ImageDisplay.FLOAT_TOP ||
         element.imgDisplay === ImageDisplay.FLOAT_BOTTOM
       ) {
@@ -183,6 +186,7 @@ export class InlineElementLayout {
       metrics.height = element.height! * scale
       metrics.boundingBoxDescent = metrics.height
       metrics.boundingBoxAscent = 0
+      this.preloadSvgBlockRasterImage(element)
       return metrics
     }
 
@@ -238,5 +242,23 @@ export class InlineElementLayout {
       boundingBoxAscent: 0,
       boundingBoxDescent: 0
     }
+  }
+
+  /** Preload SVG block as an image so export can synchronously rasterize it into Canvas2D. */
+  private preloadSvgBlockRasterImage(element: IElement) {
+    const svgBlock = element.block?.svgBlock
+    if (element.block?.type !== BlockType.SVG || !svgBlock?.svg || svgBlock.rasterImage) {
+      return
+    }
+    const image = new Image()
+    const loadPromise = new Promise((resolve, reject) => {
+      image.onload = () => {
+        svgBlock.rasterImage = image
+        resolve(element)
+      }
+      image.onerror = reject
+    })
+    image.src = `data:image/svg+xml;base64,${convertStringToBase64(svgBlock.svg)}`
+    this.draw.getComponents().imageObserver.add(loadPromise)
   }
 }

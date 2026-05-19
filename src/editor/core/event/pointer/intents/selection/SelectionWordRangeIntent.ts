@@ -50,15 +50,19 @@ function getWordRangeByCursor(host: CanvasEvent): IRange | null {
   const cursorPosition = draw.getComponents().position.getCursorPosition()
   if (!cursorPosition) return null
   const { value, index } = cursorPosition
+  const elementList = draw.getElementList()
+  if (index < 0 || index > elementList.length - 1 || !elementList[index]) {
+    return null
+  }
   const LETTER_REG = draw.getLetterReg()
   let upCount = 0
   let downCount = 0
   const isNumber = NUMBER_LIKE_REG.test(value)
   if (isNumber || LETTER_REG.test(value)) {
-    const elementList = draw.getElementList()
     let upStartIndex = index - 1
     while (upStartIndex > 0) {
-      const currentValue = elementList[upStartIndex].value
+      const currentValue = elementList[upStartIndex]?.value
+      if (currentValue === undefined) break
       if (
         (isNumber && NUMBER_LIKE_REG.test(currentValue)) ||
         (!isNumber && LETTER_REG.test(currentValue))
@@ -71,7 +75,8 @@ function getWordRangeByCursor(host: CanvasEvent): IRange | null {
     }
     let downStartIndex = index + 1
     while (downStartIndex < elementList.length) {
-      const currentValue = elementList[downStartIndex].value
+      const currentValue = elementList[downStartIndex]?.value
+      if (currentValue === undefined) break
       if (
         (isNumber && NUMBER_LIKE_REG.test(currentValue)) ||
         (!isNumber && LETTER_REG.test(currentValue))

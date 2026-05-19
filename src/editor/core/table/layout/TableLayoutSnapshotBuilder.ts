@@ -33,6 +33,26 @@ interface ILogicalTableLookup {
   tdLocationById: Map<string, ILogicalCellLocation>
 }
 
+/** 表格布局快照构建耗时统计，用于定位大表格分页索引构建瓶颈。 */
+export interface ITableLayoutSnapshotBuildStats {
+  /** 快照成功构建次数。 */
+  buildCount: number
+  /** 快照构建总耗时，单位毫秒。 */
+  totalDuration: number
+  /** 快照构建平均耗时，单位毫秒。 */
+  averageDuration: number
+  /** 单次快照构建最大耗时，单位毫秒。 */
+  maxDuration: number
+  /** 最近一次快照构建耗时，单位毫秒。 */
+  lastDuration: number
+  /** 最近一次构建的快照版本。 */
+  lastVersion: number
+  /** 最近一次构建的 cell slice 数量。 */
+  lastSliceCount: number
+  /** 最近一次构建覆盖的页数。 */
+  lastPageCount: number
+}
+
 /**
  * 快照构建器。
  *
@@ -41,7 +61,29 @@ interface ILogicalTableLookup {
  * 2. 一次性构建后续命中/导航/渲染需要的全部索引。
  */
 export class TableLayoutSnapshotBuilder {
+  /** Draw 实例，用于读取当前分页布局和原始表格数据。 */
   private readonly draw: Draw
+
+  /** 快照成功构建次数。 */
+  private buildCount = 0
+
+  /** 快照构建累计耗时，单位毫秒。 */
+  private totalDuration = 0
+
+  /** 快照构建最大耗时，单位毫秒。 */
+  private maxDuration = 0
+
+  /** 最近一次快照构建耗时，单位毫秒。 */
+  private lastDuration = 0
+
+  /** 最近一次构建的快照版本。 */
+  private lastVersion = 0
+
+  /** 最近一次构建的 cell slice 数量。 */
+  private lastSliceCount = 0
+
+  /** 最近一次构建覆盖的页数。 */
+  private lastPageCount = 0
 
   constructor(draw: Draw) {
     this.draw = draw
@@ -50,11 +92,50 @@ export class TableLayoutSnapshotBuilder {
   public build(
     payload: IBuildTableLayoutSnapshotRequest
   ): ITableLayoutSnapshot {
+    // 统计构建耗时，帮助判断大表格卡顿来自索引构建还是后续渲染。
+    const startTime = performance.now()
+    const snapshot = this.buildSnapshot(payload)
+    this.recordBuildStats(snapshot, performance.now() - startTime)
+    return snapshot
+  }
+
+  /** 获取快照构建耗时统计。 */
+  public getStats(): ITableLayoutSnapshotBuildStats {
+    return {
+      buildCount: this.buildCount,
+      totalDuration: this.totalDuration,
+      averageDuration:
+        this.buildCount > 0 ? this.totalDuration / this.buildCount : 0,
+      maxDuration: this.maxDuration,
+      lastDuration: this.lastDuration,
+      lastVersion: this.lastVersion,
+      lastSliceCount: this.lastSliceCount,
+      lastPageCount: this.lastPageCount
+    }
+  }
+
+  /** 重置快照构建统计，不影响当前快照内容。 */
+  public resetStats(): void {
+    this.buildCount = 0
+    this.totalDuration = 0
+    this.maxDuration = 0
+    this.lastDuration = 0
+    this.lastVersion = 0
+    this.lastSliceCount = 0
+    this.lastPageCount = 0
+  }
+
+  /** 构建快照主体索引。 */
+  private buildSnapshot(
+    payload: IBuildTableLayoutSnapshotRequest
+  ): ITableLayoutSnapshot {
     // build 阶段集中把所有索引算完，
     // 运行期只做查询，不再做分散 find/filter 推导。
     const sliceList = this.collectCellSlices()
     const fragmentPositionsByPageNo = this.collectFragmentPositionsByPageNo()
-    const cellBoundsByFragmentTableId = this.collectFragmentCellBounds()
+    const cellBoundsByFragmentTableId = this.collectFragmentCellBounds(
+      fragmentPositionsByPageNo
+    )
     const slicesByCellKey = new Map<TLogicalTableCellKey, ITableLayoutCellSlice[]>()
     const sliceStartIndexesByCellKey = new Map<TLogicalTableCellKey, number[]>()
     const slicesByCellPageKey = new Map<TCellPageKey, ITableLayoutCellSlice>()
@@ -154,6 +235,20 @@ export class TableLayoutSnapshotBuilder {
     }
   }
 
+  /** 记录一次成功构建后的耗时和规模。 */
+  private recordBuildStats(
+    snapshot: ITableLayoutSnapshot,
+    duration: number
+  ): void {
+    this.buildCount++
+    this.totalDuration += duration
+    this.maxDuration = Math.max(this.maxDuration, duration)
+    this.lastDuration = duration
+    this.lastVersion = snapshot.version
+    this.lastSliceCount = snapshot.sliceList.length
+    this.lastPageCount = snapshot.slicesByPageNo.size
+  }
+
   private collectFragmentPositionsByPageNo() {
     const fragmentPositionsByPageNo = new Map<number, IElementPosition[]>()
     const positionList = this.draw.getPosition().getLayoutMainPositionList()
@@ -174,9 +269,10 @@ export class TableLayoutSnapshotBuilder {
     return fragmentPositionsByPageNo
   }
 
-  private collectFragmentCellBounds() {
+  private collectFragmentCellBounds(
+    fragmentPositionsByPageNo: Map<number, IElementPosition[]>
+  ) {
     const cellBoundsByFragmentTableId = new Map<string, ITableLayoutFragmentCellBounds[]>()
-    const fragmentPositionsByPageNo = this.collectFragmentPositionsByPageNo()
     const { scale } = this.draw.getOptions()
 
     fragmentPositionsByPageNo.forEach(pagePositions => {

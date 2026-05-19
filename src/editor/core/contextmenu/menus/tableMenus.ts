@@ -7,7 +7,13 @@ import {
   TdSlash
 } from '../../../dataset/enum/table/Table'
 import { IRegisterContextMenu } from '../../../interface/contextmenu/ContextMenu'
+import { Dialog } from '../../../../components/dialog/Dialog'
 import { Command } from '../../command/Command'
+
+type TableContextMenuContext = Parameters<
+  NonNullable<IRegisterContextMenu['callback']>
+>[1]
+
 const {
   TABLE: {
     BORDER,
@@ -16,11 +22,16 @@ const {
     BORDER_DASH,
     BORDER_EXTERNAL,
     BORDER_INTERNAL,
+    BORDER_COLOR,
+    BORDER_WIDTH,
+    AUTO_FIT_WIDTH,
     BORDER_TD,
     BORDER_TD_TOP,
     BORDER_TD_LEFT,
     BORDER_TD_BOTTOM,
     BORDER_TD_RIGHT,
+    BORDER_TD_COLOR,
+    BORDER_TD_WIDTH,
     BORDER_TD_BACK,
     BORDER_TD_FORWARD,
     VERTICAL_ALIGN,
@@ -40,6 +51,93 @@ const {
     CANCEL_MERGE_CELL
   }
 } = INTERNAL_CONTEXT_MENU_KEY
+
+const getFirstSelectedTd = (context: TableContextMenuContext) => {
+  const { tableElement, trIndex, tdIndex } = context
+  if (trIndex === null || tdIndex === null) return null
+  return tableElement?.trList?.[trIndex]?.tdList?.[tdIndex] || null
+}
+
+const restoreTableContext = (command: Command, context: TableContextMenuContext) => {
+  if (!context.tableElement?.id || context.trIndex === null || context.tdIndex === null) {
+    return
+  }
+  command.executeSetPositionContext({
+    startIndex: 0,
+    endIndex: 0,
+    tableId: context.tableElement.id,
+    startTrIndex: context.trIndex,
+    endTrIndex: context.trIndex,
+    startTdIndex: context.tdIndex,
+    endTdIndex: context.tdIndex
+  })
+  command.executeSetRange(
+    0,
+    0,
+    context.tableElement.id,
+    context.tdIndex,
+    context.tdIndex,
+    context.trIndex,
+    context.trIndex
+  )
+}
+
+const normalizeColor = (color?: string) => {
+  return /^#[0-9A-Fa-f]{6}$/.test(color || '') ? color! : '#000000'
+}
+
+const openColorDialog = (
+  command: Command,
+  titlePath: string,
+  defaultColor: string,
+  onConfirm: (color: string) => void
+) => {
+  new Dialog({
+    title: command.executeTranslate(titlePath),
+    data: [
+      {
+        type: 'color',
+        label: command.executeTranslate(titlePath),
+        name: 'color',
+        value: normalizeColor(defaultColor),
+        required: true
+      }
+    ],
+    onConfirm: payload => {
+      const color = payload.find(p => p.name === 'color')?.value
+      if (color) {
+        onConfirm(color)
+      }
+    }
+  })
+}
+
+const openWidthDialog = (
+  command: Command,
+  titlePath: string,
+  defaultWidth: number,
+  onConfirm: (width: number) => void
+) => {
+  new Dialog({
+    title: command.executeTranslate(titlePath),
+    data: [
+      {
+        type: 'number',
+        label: command.executeTranslate(titlePath),
+        name: 'width',
+        value: `${defaultWidth || 1}`,
+        placeholder: '1',
+        required: true
+      }
+    ],
+    onConfirm: payload => {
+      const width = Number(payload.find(p => p.name === 'width')?.value)
+      if (Number.isFinite(width) && width > 0) {
+        onConfirm(width)
+      }
+    }
+  })
+}
 
 export const tableMenus: IRegisterContextMenu[] = [
   {
@@ -103,6 +201,52 @@ export const tableMenus: IRegisterContextMenu[] = [
         }
       },
       {
+        key: BORDER_COLOR,
+        i18nPath: 'contextmenu.table.borderColor',
+        icon: 'border-all',
+        when: () => true,
+        callback: (command: Command, context) => {
+          openColorDialog(
+            command,
+            'contextmenu.table.borderColor',
+            context.tableElement?.borderColor ||
+              context.options.table.defaultBorderColor,
+            color => {
+              restoreTableContext(command, context)
+              command.executeTableBorderColor(color)
+            }
+          )
+        }
+      },
+      {
+        key: BORDER_WIDTH,
+        i18nPath: 'contextmenu.table.borderWidth',
+        icon: 'border-all',
+        when: () => true,
+        callback: (command: Command, context) => {
+          openWidthDialog(
+            command,
+            'contextmenu.table.borderWidth',
+            context.tableElement?.borderWidth || 1,
+            width => {
+              restoreTableContext(command, context)
+              command.executeTableBorderWidth(width)
+            }
+          )
+        }
+      },
+      {
+        key: AUTO_FIT_WIDTH,
+        i18nPath: 'contextmenu.table.autoFitWidth',
+        icon: 'border-all',
+        when: () => true,
+        callback: (command: Command, context) => {
+          command.executeAutoFitTable({
+            tableId: context.tableElement?.id
+          })
+        }
+      },
+      {
         key: BORDER_TD,
         i18nPath: 'contextmenu.table.borderTd',
         icon: 'border-td',
@@ -142,6 +286,44 @@ export const tableMenus: IRegisterContextMenu[] = [
             when: () => true,
             callback: (command: Command) => {
               command.executeTableTdBorderType(TdBorder.LEFT)
+            }
+          },
+          {
+            key: BORDER_TD_COLOR,
+            i18nPath: 'contextmenu.table.borderTdColor',
+            icon: 'border-td',
+            when: () => true,
+            callback: (command: Command, context) => {
+              openColorDialog(
+                command,
+                'contextmenu.table.borderTdColor',
+                getFirstSelectedTd(context)?.borderColor ||
+                  context.tableElement?.borderColor ||
+                  context.options.table.defaultBorderColor,
+                color => {
+                  restoreTableContext(command, context)
+                  command.executeTableTdBorderColor(color)
+                }
+              )
+            }
+          },
+          {
+            key: BORDER_TD_WIDTH,
+            i18nPath: 'contextmenu.table.borderTdWidth',
+            icon: 'border-td',
+            when: () => true,
+            callback: (command: Command, context) => {
+              openWidthDialog(
+                command,
+                'contextmenu.table.borderTdWidth',
+                getFirstSelectedTd(context)?.borderWidth ||
+                  context.tableElement?.borderWidth ||
+                  1,
+                width => {
+                  restoreTableContext(command, context)
+                  command.executeTableTdBorderWidth(width)
+                }
+              )
             }
           },
           {

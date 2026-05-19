@@ -1,5 +1,4 @@
 import { ElementStyleKey } from '../../dataset/enum/ElementStyle'
-import { IElement } from '../../interface/Element'
 import { Draw } from '../draw/Draw'
 import { Position } from '../position/Position'
 import { RangeManager } from '../range/RangeManager'
@@ -16,7 +15,6 @@ import { EditorClipboardController } from './EditorClipboardController'
 import { EditorInputController } from './EditorInputController'
 
 export interface ICompositionInfo {
-  elementList?: IElement[]
   startIndex: number
   endIndex: number
   value: string
@@ -124,6 +122,10 @@ export class CanvasEvent {
   }
 
   public selectAll() {
+    const control = this.draw.getControl()
+    if (control.selectAllValue()) {
+      return
+    }
     const position = this.position.getPositionList()
     this.range.setRange(0, position.length - 1)
     this.draw.render({

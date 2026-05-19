@@ -94,6 +94,10 @@
   margin-top: 5px;
 }
 
+.ce-date-day.ce-date-day--grid {
+  padding-top: 5px;
+}
+
 .ce-date-day>div {
   width: calc(100%/7);
   height: 40px;
@@ -103,6 +107,10 @@
   cursor: pointer;
   line-height: 40px;
   border-radius: 4px;
+}
+
+.ce-date-day.ce-date-day--grid>div {
+  width: 25%;
 }
 
 .ce-date-day>div:hover {

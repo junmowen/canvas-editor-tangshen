@@ -1,5 +1,10 @@
 import './assets/css/index.css'
-import { IEditorData, IEditorOption, IEditorResult } from './interface/Editor'
+import {
+  IEditorData,
+  IEditorOption,
+  IEditorResult,
+  IRenderBackendOption
+} from './interface/Editor'
 import { IElement } from './interface/Element'
 import { Draw } from './core/draw/Draw'
 import { Command } from './core/command/Command'
@@ -86,6 +91,8 @@ export default class Editor {
   public register: Register
   public destroy: () => void
   public use: UsePlugin
+  /** 内部 Draw 实例，负责布局、渲染和渲染后端统计。 */
+  private draw: Draw
 
   constructor(
     container: HTMLDivElement,
@@ -136,7 +143,7 @@ export default class Editor {
       this.eventBus,
       this.override
     )
-    Reflect.set(this, 'draw', draw)
+    this.draw = draw
     // 命令
     this.command = new Command(new CommandAdapt(draw))
     // 菜单
@@ -158,6 +165,29 @@ export default class Editor {
     // 插件
     const plugin = new Plugin(this)
     this.use = plugin.use.bind(plugin)
+  }
+
+  /**
+   * 获取渲染后端统计。
+   *
+   * 该入口用于浏览器自动化测试、调试面板和性能压测读取 canvas 池、bitmap 缓存和多引擎调度状态。
+   */
+  public getRenderBackendStats() {
+    return this.draw.getRenderBackendStats()
+  }
+
+  /** 获取压缩后的渲染后端调试快照，用于内置面板和业务诊断视图。 */
+  public getRenderBackendDebugSnapshot() {
+    return this.draw.getRenderBackendDebugSnapshot()
+  }
+
+  /**
+   * 重置渲染后端统计。
+   *
+   * 仅清空统计计数和高水位基线，不释放当前 canvas、surface 或 bitmap 缓存。
+   */
+  public resetRenderBackendStats() {
+    this.draw.resetRenderBackendStats()
   }
 }
 
@@ -223,6 +253,7 @@ export type {
   IElement,
   IEditorData,
   IEditorOption,
+  IRenderBackendOption,
   IEditorResult,
   IContextMenuContext,
   IRegisterContextMenu,

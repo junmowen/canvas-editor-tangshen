@@ -1,6 +1,8 @@
 import { ImageDisplay } from '../../../../../dataset/enum/Common'
 import { ElementType } from '../../../../../dataset/enum/Element'
 import { CanvasEvent } from '../../../CanvasEvent'
+import { resolveRowDragDropTarget } from '../../row-drag/RowDragDrop'
+import { drawDragCursor } from '../../effects/DragEffect'
 
 export function runDragHoverIntent(payload: {
   host: CanvasEvent
@@ -16,6 +18,36 @@ export function runDragHoverIntent(payload: {
   const { startIndex, endIndex } = session.dragSnapshot.range!
   const positionList = session.dragSnapshot.positionList!
   const isCollapsedDragSnapshot = startIndex === endIndex
+
+  if (session.dragSnapshot.dragSource === 'row-handle') {
+    if (pagePoint) {
+      const dropTarget = resolveRowDragDropTarget({
+        draw,
+        x: pagePoint.x,
+        y: pagePoint.y,
+        pageNo: pagePoint.pageNo,
+        sourceRange: session.dragSnapshot.range
+      })
+      if (dropTarget) {
+        components.range.setRange(
+          dropTarget.range.startIndex,
+          dropTarget.range.endIndex
+        )
+        components.position.setPositionContext({
+          isTable: false,
+          index: dropTarget.range.endIndex
+        })
+        components.position.setCursorPosition(dropTarget.cursorPosition)
+        const {
+          cursor: { dragColor, dragWidth }
+        } = draw.getOptions()
+        drawDragCursor({ draw, dragColor, dragWidth })
+        session.isAllowDrop = true
+      }
+    }
+    session.lastPointerCoordinates = coordinates
+    return true
+  }
 
   if (pagePoint) {
     for (let p = startIndex + 1; p <= endIndex; p++) {
@@ -58,6 +90,8 @@ export function runDragHoverIntent(payload: {
   }
 
   if (!isCollapsedDragSnapshot) {
+    host.dragover(evt)
+    session.isAllowDrop = true
     session.lastPointerCoordinates = coordinates
     return true
   }

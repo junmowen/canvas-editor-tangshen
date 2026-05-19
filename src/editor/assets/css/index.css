@@ -75,3 +75,23 @@
   opacity: 0.5;
   pointer-events: none;
 }
+
+.ce-render-backend-debug-panel {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 20;
+  max-width: min(560px, calc(100% - 16px));
+  padding: 6px 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.94);
+  color: #24292f;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 12px;
+  line-height: 18px;
+  letter-spacing: 0;
+  pointer-events: none;
+  white-space: normal;
+  word-break: break-word;
+}

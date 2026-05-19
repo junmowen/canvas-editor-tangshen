@@ -351,6 +351,78 @@ export class Control {
   }
 
   /**
+   * 仅选中当前控件的值区域，不把前后缀结构一起带入全选范围。
+   */
+  public selectAllValue(): boolean {
+    if (!this.activeControl || !this.getIsRangeWithinControl()) return false
+
+    const elementList = this.draw.getElementList()
+    const { startIndex } = this.range.getEditBoundaryRange()
+    const startElement = elementList[startIndex]
+    const controlId = startElement?.controlId
+    if (!controlId) return false
+
+    let controlStartIndex = startIndex
+    while (
+      controlStartIndex > 0 &&
+      elementList[controlStartIndex - 1]?.controlId === controlId
+    ) {
+      controlStartIndex -= 1
+    }
+
+    let controlEndIndex = startIndex
+    while (
+      controlEndIndex + 1 < elementList.length &&
+      elementList[controlEndIndex + 1]?.controlId === controlId
+    ) {
+      controlEndIndex += 1
+    }
+
+    let selectionStartIndex = controlStartIndex
+    while (selectionStartIndex <= controlEndIndex) {
+      const element = elementList[selectionStartIndex]
+      if (
+        element.controlComponent !== ControlComponent.PREFIX &&
+        element.controlComponent !== ControlComponent.PRE_TEXT
+      ) {
+        selectionStartIndex = Math.max(
+          controlStartIndex,
+          selectionStartIndex - 1
+        )
+        break
+      }
+      selectionStartIndex += 1
+    }
+    if (selectionStartIndex > controlEndIndex) {
+      selectionStartIndex = controlStartIndex
+    }
+
+    let selectionEndIndex = controlEndIndex
+    while (selectionEndIndex >= selectionStartIndex) {
+      const element = elementList[selectionEndIndex]
+      if (
+        element.controlComponent !== ControlComponent.POSTFIX &&
+        element.controlComponent !== ControlComponent.POST_TEXT
+      ) {
+        break
+      }
+      selectionEndIndex -= 1
+    }
+    if (selectionEndIndex < selectionStartIndex) {
+      selectionEndIndex = selectionStartIndex
+    }
+
+    this.range.setRange(selectionStartIndex, selectionEndIndex)
+    this.draw.render({
+      isSubmitHistory: false,
+      isSetCursor: false,
+      isCompute: false,
+      pageRenderScope: 'visible'
+    })
+    return true
+  }
+
+  /**
    * 判断元素列表是否包含完整的控件元素。
    *
    * @param elementList - 元素列表

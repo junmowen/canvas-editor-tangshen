@@ -3,15 +3,18 @@ import { BlockType } from '../../../../../dataset/enum/Block'
 import { IRowElement } from '../../../../../interface/Row'
 import { Draw } from '../../../Draw'
 import { BlockParticle } from '../BlockParticle'
+import { HtmlBlock } from './HtmlBlock'
 import { IFrameBlock } from './IFrameBlock'
+import { SvgBlock } from './SvgBlock'
 import { VideoBlock } from './VideoBlock'
 
 export class BaseBlock {
   private draw: Draw
   private element: IRowElement
-  private block: IFrameBlock | VideoBlock | null
+  private block: HtmlBlock | IFrameBlock | SvgBlock | VideoBlock | null
   private blockContainer: HTMLDivElement
   private blockItem: HTMLDivElement
+  private pageNo = -1
 
   constructor(blockParticle: BlockParticle, element: IRowElement) {
     this.draw = blockParticle.getDraw()
@@ -24,6 +27,10 @@ export class BaseBlock {
 
   public getBlockElement(): IRowElement {
     return this.element
+  }
+
+  public getPageNo(): number {
+    return this.pageNo
   }
 
   private _createBlockItem(): HTMLDivElement {
@@ -40,10 +47,17 @@ export class BaseBlock {
     } else if (block.type === BlockType.VIDEO) {
       this.block = new VideoBlock(this.element)
       this.block.render(this.blockItem)
+    } else if (block.type === BlockType.SVG) {
+      this.block = new SvgBlock(this.element)
+      this.block.render(this.blockItem)
+    } else if (block.type === BlockType.HTML) {
+      this.block = new HtmlBlock(this.element)
+      this.block.render(this.blockItem)
     }
   }
 
   public setClientRects(pageNo: number, x: number, y: number) {
+    this.pageNo = pageNo
     const height = this.draw.getHeight()
     const pageGap = this.draw.getPageGap()
     const preY = pageNo * (height + pageGap)

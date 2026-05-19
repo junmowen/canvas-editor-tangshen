@@ -5,15 +5,21 @@ import { DeepRequired } from '../../../../interface/Common'
 import { IEditorOption } from '../../../../interface/Editor'
 import { Position } from '../../../position/Position'
 import { RangeManager } from '../../../range/RangeManager'
+import { RenderLayer } from '../../../render-backend'
 import { Draw } from '../../Draw'
 
 interface IAnchorMouseDown {
+  /** 原始鼠标事件。 */
   evt: MouseEvent
+  /** 当前拖拽的是行边界还是列边界。 */
   order: TableOrder
+  /** 当前边界在行列集合中的索引。 */
   index: number
+  /** 当前正在操作的表格元素。 */
   element: IElement
 }
 
+/** 表格工具层，负责行列增删、整表选择和边界拖拽辅助 UI。 */
 export class TableTool {
   // 单元格最小宽度
   private readonly MIN_TD_WIDTH = 20
@@ -32,12 +38,19 @@ export class TableTool {
   private readonly TABLE_SELECT_OFFSET = 20
 
   private draw: Draw
-  private canvas: HTMLCanvasElement
+  /** 当前页 base canvas，仅用于坐标换算和 cursor 副作用。 */
+  private canvas: HTMLCanvasElement | null
+  /** 编辑器配置快照，提供缩放、表格默认值和工具样式配置。 */
   private options: DeepRequired<IEditorOption>
+  /** 光标位置管理器，用于判断当前是否处于表格上下文。 */
   private position: Position
+  /** 选区管理器，用于表格工具交互后同步编辑选区。 */
   private range: RangeManager
+  /** 编辑器主容器，作为工具 DOM 的兜底挂载点。 */
   private container: HTMLDivElement
+  /** 当前页覆盖层宿主，表格工具会挂载到这里。 */
   private overlayHost: HTMLDivElement | null
+  /** 当前工具所属页码，用于拖拽时重新解析 canvas。 */
   private currentPageNo: number
   private toolRowContainer: HTMLDivElement | null
   private toolRowAddBtn: HTMLDivElement | null
@@ -51,7 +64,7 @@ export class TableTool {
 
   constructor(draw: Draw) {
     this.draw = draw
-    this.canvas = draw.getPage()!
+    this.canvas = null
     this.options = draw.getOptions()
     this.position = draw.getPosition()
     this.range = draw.getRange()
@@ -77,13 +90,30 @@ export class TableTool {
     this.toolTableSelectBtn?.remove()
     this.toolColContainer?.remove()
     this.toolBorderContainer?.remove()
+    this.anchorLine?.remove()
     this.toolRowContainer = null
     this.toolRowAddBtn = null
     this.toolColAddBtn = null
     this.toolTableSelectBtn = null
     this.toolColContainer = null
     this.toolBorderContainer = null
+    this.anchorLine = null
     this.overlayHost = null
+  }
+
+  /**
+   * 按页码解析 base canvas。
+   *
+   * 表格工具只需要 DOM canvas 做坐标换算和 cursor 更新，实际资源由渲染后端托管。
+   *
+   * @param pageNo - 目标页码
+   * @returns 当前页 base canvas，未挂载时返回 null
+   */
+  private _resolvePageCanvas(pageNo: number): HTMLCanvasElement | null {
+    return (
+      this.draw.getPageCanvasHost().getSurface(pageNo, RenderLayer.BASE)
+        ?.canvas || null
+    )
   }
 
   public render() {
@@ -168,7 +198,7 @@ export class TableTool {
     this.currentPageNo = toolPageNo
     this.overlayHost =
       this.draw.getPageCanvasHost().getPageOverlayHost(toolPageNo) || this.container
-    this.canvas = this.draw.getPageCanvasHost().getPage(toolPageNo)!
+    this.canvas = this._resolvePageCanvas(toolPageNo)
     const td = renderTd
     const rowIndex = td.rowIndex
     const colIndex = td.colIndex
@@ -297,13 +327,23 @@ export class TableTool {
       this.ROW_COL_QUICK_POSITION * scale
     }px, ${this.ROW_COL_QUICK_OFFSET * scale}px)`
     rowAddBtn.style.pointerEvents = 'auto'
+    rowAddBtn.onmousedown = evt => {
+      evt.preventDefault()
+      evt.stopPropagation()
+    }
     // 快捷添加行
-    rowAddBtn.onclick = () => {
+    rowAddBtn.onclick = evt => {
+      evt.preventDefault()
+      evt.stopPropagation()
+      const targetTrIndex = tableElement.trList!.length - 1
+      const targetTd = tableElement.trList![targetTrIndex].tdList[0]
       this.position.setPositionContext({
         index,
         isTable: true,
-        trIndex: tableElement.trList!.length - 1,
-        tdIndex: 0,
+        trIndex: targetTrIndex,
+        tdIndex: targetTd.tdIndex ?? 0,
+        tdId: targetTd.id,
+        trId: tableElement.trList![targetTrIndex].id,
         tableId: tableElement.id
       })
       tableOperate.insertTableBottomRow()
@@ -384,13 +424,27 @@ export class TableTool {
       this.ROW_COL_QUICK_OFFSET * scale
     }px, -${this.ROW_COL_QUICK_POSITION * scale}px)`
     colAddBtn.style.pointerEvents = 'auto'
+    colAddBtn.onmousedown = evt => {
+      evt.preventDefault()
+      evt.stopPropagation()
+    }
     // 快捷添加列
-    colAddBtn.onclick = () => {
+    colAddBtn.onclick = evt => {
+      evt.preventDefault()
+      evt.stopPropagation()
+      const lastColIndex = tableElement.colgroup!.length - 1
+      const targetTd = this.draw
+        .getTableParticle()
+        .getTdListByColIndex(tableElement.trList!, lastColIndex)
+        .find(td => td.rowIndex === 0) ||
+        tableElement.trList![0].tdList[tableElement.trList![0].tdList.length - 1]
       this.position.setPositionContext({
         index,
         isTable: true,
-        trIndex: 0,
-        tdIndex: tableElement.trList![0].tdList.length - 1 || 0,
+        trIndex: targetTd.trIndex ?? 0,
+        tdIndex: targetTd.tdIndex ?? tableElement.trList![0].tdList.length - 1,
+        tdId: targetTd.id,
+        trId: tableElement.trList![targetTd.trIndex ?? 0].id,
         tableId: tableElement.id
       })
       tableOperate.insertTableRightCol()
@@ -464,7 +518,11 @@ export class TableTool {
 
   private _mousedown(payload: IAnchorMouseDown) {
     const { evt, index, order, element } = payload
-    this.canvas = this.draw.getPage(this.currentPageNo)!
+    evt.preventDefault()
+    evt.stopPropagation()
+    this.canvas = this._resolvePageCanvas(this.currentPageNo)
+    // 表格所在页可能已被虚拟滚动卸载，无法换算坐标时直接忽略本次拖拽。
+    if (!this.canvas) return
     const { scale } = this.options
     const width = this.draw.getWidth()
     const height = this.draw.getHeight()
@@ -514,38 +572,40 @@ export class TableTool {
         let isChangeSize = false
         // 改变尺寸
         if (order === TableOrder.ROW) {
+          let deltaY = dy / scale
           const trList = element.trList!
           const tr = trList[index] || trList[index - 1]
           // 最大移动高度-向上移动超出最小高度限定，则减少移动量
           const { defaultTrMinHeight } = this.options.table
-          if (dy < 0 && tr.height + dy < defaultTrMinHeight) {
-            dy = defaultTrMinHeight - tr.height
+          if (deltaY < 0 && tr.height + deltaY < defaultTrMinHeight) {
+            deltaY = defaultTrMinHeight - tr.height
           }
-          if (dy) {
-            tr.height += dy
+          if (deltaY) {
+            tr.height += deltaY
             tr.minHeight = tr.height
             isChangeSize = true
           }
         } else {
           const { colgroup } = element
           if (colgroup && dx) {
+            let deltaX = dx / scale
             // 宽度分配
             const innerWidth = this.draw.getInnerWidth()
             const curColWidth = colgroup[index].width
             // 最小移动距离计算-如果向左移动：使单元格小于最小宽度，则减少移动量
-            if (dx < 0 && curColWidth + dx < this.MIN_TD_WIDTH) {
-              dx = this.MIN_TD_WIDTH - curColWidth
+            if (deltaX < 0 && curColWidth + deltaX < this.MIN_TD_WIDTH) {
+              deltaX = this.MIN_TD_WIDTH - curColWidth
             }
             // 最大移动距离计算-如果向右移动：使后面一个单元格小于最小宽度，则减少移动量
             const nextColWidth = colgroup[index + 1]?.width
             if (
-              dx > 0 &&
+              deltaX > 0 &&
               nextColWidth &&
-              nextColWidth - dx < this.MIN_TD_WIDTH
+              nextColWidth - deltaX < this.MIN_TD_WIDTH
             ) {
-              dx = nextColWidth - this.MIN_TD_WIDTH
+              deltaX = nextColWidth - this.MIN_TD_WIDTH
             }
-            const moveColWidth = curColWidth + dx
+            const moveColWidth = curColWidth + deltaX
             // 开始移动，只有表格的最后一列线才会改变表格的宽度，其他场景不用计算表格超出
             if (index === colgroup.length - 1) {
               let moveTableWidth = 0
@@ -553,7 +613,7 @@ export class TableTool {
                 const group = colgroup[c]
                 // 下一列减去偏移量
                 if (c === index + 1) {
-                  moveTableWidth -= dx
+                  moveTableWidth -= deltaX
                 }
                 // 当前列加上偏移量
                 if (c === index) {
@@ -565,15 +625,15 @@ export class TableTool {
               }
               if (moveTableWidth > innerWidth) {
                 const tableWidth = element.width!
-                dx = innerWidth - tableWidth
+                deltaX = innerWidth - tableWidth
               }
             }
-            if (dx) {
+            if (deltaX) {
               // 当前列增加，后列减少
               if (colgroup.length - 1 !== index) {
-                colgroup[index + 1].width -= dx / scale
+                colgroup[index + 1].width -= deltaX
               }
-              colgroup[index].width += dx / scale
+              colgroup[index].width += deltaX
               isChangeSize = true
             }
           }
@@ -585,13 +645,12 @@ export class TableTool {
         anchorLine.remove()
         document.removeEventListener('mousemove', mousemoveFn)
         document.body.style.cursor = ''
-        this.canvas.style.cursor = 'text'
+        this.canvas && (this.canvas.style.cursor = 'text')
       },
       {
         once: true
       }
     )
-    evt.preventDefault()
   }
 
   private _mousemove(

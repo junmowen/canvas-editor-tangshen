@@ -49,11 +49,16 @@
       "borderDash": "虚框线",
       "borderExternal": "外侧框线",
       "borderInternal": "内侧框线",
+      "borderColor": "边框颜色",
+      "borderWidth": "边框宽度",
+      "autoFitWidth": "按内容调整列宽",
       "borderTd": "单元格边框",
       "borderTdTop": "上边框",
       "borderTdRight": "右边框",
       "borderTdBottom": "下边框",
       "borderTdLeft": "左边框",
+      "borderTdColor": "单元格边框颜色",
+      "borderTdWidth": "单元格边框宽度",
       "borderTdForward": "正斜线",
       "borderTdBack": "反斜线"
     }

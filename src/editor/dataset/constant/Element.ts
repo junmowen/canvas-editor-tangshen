@@ -12,10 +12,26 @@ export const EDITOR_ELEMENT_STYLE_ATTR: Array<keyof IElement> = [
   'italic',
   'underline',
   'strikeout',
-  'textDecoration'
+  'textDecoration',
+  'textScale',
+  'textPosition',
+  'textOutline',
+  'textShadow',
+  'textGlow',
+  'textReflection',
+  'textEnclosure',
+  'textRuby',
+  'textCombine'
 ]
 
-export const EDITOR_ROW_ATTR: Array<keyof IElement> = ['rowFlex', 'rowMargin']
+export const EDITOR_ROW_ATTR: Array<keyof IElement> = [
+  'rowFlex',
+  'rowMargin',
+  'rowIndentLeft',
+  'rowIndentRight',
+  'rowIndent',
+  'rowHangingIndent'
+]
 
 export const EDITOR_ELEMENT_COPY_ATTR: Array<keyof IElement> = [
   'type',
@@ -35,7 +51,22 @@ export const EDITOR_ELEMENT_COPY_ATTR: Array<keyof IElement> = [
   'dateFormat',
   'groupIds',
   'rowMargin',
-  'textDecoration'
+  'rowIndentLeft',
+  'rowIndentRight',
+  'rowIndent',
+  'rowHangingIndent',
+  'listStart',
+  'listSymbol',
+  'textDecoration',
+  'textScale',
+  'textPosition',
+  'textOutline',
+  'textShadow',
+  'textGlow',
+  'textReflection',
+  'textEnclosure',
+  'textRuby',
+  'textCombine'
 ]
 
 export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
@@ -50,12 +81,21 @@ export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
   'strikeout',
   'rowFlex',
   'rowMargin',
+  'rowIndentLeft',
+  'rowIndentRight',
+  'rowIndent',
+  'rowHangingIndent',
   'dashArray',
   'trList',
   'tableToolDisabled',
   'tableDisplay',
+  'tableFloatPosition',
   'borderType',
   'borderColor',
+  'borderWidth',
+  'borderExternalWidth',
+  'tableStyleId',
+  'tableStyleName',
   'width',
   'height',
   'url',
@@ -71,13 +111,33 @@ export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
   'listType',
   'listStyle',
   'listLevel',
+  'listStart',
+  'listSymbol',
   'listWrap',
   'groupIds',
   'conceptId',
   'imgDisplay',
   'imgFloatPosition',
+  'imgLockAspectRatio',
+  'imgSizeLocked',
+  'imgBorder',
+  'imgShadow',
+  'imgCrop',
   'imgToolDisabled',
+  'webglFilter',
+  'webglDownsample',
+  'webglCrop',
+  'webglRotation',
   'textDecoration',
+  'textScale',
+  'textPosition',
+  'textOutline',
+  'textShadow',
+  'textGlow',
+  'textReflection',
+  'textEnclosure',
+  'textRuby',
+  'textCombine',
   'extension',
   'externalId',
   'areaId',
@@ -90,6 +150,7 @@ export const TABLE_TD_ZIP_ATTR: Array<keyof ITd> = [
   'extension',
   'externalId',
   'verticalAlign',
+  'textDirection',
   'backgroundColor',
   'borderTypes',
   'borderColor',
@@ -115,7 +176,9 @@ export const LIST_CONTEXT_ATTR: Array<keyof IElement> = [
   'listId',
   'listType',
   'listStyle',
-  'listLevel'
+  'listLevel',
+  'listStart',
+  'listSymbol'
 ]
 
 export const CONTROL_CONTEXT_ATTR: Array<keyof IElement> = [

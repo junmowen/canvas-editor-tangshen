@@ -4,11 +4,16 @@ import {
 } from '../../../dataset/enum/Background'
 import { DeepRequired } from '../../../interface/Common'
 import { IEditorOption } from '../../../interface/Editor'
+import { RenderLayer } from '../../render-backend'
 import { Draw } from '../Draw'
 
+/** 页面背景渲染器，负责绘制页面背景色和背景图片。 */
 export class Background {
+  /** Draw 门面实例，用于访问运行时配置和渲染后端 surface。 */
   private draw: Draw
+  /** 编辑器完整配置，背景绘制会读取颜色、图片、缩放等配置。 */
   private options: DeepRequired<IEditorOption>
+  /** 背景图片缓存，避免同一图片地址在多页渲染时重复加载。 */
   private imageCache: Map<string, HTMLImageElement>
 
   constructor(draw: Draw) {
@@ -29,6 +34,14 @@ export class Background {
     ctx.restore()
   }
 
+  /**
+   * 绘制背景图片。
+   *
+   * @param ctx - 目标页面 2D 上下文
+   * @param imageElement - 已加载的背景图片
+   * @param width - 页面逻辑宽度
+   * @param height - 页面逻辑高度
+   */
   private _drawImage(
     ctx: CanvasRenderingContext2D,
     imageElement: HTMLImageElement,
@@ -99,6 +112,12 @@ export class Background {
     }
   }
 
+  /**
+   * 绘制指定页面的背景。
+   *
+   * @param ctx - 当前页 base surface 的 2D 上下文
+   * @param pageNo - 当前页码
+   */
   public render(ctx: CanvasRenderingContext2D, pageNo: number) {
     const {
       background: { image, color, applyPageNumbers }
@@ -110,10 +129,12 @@ export class Background {
       const { width, height } = this.options
       this._renderBackgroundImage(ctx, width, height)
     } else {
-      const page = this.draw.getPage(pageNo)
-      if (!page) return
-      const width = page.width
-      const height = page.height
+      // 通过渲染后端读取当前页 base surface，避免继续依赖 Draw 暴露的单 canvas。
+      const pageSurface = this.draw
+        .getPageCanvasHost()
+        .getSurface(pageNo, RenderLayer.BASE)
+      const width = pageSurface?.canvas.width ?? ctx.canvas.width
+      const height = pageSurface?.canvas.height ?? ctx.canvas.height
       this._renderBackgroundColor(ctx, color, width, height)
     }
   }

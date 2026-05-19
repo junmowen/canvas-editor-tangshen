@@ -174,6 +174,38 @@
             </ul>
           </div>
         </div>
+        <div class="menu-item__row-indent">
+          <i title="段落缩进"></i>
+          <div class="options">
+            <ul>
+              <li data-rowindent="0">取消首行缩进</li>
+              <li data-rowindent-chars="1">首行缩进 1 字符</li>
+              <li data-rowindent-chars="1.5">首行缩进 1.5 字符</li>
+              <li data-rowindent-chars="2">首行缩进 2 字符</li>
+              <li data-rowindent-chars="3">首行缩进 3 字符</li>
+            </ul>
+            <div class="row-indent-custom">
+              <div class="row-indent-custom__title">自定义缩进（字符）</div>
+              <label>
+                <span>左缩进</span>
+                <input type="number" class="row-indent-left-input" step="0.5" min="0" />
+              </label>
+              <label>
+                <span>右缩进</span>
+                <input type="number" class="row-indent-right-input" step="0.5" min="0" />
+              </label>
+              <label>
+                <span>首行</span>
+                <input type="number" class="row-indent-input" step="0.5" min="0" />
+              </label>
+              <label>
+                <span>悬挂</span>
+                <input type="number" class="row-hanging-indent-input" step="0.5" min="0" />
+              </label>
+              <button type="button" class="row-indent-apply">应用</button>
+            </div>
+          </div>
+        </div>
         <div class="menu-item__list">
           <i></i>
           <div class="options">
@@ -305,6 +337,8 @@
           <i title="日期"></i>
           <div class="options">
             <ul>
+              <li data-format="yyyy"></li>
+              <li data-format="yyyy-MM"></li>
               <li data-format="yyyy-MM-dd"></li>
               <li data-format="yyyy-MM-dd hh:mm:ss"></li>
             </ul>
@@ -408,6 +442,12 @@
           </div>
         </div>
         <div class="paper-margin" title="页边距">
+          <i></i>
+        </div>
+        <div class="page-number-range" title="页码范围">
+          <i></i>
+        </div>
+        <div class="page-columns" title="分栏">
           <i></i>
         </div>
         <div class="fullscreen" title="全屏显示">

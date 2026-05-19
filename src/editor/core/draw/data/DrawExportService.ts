@@ -1,6 +1,8 @@
-import { deepClone } from '../../../utils'
+import { EditorMode, PageMode } from '../../../dataset/enum/Editor'
 import { IEditorData } from '../../../interface/Editor'
-import { EditorMode } from '../../../dataset/enum/Editor'
+import { IDrawPagePayload } from '../../../interface/Draw'
+import { deepClone } from '../../../utils'
+import { RenderLayer } from '../../render-backend'
 import type { Draw } from '../Draw'
 
 /**
@@ -85,8 +87,6 @@ export class DrawExportService {
     const exportPixelRatio = payload.pixelRatio ?? exportState.pagePixelRatio
 
     try {
-      // 替换为分离状态的画布主机（适合导出）
-      this.draw.getPageCanvasHost().replaceWithDetachedState()
       // 设置导出像素比
       this.draw.replaceRuntimePagePixelRatio(exportPixelRatio)
       // 设置导出模式
@@ -95,17 +95,71 @@ export class DrawExportService {
       this.draw.setPageNo(0)
       // 设置导出数据
       this.draw.setEditorData(exportData)
-      // 渲染文档（不延迟、强制计算、不设置光标、不提交历史）
-      this.draw.render({
-        isLazy: false,
-        isCompute: true,
-        isSetCursor: false,
-        isSubmitHistory: false
-      })
+      // 先执行布局计算，导出链路直接消费布局结果，不再切换主编辑态的页面 surface。
+      const layoutResult = this.draw.getServices().layoutPipeline.compute()
       // 等待所有图片加载完成
       await this.draw.getComponents().imageObserver.allSettled()
-      // 将每页画布转换为 dataURL 并返回
-      return this.draw.getPageCanvasHost().getPageList().map(canvas => canvas!.toDataURL())
+
+      const positionList = this.draw.getPosition().getLayoutMainPositionList()
+      const elementList = this.draw.getLayoutMainElementList()
+      const pageRowList = this.draw.getPageRowList()
+      const pageMode = this.draw.getRuntime().getOptions().pageMode
+      const pageHeight =
+        pageMode === PageMode.CONTINUITY
+          ? layoutResult.continuousPageHeight ?? this.draw.getHeight()
+          : this.draw.getHeight()
+      const dataUrlList: string[] = []
+      const pageHost = this.draw.getPageCanvasHost()
+
+      for (let pageNo = 0; pageNo < pageRowList.length; pageNo++) {
+        const rowList = pageRowList[pageNo]
+        if (!rowList?.length) continue
+
+        const baseSurface = pageHost.createTransientSurface(
+          pageNo,
+          RenderLayer.EXPORT,
+          this.draw.getWidth(),
+          pageHeight,
+          exportPixelRatio
+        )
+        const overlaySurface = pageHost.createTransientSurface(
+          pageNo,
+          RenderLayer.OVERLAY,
+          this.draw.getWidth(),
+          pageHeight,
+          exportPixelRatio
+        )
+
+        try {
+          this.draw.getServices().renderBackendManager.render(baseSurface, {
+            pageNo,
+            layer: RenderLayer.EXPORT,
+            reason: 'export',
+            priority: 'sync',
+            execute: currentSurface => {
+              const payload: IDrawPagePayload = {
+                elementList,
+                positionList,
+                rowList,
+                pageNo,
+                isExport: true
+              }
+              this.draw.getServices().pageRenderer.drawPageToSurface(
+                payload,
+                currentSurface,
+                overlaySurface.ctx2d
+              )
+            }
+          })
+
+          dataUrlList.push(baseSurface.canvas.toDataURL())
+        } finally {
+          pageHost.releaseTransientSurface(baseSurface)
+          pageHost.releaseTransientSurface(overlaySurface)
+        }
+      }
+
+      return dataUrlList
     } finally {
       // 无论成功与否，都恢复原始渲染状态
       this.draw.restoreExportRenderState(exportState)

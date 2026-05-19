@@ -28,9 +28,8 @@ export class TextParticle {
   private draw: Draw
   /** 编辑器选项 */
   private options: DeepRequired<IEditorOption>
-
-  /** 画布上下文 */
-  private ctx: CanvasRenderingContext2D
+  /** 当前文本渲染使用的画布上下文。 */
+  private ctx!: CanvasRenderingContext2D
   /** 当前 X 坐标 */
   private curX: number
   /** 当前 Y 坐标 */
@@ -52,14 +51,6 @@ export class TextParticle {
   constructor(draw: Draw) {
     this.draw = draw
     this.options = draw.getOptions()
-    // 尝试获取当前页的画布上下文
-    let pageCtx = draw.getPageCanvasHost().getCtxList()[draw.getPageNo()]
-    if (!pageCtx) {
-      // 虚拟化渲染模式下，如果该页未渲染，则创建一个离线 canvas 提供 measureText 专用 context
-      const offlineCanvas = document.createElement('canvas')
-      pageCtx = offlineCanvas.getContext('2d')!
-    }
-    this.ctx = pageCtx
     // 初始化状态
     this.curX = -1
     this.curY = -1
@@ -82,16 +73,30 @@ export class TextParticle {
     ctx: CanvasRenderingContext2D,
     font: string
   ): ITextMetrics {
-    // 保存当前上下文状态
+    // 保存调用方上下文状态，避免外部传入 ctx 被误改。
     ctx.save()
-    ctx.font = font
-    // 测量基础文本
-    const textMetrics = this.measureText(ctx, {
+    // 测量时使用后端管理的专用 surface，上下文状态只影响这一处。
+    const measureCtx = this.getMeasureContext()
+    measureCtx.save()
+    measureCtx.font = font
+    const textMetrics = this.measureText(measureCtx, {
       value: METRICS_BASIS_TEXT
     })
-    // 恢复上下文状态
+    measureCtx.restore()
+    // 恢复调用方上下文状态。
     ctx.restore()
     return textMetrics
+  }
+
+  /**
+   * 获取测量专用上下文。
+   *
+   * 这里不缓存上下文引用，避免 surface 释放后继续使用旧 ctx。
+   *
+   * @returns 测量专用 2D 上下文
+   */
+  private getMeasureContext(): CanvasRenderingContext2D {
+    return this.draw.getPageCanvasHost().getMeasureContext()
   }
 
   /**
@@ -219,6 +224,7 @@ export class TextParticle {
     x: number,
     y: number
   ) {
+    // 记录当前渲染上下文，供 complete() 时的批量绘制使用。
     this.ctx = ctx
     // 兼容模式立即绘制
     if (this.options.renderMode === RenderMode.COMPATIBILITY) {

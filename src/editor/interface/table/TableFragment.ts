@@ -31,4 +31,5 @@ export interface ITableFragmentDescriptor {
   borderExternalWidth?: number
   width: number
   height: number
+  pageStartOffsetY?: number
 }

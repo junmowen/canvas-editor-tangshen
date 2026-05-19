@@ -18,6 +18,8 @@ export interface IRow {
   isList?: boolean
   listIndex?: number
   offsetX?: number
+  rowFlexOffsetX?: number
+  rightOffsetX?: number
   offsetY?: number
   elementList: IRowElement[]
   isWidthNotEnough?: boolean

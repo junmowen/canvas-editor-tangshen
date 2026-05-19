@@ -74,16 +74,26 @@ function getCatalog(payload: IGetCatalogPayload): ICatalog | null {
     const getElementInfo = (
       element: IElement,
       elementList: IElement[],
-      position: number
+      position: number,
+      fallbackPageNo?: number
     ) => {
       const titleId = element.titleId
       const level = element.level
+      const titlePosition = positionList[position] || positionList[t]
+      const pageNo = titlePosition?.pageNo ?? fallbackPageNo
+      if (pageNo === undefined) {
+        return {
+          position,
+          titleElement: null
+        }
+      }
       const titleElement: ICatalogElement = {
         type: ElementType.TITLE,
         value: '',
         level,
         titleId,
-        pageNo: positionList[t].pageNo
+        // chunk 增量排版期间 positionList 可能短暂缺少标题位置；有位置时才生成目录项。
+        pageNo
       }
       const valueList: IElement[] = []
       while (position < elementList.length) {
@@ -105,9 +115,12 @@ function getCatalog(payload: IGetCatalogPayload): ICatalog | null {
     if (element.titleId) {
       const { position, titleElement } = getElementInfo(element, elementList, t)
       t = position
-      titleElementList.push(titleElement)
+      if (titleElement) {
+        titleElementList.push(titleElement)
+      }
     }
     if (element.type === ElementType.TABLE) {
+      const tablePageNo = positionList[t]?.pageNo
       const trList = element.trList!
       for (let r = 0; r < trList.length; r++) {
         const tr = trList[r]
@@ -121,9 +134,12 @@ function getCatalog(payload: IGetCatalogPayload): ICatalog | null {
                 const { titleElement, position } = getElementInfo(
                   value[index],
                   value,
-                  index
+                  index,
+                  tablePageNo
                 )
-                titleElementList.push(titleElement)
+                if (titleElement) {
+                  titleElementList.push(titleElement)
+                }
                 index = position
               }
               index++
@@ -181,7 +197,12 @@ function getCatalog(payload: IGetCatalogPayload): ICatalog | null {
 }
 
 onmessage = evt => {
-  const payload = <IGetCatalogPayload>evt.data
-  const catalog = getCatalog(payload)
-  postMessage(catalog)
+  try {
+    const payload = <IGetCatalogPayload>evt.data
+    const catalog = getCatalog(payload)
+    postMessage(catalog)
+  } catch {
+    // 目录是异步辅助数据，增量排版期间遇到短暂不一致时返回空目录，不能让 worker 异常打断编辑链路。
+    postMessage(null)
+  }
 }

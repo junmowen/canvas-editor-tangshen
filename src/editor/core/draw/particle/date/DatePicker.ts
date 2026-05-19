@@ -63,6 +63,8 @@ interface IRenderOption {
   dateFormat?: string
 }
 
+type DatePickerMode = 'year' | 'month' | 'date' | 'datetime'
+
 export class DatePicker {
   private draw: Draw
   private i18n: I18n
@@ -72,6 +74,7 @@ export class DatePicker {
   private renderOptions: IRenderOption | null
   private isDatePicker: boolean
   private pickDate: Date | null
+  private mode: DatePickerMode
   private lang: IDatePickerLang
 
   constructor(draw: Draw, i18n: I18n, options: IDatePickerOption = {}) {
@@ -84,7 +87,44 @@ export class DatePicker {
     this.renderOptions = null
     this.isDatePicker = true
     this.pickDate = null
+    this.mode = 'datetime'
     this._bindEvent()
+  }
+
+  private _getModeClass(mode = this.mode) {
+    return `${EDITOR_PREFIX}-date-container--${mode}`
+  }
+
+  private _setModeClass() {
+    (['year', 'month', 'date', 'datetime'] as DatePickerMode[]).forEach(mode =>
+      this.dom.container.classList.remove(this._getModeClass(mode))
+    )
+    this.dom.container.classList.add(this._getModeClass())
+  }
+
+  private _syncModeUI() {
+    const isGridMode = this.mode === 'year' || this.mode === 'month'
+    const isDateMode = this.mode === 'date' || this.mode === 'datetime'
+    const isDatetimeMode = this.mode === 'datetime'
+    const showDatePanel = isGridMode || this.isDatePicker
+    const showTimePanel = isDatetimeMode && !this.isDatePicker
+
+    this._setModeClass()
+    this.dom.dateWrap.classList.toggle('active', showDatePanel)
+    this.dom.timeWrap.classList.toggle('active', showTimePanel)
+    this.dom.datePickerWeek.style.display = isGridMode ? 'none' : ''
+    this.dom.day.classList.toggle(`${EDITOR_PREFIX}-date-day--grid`, isGridMode)
+    this.dom.title.preYear.style.display = isGridMode ? '' : 'none'
+    this.dom.title.nextYear.style.display = isGridMode ? '' : 'none'
+    this.dom.title.preMonth.style.display = isDateMode ? '' : 'none'
+    this.dom.title.nextMonth.style.display = isDateMode ? '' : 'none'
+    this.dom.title.now.style.width = isGridMode ? '70%' : '40%'
+    this.dom.menu.time.style.display = isDatetimeMode ? '' : 'none'
+    this.dom.menu.now.style.display = isDatetimeMode ? '' : 'none'
+    this.dom.menu.submit.style.display = ''
+    this.dom.menu.time.innerText = showTimePanel
+      ? this.lang.return
+      : this.lang.timeSelect
   }
 
   private _createDom(): IDatePickerDom {
@@ -289,6 +329,7 @@ export class DatePicker {
 
   private _setValue() {
     const value = this.renderOptions?.value
+    this.mode = this._resolveMode(this.renderOptions?.dateFormat)
     if (value) {
       const setDate = new Date(value)
       this.now = this.isInvalidDate(setDate) ? new Date() : setDate
@@ -323,6 +364,68 @@ export class DatePicker {
     }
   }
 
+  private _resolveMode(dateFormat?: string): DatePickerMode {
+    if (dateFormat === 'yyyy') return 'year'
+    if (dateFormat === 'yyyy-MM') return 'month'
+    if (dateFormat === 'yyyy-MM-dd') return 'date'
+    return 'datetime'
+  }
+
+  private _setDayGridMode(mode: 'year' | 'month') {
+    this._syncModeUI()
+    this.dom.day.innerHTML = ''
+    if (mode === 'year') {
+      const year = this.now.getFullYear()
+      const startYear = Math.floor(year / 12) * 12
+      this.dom.title.now.innerText = `${startYear}${this.lang.year} - ${
+        startYear + 11
+      }${this.lang.year}`
+      for (let i = 0; i < 12; i++) {
+        const curYear = startYear + i
+        const yearDom = document.createElement('div')
+        yearDom.innerText = `${curYear}`
+        if (curYear === year) {
+          yearDom.classList.add('select')
+        }
+        yearDom.onclick = () => {
+          this.now.setFullYear(curYear)
+          this.pickDate?.setFullYear(curYear)
+          if (this.renderOptions?.dateFormat === 'yyyy') {
+            this._submit()
+            this.dispose()
+            return
+          }
+          this.mode = 'month'
+          this._update()
+        }
+        this.dom.day.append(yearDom)
+      }
+      return
+    }
+    const year = this.now.getFullYear()
+    const month = this.now.getMonth() + 1
+    this.dom.title.now.innerText = `${year}${this.lang.year}`
+    for (let i = 1; i <= 12; i++) {
+      const monthDom = document.createElement('div')
+      monthDom.innerText = `${String(i).padStart(2, '0')}`
+      if (i === month) {
+        monthDom.classList.add('select')
+      }
+      monthDom.onclick = () => {
+        this.now.setMonth(i - 1)
+        this.pickDate?.setMonth(i - 1)
+        if (this.renderOptions?.dateFormat === 'yyyy-MM') {
+          this._submit()
+          this.dispose()
+          return
+        }
+        this.mode = 'date'
+        this._update()
+      }
+      this.dom.day.append(monthDom)
+    }
+  }
+
   private _setLangChange() {
     this.dom.menu.time.innerText = this.lang.timeSelect
     this.dom.menu.now.innerText = this.lang.now
@@ -348,6 +451,7 @@ export class DatePicker {
   }
 
   private _update() {
+    this._syncModeUI()
     // 本地年月日
     const localDate = new Date()
     const localYear = localDate.getFullYear()
@@ -365,6 +469,10 @@ export class DatePicker {
     // 当前年月日
     const year = this.now.getFullYear()
     const month = this.now.getMonth() + 1
+    if (this.mode === 'year' || this.mode === 'month') {
+      this._setDayGridMode(this.mode)
+      return
+    }
     this.dom.title.now.innerText = `${year}${this.lang.year} ${String(
       month
     ).padStart(2, '0')}${this.lang.month}`
@@ -428,14 +536,8 @@ export class DatePicker {
   }
 
   private _toggleDateTimePicker() {
-    if (this.isDatePicker) {
-      this.dom.dateWrap.classList.add('active')
-      this.dom.timeWrap.classList.remove('active')
-      this.dom.menu.time.innerText = this.lang.timeSelect
-    } else {
-      this.dom.dateWrap.classList.remove('active')
-      this.dom.timeWrap.classList.add('active')
-      this.dom.menu.time.innerText = this.lang.return
+    this._syncModeUI()
+    if (this.mode === 'datetime' && !this.isDatePicker) {
       // 设置时分秒选择
       this._setTimePick()
     }
@@ -514,12 +616,16 @@ export class DatePicker {
   }
 
   private _preYear() {
-    this.now.setFullYear(this.now.getFullYear() - 1)
+    this.now.setFullYear(
+      this.now.getFullYear() - (this.mode === 'year' ? 12 : 1)
+    )
     this._update()
   }
 
   private _nextYear() {
-    this.now.setFullYear(this.now.getFullYear() + 1)
+    this.now.setFullYear(
+      this.now.getFullYear() + (this.mode === 'year' ? 12 : 1)
+    )
     this._update()
   }
 

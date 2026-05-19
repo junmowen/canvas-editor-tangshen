@@ -18,6 +18,7 @@ export interface ICurrentPosition {
   isImage?: boolean
   isTable?: boolean
   isDirectHit?: boolean
+  forceNotRightBoundaryHit?: boolean
   trIndex?: number
   tdIndex?: number
   tdValueIndex?: number

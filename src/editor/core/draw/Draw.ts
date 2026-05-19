@@ -78,6 +78,11 @@ import { ITableLayoutSnapshot } from '../table/layout/TableLayoutSnapshotTypes'
 import { TableHitTestService } from '../table/hittest/TableHitTestService'
 import { PageCanvasHost } from './dom/PageCanvasHost'
 import { DrawViewState } from './state/DrawViewState'
+import { createDocumentTextStoreElementSignature } from './data/DocumentTextStore'
+import {
+  IRenderBackendDebugSnapshot,
+  RenderBackendDebugPanel
+} from '../render-backend/RenderBackendDebugPanel'
 import { DrawRuntime } from './runtime/DrawRuntime'
 import { DrawComponentRegistry } from './runtime/DrawComponentRegistry'
 import { DrawServiceRegistry } from './runtime/DrawServiceRegistry'
@@ -105,6 +110,7 @@ export class Draw {
   private listener: Listener
   private eventBus: EventBus<EventBusMap>
   private override: Override
+  private renderBackendDebugPanel: RenderBackendDebugPanel | null = null
 
   private LETTER_REG: RegExp
   private WORD_LIKE_REG: RegExp
@@ -129,7 +135,10 @@ export class Draw {
       getWidth: () => this.getWidth(),
       getHeight: () => this.getHeight(),
       getPageGap: () => this.getPageGap(),
-      getPagePixelRatio: () => this.getPagePixelRatio()
+      getPagePixelRatio: () => this.getPagePixelRatio(),
+      onPageUnmount: pageNo => {
+        this.components?.blockParticle.clearPage(pageNo)
+      }
     })
 
     this.components = new DrawComponentRegistry(
@@ -156,6 +165,7 @@ export class Draw {
 
   // 设置打印数据
   public setPrintData() {
+    this.flushAsyncInsertTransaction('set-print-data')
     this.services.exportService.setPrintData()
   }
 
@@ -275,10 +285,18 @@ export class Draw {
 
   public setVisiblePageNoList(payload: number[]) {
     this.viewState.setVisiblePageNoList(payload)
+    this.services.workerRenderScheduler.updateViewport({
+      visiblePageNoList: payload,
+      intersectionPageNo: this.viewState.getIntersectionPageNo()
+    })
   }
 
   public setIntersectionPageNo(payload: number) {
     this.viewState.setIntersectionPageNo(payload)
+    this.services.workerRenderScheduler.updateViewport({
+      visiblePageNoList: this.viewState.getVisiblePageNoList(),
+      intersectionPageNo: payload
+    })
   }
 
   public getPageNo(): number {
@@ -287,14 +305,6 @@ export class Draw {
 
   public setPageNo(payload: number) {
     this.viewState.setPageNo(payload)
-  }
-
-  public getPage(pageNo = -1): HTMLCanvasElement | undefined {
-    return this.pageCanvasHost.getPage(~pageNo ? pageNo : this.getPageNo())
-  }
-
-  public getPageList(): (HTMLCanvasElement | undefined)[] {
-    return this.pageCanvasHost.getPageList()
   }
 
   public getPageCount(): number {
@@ -343,6 +353,202 @@ export class Draw {
 
   public getPageCanvasHost(): PageCanvasHost {
     return this.pageCanvasHost
+  }
+
+  /**
+   * 获取渲染后端统计信息。
+   *
+   * 该入口用于观察 canvas 池复用情况和多引擎调度命中情况。
+   */
+  public getRenderBackendStats() {
+    const surface = this.pageCanvasHost.getSurfaceStats()
+    const canvasPool = this.pageCanvasHost.getCanvasPoolStats()
+    const bitmapCache = surface.bitmapCache
+    const imagePreview = this.getImageParticle().getPreviewBitmapCacheStats()
+    const estimatedTotalBytes =
+      surface.estimatedActiveBytes +
+      canvasPool.estimatedIdleBytes +
+      bitmapCache.estimatedBytes +
+      imagePreview.estimatedBytes
+    return {
+      surface,
+      canvasPool,
+      backend: this.services.renderBackendManager.getStats(),
+      // imagePreview 统计 WebGL / Canvas2D 图片任务处理后的预览 bitmap 复用情况。
+      imagePreview,
+      // baseRenderSource 区分同步 Canvas2D 重画、worker bitmap 合成和 bitmap cache 合成。
+      baseRenderSource: this.services.pageRenderer.getBaseRenderSourceStats(),
+      // typingPreview 统计输入态 chunk / 行级 canvas 局部重绘命中情况。
+      typingPreview: this.services.pageRenderer.getTypingPreviewStats(),
+      // layout 用于定位 1000 页输入后仍然卡顿的整篇排版阶段耗时。
+      layout: this.services.layoutPipeline.getStats(),
+      // documentChunk 用于推进商业级段落 / chunk 增量布局。
+      documentChunk: this.services.documentChunkIndex.getStats(),
+      // tableChunkRange 用于观察页 chunk、表格 chunk、td 子 chunk 的父子范围同步。
+      tableChunkRange: this.services.tableChunkRangeIndex.getStats(),
+      // tableCellChunk 用于推进表格单元格父子 chunk 增量布局。
+      tableCellChunk: this.services.tableCellChunkIndex.getStats(),
+      // tableCellChunkPipeline 统计表格 td 子 chunk 的同步局部写回。
+      tableCellChunkPipeline: this.services.tableCellChunkPipeline.getStats(),
+      // tableLocalRelayout 统计表格级局部重分页是否接管表格输入。
+      tableLocalRelayout: this.services.tableLocalRelayoutPipeline.getStats(),
+      // chunkLayout 统计输入态 chunk 管线 patch 命中与失败原因。
+      chunkLayout: this.services.chunkLayoutPipeline.getStats(),
+      // asyncInsert 统计大粘贴后台分批事务，观察首批响应、剩余批次和取消情况。
+      asyncInsert: this.services.mutationService.getAsyncInsertStats(),
+      // typingLinePatch 统计 chunk 失败后单行正式 patch 的覆盖情况。
+      typingLinePatch: this.services.typingLinePatchPipeline.getStats(),
+      tableSnapshot: this.services.tableLayoutSnapshotAccessor.getStats(),
+      // documentTextStore 统计正文主数据适配层，后续替换为 piece-table / rope 时用于双写对比。
+      documentTextStore: this.runtime.getDocumentTextStoreStats(),
+      // workerRender 统计 OffscreenCanvas 后台页渲染 job、fallback 和过期丢弃。
+      workerRender: this.services.workerRenderScheduler.getStats(),
+      memory: {
+        // activeSurfaceBytes 统计已挂载、测量和 transient surface 的当前占用。
+        activeSurfaceBytes: surface.estimatedActiveBytes,
+        idleCanvasPoolBytes: canvasPool.estimatedIdleBytes,
+        bitmapCacheBytes: bitmapCache.estimatedBytes,
+        imagePreviewBitmapBytes: imagePreview.estimatedBytes,
+        estimatedTotalBytes,
+        estimatedTotalMB: Math.round((estimatedTotalBytes / 1024 / 1024) * 100) / 100,
+        peakActiveSurfaceBytes: surface.peakEstimatedActiveBytes,
+        peakIdleCanvasPoolBytes: canvasPool.peakEstimatedIdleBytes,
+        peakBitmapCacheBytes: bitmapCache.peakEstimatedBytes
+      },
+      // baseBitmapContentVersion 用于排查非布局基础视觉变化导致的缓存失效。
+      baseBitmapContentVersion:
+        this.services.renderInvalidationManager.getBaseBitmapContentVersion()
+    }
+  }
+
+  /** 获取面向调试面板的聚合快照，避免业务方理解完整统计树结构。 */
+  public getRenderBackendDebugSnapshot(): IRenderBackendDebugSnapshot {
+    const stats = this.getRenderBackendStats()
+    const webglCapability = stats.backend.capabilityList.find(item => {
+      return item.name === 'webgl'
+    }) as Record<string, number | string | boolean | undefined> | undefined
+    const previewTotal =
+      stats.imagePreview.hitCount + stats.imagePreview.missCount
+    const documentTextStore = stats.documentTextStore
+    return {
+      pageCount: this.getPageCount(),
+      visiblePageNoList: this.viewState.getVisiblePageNoList(),
+      intersectionPageNo: this.viewState.getIntersectionPageNo(),
+      currentPageNo: this.getPageNo(),
+      backend: {
+        dispatchCount: stats.backend.dispatchCount,
+        renderCount: stats.backend.renderCount,
+        missCount: stats.backend.missCount,
+        failureCount: stats.backend.failureCount,
+        fallbackCount: stats.backend.fallbackCount,
+        slowCount: stats.backend.recentWindow.slowCount,
+        capabilityList: stats.backend.capabilityList
+      },
+      worker: {
+        submitCount: stats.workerRender.submitCount,
+        successCount: stats.workerRender.successCount,
+        fallbackCount: stats.workerRender.fallbackCount,
+        pendingCount: stats.workerRender.pendingCount,
+        activeCount: stats.workerRender.activeCount,
+        queuedCount: stats.workerRender.queuedCount,
+        circuitOpen: stats.workerRender.circuitOpen,
+        lastFallbackReason: stats.workerRender.lastFallbackReason
+      },
+      baseRenderSource: {
+        canvas2DRenderCount: stats.baseRenderSource.canvas2DRenderCount,
+        workerRenderCount: stats.baseRenderSource.workerRenderCount,
+        bitmapCacheComposeCount:
+          stats.baseRenderSource.bitmapCacheComposeCount
+      },
+      typingPreview: {
+        attemptCount: stats.typingPreview.attemptCount,
+        patchSuccessCount: stats.typingPreview.chunkSuccessCount,
+        linePatchSuccessCount: stats.typingPreview.lineSuccessCount,
+        failureCount: stats.typingPreview.failCount
+      },
+      image: {
+        previewCacheHitRate:
+          previewTotal > 0
+            ? Math.round((stats.imagePreview.hitCount / previewTotal) * 100) /
+              100
+            : 0,
+        previewCacheEstimatedMB: stats.imagePreview.estimatedMB,
+        webglTextureCacheMB: Number(webglCapability?.textureCacheMB || 0),
+        webglMaxTextureCacheMB: Number(webglCapability?.maxTextureCacheMB || 0),
+        estimatedDownsampleSavedPixels: Number(
+          webglCapability?.estimatedDownsampleSavedPixels || 0
+        ),
+        savedUploadPixels: Number(webglCapability?.savedUploadPixels || 0)
+      },
+      memory: {
+        estimatedTotalMB: stats.memory.estimatedTotalMB,
+        activeSurfaceMB: Math.round(
+          (stats.memory.activeSurfaceBytes / 1024 / 1024) * 100
+        ) / 100,
+        bitmapCacheMB: Math.round(
+          (stats.memory.bitmapCacheBytes / 1024 / 1024) * 100
+        ) / 100,
+        imagePreviewBitmapMB: Math.round(
+          (stats.memory.imagePreviewBitmapBytes / 1024 / 1024) * 100
+        ) / 100,
+        idleCanvasPoolMB: Math.round(
+          (stats.memory.idleCanvasPoolBytes / 1024 / 1024) * 100
+        ) / 100
+      },
+      documentTextStore: {
+        type: documentTextStore.type,
+        length: documentTextStore.length,
+        operationCount: documentTextStore.operationCount,
+        externalMutationCount: documentTextStore.externalMutationCount,
+        mirrorMode: documentTextStore.mirrorMode,
+        mirrorHealthy: documentTextStore.mirrorHealthy,
+        mirrorReplayCount: documentTextStore.mirrorReplayCount,
+        mirrorReplayMismatchCount:
+          documentTextStore.mirrorReplayMismatchCount,
+        mirrorReplaySkippedCount: documentTextStore.mirrorReplaySkippedCount
+      }
+    }
+  }
+
+  /** 按当前配置同步默认关闭的渲染后端调试面板。 */
+  private syncRenderBackendDebugPanel() {
+    if (!this.runtime.getOptions().renderBackend.debugPanel.enabled) {
+      this.renderBackendDebugPanel?.destroy()
+      this.renderBackendDebugPanel = null
+      return
+    }
+    if (!this.renderBackendDebugPanel) {
+      this.renderBackendDebugPanel = new RenderBackendDebugPanel(
+        this.pageCanvasHost.getContainer(),
+        () => this.getRenderBackendDebugSnapshot()
+      )
+    }
+    this.renderBackendDebugPanel.update()
+  }
+
+  /**
+   * 重置渲染后端相关统计。
+   *
+   * 仅清空性能计数、近期窗口和高水位基线，不释放当前 canvas / bitmap 资源。
+   */
+  public resetRenderBackendStats() {
+    this.pageCanvasHost.resetRenderResourceStats()
+    this.services.renderBackendManager.resetStats()
+    this.services.pageRenderer.resetBaseRenderSourceStats()
+    this.services.pageRenderer.resetTypingPreviewStats()
+    this.services.layoutPipeline.resetStats()
+    this.services.documentChunkIndex.resetStats()
+    this.services.tableChunkRangeIndex.resetStats()
+    this.services.tableCellChunkIndex.resetStats()
+    this.services.tableCellChunkPipeline.resetStats()
+    this.services.tableLocalRelayoutPipeline.resetStats()
+    this.services.chunkLayoutPipeline.resetStats()
+    this.services.mutationService.resetAsyncInsertStats()
+    this.services.typingLinePatchPipeline.resetStats()
+    this.services.tableLayoutSnapshotBuilder.resetStats()
+    this.services.workerRenderScheduler.resetStats()
+    this.getImageParticle().resetPreviewBitmapCacheStats()
+    this.runtime.resetDocumentTextStoreStats()
   }
 
   public getRuntime(): DrawRuntime {
@@ -529,6 +735,10 @@ export class Draw {
     return this.runtime.getOriginalMainElementList()
   }
 
+  public getEditor2DocumentTree(): IEditorData {
+    return this.runtime.getEditor2DocumentTree()
+  }
+
   public getFooterElementList(): IElement[] {
     return this.services.dataAccess.getFooterElementList()
   }
@@ -655,6 +865,43 @@ export class Draw {
     this.runtime.replaceMainElementList(payload)
   }
 
+  public syncEditor2DocumentTree() {
+    this.runtime.syncEditor2DocumentTree({
+      header: this.getHeaderElementList(),
+      main: this.getOriginalMainElementList(),
+      footer: this.getFooterElementList()
+    })
+  }
+
+  /** 记录仍由旧数组链路完成的正文写操作，供后续 store mirror 对齐。 */
+  public recordDocumentTextStoreExternalMutation(payload: {
+    start: number | null
+    deleteCount: number
+    insertCount: number
+    insertSignatureList?: string[]
+    deleteIndexList?: number[]
+    deleteSignatureList?: string[]
+    type?: 'external-splice' | 'external-replace-all'
+  }) {
+    this.runtime.getDocumentTextStore().recordExternalMutation({
+      type: payload.type || 'external-splice',
+      start: payload.start,
+      deleteCount: payload.deleteCount,
+      insertCount: payload.insertCount,
+      insertSignatureList: payload.insertSignatureList,
+      insertSignatureCount: payload.insertSignatureList?.length,
+      deleteIndexList: payload.deleteIndexList,
+      deleteSignatureList: payload.deleteSignatureList,
+      deleteIndexCount: payload.deleteIndexList?.length,
+      deleteSignatureCount: payload.deleteSignatureList?.length
+    })
+  }
+
+  /** 创建正文 store mirror 使用的元素轻量签名。 */
+  public createDocumentTextStoreElementSignature(element: IElement | undefined) {
+    return createDocumentTextStoreElementSignature(element)
+  }
+
   public replaceLayoutState(payload: {
     rowList: IRow[]
     pageRowList: IRow[][]
@@ -732,6 +979,7 @@ export class Draw {
   }
 
   public async getDataURL(payload: IGetImageOption = {}): Promise<string[]> {
+    this.flushAsyncInsertTransaction('get-data-url')
     return this.services.exportService.getDataURL(payload)
   }
 
@@ -796,11 +1044,17 @@ export class Draw {
   public getOriginValue(
     options: IGetOriginValueOption = {}
   ): Required<IEditorData> {
+    this.flushAsyncInsertTransaction('get-origin-value')
     return this.services.valueService.getOriginValue(options)
   }
 
   public getValue(options: IGetValueOption = {}): IEditorResult {
+    this.flushAsyncInsertTransaction('get-value')
     return this.services.valueService.getValue(options)
+  }
+
+  public flushAsyncInsertTransaction(reason = 'manual') {
+    return this.services.mutationService.flushAsyncInsertTransaction(reason)
   }
 
   public setValue(payload: Partial<IEditorData>, options?: ISetValueOption) {
@@ -845,8 +1099,13 @@ export class Draw {
     this.services.viewportService.refreshVisiblePagesIfNeeded()
   }
 
+  public enqueueExtraVisibleRenderPages(pageNoList: number[]) {
+    this.services.viewportService.enqueueExtraVisibleRenderPages(pageNoList)
+  }
+
   public render(payload?: IDrawOption) {
     this.services.renderFacadeService.render(payload)
+    this.syncRenderBackendDebugPanel()
   }
 
   public setCursor(curIndex: number | undefined) {
@@ -858,6 +1117,8 @@ export class Draw {
   }
 
   public destroy() {
+    this.renderBackendDebugPanel?.destroy()
+    this.renderBackendDebugPanel = null
     this.services.lifecycleService.destroy()
   }
 

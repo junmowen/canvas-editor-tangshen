@@ -42,6 +42,88 @@ export default defineConfig({
         ]
       },
       {
+        text: '技术方案',
+        items: [
+          { text: '性能优化方案', link: '/guide/performance-optimization-plan' },
+          {
+            text: 'Canvas 池与多引擎渲染后端',
+            link: '/guide/canvas-pool-render-backend-plan'
+          },
+          {
+            text: 'Canvas 后端架构',
+            link: '/guide/canvas-pool-render-backend-architecture'
+          },
+          {
+            text: 'Canvas 核心接口',
+            link: '/guide/canvas-pool-render-backend-architecture-core'
+          },
+          {
+            text: '多引擎调度策略',
+            link: '/guide/canvas-pool-render-backend-engine-strategy'
+          },
+          {
+            text: 'Worker 协议与调度',
+            link: '/guide/canvas-pool-render-backend-worker-protocol'
+          },
+          {
+            text: 'WebGL 与 Block 边界',
+            link: '/guide/canvas-pool-render-backend-webgl-svg-boundary'
+          },
+          {
+            text: 'Canvas 迁移路径',
+            link: '/guide/canvas-pool-render-backend-migration'
+          },
+          {
+            text: 'Chunk 稳定性记录',
+            link: '/guide/canvas-pool-render-backend-progress-2026-05-15'
+          },
+          {
+            text: '表格与大粘贴记录',
+            link: '/guide/canvas-pool-render-backend-progress-2026-05-16'
+          },
+          {
+            text: 'Dirty Range 推进',
+            link: '/guide/canvas-pool-render-backend-next-stage'
+          },
+          {
+            text: 'Dirty Range Planner',
+            link: '/guide/canvas-pool-render-backend-dirty-range'
+          },
+          {
+            text: '大粘贴事务',
+            link: '/guide/canvas-pool-render-backend-async-insert'
+          },
+          {
+            text: '真实模板压测',
+            link: '/guide/canvas-pool-render-backend-clinic-template'
+          },
+          {
+            text: '正文 Store 预研',
+            link: '/guide/canvas-pool-render-backend-text-store'
+          },
+          {
+            text: '渲染引擎收口',
+            link: '/guide/canvas-pool-render-backend-render-engine'
+          },
+          {
+            text: '渲染引擎实施',
+            link: '/guide/canvas-pool-render-backend-render-engine-implementation'
+          },
+          {
+            text: 'Worker 覆盖验收',
+            link: '/guide/canvas-pool-render-backend-render-engine-acceptance'
+          },
+          {
+            text: 'Snapshot 模块图',
+            link: '/guide/canvas-pool-render-backend-render-engine-module-map'
+          },
+          {
+            text: '排期与结束定义',
+            link: '/guide/canvas-pool-render-backend-rollout-closure'
+          }
+        ]
+      },
+      {
         text: '命令',
         items: [
           { text: '执行动作命令', link: '/guide/command-execute' },

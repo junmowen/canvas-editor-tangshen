@@ -9,19 +9,32 @@ import {
 } from '../../../../interface/Previewer'
 import { downloadFile } from '../../../../utils'
 import { EventBus } from '../../../event/eventbus/EventBus'
+import { RenderLayer } from '../../../render-backend'
 import { Draw } from '../../Draw'
 
+/** 图片预览器，负责图片预览弹窗、拖拽缩放选区和当前页交互状态。 */
 export class Previewer {
+  /** 编辑器主容器，作为预览 DOM 的兜底挂载点。 */
   private container: HTMLDivElement
+  /** 模态框宿主元素，用于挂载图片预览弹窗。 */
   private modalHost: HTMLDivElement
+  /** 当前页覆盖层宿主，随图片所在页切换。 */
   private overlayHost: HTMLDivElement | null
-  private canvas: HTMLCanvasElement
+  /** 当前页 base canvas，仅用于 cursor 等 DOM 副作用，不持有渲染资源生命周期。 */
+  private canvas: HTMLCanvasElement | null
+  /** Draw 门面实例，用于读取页面状态、渲染后端和事件总线。 */
   private draw: Draw
+  /** 编辑器配置快照，提供缩放、模式和预览器样式配置。 */
   private options: Required<IEditorOption>
+  /** 当前正在操作的图片元素。 */
   private curElement: IElement | null
+  /** 当前图片预览地址，拖拽镜像和预览弹窗会复用。 */
   private curElementSrc: string
+  /** 当前预览器绘制选项，控制拖拽和图片地址字段。 */
   private previewerDrawOption: IPreviewerDrawOption
+  /** 当前图片在排版结果中的位置信息。 */
   private curPosition: IElementPosition | null
+  /** 编辑器事件总线，用于派发和监听预览相关事件。 */
   private eventBus: EventBus<EventBusMap>
   // 图片列表
   private imageList: IElement[]
@@ -49,7 +62,7 @@ export class Previewer {
     this.container = draw.getPageCanvasHost().getContainer()
     this.modalHost = draw.getPageCanvasHost().getModalHost()
     this.overlayHost = null
-    this.canvas = draw.getPageCanvasHost().getPage(draw.getPageNo())!
+    this.canvas = null
     this.draw = draw
     this.options = draw.getRuntime().getOptions()
     this.curElement = null
@@ -92,10 +105,36 @@ export class Previewer {
     return element.imgFloatPosition?.pageNo ?? position?.pageNo ?? this.draw.getPageNo()
   }
 
+  /**
+   * 解析指定页的覆盖层宿主。
+   *
+   * @param pageNo - 目标页码
+   * @returns 页面覆盖层宿主，缺失时回退到编辑器主容器
+   */
   private _resolveOverlayHost(pageNo: number): HTMLDivElement {
     return this.draw.getPageCanvasHost().getPageOverlayHost(pageNo) || this.container
   }
 
+  /**
+   * 按页码解析 base canvas。
+   *
+   * canvas 由渲染后端统一管理，预览器只保留当前页 DOM 引用用于光标副作用。
+   *
+   * @param pageNo - 目标页码
+   * @returns 当前页 base canvas，未挂载时返回 null
+   */
+  private _resolvePageCanvas(pageNo: number): HTMLCanvasElement | null {
+    return (
+      this.draw.getPageCanvasHost().getSurface(pageNo, RenderLayer.BASE)
+        ?.canvas || null
+    )
+  }
+
+  /**
+   * 把拖拽缩放 DOM 挂载到目标页覆盖层。
+   *
+   * @param pageNo - 图片所在页码
+   */
   private _attachResizerHost(pageNo: number) {
     this.currentPageNo = pageNo
     this.overlayHost = this._resolveOverlayHost(pageNo)
@@ -183,8 +222,10 @@ export class Previewer {
   }
 
   private _mousedown(evt: MouseEvent) {
-    this.canvas = this.draw.getPage(this.currentPageNo)!
     if (!this.curElement) return
+    this.canvas = this._resolvePageCanvas(this.currentPageNo)
+    // 当前页可能被虚拟滚动卸载，拿不到 canvas 时不启动拖拽，避免空引用副作用。
+    if (!this.canvas) return
     const { scale } = this.options
     this.mousedownX = evt.clientX
     this.mousedownY = evt.clientY
@@ -225,7 +266,7 @@ export class Previewer {
         this.resizerImageContainer.style.display = 'none'
         document.removeEventListener('mousemove', mousemoveFn)
         document.body.style.cursor = ''
-        this.canvas.style.cursor = 'text'
+        this.canvas && (this.canvas.style.cursor = 'text')
       },
       {
         once: true
@@ -577,7 +618,8 @@ export class Previewer {
     const { scale } = this.options
     const pageNo = this._resolvePageNo(element, position)
     this._attachResizerHost(pageNo)
-    this.canvas = this.draw.getPage(pageNo)!
+    // 缓存当前页 canvas，后续 mousedown 会再次解析以适配页面挂载状态变化。
+    this.canvas = this._resolvePageCanvas(pageNo)
     const elementWidth = element.width! * scale
     const elementHeight = element.height! * scale
     // 尺寸预览

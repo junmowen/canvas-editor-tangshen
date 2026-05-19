@@ -64,6 +64,7 @@ import {
   IElement,
   IElementPosition,
   IElementStyle,
+  IRowIndentPayload,
   IGetElementByIdOption,
   IInsertElementListOption,
   IUpdateElementByIdOption
@@ -147,6 +148,14 @@ export class CommandAdapt {
   private i18n: I18n
   private zone: Zone
   private tableOperate: TableOperate
+  /** 程序化连续退格批次，合并同一事件循环内的多次删除渲染。 */
+  private pendingProgrammaticBackspaceBatch: {
+    curIndex: number
+    editIndex: number
+    deletedCount: number
+    chunk: unknown
+    flushTimer: number | null
+  } | null = null
 
   constructor(draw: Draw) {
     const components = draw.getComponents()
@@ -211,9 +220,103 @@ export class CommandAdapt {
     } else {
       this.draw.spliceElementList(elementList, startIndex, 1)
     }
-    const curIndex = isCollapsed ? startIndex - 1 : startIndex
+    let curIndex = isCollapsed ? startIndex - 1 : startIndex
+    const typingEditIndex = isCollapsed ? startIndex : startIndex + 1
+    const typingInsertedCount = isCollapsed ? -1 : -(endIndex - startIndex)
+    let isImmediateTypingCompute = false
+    if (!elementList.length) {
+      // 清空文档后保留一个零宽占位符，保证后续输入仍有合法锚点。
+      elementList.push({ value: ZERO })
+      curIndex = 0
+      isImmediateTypingCompute = true
+    }
     this.range.setRange(curIndex, curIndex)
-    this.draw.render({ curIndex })
+    this.position.setCursorLogicalIndex(curIndex)
+    if (!isCollapsed || isImmediateTypingCompute) {
+      // 选区删除会重建较大结构，立即完整 render，保证清空后马上输入的基础语义。
+      this.draw.render({ curIndex })
+      this.draw.getComponents().cursor.focus()
+      return
+    }
+    // 命令层折叠退格属于高频编辑路径，必须避免在大文档下同步触发整篇排版。
+    this.queueProgrammaticBackspaceRender({
+      curIndex,
+      typingEditIndex,
+      deletedCount: Math.abs(typingInsertedCount)
+    })
+    // 退格后立即聚焦输入代理，避免 Cypress / 浏览器下一次输入落到旧焦点。
+    this.draw.getComponents().cursor.focus()
+  }
+
+  /** 合并程序化连续退格，避免 API 循环中每次删除都同步重绘可见页。 */
+  private queueProgrammaticBackspaceRender(payload: {
+    curIndex: number
+    typingEditIndex: number
+    deletedCount: number
+  }) {
+    if (this.position.getPositionContext().isTable) {
+      // 表格退格属于 td 局部索引空间，不能用主文档 DocumentChunkIndex 合并批次。
+      this.draw.render({
+        curIndex: payload.curIndex,
+        isTyping: true,
+        typingEditIndex: payload.typingEditIndex,
+        typingInsertedCount: -payload.deletedCount,
+        isSkipTypingPreview: true,
+        isLazy: false,
+        pageRenderScope: 'visible'
+      })
+      return
+    }
+    const chunk = this.draw
+      .getServices()
+      .documentChunkIndex.getChunkByIndex(payload.typingEditIndex)
+    if (
+      this.pendingProgrammaticBackspaceBatch &&
+      this.pendingProgrammaticBackspaceBatch.chunk !== chunk
+    ) {
+      this.flushProgrammaticBackspaceBatch()
+    }
+    if (!this.pendingProgrammaticBackspaceBatch) {
+      this.pendingProgrammaticBackspaceBatch = {
+        curIndex: payload.curIndex,
+        editIndex: payload.typingEditIndex,
+        deletedCount: 0,
+        chunk,
+        flushTimer: null
+      }
+    }
+    const batch = this.pendingProgrammaticBackspaceBatch
+    batch.curIndex = payload.curIndex
+    batch.editIndex = Math.min(batch.editIndex, payload.typingEditIndex)
+    batch.deletedCount += payload.deletedCount
+    if (batch.flushTimer !== null) {
+      window.clearTimeout(batch.flushTimer)
+    }
+    batch.flushTimer = window.setTimeout(() => {
+      this.flushProgrammaticBackspaceBatch()
+    }, 0)
+  }
+
+  /** 立即提交已合并的程序化退格批次。 */
+  private flushProgrammaticBackspaceBatch() {
+    const batch = this.pendingProgrammaticBackspaceBatch
+    if (!batch) {
+      return
+    }
+    if (batch.flushTimer !== null) {
+      window.clearTimeout(batch.flushTimer)
+    }
+    this.pendingProgrammaticBackspaceBatch = null
+    this.draw.render({
+      curIndex: batch.curIndex,
+      isTyping: true,
+      typingEditIndex: batch.editIndex,
+      typingInsertedCount: -batch.deletedCount,
+      // 删除类输入没有新增文字预览收益，直接交给 chunk patch 写回运行时布局。
+      isSkipTypingPreview: true,
+      isLazy: false,
+      pageRenderScope: 'visible'
+    })
   }
 
   public setRange(
@@ -228,6 +331,9 @@ export class CommandAdapt {
     if (startIndex < 0 || endIndex < 0 || endIndex < startIndex) return
     let nextStartIndex = startIndex
     let nextEndIndex = endIndex
+    const editableElementList = this.draw.getElementList()
+    if (!editableElementList.length) return
+    const maxEditableIndex = editableElementList.length - 1
     const positionContext = this.position.getPositionContext()
     const targetTableId = tableId || positionContext.tableId
     const targetStartTrIndex =
@@ -259,6 +365,9 @@ export class CommandAdapt {
       nextStartIndex += leadingOffset
       nextEndIndex += leadingOffset
     }
+    nextStartIndex = Math.min(nextStartIndex, maxEditableIndex)
+    nextEndIndex = Math.min(nextEndIndex, maxEditableIndex)
+    if (nextEndIndex < nextStartIndex) return
     this.range.setRange(
       nextStartIndex,
       nextEndIndex,
@@ -383,12 +492,14 @@ export class CommandAdapt {
   public undo() {
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
+    this.draw.flushAsyncInsertTransaction('command-undo')
     this.historyManager.undo()
   }
 
   public redo() {
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
+    this.draw.flushAsyncInsertTransaction('command-redo')
     this.historyManager.redo()
   }
 
@@ -1021,9 +1132,11 @@ export class CommandAdapt {
     if (isReadonly) return
     const { startIndex, endIndex } = this.getRange()
     if (!~startIndex && !~endIndex) return
-    const rowElementList = this.range.getRangeRowElementList()
-    if (!rowElementList) return
-    rowElementList.forEach(element => {
+    const paragraphElementList = this.range.getEditBoundaryRange().isCrossRowCol
+      ? this.range.getSelectionElementList()
+      : this.range.getRangeParagraphElementList()
+    if (!paragraphElementList) return
+    paragraphElementList.forEach(element => {
       element.rowFlex = payload
     })
     // 光标定位
@@ -1037,15 +1150,122 @@ export class CommandAdapt {
     if (isReadonly) return
     const { startIndex, endIndex } = this.getRange()
     if (!~startIndex && !~endIndex) return
-    const rowElementList = this.range.getRangeRowElementList()
-    if (!rowElementList) return
-    rowElementList.forEach(element => {
+    const paragraphElementList = this.range.getEditBoundaryRange().isCrossRowCol
+      ? this.range.getSelectionElementList()
+      : this.range.getRangeParagraphElementList()
+    if (!paragraphElementList) return
+    paragraphElementList.forEach(element => {
       element.rowMargin = payload
     })
     // 光标定位
     const isSetCursor = startIndex === endIndex
     const curIndex = isSetCursor ? endIndex : startIndex
     this.draw.render({ curIndex, isSetCursor })
+  }
+
+  private getParagraphElementList(): IElement[] | null {
+    return this.range.getEditBoundaryRange().isCrossRowCol
+      ? this.range.getSelectionElementList()
+      : this.range.getRangeParagraphElementList()
+  }
+
+  private setParagraphIndentValue(
+    element: IElement,
+    key: keyof Pick<
+      IElement,
+      'rowIndentLeft' | 'rowIndentRight' | 'rowIndent' | 'rowHangingIndent'
+    >,
+    value: number | null | undefined
+  ) {
+    if (value === undefined) return
+    const nextValue = value === null ? null : Math.max(0, value)
+    if (nextValue === null || nextValue === 0) {
+      delete element[key]
+    } else {
+      element[key] = nextValue
+    }
+  }
+
+  private setParagraphIndent(payload: IRowIndentPayload) {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    const { startIndex, endIndex } = this.getRange()
+    if (!~startIndex && !~endIndex) return
+    const paragraphElementList = this.getParagraphElementList()
+    if (!paragraphElementList) return
+    paragraphElementList.forEach(element => {
+      this.setParagraphIndentValue(element, 'rowIndentLeft', payload.left)
+      this.setParagraphIndentValue(element, 'rowIndentRight', payload.right)
+      this.setParagraphIndentValue(element, 'rowIndent', payload.firstLine)
+      this.setParagraphIndentValue(
+        element,
+        'rowHangingIndent',
+        payload.hanging
+      )
+    })
+    // 光标定位
+    const isSetCursor = startIndex === endIndex
+    const curIndex = isSetCursor ? endIndex : startIndex
+    this.draw.render({ curIndex, isSetCursor })
+  }
+
+  public rowIndent(payload: number | IRowIndentPayload | null) {
+    if (typeof payload === 'number' || payload === null) {
+      this.setParagraphIndent({ firstLine: payload })
+    } else {
+      this.setParagraphIndent(payload)
+    }
+  }
+
+  public rowIndentLeft(payload: number | null) {
+    this.setParagraphIndent({ left: payload })
+  }
+
+  public rowIndentRight(payload: number | null) {
+    this.setParagraphIndent({ right: payload })
+  }
+
+  public rowHangingIndent(payload: number | null) {
+    this.setParagraphIndent({ hanging: payload })
+  }
+
+  public pageNumberContinue() {
+    this.updateOptions({
+      pageNumber: {
+        ...this.options.pageNumber,
+        startPageNo: 1,
+        fromPageNo: 0
+      }
+    })
+  }
+
+  public pageNumberRestart(payload: {
+    startPageNo?: number
+    fromPageNo?: number
+  }) {
+    this.updateOptions({
+      pageNumber: {
+        ...this.options.pageNumber,
+        startPageNo: payload.startPageNo ?? this.options.pageNumber.startPageNo,
+        fromPageNo: payload.fromPageNo ?? this.options.pageNumber.fromPageNo
+      }
+    })
+  }
+
+  public pageNumberRange(payload: {
+    fromPageNo?: number
+    maxPageNo?: number | null
+  }) {
+    this.updateOptions({
+      pageNumber: {
+        ...this.options.pageNumber,
+        fromPageNo: payload.fromPageNo ?? this.options.pageNumber.fromPageNo,
+        maxPageNo:
+          payload.maxPageNo === undefined
+            ? this.options.pageNumber.maxPageNo
+            : payload.maxPageNo
+      }
+    })
   }
 
   public insertTable(
@@ -1144,6 +1364,12 @@ export class CommandAdapt {
     this.tableOperate.tableBorderColor(payload)
   }
 
+  public tableBorderWidth(payload: number) {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.tableOperate.tableBorderWidth(payload)
+  }
+
   public tableTdBorderType(payload: TdBorder) {
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
@@ -1172,6 +1398,14 @@ export class CommandAdapt {
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
     this.tableOperate.tableTdBackgroundColor(payload)
+  }
+
+  public autoFitTable(
+    options?: Parameters<TableOperate['autoFitTable']>[0]
+  ) {
+    const isReadonly = this.draw.isReadonly()
+    if (isReadonly) return
+    this.tableOperate.autoFitTable(options)
   }
 
   public tableSelectAll() {
@@ -1442,6 +1676,7 @@ export class CommandAdapt {
   }
 
   public search(payload: string | null) {
+    this.draw.flushAsyncInsertTransaction('command-search')
     this.searchManager.setSearchKeyword(payload)
     if (payload) {
       this.searchManager.compute(payload)
@@ -1452,6 +1687,7 @@ export class CommandAdapt {
   }
 
   public searchNavigatePre() {
+    this.draw.flushAsyncInsertTransaction('command-search-navigate-pre')
     const index = this.searchManager.searchNavigatePre()
     if (index === null) return
     this.draw.refreshVisibleOverlay({
@@ -1460,6 +1696,7 @@ export class CommandAdapt {
   }
 
   public searchNavigateNext() {
+    this.draw.flushAsyncInsertTransaction('command-search-navigate-next')
     const index = this.searchManager.searchNavigateNext()
     if (index === null) return
     this.draw.refreshVisibleOverlay({
@@ -1520,6 +1757,7 @@ export class CommandAdapt {
     const { startIndex, endIndex } = this.getRange()
     if (
       display === ImageDisplay.SURROUND ||
+      display === ImageDisplay.TIGHT ||
       display === ImageDisplay.FLOAT_TOP ||
       display === ImageDisplay.FLOAT_BOTTOM
     ) {
@@ -1566,6 +1804,7 @@ export class CommandAdapt {
   }
 
   public getHTML(): IEditorHTML {
+    this.draw.flushAsyncInsertTransaction('command-get-html')
     const options = this.options
     const headerElementList = this.draw.getHeaderElementList()
     const mainElementList = this.draw.getOriginalMainElementList()
@@ -1578,6 +1817,7 @@ export class CommandAdapt {
   }
 
   public getText(): IEditorText {
+    this.draw.flushAsyncInsertTransaction('command-get-text')
     const headerElementList = this.draw.getHeaderElementList()
     const mainElementList = this.draw.getOriginalMainElementList()
     const footerElementList = this.draw.getFooterElementList()
@@ -2038,7 +2278,8 @@ export class CommandAdapt {
     if (!isReplace) {
       this.range.shrinkRange()
     }
-    const cloneElementList = deepClone(payload)
+    // 高频输入通常是文本元素，浅拷贝即可隔离调用方对象，避免每个字符 JSON 深克隆。
+    const cloneElementList = payload.map(element => ({ ...element }))
     // 格式化上下文信息
     const { startIndex } = this.getRange()
     const elementList = this.draw.getElementList()

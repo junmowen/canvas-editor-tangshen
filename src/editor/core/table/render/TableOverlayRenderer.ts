@@ -1,5 +1,6 @@
 import { EditorZone } from '../../../dataset/enum/Editor'
 import { IDrawRowPayload } from '../../../interface/Draw'
+import { IRenderSurface, RenderLayer } from '../../render-backend'
 import type { Draw } from '../../draw/Draw'
 
 /**
@@ -15,62 +16,106 @@ export class TableOverlayRenderer {
   public prepareSelectionContext(
     pageNo: number
   ): CanvasRenderingContext2D | null {
-    const overlayCtxList = this.draw.getPageCanvasHost().getOverlayCtxList()
-    const overlayPageList = this.draw.getPageCanvasHost().getOverlayPageList()
-    const ctx = overlayCtxList[pageNo]
-    const pageDom = overlayPageList[pageNo]
-    if (!ctx || !pageDom) {
+    const surface = this.draw
+      .getPageCanvasHost()
+      .getSurface(pageNo, RenderLayer.OVERLAY)
+    if (!surface) {
       return null
     }
+    // overlay 即将重绘，先使对应 bitmap 缓存失效，避免后续缓存合成读到旧内容。
+    this.draw.getPageCanvasHost().invalidateBitmapCache(pageNo, RenderLayer.OVERLAY)
+    this.draw.getServices().renderBackendManager.render(surface, {
+      pageNo,
+      layer: RenderLayer.OVERLAY,
+      reason: 'overlay-visible',
+      priority: 'sync',
+      execute: currentSurface => {
+        this.clearOverlaySurface(currentSurface)
+      }
+    })
+    return surface.ctx2d
+  }
+
+  /**
+   * 清理指定页 overlay surface。
+   *
+   * @param surface - 当前页 overlay surface
+   */
+  private clearOverlaySurface(surface: IRenderSurface) {
+    const { canvas, ctx2d: ctx } = surface
     ctx.clearRect(
       0,
       0,
-      Math.max(pageDom.width, this.draw.getWidth()),
-      Math.max(pageDom.height, this.draw.getHeight())
+      Math.max(canvas.width, this.draw.getWidth()),
+      Math.max(canvas.height, this.draw.getHeight())
     )
-    return ctx
   }
 
+  /** 清理指定页 overlay 层，供表格迁移和页面强制重绘前使用。 */
+  public clearPage(pageNo: number) {
+    const surface = this.draw
+      .getPageCanvasHost()
+      .getSurface(pageNo, RenderLayer.OVERLAY)
+    if (!surface) {
+      return
+    }
+    this.clearOverlaySurface(surface)
+  }
+
+  /**
+   * 渲染指定页 overlay 内容。
+   *
+   * @param pageNo - 目标页码
+   * @param positionList - 当前主文档位置列表
+   * @param elementList - 当前主文档元素列表
+   */
+  public renderPageOverlay(
+    pageNo: number,
+    positionList = this.draw.getPosition().getLayoutMainPositionList(),
+    elementList = this.draw.getLayoutMainElementList()
+  ) {
+    const rowList = this.draw.getPageRowList()[pageNo]
+    if (!rowList?.length) {
+      return
+    }
+    const selectionCtx = this.prepareSelectionContext(pageNo)
+    if (!selectionCtx) {
+      return
+    }
+    const pagePositionList =
+      pageNo >= 0
+        ? this.draw.getPosition().getLayoutMainPositionListByPage(pageNo)
+        : positionList
+    const payload: IDrawRowPayload = {
+      elementList,
+      positionList: pagePositionList,
+      rowList,
+      pageNo,
+      startIndex: rowList[0]?.startIndex,
+      innerWidth: this.draw.getInnerWidth(),
+      selectionCtx,
+      zone: EditorZone.MAIN
+    }
+    this.draw.getControl().renderHighlightList(selectionCtx, pageNo)
+    this.draw.drawSelection(selectionCtx, payload)
+    if (this.draw.getSearch().getSearchKeyword()) {
+      this.draw.getSearch().render(selectionCtx, pageNo)
+    }
+  }
+
+  /** 渲染当前可视页 overlay 内容。 */
   public renderVisibleOverlay() {
     // overlay 当前承接的是“可视页上的装饰层”：
     // 选区、搜索高亮、控件高亮都从这里按页分发。
     const positionList = this.draw.getPosition().getLayoutMainPositionList()
     const elementList = this.draw.getLayoutMainElementList()
-    const innerWidth = this.draw.getInnerWidth()
     const searchRenderPageNoList =
       this.draw.getSearch().consumeSearchRenderPageNoList()
     const pageNoList =
       this.draw.resolveVisibleRenderPageNos(searchRenderPageNoList)
 
     for (let i = 0; i < pageNoList.length; i++) {
-      const pageNo = pageNoList[i]
-      const rowList = this.draw.getPageRowList()[pageNo]
-      if (!rowList?.length) {
-        continue
-      }
-      const selectionCtx = this.prepareSelectionContext(pageNo)
-      if (!selectionCtx) {
-        continue
-      }
-      const pagePositionList =
-        pageNo >= 0
-          ? this.draw.getPosition().getLayoutMainPositionListByPage(pageNo)
-          : positionList
-      const payload: IDrawRowPayload = {
-        elementList,
-        positionList: pagePositionList,
-        rowList,
-        pageNo,
-        startIndex: rowList[0]?.startIndex,
-        innerWidth,
-        selectionCtx,
-        zone: EditorZone.MAIN
-      }
-      this.draw.getControl().renderHighlightList(selectionCtx, pageNo)
-      this.draw.drawSelection(selectionCtx, payload)
-      if (this.draw.getSearch().getSearchKeyword()) {
-        this.draw.getSearch().render(selectionCtx, pageNo)
-      }
+      this.renderPageOverlay(pageNoList[i], positionList, elementList)
     }
   }
 }

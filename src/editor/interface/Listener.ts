@@ -20,17 +20,44 @@ export interface IRangeStyle {
   italic: boolean
   underline: boolean
   strikeout: boolean
+  letterSpacing: number | null
   color: string | null
   highlight: string | null
   rowFlex: RowFlex | null
   rowMargin: number
+  rowIndentLeft: number | null
+  rowIndentRight: number | null
+  rowIndent: number | null
+  rowHangingIndent: number | null
+  spaceBefore: number | null
+  spaceAfter: number | null
+  lineSpacing: number | null
+  lineSpacingType: 'auto' | 'exact' | 'multiple' | null
+  pageBreakBefore: boolean
+  keepWithNext: boolean
+  keepLines: boolean
+  widowControl: boolean
+  tabStops: IElement['tabStops'] | null
   dashArray: number[]
   level: TitleLevel | null
   listType: ListType | null
   listStyle: ListStyle | null
   listLevel: number | null
+  listStart: number | null
+  listSymbol: string | null
+  styleId: string | null
+  styleName: string | null
   groupIds: string[] | null
   textDecoration: ITextDecoration | null
+  textScale: number | null
+  textPosition: number | null
+  textOutline: IElement['textOutline'] | null
+  textShadow: IElement['textShadow'] | null
+  textGlow: IElement['textGlow'] | null
+  textReflection: IElement['textReflection'] | null
+  textEnclosure: IElement['textEnclosure'] | null
+  textRuby: IElement['textRuby'] | null
+  textCombine: boolean | null
   extension?: unknown | null
 }
 

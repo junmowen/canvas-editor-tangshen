@@ -2,6 +2,7 @@ import { IPadding } from '../../../interface/Common'
 import { IElement } from '../../../interface/Element'
 import { IMargin } from '../../../interface/Margin'
 import { PaperDirection } from '../../../dataset/enum/Editor'
+import { getTableCellContentInset } from '../../table/layout/TableCellContentInset'
 import type { Draw } from '../Draw'
 
 /**
@@ -13,6 +14,8 @@ import type { Draw } from '../Draw'
 export class DrawMetricsService {
   /** 关联的 Draw 门面。 */
   constructor(private readonly draw: Draw) {}
+  private elementFontCache = new Map<string, string>()
+  private readonly maxElementFontCacheSize = 2000
 
   public getOriginalWidth(): number {
     const { paperDirection, width, height } = this.draw.getRuntime().getOptions()
@@ -40,7 +43,23 @@ export class DrawMetricsService {
     const margins = this.getMargins()
     const headerExtraHeight = this.draw.getComponents().header.getExtraHeight()
     const footerExtraHeight = this.draw.getComponents().footer.getExtraHeight()
-    return margins[0] + margins[2] + headerExtraHeight + footerExtraHeight
+    return margins[0] + margins[2] + headerExtraHeight + footerExtraHeight + this.getPageNumberExtraHeight()
+  }
+
+  /** 获取页码绘制区域超出底边距的额外占高，避免正文和表格 fragment 压到页码上。 */
+  private getPageNumberExtraHeight(): number {
+    const options = this.draw.getRuntime().getOptions()
+    if (options.pageNumber.disabled) {
+      return 0
+    }
+    const margins = this.getMargins()
+    const pageNumberTop =
+      this.getHeight() -
+      this.getPageNumberBottom() -
+      options.pageNumber.size * options.scale -
+      6 * options.scale
+    const mainBottom = this.getHeight() - margins[2]
+    return Math.max(0, mainBottom - pageNumberTop)
   }
 
   public getInnerWidth(): number {
@@ -60,9 +79,18 @@ export class DrawMetricsService {
     if (positionContext.isTable) {
       const { index, trIndex, tdIndex } = positionContext
       const elementList = this.draw.getOriginalElementList()
-      const td = elementList[index!].trList![trIndex!].tdList[tdIndex!]
+      const table = elementList[index!]
+      const td = table.trList![trIndex!].tdList[tdIndex!]
       const tdPadding = this.getTdPadding()
-      return td!.width! - tdPadding[1] - tdPadding[3]
+      const contentInset = getTableCellContentInset(table, td)
+      return Math.max(
+        0,
+        td!.width! -
+          tdPadding[1] -
+          tdPadding[3] -
+          contentInset.left -
+          contentInset.right
+      )
     }
     return this.getOriginalInnerWidth()
   }
@@ -126,9 +154,19 @@ export class DrawMetricsService {
     const { defaultSize, defaultFont } = this.draw.getRuntime().getOptions()
     const font = el.font || defaultFont
     const size = el.actualSize || el.size || defaultSize
-    return `${el.italic ? 'italic ' : ''}${el.bold ? 'bold ' : ''}${
+    const key = `${el.italic ? 1 : 0}|${el.bold ? 1 : 0}|${size}|${scale}|${font}`
+    const cachedFont = this.elementFontCache.get(key)
+    if (cachedFont) {
+      return cachedFont
+    }
+    const nextFont = `${el.italic ? 'italic ' : ''}${el.bold ? 'bold ' : ''}${
       size * scale
     }px ${font}`
+    this.elementFontCache.set(key, nextFont)
+    if (this.elementFontCache.size > this.maxElementFontCacheSize) {
+      this.elementFontCache.delete(this.elementFontCache.keys().next().value)
+    }
+    return nextFont
   }
 
   public getElementSize(el: IElement) {

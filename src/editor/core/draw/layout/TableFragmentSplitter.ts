@@ -5,6 +5,7 @@ import {
   ITableFragmentRow
 } from '../../../interface/table/TableFragment'
 import { deepClone, getUUID } from '../../../utils'
+import { getTableCellContentInset } from '../../table/layout/TableCellContentInset'
 import type { Draw } from '../Draw'
 
 interface ISplitTableFragmentsPayload {
@@ -14,6 +15,7 @@ interface ISplitTableFragmentsPayload {
   availableHeight: number
   pageContentHeight: number
   rowMargin: number
+  pageStartOffsetY?: number
 }
 
 interface ISplitTableFragmentPayload {
@@ -95,10 +97,16 @@ export class TableFragmentSplitter {
       logicalTableIndex,
       availableHeight,
       pageContentHeight,
-      rowMargin
+      rowMargin,
+      pageStartOffsetY = 0
     } = payload
 
     let remainingHeight = availableHeight
+    let currentPageContentHeight = pageContentHeight
+    const pageStartAvailableHeight = Math.max(
+      0,
+      pageContentHeight - pageStartOffsetY
+    )
     let workingFragment = this.createInitialFragment(
       sourceTable,
       logicalTableId,
@@ -123,7 +131,7 @@ export class TableFragmentSplitter {
       const splitResult = this.splitFragmentByAvailableHeight({
         fragment: workingFragment,
         availableHeight: remainingHeight,
-        pageContentHeight,
+        pageContentHeight: currentPageContentHeight,
         rowMargin
       })
 
@@ -131,7 +139,8 @@ export class TableFragmentSplitter {
         if (!fragments.length) {
           startOnNewPage = true
         }
-        remainingHeight = pageContentHeight
+        remainingHeight = pageStartAvailableHeight
+        currentPageContentHeight = pageStartAvailableHeight
         continue
       }
 
@@ -141,6 +150,11 @@ export class TableFragmentSplitter {
         logicalTableIndex,
         fragmentOrder
       )
+      const isPageStartFragment =
+        (fragmentOrder === 0 && startOnNewPage) || fragmentOrder > 0
+      if (isPageStartFragment) {
+        headFragment.pageStartOffsetY = pageStartOffsetY
+      }
       fragments.push(headFragment)
 
       if (!splitResult.tail) break
@@ -163,10 +177,8 @@ export class TableFragmentSplitter {
         logicalTableIndex,
         fragmentOrder
       )
-      remainingHeight = Math.max(
-        0,
-        remainingHeight - (headFragment.height || 0) * this.draw.getOptions().scale - rowMargin
-      )
+      remainingHeight = pageStartAvailableHeight
+      currentPageContentHeight = pageStartAvailableHeight
     }
 
     return { startOnNewPage, fragments }
@@ -293,11 +305,17 @@ export class TableFragmentSplitter {
       for (let s = originalStartRowIndex; s < splitTrIndex; s++) {
         splitTdPreHeight += trList[s].height * scale
       }
+      const splitTdInset = getTableCellContentInset(fragment, splitTd)
+      const splitTdVerticalPadding =
+        tdPaddingHeight + splitTdInset.top + splitTdInset.bottom
       let splitTdPreRowHeight = 0
       let splitTdRowIndex = -1
       for (let r = 0; r < (splitTd.rowList?.length || 0); r++) {
         const row = splitTd.rowList![r]
-        if (row.height + splitTdPreRowHeight + tdPaddingHeight * scale > splitTdPreHeight) {
+        if (
+          row.height + splitTdPreRowHeight + splitTdVerticalPadding * scale >
+          splitTdPreHeight
+        ) {
           splitTdRowIndex = r
           break
         }
@@ -309,7 +327,9 @@ export class TableFragmentSplitter {
         tailCarryTd.value = movedRowList.map(row => row.elementList).flat()
         splitTd.value = splitTd.rowList!.map(row => row.elementList).flat()
         const movedHeight = movedRowList.reduce((pre, cur) => pre + cur.height / scale, 0)
-        tailCarryTd.mainHeight = movedHeight ? movedHeight + tdPaddingHeight : 0
+        tailCarryTd.mainHeight = movedHeight
+          ? movedHeight + splitTdVerticalPadding
+          : 0
         splitTd.mainHeight! -= movedHeight
       }
       splitTd.rowspan = Math.max(1, headRowspan)
@@ -325,12 +345,14 @@ export class TableFragmentSplitter {
     }
 
     const headTrHeight = this.computeFragmentCarryRowHeight(
+      fragment,
       headCarryHeightList,
       tdPaddingHeight,
       scale,
       defaultTrMinHeight
     )
     const tailTrHeight = this.computeFragmentCarryRowHeight(
+      fragment,
       tailCarryHeightList,
       tdPaddingHeight,
       scale,
@@ -433,6 +455,7 @@ export class TableFragmentSplitter {
 
   /** 计算跨页续接行在当前 fragment 中应保留的高度。 */
   private computeFragmentCarryRowHeight(
+    fragment: ITableFragmentDescriptor,
     carryHeightList: IFragmentCarryHeightItem[],
     tdPaddingHeight: number,
     scale: number,
@@ -442,7 +465,9 @@ export class TableFragmentSplitter {
     for (let d = 0; d < carryHeightList.length; d++) {
       const { td, reservedHeight } = carryHeightList[d]
       const tdRowListHeight = td.rowList?.reduce((pre, cur) => pre + cur.height, 0) || 0
-      const tdContentHeight = tdRowListHeight > 0 ? tdRowListHeight / scale + tdPaddingHeight : td.mainHeight || 0
+      const tdInset = getTableCellContentInset(fragment, td)
+      const tdVerticalPadding = tdPaddingHeight + tdInset.top + tdInset.bottom
+      const tdContentHeight = tdRowListHeight > 0 ? tdRowListHeight / scale + tdVerticalPadding : td.mainHeight || 0
       const tdCarryRowHeight = Math.max(fallbackMinHeight, tdContentHeight - reservedHeight)
       if (tdCarryRowHeight > rowHeight) rowHeight = tdCarryRowHeight
     }

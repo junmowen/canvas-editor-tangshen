@@ -14,6 +14,8 @@ interface IResolveSelectionDragRangePayload {
   draw: Draw
   startPosition: ICurrentPosition
   positionResult: ICurrentPosition
+  pointerX?: number
+  pointerY?: number
   endBoundaryIndex: number
   endHitTargetIndex?: number
 }
@@ -100,6 +102,7 @@ function toPointerHit(payload: {
 }): TPointerHit {
   const { draw, position, boundaryIndex, hitIndex } = payload
   const resolveIsRightBoundaryHit = () => {
+    if (position.forceNotRightBoundaryHit) return false
     if (hitIndex === undefined || position.x === undefined) return false
     if (position.isTable) {
       const slice = getTableSlice(draw, position)
@@ -175,14 +178,34 @@ function shouldUseHitTextRange(startHit: TPointerHit, endHit: TPointerHit): bool
   return false
 }
 
+function shouldSelectSingleTableCell(payload: {
+  startHit: ITableTextHit
+  endHit: ITableTextHit
+  startPosition: ICurrentPosition
+  pointerX?: number
+  pointerY?: number
+}) {
+  const { startHit, endHit, startPosition, pointerX, pointerY } = payload
+  if (!isSameTextObject(startHit, endHit)) return false
+  if (
+    startPosition.x === undefined ||
+    startPosition.y === undefined ||
+    pointerX === undefined ||
+    pointerY === undefined
+  ) {
+    return false
+  }
+  const deltaX = Math.abs(pointerX - startPosition.x)
+  const deltaY = Math.abs(pointerY - startPosition.y)
+  return deltaX >= 4 || deltaY >= 4
+}
+
 function resolveHitRangeStartBoundary(hit: TPointerHit): number {
   if (hit.hitIndex !== undefined) {
     if (hit.isRightBoundaryHit) {
       return hit.boundaryIndex
     }
-  }
-  if (hit.object === 'text' && hit.hitIndex !== undefined) {
-    return Math.max(0, hit.hitIndex - 1)
+    return hit.hitIndex - 1
   }
   return hit.boundaryIndex
 }
@@ -288,6 +311,8 @@ export function resolveSelectionDragRange(
     draw,
     startPosition,
     positionResult,
+    pointerX,
+    pointerY,
     endBoundaryIndex,
     endHitTargetIndex
   } = payload
@@ -304,21 +329,39 @@ export function resolveSelectionDragRange(
     boundaryIndex: endBoundaryIndex,
     hitIndex: endHitTargetIndex
   })
-
   if (isSameTextObject(startHit, endHit)) {
     const range = resolveTextSelection({
       startHit,
       endHit,
       useHitRange: shouldUseHitTextRange(startHit, endHit)
     })
-    if (!range) return null
-    if (startHit.object === 'text' && isPlaceholderRange(draw, range)) return null
-    return {
-      range,
-      positionContext:
-        endHit.object === 'table-text' ? createTableContext(endHit) : undefined,
-      hasSelectionDrag: true
+    if (range) {
+      if (startHit.object === 'text' && isPlaceholderRange(draw, range)) {
+        return null
+      }
+      return {
+        range,
+        positionContext:
+          endHit.object === 'table-text'
+            ? createTableContext(endHit)
+            : undefined,
+        hasSelectionDrag: true
+      }
     }
+    if (
+      isTableTextHit(startHit) &&
+      isTableTextHit(endHit) &&
+      shouldSelectSingleTableCell({
+        startHit,
+        endHit,
+        startPosition,
+        pointerX,
+        pointerY
+      })
+    ) {
+      return resolveTableCellSelection({ startHit, endHit })
+    }
+    return null
   }
 
   if (startHit.object === 'table-text' && endHit.object === 'table-text') {

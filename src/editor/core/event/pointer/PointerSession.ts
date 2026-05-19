@@ -24,6 +24,7 @@ export interface IPointerDragSnapshot {
   elementList: IElement[] | null
   positionList: IElementPosition[] | null
   positionContext: IPositionContext | null
+  dragSource?: 'row-handle' | null
 }
 
 export interface IPointerMultiClickState {
@@ -52,7 +53,8 @@ export function createDefaultPointerSession(): IPointerSession {
       range: null,
       elementList: null,
       positionList: null,
-      positionContext: null
+      positionContext: null,
+      dragSource: null
     },
     mouseDownStartPosition: null,
     mouseDownStartCoordinates: null,

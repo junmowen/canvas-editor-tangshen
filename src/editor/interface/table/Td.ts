@@ -27,6 +27,7 @@ export interface ITd {
   rowList?: IRow[]
   positionList?: IElementPosition[]
   verticalAlign?: VerticalAlign
+  textDirection?: 'horizontal' | 'vertical'
   backgroundColor?: string
   borderTypes?: TdBorder[]
   borderColor?: string

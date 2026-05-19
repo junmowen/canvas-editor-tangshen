@@ -1,6 +1,9 @@
 import {
   CONTROL_CONTEXT_ATTR,
-  EDITOR_ELEMENT_STYLE_ATTR
+  EDITOR_ELEMENT_STYLE_ATTR,
+  EDITOR_ROW_ATTR,
+  LIST_CONTEXT_ATTR,
+  TITLE_CONTEXT_ATTR
 } from '../../../../../dataset/constant/Element'
 import { ControlComponent } from '../../../../../dataset/enum/Control'
 import { ElementType } from '../../../../../dataset/enum/Element'
@@ -21,6 +24,7 @@ export function applyDragCommitMutation(payload: {
   cacheEndIndex: number
   dragElementList: IElement[]
   isContainControl: boolean
+  isPreserveSourceContext?: boolean
 }) {
   const {
     draw,
@@ -32,7 +36,8 @@ export function applyDragCommitMutation(payload: {
     cacheStartIndex,
     cacheEndIndex,
     dragElementList,
-    isContainControl
+    isContainControl,
+    isPreserveSourceContext = false
   } = payload
   const components = draw.getComponents()
   const position = components.position
@@ -49,16 +54,29 @@ export function applyDragCommitMutation(payload: {
       const newElement: IElement = {
         value: el.value
       }
-      const copyAttr = EDITOR_ELEMENT_STYLE_ATTR
+      const copyAttr = [...EDITOR_ELEMENT_STYLE_ATTR]
+      if (isPreserveSourceContext) {
+        copyAttr.push(...EDITOR_ROW_ATTR)
+        copyAttr.push(...LIST_CONTEXT_ATTR)
+        copyAttr.push(...CONTROL_CONTEXT_ATTR)
+      } else if (el.listId) {
+        copyAttr.push(...LIST_CONTEXT_ATTR)
+      }
       if (!isOmitControlAttr) {
         copyAttr.push(...CONTROL_CONTEXT_ATTR)
       }
       copyAttr.forEach(attr => {
+        if (isPreserveSourceContext && TITLE_CONTEXT_ATTR.includes(attr)) {
+          return
+        }
         const value = el[attr] as never
         if (value !== undefined) {
           newElement[attr] = value
         }
       })
+      if (isPreserveSourceContext) {
+        return omitObject(newElement, TITLE_CONTEXT_ATTR)
+      }
       return newElement
     }
     let newElement = deepClone(el)
@@ -69,11 +87,16 @@ export function applyDragCommitMutation(payload: {
       isHandleFirstElement: false,
       editorOptions
     })
+    if (isPreserveSourceContext) {
+      newElement = omitObject(newElement, TITLE_CONTEXT_ATTR)
+    }
     return newElement
   })
-  formatElementContext(elementList, replaceElementList, range.startIndex, {
-    editorOptions: draw.getOptions()
-  })
+  if (!isPreserveSourceContext) {
+    formatElementContext(elementList, replaceElementList, range.startIndex, {
+      editorOptions: draw.getOptions()
+    })
+  }
   const cacheStartElement = cacheElementList[cacheStartIndex]
   const cacheStartPosition = cachePositionList[cacheStartIndex]
   const cacheRangeStartId = createDragId(cacheElementList[cacheStartIndex])

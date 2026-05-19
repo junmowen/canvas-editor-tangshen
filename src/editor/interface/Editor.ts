@@ -14,9 +14,10 @@ import { IFooter } from './Footer'
 import { IGroup } from './Group'
 import { IHeader } from './Header'
 import { ILineBreakOption } from './LineBreak'
-import { IMargin } from './Margin'
+import { IMargin, PageGutterPosition } from './Margin'
 import { IPageBreak } from './PageBreak'
 import { IPageNumber } from './PageNumber'
+import { IPageColumns } from './PageColumns'
 import { IPlaceholder } from './Placeholder'
 import { ITitleOption } from './Title'
 import { IWatermark } from './Watermark'
@@ -34,6 +35,27 @@ export interface IEditorData {
   header?: IElement[]
   main: IElement[]
   footer?: IElement[]
+}
+
+export interface IRenderBackendOption {
+  debugPanel?: {
+    enabled?: boolean
+  }
+  offscreenCanvas?: {
+    enabled?: boolean
+    nonCurrentPageBase?: boolean
+  }
+  webgl?: {
+    enabled?: boolean
+    imageTask?: boolean
+    forceContextLost?: boolean
+    maxTextureCacheSize?: number
+    maxTextureCacheBytes?: number
+  }
+  svgDom?: {
+    enabled?: boolean
+    blockTask?: boolean
+  }
 }
 
 export interface IEditorOption {
@@ -67,6 +89,10 @@ export interface IEditorOption {
   marginIndicatorSize?: number
   marginIndicatorColor?: string
   margins?: IMargin
+  gutter?: number
+  gutterPosition?: PageGutterPosition
+  mirrorMargins?: boolean
+  columns?: IPageColumns
   pageMode?: PageMode
   renderMode?: RenderMode
   defaultHyperlinkColor?: string
@@ -102,6 +128,7 @@ export interface IEditorOption {
   pageBorder?: IPageBorderOption
   badge?: IBadgeOption
   modeRule?: IModeRule
+  renderBackend?: IRenderBackendOption
 }
 
 export interface IEditorResult {

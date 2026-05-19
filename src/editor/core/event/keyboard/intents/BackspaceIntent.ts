@@ -21,9 +21,13 @@ export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
   const { startIndex, endIndex, isCrossRowCol } =
     rangeManager.getEditBoundaryRange()
   let curIndex: number | null
+  let deletedCount = 1
+  let editIndex = startIndex
   if (isCrossRowCol) {
     curIndex = clearCrossRowColSelection(draw)
     if (curIndex === null) return
+    deletedCount = Math.max(1, endIndex - startIndex)
+    editIndex = startIndex + 1
   } else {
     curIndex = handleControlDeletion(
       control,
@@ -83,11 +87,15 @@ export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
           startIndex + 1,
           endIndex - startIndex
         )
+        deletedCount = Math.max(1, endIndex - startIndex)
+        editIndex = startIndex + 1
       } else {
         draw.spliceElementList(elementList, index, 1)
+        deletedCount = 1
+        editIndex = index
       }
       curIndex = isCollapsed ? index - 1 : startIndex
     }
   }
-  finalizeDeletion({ draw, startIndex, curIndex })
+  finalizeDeletion({ draw, startIndex, curIndex, deletedCount, editIndex })
 }

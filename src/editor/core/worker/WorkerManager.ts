@@ -12,14 +12,12 @@ import { deepClone } from '../../utils'
 export class WorkerManager {
   private draw: Draw
   private wordCountWorker: Worker
-  private catalogWorker: Worker
   private groupWorker: Worker
   private valueWorker: Worker
 
   constructor(draw: Draw) {
     this.draw = draw
     this.wordCountWorker = new WordCountWorker()
-    this.catalogWorker = new CatalogWorker()
     this.groupWorker = new GroupWorker()
     this.valueWorker = new ValueWorker()
   }
@@ -41,17 +39,21 @@ export class WorkerManager {
 
   public getCatalog(): Promise<ICatalog | null> {
     return new Promise((resolve, reject) => {
-      this.catalogWorker.onmessage = evt => {
+      // 目录生成可能被 contentChange 和外部 API 并发触发；每次请求独立 worker，避免复用实例覆盖回调导致 Promise 悬挂。
+      const catalogWorker = new CatalogWorker()
+      catalogWorker.onmessage = evt => {
+        catalogWorker.terminate()
         resolve(evt.data)
       }
 
-      this.catalogWorker.onerror = evt => {
+      catalogWorker.onerror = evt => {
+        catalogWorker.terminate()
         reject(evt)
       }
 
       const elementList = this.draw.getOriginalMainElementList()
       const positionList = this.draw.getComponents().position.getLayoutMainPositionList()
-      this.catalogWorker.postMessage({
+      catalogWorker.postMessage({
         elementList,
         positionList
       })

@@ -1,6 +1,7 @@
 import { EDITOR_PREFIX } from '../../../../dataset/constant/Editor'
 import { ElementType } from '../../../../dataset/enum/Element'
 import { IRowElement } from '../../../../interface/Row'
+import { RenderLayer } from '../../../render-backend'
 import { Draw } from '../../Draw'
 import { BaseBlock } from './modules/BaseBlock'
 
@@ -33,16 +34,30 @@ export class BlockParticle {
   }
 
   public render(pageNo: number, element: IRowElement, x: number, y: number) {
-    const id = element.id!
-    const cacheBlock = this.blockMap.get(id)
-    if (cacheBlock) {
-      cacheBlock.setClientRects(pageNo, x, y)
-    } else {
-      const newBlock = new BaseBlock(this, element)
-      newBlock.render()
-      newBlock.setClientRects(pageNo, x, y)
-      this.blockMap.set(id, newBlock)
-    }
+    const surface = this.draw
+      .getPageCanvasHost()
+      .getSurface(pageNo, RenderLayer.BASE)
+    if (!surface) return
+    this.draw.getServices().renderBackendManager.render(surface, {
+      pageNo,
+      layer: RenderLayer.BASE,
+      reason: 'svg-dom-block',
+      priority: 'sync',
+      isCurrentPage: pageNo === this.draw.getPageNo(),
+      isInteractive: true,
+      execute: () => {
+        const id = element.id!
+        const cacheBlock = this.blockMap.get(id)
+        if (cacheBlock) {
+          cacheBlock.setClientRects(pageNo, x, y)
+        } else {
+          const newBlock = new BaseBlock(this, element)
+          newBlock.render()
+          newBlock.setClientRects(pageNo, x, y)
+          this.blockMap.set(id, newBlock)
+        }
+      }
+    })
   }
 
   public clear() {
@@ -61,6 +76,16 @@ export class BlockParticle {
         block.remove()
         this.blockMap.delete(id)
       }
+    })
+  }
+
+  /** 清理指定页的 DOM/SVG block host，页面卸载或滚动回收时使用。 */
+  public clearPage(pageNo: number) {
+    if (!this.blockMap.size) return
+    this.blockMap.forEach(block => {
+      if (block.getPageNo() !== pageNo) return
+      block.remove()
+      this.blockMap.delete(block.getBlockElement().id!)
     })
   }
 }

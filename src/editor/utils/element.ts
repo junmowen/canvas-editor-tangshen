@@ -839,6 +839,7 @@ export function zipElementList(
             e--
             break
           }
+          delete listE.listId
           delete listE.listType
           delete listE.listStyle
           valueList.push(listE)
@@ -1210,6 +1211,20 @@ export function convertElementToDom(
   if (element.rowFlex) {
     dom.style.textAlign = convertRowFlexToTextAlign(element.rowFlex)
   }
+  if (element.rowIndentLeft) {
+    dom.style.marginLeft = `${element.rowIndentLeft}px`
+  }
+  if (element.rowIndentRight) {
+    dom.style.marginRight = `${element.rowIndentRight}px`
+  }
+  if (element.rowIndent) {
+    dom.style.textIndent = `${element.rowIndent}px`
+  }
+  if (element.rowHangingIndent) {
+    dom.style.paddingLeft = `${element.rowHangingIndent}px`
+    const textIndent = element.rowIndent || 0
+    dom.style.textIndent = `${textIndent - element.rowHangingIndent}px`
+  }
   if (element.color) {
     dom.style.color = element.color
   }
@@ -1270,6 +1285,10 @@ export function splitListElement(
 
 export interface IElementListGroupRowFlex {
   rowFlex: RowFlex | null
+  rowIndentLeft: number | null
+  rowIndentRight: number | null
+  rowIndent: number | null
+  rowHangingIndent: number | null
   data: IElement[]
 }
 
@@ -1279,16 +1298,35 @@ export function groupElementListByRowFlex(
   const elementListGroupList: IElementListGroupRowFlex[] = []
   if (!elementList.length) return elementListGroupList
   let currentRowFlex: RowFlex | null = elementList[0]?.rowFlex || null
+  let currentRowIndentLeft: number | null =
+    elementList[0]?.rowIndentLeft || null
+  let currentRowIndentRight: number | null =
+    elementList[0]?.rowIndentRight || null
+  let currentRowIndent: number | null = elementList[0]?.rowIndent || null
+  let currentRowHangingIndent: number | null =
+    elementList[0]?.rowHangingIndent || null
   elementListGroupList.push({
     rowFlex: currentRowFlex,
+    rowIndentLeft: currentRowIndentLeft,
+    rowIndentRight: currentRowIndentRight,
+    rowIndent: currentRowIndent,
+    rowHangingIndent: currentRowHangingIndent,
     data: [elementList[0]]
   })
   for (let e = 1; e < elementList.length; e++) {
     const element = elementList[e]
     const rowFlex = element.rowFlex || null
+    const rowIndentLeft = element.rowIndentLeft || null
+    const rowIndentRight = element.rowIndentRight || null
+    const rowIndent = element.rowIndent || null
+    const rowHangingIndent = element.rowHangingIndent || null
     // 行布局相同&非块元素时追加数据，否则新增分组
     if (
       currentRowFlex === rowFlex &&
+      currentRowIndentLeft === rowIndentLeft &&
+      currentRowIndentRight === rowIndentRight &&
+      currentRowIndent === rowIndent &&
+      currentRowHangingIndent === rowHangingIndent &&
       !getIsBlockElement(element) &&
       !getIsBlockElement(elementList[e - 1])
     ) {
@@ -1298,9 +1336,17 @@ export function groupElementListByRowFlex(
     } else {
       elementListGroupList.push({
         rowFlex,
+        rowIndentLeft,
+        rowIndentRight,
+        rowIndent,
+        rowHangingIndent,
         data: [element]
       })
       currentRowFlex = rowFlex
+      currentRowIndentLeft = rowIndentLeft
+      currentRowIndentRight = rowIndentRight
+      currentRowIndent = rowIndent
+      currentRowHangingIndent = rowHangingIndent
     }
   }
   // 压缩数据
@@ -1456,6 +1502,19 @@ export function createDomFromElementList(
             iframe.height = `${element.height!}`
             clipboardDom.append(iframe)
           }
+        } else if (element.block?.type === BlockType.HTML) {
+          const html = element.block.htmlBlock?.html
+          if (html) {
+            const htmlBlock = document.createElement('div')
+            htmlBlock.setAttribute('data-ce-block-type', 'html')
+            htmlBlock.style.display = 'block'
+            htmlBlock.style.width = `${
+              element.width || options?.width || window.innerWidth
+            }px`
+            htmlBlock.style.height = `${element.height!}px`
+            htmlBlock.innerHTML = html
+            clipboardDom.append(htmlBlock)
+          }
         }
       } else if (element.type === ElementType.SEPARATOR) {
         const hr = document.createElement('hr')
@@ -1515,6 +1574,11 @@ export function createDomFromElementList(
     const isDefaultRowFlex =
       !elementGroupRowFlex.rowFlex ||
       elementGroupRowFlex.rowFlex === RowFlex.LEFT
+    const hasRowIndent =
+      !!elementGroupRowFlex.rowIndentLeft ||
+      !!elementGroupRowFlex.rowIndentRight ||
+      !!elementGroupRowFlex.rowIndent ||
+      !!elementGroupRowFlex.rowHangingIndent
     // 块元素使用flex否则使用text-align
     const rowFlexDom = document.createElement('div')
     if (!isDefaultRowFlex) {
@@ -1530,10 +1594,26 @@ export function createDomFromElementList(
         )
       }
     }
+    if (elementGroupRowFlex.rowIndent) {
+      rowFlexDom.style.textIndent = `${elementGroupRowFlex.rowIndent}px`
+    }
+    if (elementGroupRowFlex.rowHangingIndent) {
+      rowFlexDom.style.paddingLeft = `${elementGroupRowFlex.rowHangingIndent}px`
+      const textIndent = elementGroupRowFlex.rowIndent || 0
+      rowFlexDom.style.textIndent = `${
+        textIndent - elementGroupRowFlex.rowHangingIndent
+      }px`
+    }
+    if (elementGroupRowFlex.rowIndentLeft) {
+      rowFlexDom.style.marginLeft = `${elementGroupRowFlex.rowIndentLeft}px`
+    }
+    if (elementGroupRowFlex.rowIndentRight) {
+      rowFlexDom.style.marginRight = `${elementGroupRowFlex.rowIndentRight}px`
+    }
     // 布局内容
     rowFlexDom.innerHTML = buildDom(elementGroupRowFlex.data).innerHTML
     // 未设置行布局时无需行布局容器
-    if (!isDefaultRowFlex) {
+    if (!isDefaultRowFlex || hasRowIndent) {
       clipboardDom.append(rowFlexDom)
     } else {
       rowFlexDom.childNodes.forEach(child => {
@@ -1573,6 +1653,27 @@ export function convertTextNodeToElement(
   // 行对齐
   if (rowFlex !== RowFlex.LEFT) {
     element.rowFlex = rowFlex
+  }
+  const textIndent = parseFloat(style.textIndent || '0')
+  const marginLeft = parseFloat(style.marginLeft || '0')
+  const marginRight = parseFloat(style.marginRight || '0')
+  const paddingLeft = parseFloat(style.paddingLeft || '0')
+  if (marginLeft) {
+    element.rowIndentLeft = marginLeft
+  }
+  if (marginRight) {
+    element.rowIndentRight = marginRight
+  }
+  if (paddingLeft) {
+    element.rowHangingIndent = paddingLeft
+    const firstLineIndent = textIndent + paddingLeft
+    if (firstLineIndent > 0) {
+      element.rowIndent = firstLineIndent
+    }
+  } else if (textIndent > 0) {
+    element.rowIndent = textIndent
+  } else if (textIndent < 0) {
+    element.rowHangingIndent = Math.abs(textIndent)
   }
   // 高亮色
   if (style.backgroundColor !== 'rgba(0, 0, 0, 0)') {
@@ -1724,6 +1825,26 @@ export function getElementListByHTML(
               height: parseInt(height)
             })
           }
+        } else if (
+          node.nodeName === 'DIV' &&
+          (node as HTMLElement).dataset.ceBlockType === BlockType.HTML
+        ) {
+          const htmlElement = node as HTMLDivElement
+          const width = parseInt(htmlElement.style.width) || options.innerWidth
+          const height = parseInt(htmlElement.style.height) || 120
+          elementList.push({
+            value: '',
+            type: ElementType.BLOCK,
+            block: {
+              type: BlockType.HTML,
+              htmlBlock: {
+                html: htmlElement.innerHTML,
+                text: htmlElement.textContent?.replace(/\s+/g, ' ').trim()
+              }
+            },
+            width,
+            height
+          })
         } else if (node.nodeName === 'TABLE') {
           const tableElement = node as HTMLTableElement
           const element: IElement = {

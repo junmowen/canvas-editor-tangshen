@@ -4,6 +4,7 @@ import { IElement, IElementMetrics } from '../../../interface/Element'
 import { IRow, IRowElement } from '../../../interface/Row'
 import { ITableFragmentDescriptor } from '../../../interface/table/TableFragment'
 import type { Draw } from '../Draw'
+import { getTableCellContentInset } from '../../table/layout/TableCellContentInset'
 import { TableFragmentSplitter } from './TableFragmentSplitter'
 
 interface IMeasureTablePayload {
@@ -50,7 +51,6 @@ export class TableLayoutEngine {
       tdPadding
     } = payload
     const metrics = this.createMetrics()
-    const tdPaddingWidth = tdPadding[1] + tdPadding[3]
     const tdPaddingHeight = tdPadding[0] + tdPadding[2]
 
     this.draw.getTableParticle().computeRowColInfo(element)
@@ -60,15 +60,20 @@ export class TableLayoutEngine {
       const tr = trList[t]
       for (let d = 0; d < tr.tdList.length; d++) {
         const td = tr.tdList[d]
+        const contentInset = getTableCellContentInset(element, td)
+        const tdHorizontalPadding =
+          tdPadding[1] + tdPadding[3] + contentInset.left + contentInset.right
+        const tdVerticalPadding =
+          tdPaddingHeight + contentInset.top + contentInset.bottom
         const rowList = this.computeRowList({
-          innerWidth: (td.width! - tdPaddingWidth) * scale,
+          innerWidth: Math.max(0, td.width! - tdHorizontalPadding) * scale,
           elementList: td.value,
           isFromTable: true,
           isPagingPageMode
         })
         const rowHeight = rowList.reduce((pre, cur) => pre + cur.height, 0)
         td.rowList = rowList
-        const curTdHeight = rowHeight / scale + tdPaddingHeight
+        const curTdHeight = rowHeight / scale + tdVerticalPadding
         if (td.height! < curTdHeight) {
           const extraHeight = curTdHeight - td.height!
           const changeTr = trList[t + td.rowspan - 1]
@@ -173,7 +178,8 @@ export class TableLayoutEngine {
       logicalTableIndex,
       availableHeight,
       pageContentHeight,
-      rowMargin
+      rowMargin,
+      pageStartOffsetY: this.getFragmentPageStartOffsetY(sourceTable)
     })
 
     return {
@@ -252,11 +258,22 @@ export class TableLayoutEngine {
       width,
       height,
       ascent: 0,
-      offsetY: keepOffsetY ? row.offsetY : 0,
+      offsetY: keepOffsetY ? row.offsetY : fragment.pageStartOffsetY || 0,
       isPageBreak: keepPageBreak ? row.isPageBreak : false,
       elementList,
       tableFragment: fragment
     }
+  }
+
+  private getFragmentPageStartOffsetY(sourceTable: IRowElement) {
+    const rowMargin =
+      this.draw.getServices().metricsService.getElementRowMargin(sourceTable)
+    const header = this.draw.getHeader()
+    const headerExtraHeight = header.getExtraHeight()
+    const headerBottom = header.getHeaderTop() + header.getHeight()
+    const mainTop = this.draw.getMargins()[0] + headerExtraHeight
+    const headerTouchesMainTop = header.getHeight() > 0 && headerBottom >= mainTop - 1
+    return headerTouchesMainTop ? rowMargin : 0
   }
 
   /** 为 fragment 行构造一个锚定元素，供正文布局主链继续消费。 */

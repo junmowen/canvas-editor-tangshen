@@ -16,12 +16,30 @@ import { TableLayoutSnapshotBuilder } from '../../table/layout/TableLayoutSnapsh
 import { TableLayoutSnapshotAccessor } from '../../table/layout/TableLayoutSnapshotAccessor'
 import { RowLayoutEngine } from '../layout/RowLayoutEngine'
 import { DrawLayoutPipeline } from '../layout/DrawLayoutPipeline'
+import { DocumentChunkIndex } from '../layout/DocumentChunkIndex'
+import { ChunkLayoutCache } from '../layout/ChunkLayoutCache'
+import { TableChunkRangeIndex } from '../layout/TableChunkRangeIndex'
+import { TableCellChunkIndex } from '../layout/TableCellChunkIndex'
+import { TableCellChunkPipeline } from '../layout/TableCellChunkPipeline'
+import { TableLocalRelayoutPipeline } from '../layout/TableLocalRelayoutPipeline'
+import { ChunkLayoutPipeline } from '../layout/ChunkLayoutPipeline'
+import { TypingLinePatchPipeline } from '../layout/chunk/TypingLinePatchPipeline'
 import { RowRenderer } from '../render/RowRenderer'
 import { PageRenderer } from '../render/PageRenderer'
 import { DrawRenderPipeline } from '../render/DrawRenderPipeline'
 import { DrawPostRenderEffects } from '../render/DrawPostRenderEffects'
 import { RenderInvalidationManager } from '../../table/render/RenderInvalidationManager'
 import { TableOverlayRenderer } from '../../table/render/TableOverlayRenderer'
+import {
+  Canvas2DRenderEngine,
+  OffscreenCanvasRenderEngine,
+  Overlay2DRenderEngine,
+  RenderBackendManager,
+  SvgDomRenderEngine,
+  WebGLRenderEngine
+} from '../../render-backend'
+import { PageRenderSnapshotBuilder } from '../../render-backend/worker/PageRenderSnapshotBuilder'
+import { WorkerRenderScheduler } from '../../render-backend/worker/WorkerRenderScheduler'
 import type { Draw } from '../Draw'
 
 /**
@@ -44,6 +62,22 @@ export class DrawServiceRegistry {
   public readonly tableLayoutSnapshotAccessor: TableLayoutSnapshotAccessor
   /** 行布局引擎：负责把元素流排版成行。 */
   public readonly rowLayoutEngine: RowLayoutEngine
+  /** 文档 chunk 索引：负责维护段落 / chunk 脏范围和页码覆盖。 */
+  public readonly documentChunkIndex: DocumentChunkIndex
+  /** chunk 布局缓存工具：负责 chunk 布局缓存的读写、失效和统计。 */
+  public readonly chunkLayoutCache: ChunkLayoutCache
+  /** 表格 chunk 范围索引：负责维护 page chunk -> table chunk -> td chunk 的父子覆盖范围。 */
+  public readonly tableChunkRangeIndex: TableChunkRangeIndex
+  /** 表格单元格子 chunk 索引：负责维护 td 局部索引空间。 */
+  public readonly tableCellChunkIndex: TableCellChunkIndex
+  /** 表格单元格子 chunk 管线：负责当前可见 td fragment 的同步局部写回。 */
+  public readonly tableCellChunkPipeline: TableCellChunkPipeline
+  /** 表格级局部重分页管线：复用原表格分页器重算受影响逻辑表。 */
+  public readonly tableLocalRelayoutPipeline: TableLocalRelayoutPipeline
+  /** chunk 布局管线：负责输入态局部布局写回，替代 idle 整篇回放。 */
+  public readonly chunkLayoutPipeline: ChunkLayoutPipeline
+  /** 输入态单行 patch 管线：负责 chunk 失败后把可预览行正式写回。 */
+  public readonly typingLinePatchPipeline: TypingLinePatchPipeline
   /** 布局总管线：负责布局、分页、区域计算、搜索计算等流程编排。 */
   public readonly layoutPipeline: DrawLayoutPipeline
   /** 行渲染器：负责逐行绘制正文、控件、装饰效果等。 */
@@ -58,6 +92,12 @@ export class DrawServiceRegistry {
   public readonly renderInvalidationManager: RenderInvalidationManager
   /** 表格 overlay 渲染器：负责分页 overlay 层绘制。 */
   public readonly tableOverlayRenderer: TableOverlayRenderer
+  /** 渲染后端管理器：负责按 layer / reason 选择实际渲染引擎。 */
+  public readonly renderBackendManager: RenderBackendManager
+  /** worker 页面快照构建器。 */
+  public readonly pageRenderSnapshotBuilder: PageRenderSnapshotBuilder
+  /** OffscreenCanvas worker 调度器。 */
+  public readonly workerRenderScheduler: WorkerRenderScheduler
   /** 文档写操作服务。 */
   public readonly mutationService: DrawMutationService
   /** 导出服务。 */
@@ -98,6 +138,14 @@ export class DrawServiceRegistry {
     this.tableLayoutSnapshotBuilder = new TableLayoutSnapshotBuilder(draw)
     this.tableLayoutSnapshotAccessor = new TableLayoutSnapshotAccessor(draw)
     this.rowLayoutEngine = new RowLayoutEngine(draw)
+    this.chunkLayoutCache = new ChunkLayoutCache(draw)
+    this.documentChunkIndex = new DocumentChunkIndex(draw)
+    this.tableChunkRangeIndex = new TableChunkRangeIndex(draw)
+    this.tableCellChunkIndex = new TableCellChunkIndex(draw)
+    this.tableCellChunkPipeline = new TableCellChunkPipeline(draw)
+    this.tableLocalRelayoutPipeline = new TableLocalRelayoutPipeline(draw)
+    this.chunkLayoutPipeline = new ChunkLayoutPipeline(draw)
+    this.typingLinePatchPipeline = new TypingLinePatchPipeline(draw)
     this.layoutPipeline = new DrawLayoutPipeline(draw)
     this.rowRenderer = new RowRenderer(draw)
     this.pageRenderer = new PageRenderer(draw)
@@ -105,6 +153,21 @@ export class DrawServiceRegistry {
     this.postRenderEffects = new DrawPostRenderEffects(draw)
     this.renderInvalidationManager = new RenderInvalidationManager(draw)
     this.tableOverlayRenderer = new TableOverlayRenderer(draw)
+    const renderBackendOptions = draw.getRuntime().getOptions().renderBackend
+    this.pageRenderSnapshotBuilder = new PageRenderSnapshotBuilder(draw)
+    this.workerRenderScheduler = new WorkerRenderScheduler(
+      this.pageRenderSnapshotBuilder
+    )
+    this.renderBackendManager = new RenderBackendManager([
+      new OffscreenCanvasRenderEngine(
+        renderBackendOptions.offscreenCanvas,
+        this.workerRenderScheduler
+      ),
+      new WebGLRenderEngine(renderBackendOptions.webgl),
+      new SvgDomRenderEngine(renderBackendOptions.svgDom),
+      new Overlay2DRenderEngine(),
+      new Canvas2DRenderEngine()
+    ])
     this.mutationService = new DrawMutationService(draw)
     this.exportService = new DrawExportService(draw)
     this.dataAccess = new DrawDataAccess(draw)

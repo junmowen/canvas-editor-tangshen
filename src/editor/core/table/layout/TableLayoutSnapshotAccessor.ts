@@ -10,6 +10,7 @@ import {
   ITableLayoutCellSlice,
   TLogicalTableCellKey
 } from './TableLayoutSnapshotTypes'
+import { ITableLayoutSnapshotBuildStats } from './TableLayoutSnapshotBuilder'
 
 // 统一的 cell 查询上下文。
 // 允许调用方传逻辑坐标，也允许传 fragment 坐标。
@@ -28,6 +29,34 @@ export interface ITableSnapshotCellLocalRange {
   absoluteEnd: number
 }
 
+/** 表格布局快照统计信息，用于观察分页表格索引规模。 */
+export interface ITableLayoutSnapshotStats {
+  /** 当前快照版本。 */
+  version: number
+  /** 当前快照中的 cell slice 数量。 */
+  sliceCount: number
+  /** 当前快照覆盖的页数。 */
+  pageCount: number
+  /** 当前快照中的逻辑 cell 数量。 */
+  logicalCellCount: number
+  /** 当前快照中的 fragment cell 数量。 */
+  fragmentCellCount: number
+  /** 当前快照中的 cell-page 索引数量。 */
+  cellPageIndexCount: number
+  /** 当前快照中的 fragment table bounds 索引数量。 */
+  fragmentBoundsTableCount: number
+  /** 当前快照中的 cell bounds 数量。 */
+  fragmentBoundsCount: number
+  /** 当前快照中的 row band 数量。 */
+  rowBandCount: number
+  /** 单页最多 cell slice 数量。 */
+  maxSliceCountPerPage: number
+  /** 单个逻辑 cell 最多跨页 slice 数量。 */
+  maxSliceCountPerCell: number
+  /** 快照构建耗时统计。 */
+  build: ITableLayoutSnapshotBuildStats
+}
+
 /**
  * 快照访问器。
  *
@@ -36,7 +65,17 @@ export interface ITableSnapshotCellLocalRange {
  * 2. 让命中、导航、命令、渲染都不再直接操作底层 Map 细节。
  */
 export class TableLayoutSnapshotAccessor {
+  /** Draw 实例，用于读取当前快照和构建器统计。 */
   private readonly draw: Draw
+
+  /** 最近一次缓存的快照规模统计。 */
+  private cachedStats: ITableLayoutSnapshotStats | null = null
+
+  /** 最近一次缓存统计对应的快照版本。 */
+  private cachedStatsVersion = -1
+
+  /** 最近一次缓存统计对应的构建次数。 */
+  private cachedStatsBuildCount = -1
 
   constructor(draw: Draw) {
     this.draw = draw
@@ -72,6 +111,63 @@ export class TableLayoutSnapshotAccessor {
         )
       ) || null
     )
+  }
+
+  /** 获取表格布局快照统计信息。 */
+  public getStats(): ITableLayoutSnapshotStats {
+    const snapshot = this.draw.getTableLayoutSnapshot()
+    const buildStats = this.draw.getServices().tableLayoutSnapshotBuilder.getStats()
+    if (
+      this.cachedStats &&
+      this.cachedStatsVersion === snapshot.version &&
+      this.cachedStatsBuildCount === buildStats.buildCount
+    ) {
+      return this.cloneStats(this.cachedStats)
+    }
+
+    let fragmentBoundsCount = 0
+    snapshot.cellBoundsByFragmentTableId.forEach(boundsList => {
+      fragmentBoundsCount += boundsList.length
+    })
+    let rowBandCount = 0
+    snapshot.sliceList.forEach(slice => {
+      rowBandCount += slice.rowBands.length
+    })
+    const stats: ITableLayoutSnapshotStats = {
+      version: snapshot.version,
+      sliceCount: snapshot.sliceList.length,
+      pageCount: snapshot.slicesByPageNo.size,
+      logicalCellCount: snapshot.slicesByCellKey.size,
+      fragmentCellCount: snapshot.slicesByFragmentCellKey.size,
+      cellPageIndexCount: snapshot.slicesByCellPageKey.size,
+      fragmentBoundsTableCount: snapshot.cellBoundsByFragmentTableId.size,
+      fragmentBoundsCount,
+      rowBandCount,
+      maxSliceCountPerPage: this.getMaxMapValueLength(snapshot.slicesByPageNo),
+      maxSliceCountPerCell: this.getMaxMapValueLength(snapshot.slicesByCellKey),
+      build: buildStats
+    }
+    this.cachedStats = stats
+    this.cachedStatsVersion = snapshot.version
+    this.cachedStatsBuildCount = buildStats.buildCount
+    return this.cloneStats(stats)
+  }
+
+  /** 克隆统计对象，避免外部调试面板意外修改缓存。 */
+  private cloneStats(stats: ITableLayoutSnapshotStats): ITableLayoutSnapshotStats {
+    return {
+      ...stats,
+      build: { ...stats.build }
+    }
+  }
+
+  /** 获取 Map 中数组值的最大长度。 */
+  private getMaxMapValueLength<K, T>(map: Map<K, T[]>): number {
+    let max = 0
+    map.forEach(value => {
+      max = Math.max(max, value.length)
+    })
+    return max
   }
 
   public resolveSliceByPositionContext(

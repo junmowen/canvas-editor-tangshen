@@ -6,6 +6,8 @@ import type { Draw } from '../Draw'
 export class DrawViewportService {
   private lazyRenderIntersectionObserver: IntersectionObserver | null = null
   private readonly pointerCoordinateService: PointerCoordinateService
+  /** 下一次 visible 渲染必须额外覆盖的页码，用于清理布局迁移后的旧页残影。 */
+  private readonly pendingExtraRenderPageNoSet = new Set<number>()
 
   constructor(private readonly draw: Draw) {
     this.pointerCoordinateService = new PointerCoordinateService(draw)
@@ -60,6 +62,8 @@ export class DrawViewportService {
     const renderPageNoSet = new Set<number>(
       this.draw.getViewState().getVisiblePageNoList()
     )
+    this.pendingExtraRenderPageNoSet.forEach(pageNo => renderPageNoSet.add(pageNo))
+    this.pendingExtraRenderPageNoSet.clear()
     const activePositionList = this.draw.getPosition().getPositionList()
     const { startIndex, endIndex } = this.draw.getRange().getEditBoundaryRange()
     const startPageNo = activePositionList[startIndex]?.pageNo
@@ -94,6 +98,15 @@ export class DrawViewportService {
     return renderPageNoSet.size
       ? Array.from(renderPageNoSet).sort((a, b) => a - b)
       : this.draw.getPageRowList().map((_: IRow[], index: number) => index)
+  }
+
+  /** 标记下一次 visible render 需要额外重绘的页码。 */
+  public enqueueExtraVisibleRenderPages(pageNoList: number[]) {
+    pageNoList.forEach(pageNo => {
+      if (this.draw.getPageRowList()[pageNo]) {
+        this.pendingExtraRenderPageNoSet.add(pageNo)
+      }
+    })
   }
 
   public refreshVisiblePagesIfNeeded() {

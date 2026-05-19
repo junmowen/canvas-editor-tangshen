@@ -14,6 +14,19 @@ import {
 import { deepClone } from '../../../utils'
 import { formatElementList } from '../../../utils/element'
 import type { Draw } from '../Draw'
+import {
+  ASYNC_INSERT_THRESHOLD,
+  createRawInsertBatchList,
+  getRawInsertWeight
+} from './DrawInsertBatcher'
+import {
+  AsyncInsertTransactionManager,
+  IAsyncInsertBatchInsertOption,
+  IAsyncInsertTransactionStats
+} from './AsyncInsertTransactionManager'
+import { ProgrammaticTypingBatcher } from './ProgrammaticTypingBatcher'
+
+export type { IAsyncInsertTransactionStats }
 
 /**
  * Draw 文档写操作服务。
@@ -22,12 +35,31 @@ import type { Draw } from '../Draw'
  * 收敛到统一入口中，避免这些过程型逻辑继续散落在 `Draw` 门面。
  */
 export class DrawMutationService {
+  /** 批量插入单片最大长度，避免超大粘贴一次 spread 触发调用栈或参数数量限制。 */
+  private static readonly INSERT_CHUNK_SIZE = 8192
+  /** 程序化连续单字符输入合并器。 */
+  private readonly programmaticTypingBatcher: ProgrammaticTypingBatcher
+  /** 大粘贴后台事务状态机。 */
+  private readonly asyncInsertTransactionManager: AsyncInsertTransactionManager
+  /** 内部插入正在调用 splice，避免把自身后台事务误判为外部编辑打断。 */
+  private isInternalInsertSplice = false
+
   /**
    * 构造函数。
    *
    * @param draw - 关联的 Draw 门面对象，用于访问绘图组件和方法
    */
-  constructor(private readonly draw: Draw) {}
+  constructor(private readonly draw: Draw) {
+    this.programmaticTypingBatcher = new ProgrammaticTypingBatcher(batch => {
+      this.insertElementList(batch.elementList, {
+        isSubmitHistory: batch.isSubmitHistory
+      })
+    })
+    this.asyncInsertTransactionManager = new AsyncInsertTransactionManager(
+      (batch, options) => this.insertElementList(batch, options),
+      isSubmitHistory => this.renderAfterAsyncInsert(isSubmitHistory)
+    )
+  }
 
   /**
    * 在光标位置插入元素列表。
@@ -40,7 +72,7 @@ export class DrawMutationService {
    */
   public insertElementList(
     payload: IElement[],
-    options: IInsertElementListOption = {}
+    options: IAsyncInsertBatchInsertOption = {}
   ) {
     const components = this.draw.getComponents()
     // 如果元素列表为空或当前不允许输入，直接返回
@@ -50,6 +82,15 @@ export class DrawMutationService {
     // 如果没有有效的边界，直接返回
     if (!~startIndex && !~endIndex) return
     const { isSubmitHistory = true } = options
+    if (!options.isSilentBatch && !options.asyncInsertTransactionId) {
+      this.asyncInsertTransactionManager.cancel('insert-element-list')
+    }
+    if (this.tryQueueProgrammaticTyping(payload, options, isSubmitHistory)) {
+      return
+    }
+    if (this.tryQueueLargeInsert(payload, options, isSubmitHistory)) {
+      return
+    }
     // 格式化元素列表
     formatElementList(payload, {
       isHandleFirstElement: false,
@@ -78,10 +119,14 @@ export class DrawMutationService {
       const start = startIndex + 1
       // 如果不是折叠光标，先删除选中范围内的元素
       if (!isCollapsed) {
-        this.spliceElementList(elementList, start, endIndex - startIndex)
+        this.withInternalInsertSplice(() => {
+          this.spliceElementList(elementList, start, endIndex - startIndex)
+        })
       }
       // 在指定位置插入新元素
-      this.spliceElementList(elementList, start, 0, payload)
+      this.withInternalInsertSplice(() => {
+        this.spliceElementList(elementList, start, 0, payload)
+      })
       curIndex = startIndex + payload.length
       // 获取插入位置前的元素
       const preElement = elementList[start - 1]
@@ -100,11 +145,135 @@ export class DrawMutationService {
     // 如果有有效的光标位置，设置范围并渲染
     if (~curIndex) {
       components.range.setRange(curIndex, curIndex)
+      // 批量插入后的真实坐标由 chunk patch 刷新，逻辑索引必须先同步给后续删除 / 输入读取。
+      components.position.setCursorLogicalIndex(curIndex)
+      if (options.isSilentBatch) {
+        return
+      }
       this.draw.render({
         curIndex,
-        isSubmitHistory
+        isSubmitHistory,
+        // 插入元素列表常用于粘贴和程序化批量输入，高页数文档下必须避免全页 lazy 重建。
+        isTyping: true,
+        typingInsertedCount: payload.length,
+        // 命令插入由正式 chunk patch 提交运行时布局，避免每次 API 输入再做一次 canvas 预览绘制。
+        isSkipTypingPreview: true,
+        // 程序化连续输入保持已有焦点即可，避免每个字符都调度一次 DOM focus。
+        isSetCursor: false,
+        isLazy: false,
+        pageRenderScope: 'visible'
       })
     }
+  }
+
+  /** 大批量粘贴按原始输入体量拆成多批，避免单个超长文本格式化后同步撑爆页面。 */
+  private tryQueueLargeInsert(
+    payload: IElement[],
+    options: IAsyncInsertBatchInsertOption,
+    isSubmitHistory: boolean
+  ) {
+    const rawWeight = getRawInsertWeight(payload)
+    if (rawWeight <= ASYNC_INSERT_THRESHOLD) {
+      this.asyncInsertTransactionManager.recordSyncFallback('below-threshold')
+      return false
+    }
+    if (options.asyncInsertTransactionId) {
+      this.asyncInsertTransactionManager.recordSyncFallback(
+        'async-transaction-batch'
+      )
+      return false
+    }
+    if (this.draw.getZone().isHeaderActive()) {
+      this.asyncInsertTransactionManager.recordSyncFallback('header-context')
+      return false
+    }
+    if (this.draw.getZone().isFooterActive()) {
+      this.asyncInsertTransactionManager.recordSyncFallback('footer-context')
+      return false
+    }
+    if (this.draw.getComponents().position.getPositionContext().isTable) {
+      this.asyncInsertTransactionManager.recordSyncFallback('table-context')
+      return false
+    }
+    if (this.draw.getComponents().control.getActiveControl()) {
+      this.asyncInsertTransactionManager.recordSyncFallback('control-context')
+      return false
+    }
+    const batchList = createRawInsertBatchList(payload)
+    const firstBatch = batchList[0] || []
+    const restBatchList = batchList.slice(1)
+    const transaction = this.asyncInsertTransactionManager.start({
+      batchList: restBatchList,
+      insertOptions: options,
+      isSubmitHistory,
+      rawWeight,
+      totalBatchCount: batchList.length
+    })
+    const firstBatchStartTime = performance.now()
+    this.insertElementList(firstBatch, {
+      ...options,
+      isSubmitHistory: false,
+      asyncInsertTransactionId: transaction.id
+    })
+    this.asyncInsertTransactionManager.markFirstBatchCompleted(
+      transaction.id,
+      performance.now() - firstBatchStartTime
+    )
+    this.asyncInsertTransactionManager.schedule(transaction.id)
+    return true
+  }
+
+  /**
+   * 同步收敛仍在后台推进的大粘贴事务。
+   *
+   * 保存、导出、打印、取值等读取型入口需要完整文档数据，不能读取到后台事务中间态。
+   */
+  public flushAsyncInsertTransaction(reason = 'manual') {
+    return this.asyncInsertTransactionManager.flush(reason)
+  }
+
+  /** 大粘贴后台批次完成后统一完整 layout，收敛 pageRow / position / chunk 派生状态。 */
+  private renderAfterAsyncInsert(isSubmitHistory: boolean) {
+    this.draw.getServices().chunkLayoutPipeline.resetPageRebalanceQueue()
+    const { endIndex } = this.draw.getComponents().range.getEditBoundaryRange()
+    const curIndex = Math.max(0, endIndex)
+    const layoutStartTime = performance.now()
+    this.draw.render({
+      curIndex,
+      isSubmitHistory,
+      isSetCursor: false,
+      isLazy: false,
+      pageRenderScope: 'visible'
+    })
+    this.asyncInsertTransactionManager.recordFinalLayout({
+      durationMs: performance.now() - layoutStartTime,
+      pageCount: this.draw.getPageRowList().length
+    })
+  }
+
+  /** 获取大批量插入事务统计。 */
+  public getAsyncInsertStats(): IAsyncInsertTransactionStats {
+    return this.asyncInsertTransactionManager.getStats()
+  }
+
+  /** 重置大批量插入事务统计，不取消当前事务。 */
+  public resetAsyncInsertStats() {
+    this.asyncInsertTransactionManager.resetStats()
+  }
+
+  /** 尝试把连续程序化单字符输入合并，避免每个字符都移动大文档数组尾部。 */
+  private tryQueueProgrammaticTyping(
+    payload: IElement[],
+    options: IInsertElementListOption,
+    isSubmitHistory: boolean
+  ) {
+    return this.programmaticTypingBatcher.tryQueue({
+      elementList: payload,
+      options,
+      isSubmitHistory,
+      isSelection: this.draw.getComponents().range.getIsSelection(),
+      isTableContext: this.draw.getComponents().position.getPositionContext().isTable
+    })
   }
 
   /**
@@ -123,6 +292,7 @@ export class DrawMutationService {
   ) {
     // 如果元素列表为空，直接返回
     if (!elementList.length) return
+    this.asyncInsertTransactionManager.cancel('append-element-list')
     // 格式化元素列表
     formatElementList(elementList, {
       isHandleFirstElement: false,
@@ -145,6 +315,7 @@ export class DrawMutationService {
     }
     // 设置选区到插入位置
     this.draw.getComponents().range.setRange(curIndex, curIndex)
+    this.draw.syncEditor2DocumentTree()
     // 渲染文档
     this.draw.render({
       curIndex,
@@ -171,6 +342,13 @@ export class DrawMutationService {
     items?: IElement[],
     options?: ISpliceElementListOption
   ) {
+    const isMainElementListMutation =
+      elementList === this.draw.getOriginalMainElementList()
+    const oldLength = isMainElementListMutation ? elementList.length : 0
+    const deleteRecordList: Array<{ index: number; signature: string }> = []
+    if (!this.isInternalInsertSplice) {
+      this.asyncInsertTransactionManager.cancel('splice-element-list')
+    }
     const { isIgnoreDeletedRule = false } = options || {}
     const { group, modeRule } = this.draw.getRuntime().getOptions()
     // 如果有需要删除的元素
@@ -235,22 +413,108 @@ export class DrawMutationService {
               (deleteElement?.area?.deletable !== false ||
                 deleteElement?.areaIndex !== 0))
           ) {
+            if (isMainElementListMutation) {
+              deleteRecordList.push({
+                index: deleteIndex,
+                signature: this.draw.createDocumentTextStoreElementSignature(
+                  deleteElement
+                )
+              })
+            }
             elementList.splice(deleteIndex, 1)
           }
           deleteIndex--
         }
       } else {
         // 直接删除指定数量的元素
+        if (isMainElementListMutation) {
+          elementList
+            .slice(start, endIndex)
+            .forEach((deleteElement, offset) => {
+              deleteRecordList.push({
+                index: start + offset,
+                signature: this.draw.createDocumentTextStoreElementSignature(
+                  deleteElement
+                )
+              })
+            })
+        }
         elementList.splice(start, deleteCount)
       }
     }
     // 如果有需要插入的元素
     if (items?.length) {
-      // 逐个插入元素到指定位置
-      for (let i = 0; i < items.length; i++) {
-        elementList.splice(start + i, 0, items[i])
-      }
+      // 粘贴和批量输入必须一次移动数组尾部，不能逐元素 splice 整篇文档。
+      this.insertElementListByChunks(elementList, start, items)
     }
+    if (isMainElementListMutation) {
+      const insertCount = items?.length || 0
+      const actualDeleteCount = Math.max(
+        0,
+        oldLength + insertCount - elementList.length
+      )
+      const insertStart = this.normalizeSpliceStart(start, oldLength)
+      const insertSignatureList = insertCount
+        ? elementList.slice(insertStart, insertStart + insertCount).map(element => {
+            return this.draw.createDocumentTextStoreElementSignature(element)
+          })
+        : []
+      this.draw.recordDocumentTextStoreExternalMutation({
+        start,
+        deleteCount: actualDeleteCount,
+        insertCount,
+        insertSignatureList,
+        deleteIndexList: deleteRecordList.map(record => record.index),
+        deleteSignatureList: deleteRecordList.map(record => record.signature)
+      })
+    }
+  }
+
+  /**
+   * 分片批量插入元素。
+   *
+   * 大文档在靠前位置粘贴时，逐元素 splice 会反复移动后续几十万节点；
+   * 这里按片插入，把数组搬移次数降到极少，保持粘贴链路可预测。
+   *
+   * @param elementList - 目标元素数组
+   * @param start - 插入起点
+   * @param items - 待插入元素
+   */
+  private insertElementListByChunks(
+    elementList: IElement[],
+    start: number,
+    items: IElement[]
+  ) {
+    for (
+      let offset = 0;
+      offset < items.length;
+      offset += DrawMutationService.INSERT_CHUNK_SIZE
+    ) {
+      const chunk = items.slice(
+        offset,
+        offset + DrawMutationService.INSERT_CHUNK_SIZE
+      )
+      elementList.splice(start + offset, 0, ...chunk)
+    }
+  }
+
+  /** 按数组 splice 语义归一化起点，用于外部数组写入的 mirror 签名采样。 */
+  private normalizeSpliceStart(start: number, length: number) {
+    if (start < 0) {
+      return Math.max(length + start, 0)
+    }
+    return Math.min(start, length)
+  }
+
+  /** 标记当前 splice 来自 insertElementList 内部，避免后台大粘贴事务被自身批次取消。 */
+  private withInternalInsertSplice(callback: () => void) {
+    this.isInternalInsertSplice = true
+    try {
+      callback()
+    } finally {
+      this.isInternalInsertSplice = false
+    }
+    this.draw.syncEditor2DocumentTree()
   }
 
   /**
@@ -263,6 +527,7 @@ export class DrawMutationService {
    * @param options.isSetCursor - 是否设置光标位置，默认为 false
    */
   public setValue(payload: Partial<IEditorData>, options?: ISetValueOption) {
+    this.asyncInsertTransactionManager.cancel('set-value')
     // 深度克隆输入数据
     const { header, main, footer } = deepClone(payload)
     // 如果所有区域都为空，直接返回

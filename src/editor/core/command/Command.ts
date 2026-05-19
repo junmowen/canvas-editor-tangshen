@@ -34,6 +34,13 @@ export class Command {
   public executeList: CommandAdapt['list']
   public executeRowFlex: CommandAdapt['rowFlex']
   public executeRowMargin: CommandAdapt['rowMargin']
+  public executeRowIndent: CommandAdapt['rowIndent']
+  public executeRowIndentLeft: CommandAdapt['rowIndentLeft']
+  public executeRowIndentRight: CommandAdapt['rowIndentRight']
+  public executeRowHangingIndent: CommandAdapt['rowHangingIndent']
+  public executePageNumberContinue: CommandAdapt['pageNumberContinue']
+  public executePageNumberRestart: CommandAdapt['pageNumberRestart']
+  public executePageNumberRange: CommandAdapt['pageNumberRange']
   public executeInsertTable: CommandAdapt['insertTable']
   public executeInsertTableTopRow: CommandAdapt['insertTableTopRow']
   public executeInsertTableBottomRow: CommandAdapt['insertTableBottomRow']
@@ -49,11 +56,13 @@ export class Command {
   public executeTableTdVerticalAlign: CommandAdapt['tableTdVerticalAlign']
   public executeTableBorderType: CommandAdapt['tableBorderType']
   public executeTableBorderColor: CommandAdapt['tableBorderColor']
+  public executeTableBorderWidth: CommandAdapt['tableBorderWidth']
   public executeTableTdBorderType: CommandAdapt['tableTdBorderType']
   public executeTableTdBorderColor: CommandAdapt['tableTdBorderColor']
   public executeTableTdBorderWidth: CommandAdapt['tableTdBorderWidth']
   public executeTableTdSlashType: CommandAdapt['tableTdSlashType']
   public executeTableTdBackgroundColor: CommandAdapt['tableTdBackgroundColor']
+  public executeAutoFitTable: CommandAdapt['autoFitTable']
   public executeTableSelectAll: CommandAdapt['tableSelectAll']
   public executeImage: CommandAdapt['image']
   public executeHyperlink: CommandAdapt['hyperlink']
@@ -178,6 +187,13 @@ export class Command {
     this.executeList = adapt.list.bind(adapt)
     this.executeRowFlex = adapt.rowFlex.bind(adapt)
     this.executeRowMargin = adapt.rowMargin.bind(adapt)
+    this.executeRowIndent = adapt.rowIndent.bind(adapt)
+    this.executeRowIndentLeft = adapt.rowIndentLeft.bind(adapt)
+    this.executeRowIndentRight = adapt.rowIndentRight.bind(adapt)
+    this.executeRowHangingIndent = adapt.rowHangingIndent.bind(adapt)
+    this.executePageNumberContinue = adapt.pageNumberContinue.bind(adapt)
+    this.executePageNumberRestart = adapt.pageNumberRestart.bind(adapt)
+    this.executePageNumberRange = adapt.pageNumberRange.bind(adapt)
     // 表格、图片上传、超链接、搜索、打印、图片操作
     this.executeInsertTable = adapt.insertTable.bind(adapt)
     this.executeInsertTableTopRow = adapt.insertTableTopRow.bind(adapt)
@@ -196,12 +212,14 @@ export class Command {
     this.executeTableTdVerticalAlign = adapt.tableTdVerticalAlign.bind(adapt)
     this.executeTableBorderType = adapt.tableBorderType.bind(adapt)
     this.executeTableBorderColor = adapt.tableBorderColor.bind(adapt)
+    this.executeTableBorderWidth = adapt.tableBorderWidth.bind(adapt)
     this.executeTableTdBorderType = adapt.tableTdBorderType.bind(adapt)
     this.executeTableTdBorderColor = adapt.tableTdBorderColor.bind(adapt)
     this.executeTableTdBorderWidth = adapt.tableTdBorderWidth.bind(adapt)
     this.executeTableTdSlashType = adapt.tableTdSlashType.bind(adapt)
     this.executeTableTdBackgroundColor =
       adapt.tableTdBackgroundColor.bind(adapt)
+    this.executeAutoFitTable = adapt.autoFitTable.bind(adapt)
     this.executeTableSelectAll = adapt.tableSelectAll.bind(adapt)
     this.executeImage = adapt.image.bind(adapt)
     this.executeHyperlink = adapt.hyperlink.bind(adapt)

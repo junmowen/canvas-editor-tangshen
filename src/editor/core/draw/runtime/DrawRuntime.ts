@@ -5,6 +5,11 @@ import { IRow } from '../../../interface/Row'
 import { ITableLayoutSnapshot } from '../../table/layout/TableLayoutSnapshotTypes'
 import { EditorMode } from '../../../dataset/enum/Editor'
 import { IPainterOption } from '../../../interface/Draw'
+import { deepClone } from '../../../utils'
+import {
+  ArrayDocumentTextStore,
+  IDocumentTextStore
+} from '../data/DocumentTextStore'
 
 /**
  * Draw 运行时主状态容器。
@@ -28,8 +33,8 @@ export class DrawRuntime {
   private mode: EditorMode
   /** 合并后的完整编辑器配置。 */
   private options: DeepRequired<IEditorOption>
-  /** 正文主元素列表，是编辑器最核心的数据源。 */
-  private elementList: IElement[]
+  /** 正文主数据存储，当前仍由数组实现托管。 */
+  private documentTextStore: IDocumentTextStore
   /** 最近一次布局计算后的原始行列表。 */
   private rowList: IRow[]
   /** 最近一次分页后的页行列表。 */
@@ -46,6 +51,8 @@ export class DrawRuntime {
   private painterOptions: IPainterOption | null
   /** 打印模式下缓存的 header/main/footer 原始数据。 */
   private printModeData: Required<IEditorData> | null
+  /** 新底层文档树快照，作为后续替换布局和渲染的统一数据源。 */
+  private editor2DocumentTree: IEditorData
 
   /**
    * 初始化运行时主状态。
@@ -56,7 +63,7 @@ export class DrawRuntime {
   constructor(options: DeepRequired<IEditorOption>, data: IEditorData) {
     this.mode = options.mode
     this.options = options
-    this.elementList = data.main
+    this.documentTextStore = new ArrayDocumentTextStore(data.main)
     this.rowList = []
     this.pageRowList = []
     this.layoutElementList = []
@@ -65,6 +72,7 @@ export class DrawRuntime {
     this.painterStyle = null
     this.painterOptions = null
     this.printModeData = null
+    this.editor2DocumentTree = deepClone(data)
   }
 
   /** 获取当前运行模式。 */
@@ -90,12 +98,41 @@ export class DrawRuntime {
 
   /** 获取正文主元素列表。 */
   public getOriginalMainElementList(): IElement[] {
-    return this.elementList
+    return this.documentTextStore.toElementList()
   }
 
   /** 替换正文主元素列表。 */
   public replaceMainElementList(payload: IElement[]) {
-    this.elementList = payload
+    this.documentTextStore.replaceAll(payload)
+  }
+
+  /** 获取正文数据存储适配器，用于后续数据结构 mirror 和统计。 */
+  public getDocumentTextStore(): IDocumentTextStore {
+    return this.documentTextStore
+  }
+
+  /** 获取正文数据存储统计，供压测和后续 mirror 对比读取。 */
+  public getDocumentTextStoreStats() {
+    return this.documentTextStore.getStats()
+  }
+
+  /** 重置正文数据 store 观测统计，不修改正文内容。 */
+  public resetDocumentTextStoreStats() {
+    this.documentTextStore.resetStats()
+  }
+
+  /** 获取新底层文档树快照。 */
+  public getEditor2DocumentTree(): IEditorData {
+    return this.editor2DocumentTree
+  }
+
+  /**
+   * 用旧编辑器数据同步新底层文档树。
+   *
+   * 这里只同步数据结构，不掺入旧渲染状态。
+   */
+  public syncEditor2DocumentTree(payload: IEditorData): void {
+    this.editor2DocumentTree = deepClone(payload)
   }
 
   /** 获取最近一次布局后的原始行列表。 */
@@ -117,7 +154,7 @@ export class DrawRuntime {
   public getLayoutMainElementList(): IElement[] {
     return this.layoutElementList.length
       ? this.layoutElementList
-      : this.elementList
+      : this.getOriginalMainElementList()
   }
 
   /**

@@ -1,4 +1,5 @@
-import { EditorComponent, EDITOR_COMPONENT } from '../../editor'
+import { EDITOR_COMPONENT } from '../../editor/dataset/constant/Editor'
+import { EditorComponent } from '../../editor/dataset/enum/Editor'
 import './dialog.css'
 
 export interface IDialogData {

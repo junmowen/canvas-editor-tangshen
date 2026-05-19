@@ -88,7 +88,16 @@ export function runEnterIntent(evt: KeyboardEvent, host: CanvasEvent) {
   }
   if (~curIndex) {
     rangeManager.setRange(curIndex, curIndex)
-    draw.render({ curIndex })
+    // 回车后的实际坐标由立即布局刷新，这里先同步逻辑索引给连续键盘操作。
+    draw.getPosition().setCursorLogicalIndex(curIndex)
+    draw.render({
+      curIndex,
+      isTyping: true,
+      // 回车会改变段落结构和输入代理位置，需要立即排版以保证后续连续输入可用。
+      isImmediateTypingCompute: true,
+      isLazy: false,
+      pageRenderScope: 'visible'
+    })
   }
   evt.preventDefault()
 }

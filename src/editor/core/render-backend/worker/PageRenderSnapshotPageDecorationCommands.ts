@@ -1,0 +1,164 @@
+
+import { EditorMode } from '../../../dataset/enum/Editor'
+import { LineNumberType } from '../../../dataset/enum/LineNumber'
+import { IDrawPagePayload } from '../../../interface/Draw'
+import { IWorkerPaintCommand } from './WorkerRenderProtocol'
+import { PageRenderSnapshotAreaCommands } from './PageRenderSnapshotAreaCommands'
+
+/** Page margin, line number, page border and badge commands. */
+export abstract class PageRenderSnapshotPageDecorationCommands extends PageRenderSnapshotAreaCommands {
+  protected buildMarginCommands(): IWorkerPaintCommand[] {
+    if (this.draw.getMode() === EditorMode.PRINT) return []
+    const options = this.draw.getRuntime().getOptions()
+    const marginIndicatorSize =
+      this.draw.getServices().metricsService.getMarginIndicatorSize()
+    const margins = this.draw.getMargins()
+    const width = this.draw.getWidth()
+    const height = this.draw.getHeight()
+    const leftTopPoint: [number, number] = [margins[3], margins[0]]
+    const rightTopPoint: [number, number] = [width - margins[1], margins[0]]
+    const leftBottomPoint: [number, number] = [margins[3], height - margins[2]]
+    const rightBottomPoint: [number, number] = [
+      width - margins[1],
+      height - margins[2]
+    ]
+    return [
+      {
+        type: 'strokePath',
+        strokeStyle: options.marginIndicatorColor,
+        lineWidth: 1,
+        translateX: 0.5,
+        translateY: 0.5,
+        segmentList: [
+          {
+            from: [leftTopPoint[0] - marginIndicatorSize, leftTopPoint[1]],
+            to: leftTopPoint
+          },
+          {
+            from: leftTopPoint,
+            to: [leftTopPoint[0], leftTopPoint[1] - marginIndicatorSize]
+          },
+          {
+            from: [rightTopPoint[0] + marginIndicatorSize, rightTopPoint[1]],
+            to: rightTopPoint
+          },
+          {
+            from: rightTopPoint,
+            to: [rightTopPoint[0], rightTopPoint[1] - marginIndicatorSize]
+          },
+          {
+            from: [leftBottomPoint[0] - marginIndicatorSize, leftBottomPoint[1]],
+            to: leftBottomPoint
+          },
+          {
+            from: leftBottomPoint,
+            to: [leftBottomPoint[0], leftBottomPoint[1] + marginIndicatorSize]
+          },
+          {
+            from: [
+              rightBottomPoint[0] + marginIndicatorSize,
+              rightBottomPoint[1]
+            ],
+            to: rightBottomPoint
+          },
+          {
+            from: rightBottomPoint,
+            to: [rightBottomPoint[0], rightBottomPoint[1] + marginIndicatorSize]
+          }
+        ]
+      }
+    ]
+  }
+
+  /** 生成行号命令。 */
+  protected buildLineNumberCommands(
+    payload: IDrawPagePayload
+  ): IWorkerPaintCommand[] {
+    const options = this.draw.getRuntime().getOptions()
+    if (options.lineNumber.disabled) return []
+    const {
+      scale,
+      lineNumber: { color, size, font, right, type }
+    } = options
+    const commandList: IWorkerPaintCommand[] = []
+    const pagePositionList =
+      this.draw.getPosition().getLayoutMainPositionListByPage(payload.pageNo)
+    const commandFont = `${size * scale}px ${font}`
+    let rowPositionOffset = 0
+    for (let i = 0; i < payload.rowList.length; i++) {
+      const row = payload.rowList[i]
+      const rowPosition = pagePositionList[rowPositionOffset]
+      rowPositionOffset += row.elementList.length
+      if (!rowPosition) continue
+      const seq = type === LineNumberType.PAGE ? i + 1 : row.rowIndex + 1
+      const text = `${seq}`
+      const metrics = this.measureTextMetrics(text, commandFont)
+      const x = this.draw.getMargins()[3] - (metrics.width + right) * scale
+      const y =
+        rowPosition.coordinate.leftBottom[1] -
+        metrics.actualBoundingBoxAscent * scale
+      commandList.push({
+        type: 'fillText',
+        text,
+        x,
+        y,
+        font: commandFont,
+        fillStyle: color
+      })
+    }
+    return commandList
+  }
+
+  /** 生成页边框命令。 */
+  protected buildPageBorderCommands(): IWorkerPaintCommand[] {
+    const options = this.draw.getRuntime().getOptions()
+    if (options.pageBorder.disabled) return []
+    const {
+      scale,
+      pageBorder: { color, lineWidth, padding }
+    } = options
+    const margins = this.draw.getMargins()
+    const x = margins[3] - padding[3] * scale
+    const y =
+      margins[0] +
+      this.draw.getHeader().getExtraHeight() -
+      padding[0] * scale
+    const width =
+      this.draw.getInnerWidth() + (padding[1] + padding[3]) * scale
+    const height =
+      this.draw.getHeight() -
+      y -
+      this.draw.getFooter().getExtraHeight() -
+      margins[2] +
+      padding[2] * scale
+    return [
+      {
+        type: 'strokeRect',
+        rect: {
+          x,
+          y,
+          width,
+          height
+        },
+        strokeStyle: color,
+        lineWidth: lineWidth * scale,
+        translateX: 0.5,
+        translateY: 0.5
+      }
+    ]
+  }
+
+
+  protected buildBadgeCommands(payload: IDrawPagePayload): IWorkerPaintCommand[] {
+    return this.draw.getBadge().getRenderableBadgeList(payload.pageNo).map(item => ({
+      type: 'drawImage',
+      src: item.value,
+      rect: {
+        x: item.x,
+        y: item.y,
+        width: item.width,
+        height: item.height
+      }
+    }))
+  }
+}

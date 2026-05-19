@@ -1,4 +1,3 @@
-import { ElementType } from '../..'
 import { ZERO } from '../../dataset/constant/Common'
 import { TEXTLIKE_ELEMENT_TYPE } from '../../dataset/constant/Element'
 import { ControlComponent } from '../../dataset/enum/Control'
@@ -7,7 +6,6 @@ import { IControlContext } from '../../interface/Control'
 import { IEditorOption } from '../../interface/Editor'
 import { IElement, IElementPosition } from '../../interface/Element'
 import { EventBusMap } from '../../interface/EventBus'
-import { IRangeStyle } from '../../interface/Listener'
 import {
   IRange,
   IRangeElementStyle,
@@ -21,6 +19,10 @@ import { EventBus } from '../event/eventbus/EventBus'
 import { HistoryManager } from '../history/HistoryManager'
 import { Listener } from '../listener/Listener'
 import { Position } from '../position/Position'
+import {
+  createRecoveryRangeStyle,
+  createSelectionRangeStyle
+} from './rangeStyleFactory'
 import {
   resolveSelectionContentRange,
   sliceSelectionContent
@@ -161,6 +163,9 @@ class TableSelectionProjectionService {
       snapshotAccessor.resolveSliceByPositionContext(positionContext)?.cellKey || null
 
     if (tableCellContext) {
+      if (!positionContext.isTable && !rawRange.tableId) {
+        return null
+      }
       const currentSlice =
         snapshotAccessor.resolveSliceByFragmentContext(tableCellContext)
       const currentFragmentCellKey = currentSlice?.cellKey || null
@@ -560,6 +565,10 @@ export class RangeManager {
     const { startIndex, endIndex } = activeRange
     if (!~startIndex && !~endIndex) return null
     const positionList = this.position.getPositionList()
+    const elementList = this.draw.getElementList()
+    if (!this.isValidPositionElementRange(activeRange, positionList, elementList)) {
+      return null
+    }
     const rangeRow: RangeRowMap = new Map()
     for (let p = startIndex; p < endIndex + 1; p++) {
       const { pageNo, rowNo } = positionList[p]
@@ -579,14 +588,20 @@ export class RangeManager {
     const activeRange = this.getProjectedActiveRange()
     if (!activeRange) return null
     const { startIndex, endIndex } = activeRange
-    if (!~startIndex && !~endIndex) return null
+    if (startIndex < 0 || endIndex < 0) return null
     const positionList = this.position.getPositionList()
     const elementList = this.draw.getElementList()
+    if (!this.isValidPositionElementRange(activeRange, positionList, elementList)) {
+      return null
+    }
     const rangeRow: RangeRowArray = new Map()
 
     let start = startIndex
     while (start >= 0) {
-      const { pageNo, rowNo } = positionList[start]
+      const position = positionList[start]
+      const element = elementList[start]
+      if (!position || !element) break
+      const { pageNo, rowNo } = position
       let rowArray = rangeRow.get(pageNo)
       if (!rowArray) {
         rowArray = []
@@ -595,7 +610,6 @@ export class RangeManager {
       if (!rowArray.includes(rowNo)) {
         rowArray.unshift(rowNo)
       }
-      const element = elementList[start]
       const preElement = elementList[start - 1]
       if (
         (element.value === ZERO && !element.listWrap) ||
@@ -611,7 +625,12 @@ export class RangeManager {
     if (!isCollapsed) {
       let middle = startIndex + 1
       while (middle < endIndex) {
-        const { pageNo, rowNo } = positionList[middle]
+        const position = positionList[middle]
+        if (!position || !elementList[middle]) {
+          middle++
+          continue
+        }
+        const { pageNo, rowNo } = position
         let rowArray = rangeRow.get(pageNo)
         if (!rowArray) {
           rowArray = []
@@ -628,8 +647,10 @@ export class RangeManager {
     if (isCollapsed && elementList[startIndex].value === ZERO) {
       end += 1
     }
-    while (end < positionList.length) {
+    while (end < positionList.length && end < elementList.length) {
+      const position = positionList[end]
       const element = elementList[end]
+      if (!position || !element) break
       const nextElement = elementList[end + 1]
       if (
         (element.value === ZERO && !element.listWrap) ||
@@ -638,7 +659,7 @@ export class RangeManager {
       ) {
         break
       }
-      const { pageNo, rowNo } = positionList[end]
+      const { pageNo, rowNo } = position
       let rowArray = rangeRow.get(pageNo)
       if (!rowArray) {
         rowArray = []
@@ -701,10 +722,12 @@ export class RangeManager {
       const rowArray = rangeRow.get(position.pageNo)
       if (!rowArray) continue
       if (rowArray.includes(position.rowNo)) {
+        const element = elementList[p]
+        if (!element) continue
         if (!~startPositionIndex) {
           startPositionIndex = position.index
         }
-        rangeElementList.push(elementList[p])
+        rangeElementList.push(element)
       }
     }
     if (!rangeElementList.length) return null
@@ -717,6 +740,29 @@ export class RangeManager {
   // 获取选区段落元素列表
   public getRangeParagraphElementList(): IElement[] | null {
     return this.getRangeParagraphInfo()?.elementList || null
+  }
+
+  /**
+   * 校验 range 是否能同时映射到位置列表和元素列表。
+   *
+   * 双击取词、表格分页碎片或懒渲染状态下，公开 range 可能是逻辑单元格索引，
+   * 不一定能直接作为主文档 positionList / elementList 下标使用；此时必须返回 null，
+   * 让上层取词逻辑降级，而不是继续读取 undefined.value。
+   */
+  private isValidPositionElementRange(
+    range: IRange,
+    positionList: IElementPosition[],
+    elementList: IElement[]
+  ): boolean {
+    const { startIndex, endIndex } = range
+    const maxIndex = Math.min(positionList.length, elementList.length) - 1
+    return !!(
+      maxIndex >= 0 &&
+      startIndex >= 0 &&
+      endIndex >= startIndex &&
+      startIndex <= maxIndex &&
+      endIndex <= maxIndex
+    )
   }
 
   // 获取选区表格
@@ -797,6 +843,9 @@ export class RangeManager {
     if (!~startIndex && !~endIndex) return false
     const elementList = this.draw.getElementList()
     const startElement = elementList[startIndex]
+    if (!startElement) {
+      return false
+    }
     if (startIndex === endIndex) {
       return (
         (startElement.controlComponent !== ControlComponent.PRE_TEXT ||
@@ -806,6 +855,9 @@ export class RangeManager {
       )
     }
     const endElement = elementList[endIndex]
+    if (!endElement) {
+      return false
+    }
     // 选区前后不是控件 || 选区前不是控件或是后缀&&选区后不是控件或是后缀 || 选区在控件内
     return (
       (!startElement.controlId && !endElement.controlId) ||
@@ -849,10 +901,11 @@ export class RangeManager {
       this.range.startTrIndex = startTrIndex
       this.range.endTrIndex = endTrIndex
       this.range.isCrossRowCol = !!(
-        startTdIndex ||
-        endTdIndex ||
-        startTrIndex ||
-        endTrIndex
+        tableId &&
+        startTdIndex !== undefined &&
+        endTdIndex !== undefined &&
+        startTrIndex !== undefined &&
+        endTrIndex !== undefined
       )
       this.setDefaultStyle(null)
     }
@@ -912,61 +965,16 @@ export class RangeManager {
       curElement = this.getRangeAnchorStyle(elementList, index)
     }
     if (!curElement) return
-    // 选取元素列表
-    const curElementList = this.getSelection() || [curElement]
-    // 类型
-    const type = curElement.type || ElementType.TEXT
-    // 富文本
-    const font = curElement.font || this.options.defaultFont
-    const size = curElement.size || this.options.defaultSize
-    const bold = !~curElementList.findIndex(el => !el.bold)
-    const italic = !~curElementList.findIndex(el => !el.italic)
-    const underline = !~curElementList.findIndex(
-      el => !el.underline && !el.control?.underline
-    )
-    const strikeout = !~curElementList.findIndex(el => !el.strikeout)
-    const color = curElement.color || null
-    const highlight = curElement.highlight || null
-    const rowFlex = curElement.rowFlex || null
-    const rowMargin = curElement.rowMargin ?? this.options.defaultRowMargin
-    const dashArray = curElement.dashArray || []
-    const level = curElement.level || null
-    const listType = curElement.listType || null
-    const listStyle = curElement.listStyle || null
-    const listLevel = curElement.listLevel ?? null
-    const textDecoration = underline ? curElement.textDecoration || null : null
-    // 菜单
-    const painter = !!this.draw.getPainterStyle()
-    const undo = this.historyManager.isCanUndo()
-    const redo = this.historyManager.isCanRedo()
-    // 组信息
-    const groupIds = curElement.groupIds || null
-    // 扩展字段
-    const extension = curElement.extension ?? null
-    const rangeStyle: IRangeStyle = {
-      type,
-      undo,
-      redo,
-      painter,
-      font,
-      size,
-      bold,
-      italic,
-      underline,
-      strikeout,
-      color,
-      highlight,
-      rowFlex,
-      rowMargin,
-      dashArray,
-      level,
-      listType,
-      listStyle,
-      listLevel,
-      groupIds,
-      textDecoration,
-      extension
-    }
+    const rangeStyle = createSelectionRangeStyle({
+      options: this.options,
+      runtime: {
+        canUndo: this.historyManager.isCanUndo(),
+        canRedo: this.historyManager.isCanRedo(),
+        painter: !!this.draw.getPainterStyle()
+      },
+      activeElement: curElement,
+      selectionElements: this.getSelection() || [curElement]
+    })
     if (rangeStyleChangeListener) {
       rangeStyleChangeListener(rangeStyle)
     }
@@ -980,36 +988,14 @@ export class RangeManager {
     const isSubscribeRangeStyleChange =
       this.eventBus.isSubscribe('rangeStyleChange')
     if (!rangeStyleChangeListener && !isSubscribeRangeStyleChange) return
-    const font = this.options.defaultFont
-    const size = this.options.defaultSize
-    const rowMargin = this.options.defaultRowMargin
-    const painter = !!this.draw.getPainterStyle()
-    const undo = this.historyManager.isCanUndo()
-    const redo = this.historyManager.isCanRedo()
-    const rangeStyle: IRangeStyle = {
-      type: null,
-      undo,
-      redo,
-      painter,
-      font,
-      size,
-      bold: false,
-      italic: false,
-      underline: false,
-      strikeout: false,
-      color: null,
-      highlight: null,
-      rowFlex: null,
-      rowMargin,
-      dashArray: [],
-      level: null,
-      listType: null,
-      listStyle: null,
-      listLevel: null,
-      groupIds: null,
-      textDecoration: null,
-      extension: null
-    }
+    const rangeStyle = createRecoveryRangeStyle({
+      options: this.options,
+      runtime: {
+        canUndo: this.historyManager.isCanUndo(),
+        canRedo: this.historyManager.isCanRedo(),
+        painter: !!this.draw.getPainterStyle()
+      }
+    })
     if (rangeStyleChangeListener) {
       rangeStyleChangeListener(rangeStyle)
     }

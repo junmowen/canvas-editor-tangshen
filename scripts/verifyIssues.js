@@ -23,8 +23,8 @@ const ISSUE_SPECS = {
   },
   390: {
     title: '是否可以生成如下的表格',
-    manual: true,
-    note: '标题过泛，需先读取 issue 具体表格结构再补验证样例。'
+    specs: ['cypress/e2e/issues/issue-390-dynamic-table-data.cy.ts'],
+    note: '仅验证应用层动态构造 trList/tdList 后可 setValue 渲染；模板绑定数据源自动展开仍属于未内置能力。'
   },
   425: {
     title: '文本控件内容中，再插入控件，页面{}显示有问题。',
@@ -41,19 +41,24 @@ const ISSUE_SPECS = {
     title: '格式刷未携带所有格式',
     specs: ['cypress/e2e/menus/painter.cy.ts']
   },
+  605: {
+    title: '按段落设置行布局方式',
+    specs: ['cypress/e2e/issues/issue-605-paragraph-row-layout.cy.ts']
+  },
   621: {
     title: '支持序号元素或段落拖拽',
-    manual: true,
-    note: '当前没有明确针对段落拖拽的菜单级自动化 spec。'
+    specs: ['cypress/e2e/issues/issue-621-list-drag-reorder.cy.ts']
   },
   692: {
     title: '标点符号排版优化',
-    manual: true,
-    note: '更适合做像素/文本布局专项样例，当前没有现成自动化 spec。'
+    specs: ['cypress/e2e/issues/issue-692-punctuation-hanging.cy.ts']
   },
   725: {
     title: '排版缩进',
-    specs: ['cypress/e2e/menus/row.cy.ts', 'cypress/e2e/menus/text.cy.ts']
+    specs: [
+      'cypress/e2e/issues/issue-725-row-indent.cy.ts',
+      'cypress/e2e/menus/row.cy.ts'
+    ]
   },
   813: {
     title: '光标位置',
@@ -64,16 +69,23 @@ const ISSUE_SPECS = {
   },
   837: {
     title: '大文本计算性能优化',
-    manual: true,
-    note: '当前没有大文本性能自动化基线；建议补脚本化性能样例。'
+    specs: [
+      'cypress/e2e/issues/issue-837-large-document-performance.cy.ts',
+      'cypress/e2e/issues/issue-94-continuity-large-doc.cy.ts'
+    ]
   },
   877: {
     title: '分页符行为优化',
-    specs: ['cypress/e2e/menus/pagebreak.cy.ts']
+    specs: [
+      'cypress/e2e/issues/issue-877-pagebreak-behavior.cy.ts',
+      'cypress/e2e/menus/pagebreak.cy.ts'
+    ]
   },
   1053: {
     title: '单元格框线设置',
     specs: [
+      'cypress/e2e/issues/issue-1053-table-cell-border.cy.ts',
+      'cypress/e2e/issues/issue-1053-single-cell-drag-selection.cy.ts',
       'cypress/e2e/menus/table.cy.ts',
       'cypress/e2e/menus/table-pagination-border.cy.ts'
     ]
@@ -89,18 +101,22 @@ const ISSUE_SPECS = {
   },
   1190: {
     title: 'tab缩进更多场景',
-    manual: true,
-    note: '当前 Tab 主链不能通过稳定的 Cypress DOM 事件可靠驱动，暂保留为人工验证。'
+    specs: [
+      'cypress/e2e/issues/issue-1190-tab-indent-text.cy.ts',
+      'cypress/e2e/issues/issue-440-list-sublevel.cy.ts'
+    ]
   },
   1200: {
     title: 'Smart Word Wrapping Around Images ("SURROUND")',
-    specs: ['cypress/e2e/menus/image.cy.ts'],
-    note: '仅覆盖图片主链；复杂环绕行为仍建议人工复验。'
+    specs: ['cypress/e2e/issues/issue-1372-1200-image-surround.cy.ts']
   },
   1372: {
     title: '图片浮动文字之上问题',
-    specs: ['cypress/e2e/menus/image.cy.ts'],
-    note: '仅覆盖图片主链；浮动压字问题仍建议人工复验。'
+    specs: ['cypress/e2e/issues/issue-1372-1200-image-surround.cy.ts']
+  },
+  1387: {
+    title: '希望表格可以添加根据内容自动调整的功能',
+    specs: ['cypress/e2e/menus/table.cy.ts']
   },
   1385: {
     title: '官网的demo中 在文本、列举控件中 插入下划线 显示异常',
@@ -127,7 +143,8 @@ const ISSUE_SPECS = {
 
 const CURRENT_ISSUES = [
   41, 1399, 1385, 1404, 440, 425, 813,
-  837, 1372, 1200, 1190, 1053, 877, 725, 692, 621, 390
+  837, 1372, 1200, 1190, 1053, 877, 725, 692, 621, 605, 390,
+  1387
 ]
 
 function parseArgs(argv) {

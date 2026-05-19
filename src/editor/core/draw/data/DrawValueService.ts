@@ -115,5 +115,6 @@ export class DrawValueService {
     if (footer) {
       this.draw.getComponents().footer.setElementList(footer)
     }
+    this.draw.syncEditor2DocumentTree()
   }
 }

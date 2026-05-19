@@ -1,4 +1,4 @@
-import { ZERO } from '../../../dataset/constant/Common'
+import { PUNCTUATION_LIST, ZERO } from '../../../dataset/constant/Common'
 import { FlexDirection, ImageDisplay } from '../../../dataset/enum/Common'
 import {
   ControlComponent,
@@ -14,6 +14,11 @@ import { deleteSurroundElementList, getIsBlockElement } from '../../../utils/ele
 import type { Draw } from '../Draw'
 import { InlineElementLayout } from './InlineElementLayout'
 import { TableLayoutEngine } from './TableLayoutEngine'
+
+type IRowOffsetSnapshot = Pick<
+  IRow,
+  'offsetX' | 'rowFlexOffsetX' | 'rightOffsetX' | 'isList' | 'listIndex'
+>
 
 /**
  * 行布局引擎。
@@ -52,7 +57,8 @@ export class RowLayoutEngine {
       startY = 0,
       pageHeight = 0,
       mainOuterHeight = 0,
-      surroundElementList = []
+      surroundElementList = [],
+      sourceStartIndex = 0
     } = payload
     const {
       defaultSize,
@@ -62,8 +68,8 @@ export class RowLayoutEngine {
     } = this.draw.getOptions()
     const defaultBasicRowMarginHeight =
       this.draw.getDefaultBasicRowMarginHeight()
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+    // 行布局测量同样复用后端的 MEASURE surface，减少临时 canvas 申请。
+    const ctx = this.draw.getPageCanvasHost().getMeasureContext()
     const listStyleMap = this.draw.getListParticle().computeListStyle(
       ctx,
       elementList
@@ -73,9 +79,14 @@ export class RowLayoutEngine {
     let x = startX
     let y = startY
     let pageNo = 0
-    let listId: string | undefined
     let listIndex = 0
-    const listIndexMap = new Map<string, number>()
+    const initialListState = this.createInitialListIndexState({
+      elementList,
+      sourceStartIndex,
+      isFromTable
+    })
+    let listId = initialListState.listId
+    const listIndexMap = initialListState.listIndexMap
     let controlRealWidth = 0
     const rowElementRect = { x: 0, y: 0, width: 0, height: 0 }
 
@@ -85,14 +96,23 @@ export class RowLayoutEngine {
       const listStyleKey = this.draw.getListParticle().getListStyleKey(element)
       const rowMargin =
         defaultBasicRowMarginHeight * (element.rowMargin ?? defaultRowMargin)
-      const offsetX =
-        curRow.offsetX ||
-        (listStyleKey && listStyleMap.get(listStyleKey)) ||
-        0
-      if (element.listId && !curRow.offsetX) {
-        curRow.offsetX = offsetX
-      }
-      const availableWidth = innerWidth - offsetX
+      const isParagraphFirstContentElement =
+        (curRow.elementList.length === 0 && curRow.startIndex === i) ||
+        (curRow.elementList.length === 1 &&
+          curRow.elementList[0]?.value === ZERO &&
+          curRow.startIndex === i - 1)
+      const listStyleOffsetX = listStyleKey
+        ? listStyleMap.get(listStyleKey) || 0
+        : 0
+      const curRowOffsetSnapshot = this.createRowOffsetSnapshot(curRow)
+      this.applyRowOffset({
+        row: curRow,
+        element,
+        isParagraphFirstContentElement,
+        listStyleOffsetX,
+        scale
+      })
+      const availableWidth = this.getRowAvailableWidth(innerWidth, curRow)
       const isStartElement = curRow.elementList.length === 1
 
       // 首元素需要先吸收行级 offsetY，再继续做统一测量。
@@ -155,7 +175,6 @@ export class RowLayoutEngine {
       }
 
       const preElement = elementList[i - 1]
-      let nextElement = elementList[i + 1]
       let curRowWidth = curRow.width + metrics.width
       const isInlineTable = element.type === ElementType.TABLE && element.tableDisplay === 'inline'
       const isPreInlineTable =
@@ -168,19 +187,14 @@ export class RowLayoutEngine {
         ) {
           const word = `${preElement?.value || ''}${element.value}`
           if (this.draw.getWordLikeReg().test(word)) {
-            const { width, endElement } = this.draw
+            const { width } = this.draw
               .getTextParticle()
               .measureWord(ctx, elementList, i)
             const wordWidth = width * scale
             if (wordWidth <= availableWidth) {
               curRowWidth += wordWidth
-              nextElement = endElement
             }
           }
-          const punctuationWidth = this.draw
-            .getTextParticle()
-            .measurePunctuationWidth(ctx, nextElement)
-          curRowWidth += punctuationWidth * scale
         }
       }
 
@@ -235,10 +249,17 @@ export class RowLayoutEngine {
             element.controlComponent === ControlComponent.RADIO) &&
           preElement?.controlComponent === ControlComponent.VALUE) ||
         (i !== 0 && element.value === ZERO && !element.area?.hide)
-      const isWidthNotEnough = curRowWidth > availableWidth
+      const isHangingPunctuation =
+        !isFromTable &&
+        this.draw.getOptions().wordBreak === WordBreak.BREAK_WORD &&
+        PUNCTUATION_LIST.includes(element.value) &&
+        curRow.width <= availableWidth
+      const isWidthNotEnough =
+        curRowWidth > availableWidth && !isHangingPunctuation
       const isWrap = isForceBreak || isWidthNotEnough
 
       if (isWrap) {
+        this.restoreRowOffsetSnapshot(curRow, curRowOffsetSnapshot)
         const row: IRow = {
           width: metrics.width,
           height,
@@ -249,6 +270,12 @@ export class RowLayoutEngine {
           rowFlex: elementList[i]?.rowFlex || elementList[i + 1]?.rowFlex,
           isPageBreak: element.type === ElementType.PAGE_BREAK
         }
+        this.applyWrappedRowOffset({
+          row,
+          element,
+          listStyleOffsetX,
+          scale
+        })
 
         if (
           rowElement.controlComponent !== ControlComponent.PREFIX &&
@@ -273,7 +300,8 @@ export class RowLayoutEngine {
 
         if (element.listId) {
           row.isList = true
-          row.offsetX = listStyleKey ? listStyleMap.get(listStyleKey) : 0
+          row.offsetX = listStyleOffsetX
+          row.rowFlexOffsetX = listStyleOffsetX
           row.listIndex = listIndex
         }
 
@@ -337,18 +365,21 @@ export class RowLayoutEngine {
         }
         rowElement.left = 0
         const nextRow = rowList[rowList.length - 1]
-        
+
         rowElementRect.x = x
         rowElementRect.y = y
         rowElementRect.width = metrics.width
         rowElementRect.height = height
-
+        const nextRowAvailableWidth = this.getRowAvailableWidth(
+          innerWidth,
+          nextRow
+        )
         const surroundPosition = this.draw.getPosition().setSurroundPosition({
           pageNo,
           rowElement,
           row: nextRow,
           rowElementRect,
-          availableWidth,
+          availableWidth: nextRowAvailableWidth,
           surroundElementList
         })
         x = surroundPosition.x
@@ -373,5 +404,159 @@ export class RowLayoutEngine {
       })
     }
     return rowList
+  }
+
+  private normalizeIndent(value: number | undefined, scale: number) {
+    return Math.max(0, value || 0) * scale
+  }
+
+  private getParagraphOffsetX(
+    element: IElement,
+    isParagraphFirstContentElement: boolean,
+    scale: number
+  ) {
+    if (element.listId) return 0
+    const left = this.normalizeIndent(element.rowIndentLeft, scale)
+    const firstLine = isParagraphFirstContentElement
+      ? this.normalizeIndent(element.rowIndent, scale)
+      : 0
+    const hanging = !isParagraphFirstContentElement
+      ? this.normalizeIndent(element.rowHangingIndent, scale)
+      : 0
+    return left + firstLine + hanging
+  }
+
+  private getParagraphRightIndent(element: IElement, scale: number) {
+    if (element.listId) return 0
+    return this.normalizeIndent(element.rowIndentRight, scale)
+  }
+
+  private applyRowOffset(payload: {
+    row: IRow
+    element: IElement
+    isParagraphFirstContentElement: boolean
+    listStyleOffsetX: number
+    scale: number
+  }) {
+    const { row, element, isParagraphFirstContentElement, listStyleOffsetX, scale } =
+      payload
+    if (element.listId) {
+      if (!row.offsetX) {
+        row.offsetX = listStyleOffsetX
+        row.rowFlexOffsetX = listStyleOffsetX
+      }
+      return
+    }
+    const paragraphOffsetX = this.getParagraphOffsetX(
+      element,
+      isParagraphFirstContentElement,
+      scale
+    )
+    const paragraphRightIndent = this.getParagraphRightIndent(element, scale)
+    if (paragraphOffsetX && row.offsetX === undefined) {
+      row.offsetX = paragraphOffsetX
+    }
+    if (
+      (paragraphOffsetX || paragraphRightIndent) &&
+      row.rowFlexOffsetX === undefined
+    ) {
+      row.rowFlexOffsetX = paragraphOffsetX
+    }
+    if (paragraphRightIndent && row.rightOffsetX === undefined) {
+      row.rightOffsetX = paragraphRightIndent
+    }
+  }
+
+  private applyWrappedRowOffset(payload: {
+    row: IRow
+    element: IElement
+    listStyleOffsetX: number
+    scale: number
+  }) {
+    const { row, element, listStyleOffsetX, scale } = payload
+    this.applyRowOffset({
+      row,
+      element,
+      isParagraphFirstContentElement: false,
+      listStyleOffsetX,
+      scale
+    })
+  }
+
+  private createRowOffsetSnapshot(row: IRow) {
+    return {
+      offsetX: row.offsetX,
+      rowFlexOffsetX: row.rowFlexOffsetX,
+      rightOffsetX: row.rightOffsetX,
+      isList: row.isList,
+      listIndex: row.listIndex
+    }
+  }
+
+  private restoreRowOffsetSnapshot(
+    row: IRow,
+    snapshot: IRowOffsetSnapshot
+  ) {
+    row.offsetX = snapshot.offsetX
+    row.rowFlexOffsetX = snapshot.rowFlexOffsetX
+    row.rightOffsetX = snapshot.rightOffsetX
+    row.isList = snapshot.isList
+    row.listIndex = snapshot.listIndex
+  }
+
+  private getRowAvailableWidth(innerWidth: number, row: IRow) {
+    return Math.max(0, innerWidth - (row.offsetX || 0) - (row.rightOffsetX || 0))
+  }
+
+  /**
+   * 局部排版主文档切片时，恢复切片前的有序列表计数。
+   *
+   * 完整排版会从 0 开始扫描整篇正文；chunk / 单行 patch 只传入当前片段，
+   * 如果不预置前序计数，跨页列表在输入后会从 1 重新编号。
+   */
+  private createInitialListIndexState(payload: {
+    elementList: IElement[]
+    sourceStartIndex: number
+    isFromTable: boolean
+  }): {
+    listId?: string
+    listIndexMap: Map<string, number>
+  } {
+    const listIndexMap = new Map<string, number>()
+    if (payload.isFromTable || payload.sourceStartIndex <= 0) {
+      return { listIndexMap }
+    }
+    const firstElement = payload.elementList[0]
+    if (!firstElement?.listId) {
+      return { listIndexMap }
+    }
+    const sourceElementList = this.draw.getOriginalMainElementList()
+    const listId = firstElement.listId
+    let listStartIndex = payload.sourceStartIndex
+    while (listStartIndex > 0) {
+      const prevElement = sourceElementList[listStartIndex - 1]
+      if (!prevElement || prevElement.listId !== listId) {
+        break
+      }
+      listStartIndex--
+    }
+    for (let index = listStartIndex; index < payload.sourceStartIndex; index++) {
+      const element = sourceElementList[index]
+      if (element.value === ZERO && !element.listWrap) {
+        const level = element.listLevel || 0
+        const indexKey = `${element.listId}:${level}`
+        listIndexMap.set(indexKey, (listIndexMap.get(indexKey) || 0) + 1)
+        for (const key of [...listIndexMap.keys()]) {
+          const [, keyLevel] = key.split(':')
+          if (Number(keyLevel) > level) {
+            listIndexMap.delete(key)
+          }
+        }
+      }
+    }
+    return {
+      listId,
+      listIndexMap
+    }
   }
 }

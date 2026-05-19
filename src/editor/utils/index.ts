@@ -117,8 +117,13 @@ export function getUUID(): string {
 
 export function splitText(text: string): string[] {
   const data: string[] = []
-  if (Intl.Segmenter) {
-    const segmenter = new Intl.Segmenter()
+  const segmenterCtor = (Intl as unknown as {
+    Segmenter?: new () => {
+      segment(input: string): Iterable<{ segment: string }>
+    }
+  }).Segmenter
+  if (segmenterCtor) {
+    const segmenter = new segmenterCtor()
     const segments = segmenter.segment(text)
     for (const { segment } of segments) {
       data.push(segment)

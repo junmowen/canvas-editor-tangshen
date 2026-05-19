@@ -20,8 +20,10 @@ export class RenderInvalidationManager {
   private isSearchDirty: boolean
   private isControlDirty: boolean
   private isOverlayDirty: boolean
+  private baseBitmapContentVersion: number
   private scheduledRenderPayload: IDrawOption | null
   private scheduledRenderFrameId: number | null
+  private suppressBaseBitmapCacheUntil: number
 
   constructor(draw: Draw) {
     this.draw = draw
@@ -31,8 +33,10 @@ export class RenderInvalidationManager {
     this.isSearchDirty = false
     this.isControlDirty = false
     this.isOverlayDirty = false
+    this.baseBitmapContentVersion = 0
     this.scheduledRenderPayload = null
     this.scheduledRenderFrameId = null
+    this.suppressBaseBitmapCacheUntil = 0
   }
 
   /** 标记当前可视页的基础渲染结果已失效。 */
@@ -46,6 +50,29 @@ export class RenderInvalidationManager {
 
   public hasVisiblePagesDirty(): boolean {
     return this.isVisiblePagesDirty
+  }
+
+  /** 获取 base bitmap 内容版本，覆盖不触发布局重算的基础视觉变化。 */
+  public getBaseBitmapContentVersion(): number {
+    return this.baseBitmapContentVersion
+  }
+
+  /** 标记 base bitmap 内容失效，但不改变可视页 dirty 状态。 */
+  public markBaseBitmapDirty() {
+    this.baseBitmapContentVersion++
+  }
+
+  /** 输入态临时禁止 base bitmap 写入，避免高频 createImageBitmap 抢占主线程。 */
+  public suppressBaseBitmapCache(duration = 500) {
+    this.suppressBaseBitmapCacheUntil = Math.max(
+      this.suppressBaseBitmapCacheUntil,
+      performance.now() + duration
+    )
+  }
+
+  /** 判断当前是否允许写入 base bitmap 缓存。 */
+  public canWriteBaseBitmapCache(): boolean {
+    return performance.now() >= this.suppressBaseBitmapCacheUntil
   }
 
   /** 标记布局结果失效；此时不能再走 overlay-only 刷新。 */
@@ -114,11 +141,9 @@ export class RenderInvalidationManager {
   }
 
   public scheduleFrameRender(payload?: IDrawOption) {
-    // 当前只对“可见页、无布局重算、非 lazy”的高频路径做 RAF 合并；
-    // 其余情况仍直接回到 Draw.render()。
+    // 当前对可见页刷新做 RAF 合并；输入类路径允许带布局重算，
+    // 这样连续按键不会每个字符同步阻塞整份大文档排版。
     const isVisibleFrameRefresh =
-      payload?.isCompute === false &&
-      payload?.isLazy === false &&
       payload?.pageRenderScope === 'visible'
     if (
       !isVisibleFrameRefresh ||
@@ -129,8 +154,12 @@ export class RenderInvalidationManager {
       return
     }
     this.markVisiblePagesDirty()
-    this.markSelectionDirty()
-    this.markOverlayDirty()
+    if (payload?.isCompute !== false) {
+      this.markLayoutDirty()
+    } else {
+      this.markSelectionDirty()
+      this.markOverlayDirty()
+    }
     this.scheduledRenderPayload = this._mergeScheduledRenderPayload(
       this.scheduledRenderPayload,
       payload
@@ -187,6 +216,7 @@ export class RenderInvalidationManager {
     this.clearSearchDirty()
     this.clearControlDirty()
     this.clearOverlayDirty()
+    this.suppressBaseBitmapCacheUntil = 0
   }
 
   private _dispatchScheduledRender(payload?: IDrawOption) {

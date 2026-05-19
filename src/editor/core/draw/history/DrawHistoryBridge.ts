@@ -18,7 +18,45 @@ export class DrawHistoryBridge {
   /** 关联的 Draw 门面。 */
   constructor(private readonly draw: Draw) {}
 
+  /** 输入态历史提交计时器，用于合并连续字符输入。 */
+  private typingHistoryTimer: number | null = null
+
+  /** 最近一次输入态历史提交的光标位置。 */
+  private pendingTypingCurIndex: number | undefined
+
+  /** 输入停止多久后提交历史快照。 */
+  private readonly typingHistoryDelay = 350
+
   public submitHistory(curIndex: number | undefined) {
+    this.cancelTypingHistory()
+    this.commitHistory(curIndex)
+  }
+
+  /** 输入态历史提交，连续输入只保留最后一次全量快照。 */
+  public submitTypingHistory(curIndex: number | undefined) {
+    this.pendingTypingCurIndex = curIndex
+    if (this.typingHistoryTimer !== null) {
+      window.clearTimeout(this.typingHistoryTimer)
+    }
+    this.typingHistoryTimer = window.setTimeout(() => {
+      const nextCurIndex = this.pendingTypingCurIndex
+      this.typingHistoryTimer = null
+      this.pendingTypingCurIndex = undefined
+      this.commitHistory(nextCurIndex)
+    }, this.typingHistoryDelay)
+  }
+
+  /** 取消待提交的输入态历史。 */
+  public cancelTypingHistory() {
+    if (this.typingHistoryTimer !== null) {
+      window.clearTimeout(this.typingHistoryTimer)
+      this.typingHistoryTimer = null
+    }
+    this.pendingTypingCurIndex = undefined
+  }
+
+  /** 立即提交一次完整历史快照。 */
+  private commitHistory(curIndex: number | undefined) {
     const components = this.draw.getComponents()
     const positionContext = components.position.getPositionContext()
     const oldElementList = getSlimCloneElementList(

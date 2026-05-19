@@ -1,6 +1,7 @@
 import { ElementType, ListStyle, RowFlex, VerticalAlign } from '../..'
 import { ZERO } from '../../dataset/constant/Common'
 import { ControlComponent } from '../../dataset/enum/Control'
+import { EditorZone } from '../../dataset/enum/Editor'
 import {
   IComputePageRowPositionPayload,
   IComputePageRowPositionResult,
@@ -17,13 +18,13 @@ import {
   IPositionContext
 } from '../../interface/Position'
 import { Draw } from '../draw/Draw'
-import { EditorZone } from '../../dataset/enum/Editor'
 import { deepClone, isRectIntersect } from '../../utils'
 import { ImageDisplay } from '../../dataset/enum/Common'
 import { DeepRequired } from '../../interface/Common'
 import { EventBus } from '../event/eventbus/EventBus'
 import { EventBusMap } from '../../interface/EventBus'
 import { getIsBlockElement } from '../../utils/element'
+import { getTableCellContentInset } from '../table/layout/TableCellContentInset'
 import {
   createCollapsedLeftCursorPosition,
   resolvePointerBoundaryAtPosition
@@ -315,7 +316,10 @@ export class Position {
       // 行存在环绕的可能性均不设置行布局
       if (!curRow.isSurround) {
         // 计算行偏移量（行居中、居右）
-        const curRowWidth = curRow.width + (curRow.offsetX || 0)
+        const curRowWidth =
+          curRow.width +
+          (curRow.rowFlexOffsetX || 0) +
+          (curRow.rightOffsetX || 0)
         if (curRow.rowFlex === RowFlex.CENTER) {
           x += (innerWidth - curRowWidth) / 2
         } else if (curRow.rowFlex === RowFlex.RIGHT) {
@@ -425,6 +429,7 @@ export class Position {
         // 缓存浮动元素信息
         if (
           element.imgDisplay === ImageDisplay.SURROUND ||
+          element.imgDisplay === ImageDisplay.TIGHT ||
           element.imgDisplay === ImageDisplay.FLOAT_TOP ||
           element.imgDisplay === ImageDisplay.FLOAT_BOTTOM
         ) {
@@ -467,7 +472,6 @@ export class Position {
           if (!tableSource.trList?.length) {
             continue
           }
-          const tdPaddingWidth = tdPadding[1] + tdPadding[3]
           const tdPaddingHeight = tdPadding[0] + tdPadding[2]
           for (let t = 0; t < tableSource.trList.length; t++) {
             const tr = tableSource.trList[t]
@@ -475,15 +479,25 @@ export class Position {
               const td = tr.tdList[d]
               td.positionList = []
               const rowList = td.rowList!
+              const contentInset = getTableCellContentInset(tableSource, td)
+              const tdHorizontalPadding =
+                tdPadding[1] +
+                tdPadding[3] +
+                contentInset.left +
+                contentInset.right
               const drawRowResult = this.computePageRowPosition({
                 positionList: td.positionList,
                 rowList,
                 pageNo,
                 startRowIndex: 0,
                 startIndex: 0,
-                startX: (td.x! + tdPadding[3]) * scale + tablePreX,
-                startY: (td.y! + tdPadding[0]) * scale + tablePreY,
-                innerWidth: (td.width! - tdPaddingWidth) * scale,
+                startX:
+                  (td.x! + tdPadding[3] + contentInset.left) * scale +
+                  tablePreX,
+                startY:
+                  (td.y! + tdPadding[0] + contentInset.top) * scale +
+                  tablePreY,
+                innerWidth: Math.max(0, td.width! - tdHorizontalPadding) * scale,
                 isTable: true,
                 index: index - 1,
                 tdIndex: d,
@@ -500,7 +514,12 @@ export class Position {
                   0
                 )
                 const blankHeight =
-                  (td.height! - tdPaddingHeight) * scale - rowsHeight
+                  (td.height! -
+                    tdPaddingHeight -
+                    contentInset.top -
+                    contentInset.bottom) *
+                    scale -
+                  rowsHeight
                 const offsetHeight =
                   td.verticalAlign === VerticalAlign.MIDDLE
                     ? blankHeight / 2
@@ -588,6 +607,45 @@ export class Position {
     this.isComputingAllPositions = false
   }
 
+  public computePositionListFromPage(startPageNo: number) {
+    const pageRowList = this.draw.getPageRowList()
+    if (!pageRowList.length || startPageNo <= 0) {
+      this.computePositionList()
+      return
+    }
+    this.positionLookupMapCache = new WeakMap()
+    this.pageRowBandsLookupMapCache = new WeakMap()
+    const nextPositionList = this.positionList.filter(
+      position => position.pageNo < startPageNo
+    )
+    const innerWidth = this.draw.getInnerWidth()
+    const margins = this.draw.getMargins()
+    const startX = margins[3]
+    const header = this.draw.getHeader()
+    const extraHeight = header.getExtraHeight()
+    const startY = margins[0] + extraHeight
+    let startRowIndex = 0
+    for (let pageNo = 0; pageNo < startPageNo; pageNo++) {
+      startRowIndex += pageRowList[pageNo]?.length || 0
+    }
+    for (let pageNo = startPageNo; pageNo < pageRowList.length; pageNo++) {
+      const rowList = pageRowList[pageNo]
+      const startIndex = rowList[0]?.startIndex
+      this.computePageRowPosition({
+        positionList: nextPositionList,
+        rowList,
+        pageNo,
+        startRowIndex,
+        startIndex,
+        startX,
+        startY,
+        innerWidth
+      })
+      startRowIndex += rowList.length
+    }
+    this.positionList = nextPositionList
+  }
+
   public computeRowPosition(
     payload: IComputeRowPositionPayload
   ): IElementPosition[] {
@@ -608,6 +666,33 @@ export class Position {
 
   public setCursorPosition(position: IElementPosition | null) {
     this.cursorPosition = position
+  }
+
+  /** 更新光标的逻辑索引，用于输入态 chunk patch 前保持删除、回车等操作读取最新索引。 */
+  public setCursorLogicalIndex(index: number | null) {
+    if (index === null || index < 0) {
+      this.cursorPosition = null
+      return
+    }
+    // 表格上下文中的 index 是 td 局部索引，不能直接读取主文档 positionList；
+    // 否则会把光标误定位到正文第一页，输入代理 focus 后触发整页滚动回顶部。
+    const activePositionList = this.getPositionList()
+    const currentPosition = activePositionList[index]
+    if (currentPosition) {
+      this.cursorPosition = currentPosition
+      return
+    }
+    if (!this.cursorPosition) {
+      return
+    }
+    const element = this.draw.getElementList()[index]
+    // 位置坐标会在 chunk patch 后刷新；这里仅修正索引和值，保证同步编辑语义正确。
+    this.cursorPosition = {
+      ...this.cursorPosition,
+      index,
+      value: element?.value || ZERO,
+      element
+    }
   }
 
   public getCursorPosition(): IElementPosition | null {
@@ -706,6 +791,14 @@ export class Position {
     const zoneManager = this.draw.getZone()
     const curPageNo = payload.pageNo ?? this.draw.getPageNo()
     const isMainActive = zoneManager.isMainActive()
+    const currentZone = zoneManager.getZone()
+    const pointerZone = zoneManager.getZoneByY(y)
+    if (pointerZone !== currentZone) {
+      return {
+        index: -1,
+        zone: pointerZone
+      }
+    }
     if (!elementList) {
       elementList = isMainActive
         ? this.draw.getLayoutMainElementList()
@@ -925,12 +1018,11 @@ export class Position {
       return activeRowBandPosition
     }
 
-    // 第五层：页边界 / 区域兜底。
-    // 当前页内没有任何直接命中时，再判断是否切到页眉页脚，
-    // 或回退到首行 / 末行边界。
+    // 第五层：页眉 / 页脚区域切换。
+    // 这里保留命中计算完成后的 zone 回退，避免在区域切换时直接
+    // 跳过正文命中，导致第一次点击只切区不落点。
     const header = this.draw.getHeader()
-    const headerHeight = header.getHeight()
-    const headerBottomY = header.getHeaderTop() + headerHeight
+    const headerBottomY = header.getHeaderTop() + header.getHeight()
     const footer = this.draw.getFooter()
     const pageHeight = this.draw.getHeight()
     const footerTopY =
@@ -956,6 +1048,9 @@ export class Position {
       }
     }
 
+    // 第六层：页边界 / 区域兜底。
+    // 当前页内没有任何直接命中时，再判断是否切到页眉页脚，
+    // 或回退到首行 / 末行边界。
     const margins = this.draw.getMargins()
     if (y <= margins[0]) {
       const firstRowBand = pageRowBands[0] || null

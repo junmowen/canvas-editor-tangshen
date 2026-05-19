@@ -49,11 +49,16 @@
       "borderDash": "Dash",
       "borderExternal": "External",
       "borderInternal": "Internal",
+      "borderColor": "Border color",
+      "borderWidth": "Border width",
+      "autoFitWidth": "Auto fit column width",
       "borderTd": "Table cell border",
       "borderTdTop": "Top",
       "borderTdRight": "Right",
       "borderTdBottom": "Bottom",
       "borderTdLeft": "Left",
+      "borderTdColor": "Table cell border color",
+      "borderTdWidth": "Table cell border width",
       "borderTdForward": "Forward",
       "borderTdBack": "Back"
     }

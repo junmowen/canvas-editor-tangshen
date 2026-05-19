@@ -1,7 +1,8 @@
 import { commentList, data, options } from './mock'
 import './style.css'
 import prism from 'prismjs'
-import Editor, {
+import {
+  Editor,
   BlockType,
   Command,
   ControlState,
@@ -23,6 +24,12 @@ import Editor, {
   TitleLevel,
   splitText
 } from './editor'
+import { IContextMenuContext } from './editor/interface/contextmenu/ContextMenu'
+import { IControlChangeResult } from './editor/interface/Control'
+import {
+  IRangeStyle
+} from './editor/interface/Listener'
+import { IEditorResult } from './editor/interface/Editor'
 import { Dialog } from './components/dialog/Dialog'
 import { formatPrismToken } from './utils/prism'
 import { Signature } from './components/signature/Signature'
@@ -147,6 +154,7 @@ window.onload = function () {
   const sizeSetDom = document.querySelector<HTMLDivElement>('.menu-item__size')!
   const sizeSelectDom = sizeSetDom.querySelector<HTMLDivElement>('.select')!
   const sizeOptionDom = sizeSetDom.querySelector<HTMLDivElement>('.options')!
+  let currentRangeSize = 16
   sizeSetDom.title = `设置字号`
   sizeSetDom.onclick = function () {
     console.log('size')
@@ -335,6 +343,67 @@ window.onload = function () {
   rowOptionDom.onclick = function (evt) {
     const li = evt.target as HTMLLIElement
     instance.command.executeRowMargin(Number(li.dataset.rowmargin!))
+  }
+
+  const rowIndentDom =
+    document.querySelector<HTMLDivElement>('.menu-item__row-indent')!
+  const rowIndentOptionDom =
+    rowIndentDom.querySelector<HTMLDivElement>('.options')!
+  const rowIndentLeftInput = rowIndentDom.querySelector<HTMLInputElement>(
+    '.row-indent-left-input'
+  )!
+  const rowIndentRightInput = rowIndentDom.querySelector<HTMLInputElement>(
+    '.row-indent-right-input'
+  )!
+  const rowIndentInput = rowIndentDom.querySelector<HTMLInputElement>(
+    '.row-indent-input'
+  )!
+  const rowHangingIndentInput = rowIndentDom.querySelector<HTMLInputElement>(
+    '.row-hanging-indent-input'
+  )!
+  const rowIndentApplyDom = rowIndentDom.querySelector<HTMLButtonElement>(
+    '.row-indent-apply'
+  )!
+  const toIndentChars = (value?: number | null) => {
+    if (!value || !currentRangeSize) return ''
+    return `${Number((value / currentRangeSize).toFixed(2))}`
+  }
+  const parseIndentChars = (input: string) => {
+    const value = Number(input)
+    if (!Number.isFinite(value) || value <= 0) return null
+    return Math.round(value * currentRangeSize)
+  }
+  rowIndentDom.onclick = function (evt) {
+    const target = evt.target as HTMLElement
+    if (target.closest('.options')) return
+    rowIndentOptionDom.classList.toggle('visible')
+  }
+  rowIndentOptionDom.onmousedown = function (evt) {
+    const target = evt.target as HTMLElement
+    if (target.closest('input') || target.closest('button')) {
+      evt.stopPropagation()
+      return
+    }
+    const li = target.closest('li')
+    if (!li?.dataset.rowindent && !li?.dataset.rowindentChars) return
+    evt.preventDefault()
+    const rowIndent =
+      li.dataset.rowindentChars !== undefined
+        ? parseIndentChars(li.dataset.rowindentChars)
+        : Number(li.dataset.rowindent)
+    instance.command.executeRowIndent(rowIndent)
+    rowIndentOptionDom.classList.remove('visible')
+  }
+  rowIndentApplyDom.onclick = function (evt) {
+    evt.preventDefault()
+    evt.stopPropagation()
+    instance.command.executeRowIndent({
+      left: parseIndentChars(rowIndentLeftInput.value),
+      right: parseIndentChars(rowIndentRightInput.value),
+      firstLine: parseIndentChars(rowIndentInput.value),
+      hanging: parseIndentChars(rowHangingIndentInput.value)
+    })
+    rowIndentOptionDom.classList.remove('visible')
   }
 
   const listDom = document.querySelector<HTMLDivElement>('.menu-item__list')!
@@ -890,6 +959,14 @@ window.onload = function () {
               required: true,
               options: [
                 {
+                  label: 'yyyy',
+                  value: 'yyyy'
+                },
+                {
+                  label: 'yyyy-MM',
+                  value: 'yyyy-MM'
+                },
+                {
                   label: 'yyyy-MM-dd hh:mm:ss',
                   value: 'yyyy-MM-dd hh:mm:ss'
                 },
@@ -1053,12 +1130,22 @@ window.onload = function () {
     const hour = date.getHours().toString().padStart(2, '0')
     const minute = date.getMinutes().toString().padStart(2, '0')
     const second = date.getSeconds().toString().padStart(2, '0')
+    const yearMonthString = `${year}-${month}`
     const dateString = `${year}-${month}-${day}`
     const dateTimeString = `${dateString} ${hour}:${minute}:${second}`
-    dateDomOptionDom.querySelector<HTMLLIElement>('li:first-child')!.innerText =
-      dateString
-    dateDomOptionDom.querySelector<HTMLLIElement>('li:last-child')!.innerText =
-      dateTimeString
+    dateDomOptionDom
+      .querySelectorAll<HTMLLIElement>('li')
+      .forEach(li => {
+        if (li.dataset.format === 'yyyy') {
+          li.innerText = year
+        } else if (li.dataset.format === 'yyyy-MM') {
+          li.innerText = yearMonthString
+        } else if (li.dataset.format === 'yyyy-MM-dd') {
+          li.innerText = dateString
+        } else if (li.dataset.format === 'yyyy-MM-dd hh:mm:ss') {
+          li.innerText = dateTimeString
+        }
+      })
   }
   dateDomOptionDom.onmousedown = function (evt) {
     const li = evt.target as HTMLLIElement
@@ -1459,6 +1546,147 @@ window.onload = function () {
     })
   }
 
+  const pageNumberRangeDom =
+    document.querySelector<HTMLDivElement>('.page-number-range')!
+  pageNumberRangeDom.onclick = function () {
+    const pageNumber = instance.command.getOptions().pageNumber || {}
+    const fromPageNo = (pageNumber.fromPageNo ?? 0) + 1
+    const isContinueMode =
+      (pageNumber.startPageNo ?? 1) === 1 && (pageNumber.fromPageNo ?? 0) === 0
+
+    new Dialog({
+      title: '页码范围',
+      data: [
+        {
+          type: 'select',
+          label: '编号模式',
+          name: 'mode',
+          required: true,
+          value: isContinueMode ? 'continue' : 'restart',
+          options: [
+            {
+              label: '续编',
+              value: 'continue'
+            },
+            {
+              label: '重新编号',
+              value: 'restart'
+            }
+          ]
+        },
+        {
+          type: 'number',
+          label: '起始页码',
+          name: 'startPageNo',
+          required: true,
+          value: `${pageNumber.startPageNo ?? 1}`,
+          placeholder: '请输入起始页码'
+        },
+        {
+          type: 'number',
+          label: '起始页（1起）',
+          name: 'fromPageNo',
+          required: true,
+          value: `${fromPageNo}`,
+          placeholder: '请输入起始页'
+        },
+        {
+          type: 'number',
+          label: '最大页数',
+          name: 'maxPageNo',
+          value: pageNumber.maxPageNo == null ? '' : `${pageNumber.maxPageNo}`,
+          placeholder: '留空表示不限'
+        }
+      ],
+      onConfirm: payload => {
+        const mode = getDialogValue(payload, 'mode') || 'continue'
+        const startPageNo = parseDialogPositiveInteger(
+          getDialogValue(payload, 'startPageNo'),
+          pageNumber.startPageNo ?? 1,
+          1
+        )
+        const selectedFromPageNo = parseDialogPositiveInteger(
+          getDialogValue(payload, 'fromPageNo'),
+          fromPageNo,
+          1
+        )
+        const maxPageNo = parseDialogOptionalInteger(
+          getDialogValue(payload, 'maxPageNo')
+        )
+
+        if (mode === 'continue') {
+          instance.command.executePageNumberContinue()
+        } else {
+          instance.command.executePageNumberRestart({
+            startPageNo,
+            fromPageNo: selectedFromPageNo - 1
+          })
+        }
+
+        instance.command.executePageNumberRange({
+          fromPageNo: selectedFromPageNo - 1,
+          maxPageNo
+        })
+      }
+    })
+  }
+
+  const pageColumnsDom =
+    document.querySelector<HTMLDivElement>('.page-columns')!
+  pageColumnsDom.onclick = function () {
+    const columns = instance.command.getOptions().columns || {}
+    new Dialog({
+      title: '分栏',
+      data: [
+        {
+          type: 'number',
+          label: '栏数',
+          name: 'count',
+          required: true,
+          value: `${columns.count ?? 1}`,
+          placeholder: '请输入栏数'
+        },
+        {
+          type: 'number',
+          label: '栏间距',
+          name: 'gap',
+          required: true,
+          value: `${columns.gap ?? 24}`,
+          placeholder: '请输入栏间距'
+        },
+        {
+          type: 'text',
+          label: '栏宽（逗号分隔，可选）',
+          name: 'widths',
+          value: Array.isArray(columns.widths) ? columns.widths.join(',') : '',
+          placeholder: '例如 120,100'
+        }
+      ],
+      onConfirm: payload => {
+        const count = parseDialogPositiveInteger(
+          getDialogValue(payload, 'count'),
+          columns.count ?? 1,
+          1
+        )
+        const gap = parseDialogPositiveInteger(
+          getDialogValue(payload, 'gap'),
+          columns.gap ?? 24,
+          0
+        )
+        const widths = parseDialogNumberList(getDialogValue(payload, 'widths'))
+
+        instance.command.executeUpdateOptions({
+          columns: {
+            ...columns,
+            count,
+            gap,
+            widths: widths.length > 0 ? widths : columns.widths || []
+          }
+        })
+      }
+    })
+  }
+
   // 全屏
   const fullscreenDom = document.querySelector<HTMLDivElement>('.fullscreen')!
   fullscreenDom.onclick = toggleFullscreen
@@ -1583,7 +1811,7 @@ window.onload = function () {
     }
   }
   // 8. 内部事件监听
-  instance.listener.rangeStyleChange = function (payload) {
+  instance.listener.rangeStyleChange = function (payload: IRangeStyle) {
     // 控件类型
     payload.type === ElementType.SUBSCRIPT
       ? subscriptDom.classList.add('active')
@@ -1631,6 +1859,7 @@ window.onload = function () {
     } else {
       sizeSelectDom.innerText = `${payload.size}`
     }
+    currentRangeSize = payload.size || 16
     payload.bold
       ? boldDom.classList.add('active')
       : boldDom.classList.remove('active')
@@ -1688,6 +1917,25 @@ window.onload = function () {
       `[data-rowmargin='${payload.rowMargin}']`
     )!
     curRowMarginDom.classList.add('active')
+    rowIndentLeftInput.value = toIndentChars(payload.rowIndentLeft)
+    rowIndentRightInput.value = toIndentChars(payload.rowIndentRight)
+    rowIndentInput.value = toIndentChars(payload.rowIndent)
+    rowHangingIndentInput.value = toIndentChars(payload.rowHangingIndent)
+    rowIndentOptionDom
+      .querySelectorAll<HTMLLIElement>('li')
+      .forEach(li => li.classList.remove('active'))
+    const activeRowIndent =
+      payload.rowIndent && currentRangeSize
+        ? Number((payload.rowIndent / currentRangeSize).toFixed(2))
+        : 0
+    const curRowIndentDom =
+      rowIndentOptionDom.querySelector<HTMLLIElement>(
+        `[data-rowindent='${payload.rowIndent || 0}']`
+      ) ||
+      rowIndentOptionDom.querySelector<HTMLLIElement>(
+        `[data-rowindent-chars='${activeRowIndent}']`
+      )
+    curRowIndentDom?.classList.add('active')
 
     // 功能
     payload.undo
@@ -1763,30 +2011,30 @@ window.onload = function () {
     }
   }
 
-  instance.listener.visiblePageNoListChange = function (payload) {
-    const text = payload.map(i => i + 1).join('、')
+  instance.listener.visiblePageNoListChange = function (payload: number[]) {
+    const text = payload.map((i: number) => i + 1).join('、')
     document.querySelector<HTMLSpanElement>('.page-no-list')!.innerText = text
   }
 
-  instance.listener.pageSizeChange = function (payload) {
+  instance.listener.pageSizeChange = function (payload: number) {
     document.querySelector<HTMLSpanElement>(
       '.page-size'
     )!.innerText = `${payload}`
   }
 
-  instance.listener.intersectionPageNoChange = function (payload) {
+  instance.listener.intersectionPageNoChange = function (payload: number) {
     document.querySelector<HTMLSpanElement>('.page-no')!.innerText = `${
       payload + 1
     }`
   }
 
-  instance.listener.pageScaleChange = function (payload) {
+  instance.listener.pageScaleChange = function (payload: number) {
     document.querySelector<HTMLSpanElement>(
       '.page-scale-percentage'
     )!.innerText = `${Math.floor(payload * 10 * 10)}%`
   }
 
-  instance.listener.controlChange = function (payload) {
+  instance.listener.controlChange = function (payload: IControlChangeResult) {
     const disableMenusInControlContext = [
       'table',
       'hyperlink',
@@ -1804,7 +2052,7 @@ window.onload = function () {
     })
   }
 
-  instance.listener.pageModeChange = function (payload) {
+  instance.listener.pageModeChange = function (payload: PageMode) {
     const activeMode = pageModeOptionsDom.querySelector<HTMLLIElement>(
       `[data-page-mode='${payload}']`
     )!
@@ -1834,7 +2082,7 @@ window.onload = function () {
   instance.listener.contentChange = debounce(handleContentChange, 200)
   handleContentChange()
 
-  instance.listener.saved = function (payload) {
+  instance.listener.saved = function (payload: IEditorResult) {
     console.log('elementList: ', payload)
   }
 
@@ -1842,7 +2090,7 @@ window.onload = function () {
   instance.register.contextMenuList([
     {
       name: '批注',
-      when: payload => {
+      when: (payload: IContextMenuContext) => {
         return (
           !payload.isReadonly &&
           payload.editorHasSelection &&
@@ -1862,8 +2110,8 @@ window.onload = function () {
               placeholder: '请输入批注'
             }
           ],
-          onConfirm: payload => {
-            const value = payload.find(p => p.name === 'value')?.value
+          onConfirm: (payload: any) => {
+            const value = payload.find((p: any) => p.name === 'value')?.value
             if (!value) return
             const groupId = command.executeSetGroup()
             if (!groupId) return
@@ -1881,12 +2129,12 @@ window.onload = function () {
     {
       name: '签名',
       icon: 'signature',
-      when: payload => {
+      when: (payload: IContextMenuContext) => {
         return !payload.isReadonly && payload.editorTextFocus
       },
       callback: (command: Command) => {
         new Signature({
-          onConfirm(payload) {
+          onConfirm(payload: any) {
             if (!payload) return
             const { value, width, height } = payload
             if (!value || !width || !height) return
@@ -1905,7 +2153,7 @@ window.onload = function () {
     {
       name: '格式整理',
       icon: 'word-tool',
-      when: payload => {
+      when: (payload: IContextMenuContext) => {
         return !payload.isReadonly
       },
       callback: (command: Command) => {
@@ -1963,4 +2211,37 @@ window.onload = function () {
       }
     }
   ])
+}
+
+function getDialogValue(
+  payload: { name: string; value: string }[],
+  name: string
+): string {
+  return payload.find(item => item.name === name)?.value || ''
+}
+
+function parseDialogPositiveInteger(
+  value: string,
+  fallback: number,
+  min: number
+): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.max(min, Math.floor(parsed))
+}
+
+function parseDialogOptionalInteger(value: string): number | null {
+  const normalized = value.trim()
+  if (!normalized) return null
+  const parsed = Number(normalized)
+  if (!Number.isFinite(parsed)) return null
+  return Math.max(0, Math.floor(parsed))
+}
+
+function parseDialogNumberList(value: string): number[] {
+  return value
+    .split(/[\s,，]+/)
+    .map(item => Number(item))
+    .filter(item => Number.isFinite(item) && item > 0)
+    .map(item => Math.floor(item))
 }

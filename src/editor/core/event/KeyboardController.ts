@@ -25,10 +25,12 @@ export class KeyboardController {
     }
     if (isMod(evt) && evt.key.toLocaleLowerCase() === KeyMap.Z) {
       if (draw.isReadonly() && draw.getMode() !== EditorMode.FORM) return
+      draw.flushAsyncInsertTransaction('keyboard-undo')
       draw.getHistoryManager().undo()
       evt.preventDefault()
     } else if (isMod(evt) && evt.key.toLocaleLowerCase() === KeyMap.Y) {
       if (draw.isReadonly() && draw.getMode() !== EditorMode.FORM) return
+      draw.flushAsyncInsertTransaction('keyboard-redo')
       draw.getHistoryManager().redo()
       evt.preventDefault()
     } else if (isMod(evt) && evt.key.toLocaleLowerCase() === KeyMap.C) {

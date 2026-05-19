@@ -534,7 +534,21 @@ export class TableHitTestService {
     const positionResult = this.draw.getPosition().getPositionByXY(
       payload
     ) as TResolvedPointerPosition
-    if (!~positionResult.index) return null
+
+    // 如果 getPositionByXY 返回了无效的位置（index=-1 且无 zone），
+    // 这通常不应该发生，因为 getPositionByXY 有兜底逻辑。
+    // 但如果确实发生了，我们需要提供一个合理的回退值，避免光标定位完全失败。
+    if (!~positionResult.index && !positionResult.zone) {
+      // 尝试获取文档的第一个有效位置作为回退
+      const positionList = this.draw.getPosition().getPositionList()
+      if (positionList && positionList.length > 0) {
+        positionResult.index = positionList[0]?.index ?? 0
+      } else {
+        // 如果连 positionList 都是空的，返回 index=0 作为最后的回退
+        positionResult.index = 0
+      }
+    }
+
     if (
       positionResult.isControl &&
       this.draw.getMode() !== EditorMode.READONLY
@@ -778,8 +792,8 @@ export class TableHitTestService {
     )
 
     if (!positionResult && startPosition?.isTable && pagePoint) {
-      const pageList = this.draw.getPageList()
-      for (let pageCursor = 0; pageCursor < pageList.length; pageCursor++) {
+      const pageCount = this.draw.getPageCount()
+      for (let pageCursor = 0; pageCursor < pageCount; pageCursor++) {
         positionResult = this.resolveTablePointerPositionByPagePoint(
           {
             ...pagePoint,

@@ -69,5 +69,6 @@ export interface IContextmenuLang {
     deleteTable: string
     mergeCell: string
     mergeCancelCell: string
+    autoFitWidth: string
   }
 }

@@ -12,6 +12,7 @@ import { RangeManager } from '../range/RangeManager'
 import { CanvasEvent } from './CanvasEvent'
 import { ImageParticle } from '../draw/particle/ImageParticle'
 import { INTERNAL_SHORTCUT_KEY } from '../../dataset/constant/Shortcut'
+import { RenderLayer } from '../render-backend'
 
 export class GlobalEvent {
   private draw: Draw
@@ -86,7 +87,11 @@ export class GlobalEvent {
     if (!this.cursor) return
     // 编辑器内部 DOM。
     const target = <Element>(evt?.composedPath()[0] || evt.target)
-    const pageList = this.draw.getPageList()
+    // 只用已挂载 base surface 的 canvas 判断是否点击在编辑器页面内部。
+    const pageList = this.draw
+      .getPageCanvasHost()
+      .getSurfaceList(RenderLayer.BASE)
+      .map(surface => surface?.canvas)
     const innerEditorDom = findParent(
       target,
       (node: any) => pageList.includes(node),

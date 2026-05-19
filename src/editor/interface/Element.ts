@@ -42,12 +42,84 @@ export interface IElementStyle {
   strikeout?: boolean
   rowFlex?: RowFlex
   rowMargin?: number
+  rowIndentLeft?: number
+  rowIndentRight?: number
+  rowIndent?: number
+  rowHangingIndent?: number
   letterSpacing?: number
+  spaceBefore?: number
+  spaceAfter?: number
+  lineSpacing?: number
+  lineSpacingType?: 'auto' | 'exact' | 'multiple'
+  pageBreakBefore?: boolean
+  keepWithNext?: boolean
+  keepLines?: boolean
+  widowControl?: boolean
+  tabStops?: {
+    position: number
+    alignment?: 'left' | 'center' | 'right' | 'decimal' | 'bar'
+  }[]
+  /** editor2 文档样式标识，用于内置/自定义样式回显。 */
+  styleId?: string
+  /** editor2 文档样式名称，用于菜单状态回显。 */
+  styleName?: string
   textDecoration?: ITextDecoration
+  /** editor2 字符横向缩放百分比，100 表示原始宽度。 */
+  textScale?: number
+  /** editor2 字符基线偏移，负数上移、正数下移。 */
+  textPosition?: number
+  /** editor2 文本描边/空心样式。 */
+  textOutline?: {
+    color?: string
+    width?: number
+    hollow?: boolean
+  }
+  /** editor2 文本阴影样式。 */
+  textShadow?: {
+    color?: string
+    blur?: number
+    offsetX?: number
+    offsetY?: number
+  }
+  /** editor2 文本发光样式。 */
+  textGlow?: {
+    color?: string
+    blur?: number
+  }
+  /** editor2 文本映像样式。 */
+  textReflection?: {
+    opacity?: number
+    offset?: number
+    blur?: number
+  }
+  /** editor2 带圈/带框字符样式。 */
+  textEnclosure?: {
+    shape?: 'circle' | 'square'
+    color?: string
+    borderWidth?: number
+    fill?: string
+  }
+  /** editor2 拼音/注音标注样式。 */
+  textRuby?: {
+    text: string
+    position?: 'top' | 'bottom'
+    fontSize?: number
+    color?: string
+  }
+  /** editor2 纵横混排样式。 */
+  textCombine?: boolean
+}
+
+export interface IRowIndentPayload {
+  left?: number | null
+  right?: number | null
+  firstLine?: number | null
+  hanging?: number | null
 }
 
 export interface IElementRule {
   hide?: boolean
+  pageScope?: 'all' | 'first' | 'odd' | 'even'
 }
 
 export interface IElementGroup {
@@ -67,6 +139,8 @@ export interface IListElement {
   listStyle?: ListStyle
   listId?: string
   listLevel?: number
+  listStart?: number
+  listSymbol?: string
   listWrap?: boolean
 }
 
@@ -78,6 +152,13 @@ export interface ITableAttr {
   borderWidth?: number
   borderExternalWidth?: number
   tableDisplay?: TableDisplay
+  tableStyleId?: string
+  tableStyleName?: string
+  tableFloatPosition?: {
+    x: number
+    y: number
+    pageNo?: number
+  }
 }
 
 export interface ITableRule {
@@ -135,6 +216,19 @@ export interface IImageRule {
   imgToolDisabled?: boolean
 }
 
+export interface IImageWebGLFilter {
+  grayscale?: number
+  brightness?: number
+  contrast?: number
+}
+
+export interface IImageWebGLCrop {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 export interface IImageBasic {
   imgDisplay?: ImageDisplay
   imgFloatPosition?: {
@@ -142,6 +236,33 @@ export interface IImageBasic {
     y: number
     pageNo?: number
   }
+  imgLockAspectRatio?: boolean
+  imgSizeLocked?: boolean
+  imgBorder?: {
+    color?: string
+    width?: number
+    radius?: number
+  }
+  imgShadow?: {
+    color?: string
+    blur?: number
+    offsetX?: number
+    offsetY?: number
+  }
+  imgCrop?: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
+  /** 独立 WebGL 图片任务使用的预览滤镜，不改变正文排版。 */
+  webglFilter?: IImageWebGLFilter
+  /** 显式标记该图片预览任务使用 WebGL 做降采样输出。 */
+  webglDownsample?: boolean
+  /** 图片预览裁剪区域，按源图固有像素坐标描述。 */
+  webglCrop?: IImageWebGLCrop
+  /** 图片预览旋转角度，单位为度，围绕输出区域中心旋转。 */
+  webglRotation?: number
 }
 
 export type IImageElement = IImageBasic & IImageRule

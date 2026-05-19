@@ -72,6 +72,7 @@ export function runDragCommitIntent(payload: {
     ? cacheRange.startIndex - 1
     : cacheRange.startIndex
   const cacheEndIndex = cacheRange.endIndex
+  const isRowHandleDrag = session.dragSnapshot.dragSource === 'row-handle'
 
   if (
     range.startIndex >= cacheStartIndex &&
@@ -113,6 +114,19 @@ export function runDragCommitIntent(payload: {
     return true
   }
 
+  if (isRowHandleDrag) {
+    const isDropBeforeSelf = range.startIndex === cacheStartIndex
+    const isDropAfterSelf = range.startIndex === cacheEndIndex
+    if (isDropBeforeSelf || isDropAfterSelf) {
+      draw.clearSideEffect()
+      rangeManager.replaceRange({
+        ...cacheRange
+      })
+      renderDragCommitRollback({ draw, isCompute: false, isSubmitHistory: false })
+      return true
+    }
+  }
+
   const dragElementList = cacheElementList.slice(
     cacheStartIndex + 1,
     cacheEndIndex + 1
@@ -138,7 +152,8 @@ export function runDragCommitIntent(payload: {
     cacheStartIndex,
     cacheEndIndex,
     dragElementList,
-    isContainControl: !!isContainControl
+    isContainControl: !!isContainControl,
+    isPreserveSourceContext: isRowHandleDrag
   })
   if (!mutationResult.applied) {
     renderDragCommitFailed({ draw })

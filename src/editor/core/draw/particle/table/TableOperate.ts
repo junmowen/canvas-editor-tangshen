@@ -26,6 +26,10 @@ export interface IInsertTableOption {
   tableDisplay?: TableDisplay
 }
 
+export interface IAutoFitTableOption {
+  tableId?: string
+}
+
 const ALL_TD_BORDERS = [
   TdBorder.TOP,
   TdBorder.RIGHT,
@@ -72,15 +76,21 @@ export class TableOperate {
     return element
   }
 
-  private resolveContextTable() {
+  private resolveContextTable(tableId?: string) {
     const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return null
+    const range = this.range.getEditBoundaryRange()
+    const rangeTableId = tableId || range.tableId
+    if (!positionContext.isTable && !rangeTableId) return null
     let tableIndex = positionContext.index
     const originalElementList = this.draw.getOriginalElementList()
     let element =
       tableIndex !== undefined ? originalElementList[tableIndex] : undefined
+    if (tableId && element?.id !== tableId) {
+      tableIndex = this.resolveTableIndexById(tableId)
+      element = ~tableIndex ? originalElementList[tableIndex] : undefined
+    }
     if (element?.type !== ElementType.TABLE || !element.trList?.length) {
-      const tableId = positionContext.tableId
+      const tableId = positionContext.tableId || rangeTableId
       tableIndex = tableId ? this.resolveTableIndexById(tableId) : -1
       element = ~tableIndex ? originalElementList[tableIndex] : undefined
     }
@@ -92,9 +102,9 @@ export class TableOperate {
       positionContext,
       index: tableIndex!,
       element,
-      trIndex: positionContext.trIndex,
-      tdIndex: positionContext.tdIndex,
-      tableId: element.id || positionContext.tableId
+      trIndex: positionContext.trIndex ?? range.startTrIndex,
+      tdIndex: positionContext.tdIndex ?? range.startTdIndex,
+      tableId: element.id || positionContext.tableId || rangeTableId
     }
   }
 
@@ -110,6 +120,147 @@ export class TableOperate {
         )
       )
     })
+  }
+
+  private clearTableBorderStyle(element: IElement) {
+    const trList = element.trList
+    if (!trList?.length) return
+    for (let t = 0; t < trList.length; t++) {
+      const tr = trList[t]
+      for (let d = 0; d < tr.tdList.length; d++) {
+        const td = tr.tdList[d]
+        if (td.borderTypes !== undefined) {
+          delete td.borderTypes
+        }
+        if (td.borderColor !== undefined) {
+          delete td.borderColor
+        }
+        if (td.borderWidth !== undefined) {
+          delete td.borderWidth
+        }
+      }
+    }
+  }
+
+  private renderTableVisualStyleChange(curIndex: number) {
+    this.draw.render({
+      curIndex,
+      isLazy: false,
+      pageRenderScope: 'visible'
+    })
+  }
+
+  private measureCellContentWidth(value: IElement[]): number {
+    if (!value.length) return 0
+    const rowList = this.draw.computeRowList({
+      innerWidth: 999999,
+      elementList: value,
+      isFromTable: true
+    })
+    const scale = this.options.scale
+    return Math.max(
+      0,
+      rowList.reduce((max, row) => Math.max(max, row.width), 0) / scale
+    )
+  }
+
+  private fitColgroupWidths(widthList: number[]): number[] {
+    const { defaultColMinWidth } = this.options.table
+    const availableWidth = this.draw.getOriginalInnerWidth()
+    const nextWidthList = widthList.map(width =>
+      Math.max(defaultColMinWidth, width)
+    )
+    const getTotalWidth = () =>
+      nextWidthList.reduce((total, width) => total + width, 0)
+    if (getTotalWidth() <= availableWidth) {
+      return nextWidthList
+    }
+    let remaining = getTotalWidth() - availableWidth
+    let shrinkableIndexList = nextWidthList
+      .map((width, index) => ({ width, index }))
+      .filter(item => item.width > defaultColMinWidth)
+    while (remaining > 0 && shrinkableIndexList.length) {
+      const shrinkWidth = remaining / shrinkableIndexList.length
+      let reducedWidth = 0
+      const nextShrinkableIndexList: { width: number; index: number }[] = []
+      for (const item of shrinkableIndexList) {
+        const currentWidth = nextWidthList[item.index]
+        const canReduceWidth = currentWidth - defaultColMinWidth
+        if (canReduceWidth <= 0) continue
+        const reduced = Math.min(canReduceWidth, shrinkWidth)
+        nextWidthList[item.index] = currentWidth - reduced
+        reducedWidth += reduced
+        if (nextWidthList[item.index] > defaultColMinWidth + 0.01) {
+          nextShrinkableIndexList.push({
+            width: nextWidthList[item.index],
+            index: item.index
+          })
+        }
+      }
+      if (reducedWidth <= 0) {
+        break
+      }
+      remaining -= reducedWidth
+      shrinkableIndexList = nextShrinkableIndexList
+    }
+    return nextWidthList
+  }
+
+  private expandColgroupWidths(widthList: number[]): number[] {
+    const availableWidth = this.draw.getOriginalInnerWidth()
+    const nextWidthList = this.fitColgroupWidths(widthList)
+    const totalWidth = nextWidthList.reduce((total, width) => total + width, 0)
+    const remainingWidth = availableWidth - totalWidth
+    if (remainingWidth <= 0 || !nextWidthList.length) {
+      return nextWidthList
+    }
+    const contentTotalWidth = widthList.reduce((total, width) => total + width, 0)
+    if (contentTotalWidth <= 0) {
+      const extraWidth = remainingWidth / nextWidthList.length
+      return nextWidthList.map(width => width + extraWidth)
+    }
+    return nextWidthList.map((width, index) => {
+      return width + remainingWidth * (widthList[index] / contentTotalWidth)
+    })
+  }
+
+  private computeAutoFitColgroup(element: IElement): IColgroup[] {
+    const { colgroup, trList } = element
+    if (!colgroup?.length || !trList?.length) return []
+    const nextWidthList = colgroup.map(() => 0)
+    this.draw.getTableParticle().computeRowColInfo(element)
+    for (let t = 0; t < trList.length; t++) {
+      const tr = trList[t]
+      for (let d = 0; d < tr.tdList.length; d++) {
+        const td = tr.tdList[d]
+        const colIndex = td.colIndex ?? d
+        const colspan = td.colspan || 1
+        const contentWidth =
+          this.measureCellContentWidth(td.value) +
+          this.options.table.tdPadding[1] +
+          this.options.table.tdPadding[3]
+        const widthPerCol = contentWidth / colspan
+        for (let c = 0; c < colspan; c++) {
+          const nextIndex = colIndex + c
+          if (nextIndex >= nextWidthList.length) continue
+          nextWidthList[nextIndex] = Math.max(
+            nextWidthList[nextIndex],
+            widthPerCol
+          )
+        }
+      }
+    }
+    if (typeof window !== 'undefined') {
+      const targetWindow = window as any
+      const debugStore = targetWindow.__ceAutoFitTableDebug || {}
+      targetWindow.__ceAutoFitTableDebug = {
+        ...debugStore,
+        preFitWidths: nextWidthList.slice()
+      }
+    }
+    return this.expandColgroupWidths(nextWidthList).map(width => ({
+      width
+    }))
   }
 
   private resolveInlineTableWidth(startIndex: number, fallbackWidth: number) {
@@ -359,6 +510,37 @@ export class TableOperate {
         }
       }
     }
+  }
+
+  public autoFitTable(options: IAutoFitTableOption = {}) {
+    const context = this.resolveContextTable(options.tableId)
+    if (!context || !context.element?.trList?.length) return
+    if (typeof window !== 'undefined') {
+      const targetWindow = window as any
+      targetWindow.__ceAutoFitTableDebug = {
+        tableId: context.tableId,
+        index: context.index,
+        trIndex: context.trIndex,
+        tdIndex: context.tdIndex,
+        originalColgroup: context.element.colgroup?.map(col => col.width) || []
+      }
+    }
+    const nextColgroup = this.computeAutoFitColgroup(context.element)
+    if (!nextColgroup.length) return
+    if (typeof window !== 'undefined') {
+      const debugStore = (window as any).__ceAutoFitTableDebug
+      debugStore.nextColgroup = nextColgroup.map(
+        col => col.width
+      )
+    }
+    context.element.colgroup = nextColgroup
+    this.draw.getTableParticle().computeRowColInfo(context.element)
+    this.draw.render({
+      curIndex: context.index,
+      isSetCursor: false,
+      pageRenderScope: 'visible'
+    })
+    this.tableTool.render()
   }
 
   public insertTableLeftCol() {
@@ -1004,7 +1186,8 @@ export class TableOperate {
     }
     const { endIndex } = this.range.getEditBoundaryRange()
     this.draw.render({
-      curIndex: endIndex
+      curIndex: endIndex,
+      isLazy: false
     })
   }
 
@@ -1014,15 +1197,16 @@ export class TableOperate {
     const { element } = context
     if (
       (!element.borderType && payload === TableBorder.ALL) ||
-      element.borderType === payload
+      (payload !== TableBorder.EMPTY && element.borderType === payload)
     ) {
       return
     }
     element.borderType = payload
+    if (payload === TableBorder.EMPTY) {
+      this.clearTableBorderStyle(element)
+    }
     const { endIndex } = this.range.getEditBoundaryRange()
-    this.draw.render({
-      curIndex: endIndex
-    })
+    this.renderTableVisualStyleChange(endIndex)
   }
 
   public tableBorderColor(payload: string) {
@@ -1038,11 +1222,26 @@ export class TableOperate {
     }
     element.borderColor = payload
     const { endIndex } = this.range.getEditBoundaryRange()
-    this.draw.render({
-      curIndex: endIndex,
-      isCompute: false,
-      pageRenderScope: 'visible'
-    })
+    this.renderTableVisualStyleChange(endIndex)
+  }
+
+  public tableBorderWidth(payload: number) {
+    const context = this.resolveContextTable()
+    if (!context || !Number.isFinite(payload) || payload <= 0) return
+    const { element } = context
+    if (
+      (!element.borderWidth &&
+        !element.borderExternalWidth &&
+        payload === 1) ||
+      (element.borderWidth === payload &&
+        element.borderExternalWidth === payload)
+    ) {
+      return
+    }
+    element.borderWidth = payload
+    element.borderExternalWidth = payload
+    const { endIndex } = this.range.getEditBoundaryRange()
+    this.renderTableVisualStyleChange(endIndex)
   }
 
   public tableTdBorderType(payload: TdBorder) {
@@ -1075,9 +1274,7 @@ export class TableOperate {
       }
     })
     const { endIndex } = this.range.getEditBoundaryRange()
-    this.draw.render({
-      curIndex: endIndex
-    })
+    this.renderTableVisualStyleChange(endIndex)
   }
 
   public tableTdBorderColor(payload: string) {
@@ -1090,11 +1287,7 @@ export class TableOperate {
       td.borderColor = payload
     })
     const { endIndex } = this.range.getEditBoundaryRange()
-    this.draw.render({
-      curIndex: endIndex,
-      isCompute: false,
-      pageRenderScope: 'visible'
-    })
+    this.renderTableVisualStyleChange(endIndex)
   }
 
   public tableTdBorderWidth(payload: number) {
@@ -1107,11 +1300,7 @@ export class TableOperate {
       td.borderWidth = payload
     })
     const { endIndex } = this.range.getEditBoundaryRange()
-    this.draw.render({
-      curIndex: endIndex,
-      isCompute: false,
-      pageRenderScope: 'visible'
-    })
+    this.renderTableVisualStyleChange(endIndex)
   }
 
   public tableTdSlashType(payload: TdSlash) {

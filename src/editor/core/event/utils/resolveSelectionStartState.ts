@@ -22,7 +22,7 @@ export interface IResolvedSelectionStartState {
 export function resolveSelectionStartState(
   payload: IResolveSelectionStartStatePayload
 ): IResolvedSelectionStartState | null {
-  const { draw, x, y, pageNo, pagePoint } = payload
+  const { draw, x, y, pageNo, pagePoint, range } = payload
   const components = draw.getComponents()
   const position = components.position
   const hitTestResult = components.tableHitTestService.resolve({
@@ -41,8 +41,27 @@ export function resolveSelectionStartState(
     localIndex: currentLocalIndex,
     hitTargetIndex
   } = boundary
+  const positionList = position.getPositionList()
+  const currentPosition =
+    positionList[currentLocalIndex] ||
+    positionList[positionList.length - 1] ||
+    null
+  const hitTargetPosition =
+    hitTargetIndex !== undefined
+      ? positionList[hitTargetIndex] || currentPosition
+      : currentPosition
+  const isRepeatCollapsedHit =
+    range.startIndex === range.endIndex &&
+    (hitTargetIndex === range.endIndex ||
+      currentLocalIndex === range.endIndex ||
+      currentIndex === range.endIndex)
 
   if (positionResult.isTable) {
+    const isRepeatCollapsedLeftEdgeHit =
+      isRepeatCollapsedHit &&
+      pagePoint &&
+      hitTargetPosition &&
+      pagePoint.x <= hitTargetPosition.coordinate.leftTop[0] + 1
     const tableStartState = resolveTableSelectionStartState({
       draw,
       pagePoint,
@@ -52,18 +71,22 @@ export function resolveSelectionStartState(
       hitTargetIndex
     })
     return {
-      positionResult,
-      ...tableStartState
+      positionResult: isRepeatCollapsedLeftEdgeHit
+        ? {
+            ...positionResult,
+            forceNotRightBoundaryHit: true
+          }
+        : isRepeatCollapsedHit
+          ? {
+              ...positionResult,
+              hitTargetIndex: undefined
+            }
+          : positionResult,
+      mouseDownIndex: isRepeatCollapsedHit
+        ? hitTargetIndex ?? tableStartState.mouseDownIndex
+        : tableStartState.mouseDownIndex
     }
   }
-
-  const positionList = position.getPositionList()
-  const currentPosition =
-    positionList[currentLocalIndex] || positionList[positionList.length - 1] || null
-  const hitTargetPosition =
-    hitTargetIndex !== undefined
-      ? positionList[hitTargetIndex] || currentPosition
-      : currentPosition
 
   const mouseDownIndex = resolvePointerMouseDownIndex({
     pagePoint,
@@ -72,9 +95,20 @@ export function resolveSelectionStartState(
     hitTargetIndex,
     fallbackIndex: currentIndex
   })
-
+  const isRepeatCollapsedTextHit = !!(
+    isRepeatCollapsedHit &&
+    pagePoint &&
+    hitTargetPosition &&
+    pagePoint.x < hitTargetPosition.coordinate.rightTop[0] - 1
+  )
+  const resolvedPositionResult = isRepeatCollapsedTextHit
+    ? {
+        ...positionResult,
+        forceNotRightBoundaryHit: true
+      }
+    : positionResult
   return {
-    positionResult,
+    positionResult: resolvedPositionResult,
     mouseDownIndex
   }
 }

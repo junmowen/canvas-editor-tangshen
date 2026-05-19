@@ -1,4 +1,5 @@
 import { DeepRequired } from '../../../interface/Common'
+import { EditorZone } from '../../../dataset/enum/Editor'
 import { IEditorOption } from '../../../interface/Editor'
 import { IRowElement } from '../../../interface/Row'
 import { Draw } from '../Draw'
@@ -11,6 +12,7 @@ import { Draw } from '../Draw'
 export class SeparatorParticle {
   /** 编辑器选项 */
   private options: DeepRequired<IEditorOption>
+  private draw: Draw
 
   /**
    * 构造函数。
@@ -18,6 +20,7 @@ export class SeparatorParticle {
    * @param draw - Draw 门面对象
    */
   constructor(draw: Draw) {
+    this.draw = draw
     this.options = draw.getOptions()
   }
 
@@ -33,7 +36,8 @@ export class SeparatorParticle {
     ctx: CanvasRenderingContext2D,
     element: IRowElement,
     x: number,
-    y: number
+    y: number,
+    zone?: EditorZone
   ) {
     // 保存当前上下文状态
     ctx.save()
@@ -42,6 +46,19 @@ export class SeparatorParticle {
       scale,
       separator: { lineWidth, strokeStyle }
     } = this.options
+    const margins = this.draw.getMargins()
+    const marginIndicatorSize =
+      this.draw.getServices().metricsService.getMarginIndicatorSize()
+    const edgeGap = marginIndicatorSize / 4
+    const renderedWidth = (element.width || 0) * scale
+    const innerWidth = this.draw.getInnerWidth()
+    const isHeaderFooterSeparator =
+      (zone === EditorZone.HEADER || zone === EditorZone.FOOTER) &&
+      renderedWidth >= innerWidth - 1
+    const lineStartX = isHeaderFooterSeparator ? margins[3] + edgeGap : x
+    const lineEndX = isHeaderFooterSeparator
+      ? this.draw.getWidth() - margins[1] - edgeGap
+      : x + element.width! * scale
     // 设置线条宽度
     ctx.lineWidth = lineWidth * scale
     // 设置线条颜色
@@ -51,17 +68,36 @@ export class SeparatorParticle {
       ctx.setLineDash(element.dashArray)
     }
     // 计算 Y 坐标（四舍五入避免绘制模糊）
-    const offsetY = Math.round(y)
+    const offsetY = Math.round(
+      isHeaderFooterSeparator
+        ? this.resolveHeaderFooterSeparatorY(y, edgeGap, zone)
+        : y
+    )
     // 将原点移动到线条中心
     ctx.translate(0, ctx.lineWidth / 2)
     // 开始绘制路径
     ctx.beginPath()
-    ctx.moveTo(x, offsetY)
+    ctx.moveTo(lineStartX, offsetY)
     // 绘制到右侧
-    ctx.lineTo(x + element.width! * scale, offsetY)
+    ctx.lineTo(lineEndX, offsetY)
     // 描边
     ctx.stroke()
     // 恢复上下文状态
     ctx.restore()
+  }
+
+  private resolveHeaderFooterSeparatorY(
+    y: number,
+    edgeGap: number,
+    zone?: EditorZone
+  ): number {
+    const margins = this.draw.getMargins()
+    if (zone === EditorZone.HEADER) {
+      return margins[0] + edgeGap
+    }
+    if (zone === EditorZone.FOOTER) {
+      return this.draw.getHeight() - margins[2] - edgeGap
+    }
+    return y
   }
 }

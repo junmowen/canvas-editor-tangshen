@@ -53,7 +53,7 @@ export class CursorAgent {
   }
 
   private _input(evt: Event) {
-    const data = (<InputEvent>evt).data
+    const data = (<InputEvent>evt).data || this.agentCursorDom.value
     if (data) {
       this.inputController.input(data)
     }

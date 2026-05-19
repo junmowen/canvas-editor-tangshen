@@ -43,6 +43,18 @@ export function cut(host: CanvasEvent) {
     draw.spliceElementList(elementList, start + 1, end - start)
     curIndex = start
   }
+  const deletedCount = Math.max(1, end - start)
   rangeManager.setRange(curIndex, curIndex)
-  draw.render({ curIndex })
+  // 剪切后 chunk patch 会刷新坐标，先同步逻辑光标索引以支撑连续编辑。
+  components.position.setCursorLogicalIndex(curIndex)
+  draw.render({
+    curIndex,
+    isTyping: true,
+    typingEditIndex: start + 1,
+    typingInsertedCount: -deletedCount,
+    // 剪切删除内容后直接运行 chunk patch，避免无意义的局部预览重画。
+    isSkipTypingPreview: true,
+    isLazy: false,
+    pageRenderScope: 'visible'
+  })
 }

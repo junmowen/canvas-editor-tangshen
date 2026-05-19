@@ -1,15 +1,18 @@
 import { ZERO } from '../../../dataset/constant/Common'
 import { TEXTLIKE_ELEMENT_TYPE } from '../../../dataset/constant/Element'
 import { PUNCTUATION_REG } from '../../../dataset/constant/Regular'
+import { BlockType } from '../../../dataset/enum/Block'
 import { ControlComponent } from '../../../dataset/enum/Control'
-import { EditorMode } from '../../../dataset/enum/Editor'
+import { EditorMode, EditorZone } from '../../../dataset/enum/Editor'
 import { ElementType } from '../../../dataset/enum/Element'
 import { RowFlex } from '../../../dataset/enum/Row'
 import { ImageDisplay } from '../../../dataset/enum/Common'
 import { IDrawRowPayload } from '../../../interface/Draw'
 import { IElement } from '../../../interface/Element'
 import { ITableFragmentDescriptor } from '../../../interface/table/TableFragment'
+import { renderRowDragHandle } from '../../event/pointer/row-drag/RowDragHandle'
 import type { Draw } from '../Draw'
+import { RowTableRenderHelper } from './RowTableRenderHelper'
 
 /**
  * 行渲染器。
@@ -17,83 +20,10 @@ import type { Draw } from '../Draw'
  * 负责绘制单行文本、选区高亮以及相关位置信息。
  */
 export class RowRenderer {
-  constructor(private readonly draw: Draw) {}
+  private readonly tableRenderHelper: RowTableRenderHelper
 
-  // 跨行列选择时，优先直接读取稳定的 cell bounds；
-  // 若当前 fragment 里找不到，再按逻辑 cell 在同页 fragment 中回查。
-  private resolveCrossRowColCellBounds(payload: {
-    fragmentTableId: string
-    fragmentTrId?: string
-    fragmentTdId?: string
-    tableCellContext?: IDrawRowPayload['tableCellContext']
-    logicalTableId?: string
-    logicalTrIndex: number
-    logicalTdIndex: number
-    pageNo: number
-  }) {
-    const {
-      fragmentTableId,
-      fragmentTrId,
-      fragmentTdId,
-      tableCellContext,
-      logicalTableId,
-      logicalTrIndex,
-      logicalTdIndex,
-      pageNo
-    } = payload
-    const snapshotAccessor = this.draw.getTableLayoutSnapshotAccessor()
-    const directBounds = snapshotAccessor
-      .getFragmentCellBounds(fragmentTableId)
-      .find(
-        bounds =>
-          ((fragmentTrId &&
-            fragmentTdId &&
-            bounds.fragmentTrId === fragmentTrId &&
-            bounds.fragmentTdId === fragmentTdId) ||
-            (tableCellContext?.trIndex !== undefined &&
-              tableCellContext?.tdIndex !== undefined &&
-              bounds.trIndex === tableCellContext.trIndex &&
-              bounds.tdIndex === tableCellContext.tdIndex))
-      )
-    if (directBounds) {
-      return directBounds
-    }
-
-    const pageFragmentPositions = snapshotAccessor.getPageFragmentPositions(pageNo)
-    for (let i = 0; i < pageFragmentPositions.length; i++) {
-      const fragmentTable = pageFragmentPositions[i].tableFragment
-      const candidateTableId =
-        fragmentTable?.tableId || pageFragmentPositions[i].element?.id
-      if (!candidateTableId) {
-        continue
-      }
-      if (
-        logicalTableId &&
-        !snapshotAccessor.isSameLogicalTable(candidateTableId, logicalTableId)
-      ) {
-        continue
-      }
-      const candidateBoundsList =
-        snapshotAccessor.getFragmentCellBounds(candidateTableId)
-      for (let j = 0; j < candidateBoundsList.length; j++) {
-        const candidateBounds = candidateBoundsList[j]
-        const candidateSlice = snapshotAccessor.resolveSliceByFragmentContext({
-          tableId: candidateTableId,
-          trId: candidateBounds.fragmentTrId,
-          tdId: candidateBounds.fragmentTdId,
-          trIndex: candidateBounds.trIndex,
-          tdIndex: candidateBounds.tdIndex
-        })
-        if (
-          candidateSlice?.logicalTrIndex === logicalTrIndex &&
-          candidateSlice?.logicalTdIndex === logicalTdIndex
-        ) {
-          return candidateBounds
-        }
-      }
-    }
-
-    return null
+  constructor(private readonly draw: Draw) {
+    this.tableRenderHelper = new RowTableRenderHelper(draw)
   }
 
   private forEachRowPositionSlice(
@@ -114,64 +44,6 @@ export class RowRenderer {
       )
       rowPositionOffset += curRow.elementList.length
       callback(curRow, rowPositionList)
-    }
-  }
-
-  private forEachTableCellPayload(
-    payload: IDrawRowPayload,
-    callback: (payload: IDrawRowPayload) => void
-  ) {
-    // 当当前行里包含表格元素时，把 fragment 内部每个 td 的绘制上下文继续递归展开。
-    const options = this.draw.getOptions()
-    const {
-      scale,
-      table: { tdPadding }
-    } = options
-    const { pageNo, zone, isDrawLineBreak } = payload
-
-    for (let i = 0; i < payload.rowList.length; i++) {
-      const curRow = payload.rowList[i]
-      for (let j = 0; j < curRow.elementList.length; j++) {
-        const element = curRow.elementList[j]
-        if (element.type !== ElementType.TABLE || element.hide) {
-          continue
-        }
-        const tableSource = curRow.tableFragment || element
-        if (!tableSource.trList?.length) {
-          continue
-        }
-        const tdPaddingWidth = tdPadding[1] + tdPadding[3]
-        for (let t = 0; t < tableSource.trList.length; t++) {
-          const tr = tableSource.trList[t]
-          for (let d = 0; d < tr.tdList.length; d++) {
-            const td = tr.tdList[d]
-            const cellTableId =
-              'tableId' in tableSource ? tableSource.tableId : tableSource.id
-            const trId = tr.id
-            const tdId = td.id
-            if (!cellTableId || !trId || !tdId) {
-              continue
-            }
-            callback({
-              elementList: td.value,
-              positionList: td.positionList!,
-              rowList: td.rowList!,
-              pageNo,
-              startIndex: 0,
-              innerWidth: (td.width! - tdPaddingWidth) * scale,
-              zone,
-              isDrawLineBreak,
-              tableCellContext: {
-                tableId: cellTableId,
-                trId,
-                tdId,
-                trIndex: t,
-                tdIndex: d
-              }
-            })
-          }
-        }
-      }
     }
   }
 
@@ -216,54 +88,6 @@ export class RowRenderer {
       Math.max(1, Math.ceil(maxX - minX)),
       clearHeight
     )
-  }
-
-  private drawFragmentCellTopBorder(
-    ctx: CanvasRenderingContext2D,
-    payload: IDrawRowPayload,
-    rowPositionList: IDrawRowPayload['positionList']
-  ) {
-    // later fragment 首行的 top border 需要在正文行绘制后补一层，
-    // 避免被 fragment 内部递归绘制链覆盖掉。
-    if (!payload.tableCellContext || rowPositionList[0]?.rowNo !== 0) {
-      return
-    }
-    const snapshotAccessor = this.draw.getTableLayoutSnapshotAccessor()
-    const activeSlice = snapshotAccessor.resolveSliceByFragmentContext(
-      payload.tableCellContext
-    )
-    if (!activeSlice) {
-      return
-    }
-    const cellBounds = snapshotAccessor
-      .getFragmentCellBounds(activeSlice.fragmentTableId)
-      .find(
-        bounds =>
-          bounds.fragmentTrId === activeSlice.fragmentTrId &&
-          bounds.fragmentTdId === activeSlice.fragmentTdId
-      )
-    if (!cellBounds) {
-      return
-    }
-    const originalElementList = this.draw.getOriginalElementList()
-    const tableElement = originalElementList[activeSlice.logicalTableIndex]
-    const options = this.draw.getOptions()
-    const {
-      scale,
-      table: { defaultBorderColor }
-    } = options
-    const borderWidth = (tableElement?.borderWidth || 1) * scale
-    const borderColor = tableElement?.borderColor || defaultBorderColor
-
-    ctx.save()
-    ctx.fillStyle = borderColor
-    ctx.fillRect(
-      cellBounds.x,
-      cellBounds.y,
-      cellBounds.width,
-      Math.max(1, Math.ceil(borderWidth))
-    )
-    ctx.restore()
   }
 
   /**
@@ -335,91 +159,6 @@ export class RowRenderer {
     })
   }
 
-  private renderCrossRowColSelection(
-    ctx: CanvasRenderingContext2D,
-    payload: IDrawRowPayload,
-    rangeZone: IDrawRowPayload['zone']
-  ) {
-    // 跨行列表格选择不再按字符范围画，而是直接按 cell bounds 渲染整格高亮。
-    const { tableCellContext, zone, pageNo } = payload
-    if (!tableCellContext) {
-      return true
-    }
-    const rangeManager = this.draw.getRange()
-    const snapshotAccessor = this.draw.getTableLayoutSnapshotAccessor()
-    const {
-      startTdIndex,
-      endTdIndex,
-      startTrIndex,
-      endTrIndex,
-      tableId: rangeTableId
-    } = rangeManager.getEditBoundaryRange()
-    const activeSlice = snapshotAccessor.resolveSliceByFragmentContext(
-      tableCellContext
-    )
-    const currentTableId = activeSlice?.logicalTableId || tableCellContext.tableId
-    if (
-      rangeTableId &&
-      currentTableId &&
-      currentTableId !== rangeTableId &&
-      !snapshotAccessor.isSameLogicalTable(currentTableId, rangeTableId)
-    ) {
-      return true
-    }
-    const logicalTrIndex =
-      activeSlice?.logicalTrIndex ?? tableCellContext.trIndex ?? -1
-    const logicalTdIndex =
-      activeSlice?.logicalTdIndex ?? tableCellContext.tdIndex ?? -1
-    const minTrIndex = Math.min(
-      startTrIndex ?? logicalTrIndex,
-      endTrIndex ?? logicalTrIndex
-    )
-    const maxTrIndex = Math.max(
-      startTrIndex ?? logicalTrIndex,
-      endTrIndex ?? logicalTrIndex
-    )
-    const minTdIndex = Math.min(
-      startTdIndex ?? logicalTdIndex,
-      endTdIndex ?? logicalTdIndex
-    )
-    const maxTdIndex = Math.max(
-      startTdIndex ?? logicalTdIndex,
-      endTdIndex ?? logicalTdIndex
-    )
-    if (
-      logicalTrIndex < minTrIndex ||
-      logicalTrIndex > maxTrIndex ||
-      logicalTdIndex < minTdIndex ||
-      logicalTdIndex > maxTdIndex
-    ) {
-      return true
-    }
-
-    const fragmentTableId = activeSlice?.fragmentTableId || tableCellContext.tableId
-    const fragmentTrId = activeSlice?.fragmentTrId || tableCellContext.trId
-    const fragmentTdId = activeSlice?.fragmentTdId || tableCellContext.tdId
-    const cellBounds = this.resolveCrossRowColCellBounds({
-      fragmentTableId,
-      fragmentTrId,
-      fragmentTdId,
-      tableCellContext,
-      logicalTableId: activeSlice?.logicalTableId || tableCellContext.tableId,
-      logicalTrIndex,
-      logicalTdIndex,
-      pageNo
-    })
-    if (cellBounds && rangeZone === zone) {
-      rangeManager.render(
-        ctx,
-        cellBounds.x,
-        cellBounds.y,
-        cellBounds.width,
-        cellBounds.height
-      )
-    }
-    return false
-  }
-
   private renderSelectionRange(
     ctx: CanvasRenderingContext2D,
     payload: IDrawRowPayload,
@@ -482,6 +221,7 @@ export class RowRenderer {
     isDrawLineBreak: boolean
     isPrintMode: boolean
     isDesignMode: boolean
+    isExport?: boolean
     mode: EditorMode
     options: ReturnType<Draw['getOptions']>
     textParticle: ReturnType<Draw['getTextParticle']>
@@ -506,6 +246,7 @@ export class RowRenderer {
     getElementRowMargin: (el: IElement) => number
     currentTableRangeElement: IElement | ITableFragmentDescriptor | null
     isCrossRowCol: boolean
+    zone?: EditorZone
   }): IElement | ITableFragmentDescriptor | null {
     // drawRow 主循环的逐元素分发都收在这里，
     // 主循环本身只负责遍历和收尾编排。
@@ -520,6 +261,7 @@ export class RowRenderer {
       isDrawLineBreak,
       isPrintMode,
       isDesignMode,
+      isExport,
       mode,
       options,
       textParticle,
@@ -543,7 +285,8 @@ export class RowRenderer {
       getElementFont,
       getElementRowMargin,
       currentTableRangeElement,
-      isCrossRowCol
+      isCrossRowCol,
+      zone
     } = payload
     const tableFragment =
       element.type === ElementType.TABLE ? curRow.tableFragment : undefined
@@ -562,10 +305,13 @@ export class RowRenderer {
       textParticle.complete()
       if (
         element.imgDisplay !== ImageDisplay.SURROUND &&
+        element.imgDisplay !== ImageDisplay.TIGHT &&
         element.imgDisplay !== ImageDisplay.FLOAT_TOP &&
         element.imgDisplay !== ImageDisplay.FLOAT_BOTTOM
       ) {
-        imageParticle.render(ctx, element, x, y + offsetY)
+        imageParticle.render(ctx, element, x, y + offsetY, {
+          isExport
+        })
       }
     } else if (element.type === ElementType.LATEX) {
       textParticle.complete()
@@ -600,7 +346,7 @@ export class RowRenderer {
       textParticle.complete()
       subscriptParticle.render(ctx, element, x, y + offsetY)
     } else if (element.type === ElementType.SEPARATOR) {
-      separatorParticle.render(ctx, element, x, y)
+      separatorParticle.render(ctx, element, x, y, zone)
     } else if (element.type === ElementType.PAGE_BREAK) {
       if (mode !== EditorMode.CLEAN && !isPrintMode) {
         pageBreakParticle.render(ctx, element, x, y)
@@ -639,7 +385,11 @@ export class RowRenderer {
       textParticle.complete()
     } else if (element.type === ElementType.BLOCK) {
       textParticle.complete()
-      blockParticle.render(pageNo, element, x, y + offsetY)
+      if (isExport) {
+        this.renderBlockExportFallback(ctx, element, x, y + offsetY)
+      } else {
+        blockParticle.render(pageNo, element, x, y + offsetY)
+      }
     } else {
       if (element.left) {
         textParticle.complete()
@@ -746,71 +496,6 @@ export class RowRenderer {
     return nextTableRangeElement
   }
 
-  private enqueueTableRangePaint(payload: {
-    tableRangePaintQueue: Array<{
-      tableRangeElement: IElement | ITableFragmentDescriptor
-      x: number
-      y: number
-    }>
-    tableRangeElement: IElement | ITableFragmentDescriptor | null
-    rowPositionList: IDrawRowPayload['positionList']
-    isPrintMode: boolean
-    isCrossRowCol: boolean
-    tableId?: string
-    snapshotAccessor: ReturnType<Draw['getTableLayoutSnapshotAccessor']>
-  }) {
-    // 跨行列表格 range 的边框/外框绘制延后到整行正文都完成之后统一入队处理。
-    const {
-      tableRangePaintQueue,
-      tableRangeElement,
-      rowPositionList,
-      isPrintMode,
-      isCrossRowCol,
-      tableId,
-      snapshotAccessor
-    } = payload
-    if (isPrintMode || !isCrossRowCol || !tableRangeElement) {
-      return
-    }
-    const currentTableId =
-      'tableId' in tableRangeElement ? tableRangeElement.tableId : tableRangeElement.id
-    const isSameTableRange =
-      !!tableId &&
-      !!currentTableId &&
-      (currentTableId === tableId ||
-        snapshotAccessor.isSameLogicalTable(currentTableId, tableId))
-    if (!isSameTableRange) {
-      return
-    }
-    const tableRangePosition = rowPositionList.find(rowPosition => {
-      const positionTable = rowPosition.tableFragment || rowPosition.element
-      if (!positionTable) {
-        return false
-      }
-      const positionTableId =
-        'tableId' in positionTable ? positionTable.tableId : positionTable.id
-      return !!(
-        positionTableId &&
-        currentTableId &&
-        (positionTableId === currentTableId ||
-          snapshotAccessor.isSameLogicalTable(positionTableId, currentTableId))
-      )
-    })
-    if (!tableRangePosition) {
-      return
-    }
-    const {
-      coordinate: {
-        leftTop: [x, y]
-      }
-    } = tableRangePosition
-    tableRangePaintQueue.push({
-      tableRangeElement,
-      x,
-      y
-    })
-  }
-
   /**
    * 仅绘制选区矩形层。
    */
@@ -832,7 +517,10 @@ export class RowRenderer {
       startIndex: rangeStartIndex,
       endIndex: rangeEndIndex
     } = rangeManager.getEditBoundaryRange()
-    if (isCrossRowCol && !this.renderCrossRowColSelection(ctx, payload, rangeZone)) {
+    if (
+      isCrossRowCol &&
+      !this.tableRenderHelper.renderCrossRowColSelection(ctx, payload, rangeZone)
+    ) {
       return
     }
     const skipCurrentLayerSelection = !!(
@@ -863,12 +551,62 @@ export class RowRenderer {
       )
     }
 
-    this.forEachTableCellPayload(payload, tableCellPayload => {
+    this.tableRenderHelper.forEachCellPayload(payload, tableCellPayload => {
       this.drawSelection(ctx, {
         ...tableCellPayload,
         selectionCtx: ctx
       })
     })
+  }
+
+  /** 导出时不挂载 DOM/SVG block host，改为在图片中固化一个稳定占位框。 */
+  private renderBlockExportFallback(
+    ctx: CanvasRenderingContext2D,
+    element: IDrawRowPayload['rowList'][number]['elementList'][number],
+    x: number,
+    y: number
+  ) {
+    const metrics = element.metrics
+    const width = Math.max(1, metrics?.width || element.width || 1)
+    const height = Math.max(1, metrics?.height || element.height || 1)
+    const svgRasterImage = element.block?.svgBlock?.rasterImage
+    if (element.block?.type === BlockType.SVG && svgRasterImage?.complete) {
+      ctx.drawImage(svgRasterImage, x, y, width, height)
+      return
+    }
+    const fallbackText = this.getBlockExportFallbackText(element)
+    ctx.save()
+    ctx.fillStyle = '#f7f7f7'
+    ctx.strokeStyle = '#d0d0d0'
+    ctx.lineWidth = 1
+    ctx.fillRect(x, y, width, height)
+    ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, width - 1), Math.max(0, height - 1))
+    ctx.fillStyle = '#666666'
+    ctx.font = '12px sans-serif'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(fallbackText, x + 8, y + height / 2)
+    ctx.restore()
+  }
+
+  /** 获取外部 block 导出时的稳定 Canvas2D 文本摘要。 */
+  private getBlockExportFallbackText(
+    element: IDrawRowPayload['rowList'][number]['elementList'][number]
+  ): string {
+    if (element.block?.type === BlockType.HTML) {
+      const text = element.block.htmlBlock?.text || this.extractTextFromHtml(
+        element.block.htmlBlock?.html || ''
+      )
+      return text ? text.slice(0, 80) : 'HTML block'
+    }
+    return 'Embedded block'
+  }
+
+  /** 从 HTML 片段中提取可导出的纯文本摘要，不依赖运行时 DOM host。 */
+  private extractTextFromHtml(html: string): string {
+    if (!html) return ''
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    return (doc.body.textContent || '').replace(/\s+/g, ' ').trim()
   }
 
   /**
@@ -878,6 +616,11 @@ export class RowRenderer {
     // 正文绘制主入口：
     // 先清理行区域，再画 highlight / selection，随后遍历正文元素，最后补 table range queue。
     const selectionCtx = payload.selectionCtx || ctx
+    const tableCellClipState = this.tableRenderHelper.applyCellClip(
+      ctx,
+      selectionCtx,
+      payload
+    )
     const rangeManager = this.draw.getRange()
     const textParticle = this.draw.getTextParticle()
     const control = this.draw.getControl()
@@ -967,6 +710,7 @@ export class RowRenderer {
           isDrawLineBreak,
           isPrintMode,
           isDesignMode,
+          isExport: payload.isExport,
           mode,
           options,
           textParticle,
@@ -990,7 +734,8 @@ export class RowRenderer {
           getElementFont,
           getElementRowMargin,
           currentTableRangeElement: tableRangeElement,
-          isCrossRowCol
+          isCrossRowCol,
+          zone: payload.zone
         })
       }
 
@@ -999,14 +744,26 @@ export class RowRenderer {
           listParticle.drawListStyle(ctx, curRow, rowStartPosition)
         }
       }
+      renderRowDragHandle({
+        ctx,
+        draw: this.draw,
+        row: curRow,
+        rowPositionList,
+        zone: payload.zone,
+        tableCellContext: payload.tableCellContext
+      })
 
       textParticle.complete()
       control.drawBorder(ctx)
       underline.render(ctx)
       strikeout.render(ctx)
       groupParticle.render(ctx)
-      this.drawFragmentCellTopBorder(ctx, payload, rowPositionList)
-      this.enqueueTableRangePaint({
+      this.tableRenderHelper.drawFragmentCellTopBorder(
+        ctx,
+        payload,
+        rowPositionList
+      )
+      this.tableRenderHelper.enqueueRangePaint({
         tableRangePaintQueue,
         tableRangeElement,
         rowPositionList,
@@ -1017,9 +774,10 @@ export class RowRenderer {
       })
     }
 
-    this.forEachTableCellPayload(payload, tableCellPayload => {
+    this.tableRenderHelper.forEachCellPayload(payload, tableCellPayload => {
       this.drawRow(ctx, {
         ...tableCellPayload,
+        isExport: payload.isExport,
         selectionCtx
       })
     })
@@ -1035,5 +793,6 @@ export class RowRenderer {
         )
       }
     }
+    this.tableRenderHelper.restoreCellClip(ctx, selectionCtx, tableCellClipState)
   }
 }

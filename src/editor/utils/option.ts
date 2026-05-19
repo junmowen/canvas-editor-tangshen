@@ -8,6 +8,7 @@ import { defaultGroupOption } from '../dataset/constant/Group'
 import { defaultHeaderOption } from '../dataset/constant/Header'
 import { defaultLineBreak } from '../dataset/constant/LineBreak'
 import { defaultPageBreakOption } from '../dataset/constant/PageBreak'
+import { defaultPageColumnsOption } from '../dataset/constant/PageColumns'
 import { defaultPageNumberOption } from '../dataset/constant/PageNumber'
 import { defaultPlaceholderOption } from '../dataset/constant/Placeholder'
 import { defaultRadioOption } from '../dataset/constant/Radio'
@@ -22,12 +23,17 @@ import { ICheckboxOption } from '../interface/Checkbox'
 import { DeepRequired } from '../interface/Common'
 import { IControlOption } from '../interface/Control'
 import { ICursorOption } from '../interface/Cursor'
-import { IEditorOption, IModeRule } from '../interface/Editor'
+import {
+  IEditorOption,
+  IModeRule,
+  IRenderBackendOption
+} from '../interface/Editor'
 import { IFooter } from '../interface/Footer'
 import { IGroup } from '../interface/Group'
 import { IHeader } from '../interface/Header'
 import { ILineBreakOption } from '../interface/LineBreak'
 import { IPageBreak } from '../interface/PageBreak'
+import { IPageColumns } from '../interface/PageColumns'
 import { IPageNumber } from '../interface/PageNumber'
 import { IPlaceholder } from '../interface/Placeholder'
 import { IRadioOption } from '../interface/Radio'
@@ -105,6 +111,10 @@ export function mergeOption(
     ...defaultPageBreakOption,
     ...options.pageBreak
   }
+  const pageColumnsOptions: Required<IPageColumns> = {
+    ...defaultPageColumnsOption,
+    ...options.columns
+  }
   const zoneOptions: Required<IZoneOption> = {
     ...defaultZoneOption,
     ...options.zone
@@ -147,6 +157,30 @@ export function mergeOption(
       ...options.modeRule?.form
     }
   }
+  const renderBackendOptions: DeepRequired<IRenderBackendOption> = {
+    debugPanel: {
+      enabled: false,
+      ...options.renderBackend?.debugPanel
+    },
+    offscreenCanvas: {
+      enabled: false,
+      nonCurrentPageBase: true,
+      ...options.renderBackend?.offscreenCanvas
+    },
+    webgl: {
+      enabled: false,
+      imageTask: true,
+      forceContextLost: false,
+      maxTextureCacheSize: 32,
+      maxTextureCacheBytes: 128 * 1024 * 1024,
+      ...options.renderBackend?.webgl
+    },
+    svgDom: {
+      enabled: false,
+      blockTask: true,
+      ...options.renderBackend?.svgDom
+    }
+  }
 
   return {
     mode: EditorMode.EDIT,
@@ -179,6 +213,9 @@ export function mergeOption(
     marginIndicatorSize: 35,
     marginIndicatorColor: '#BABABA',
     margins: [100, 120, 100, 120],
+    gutter: 0,
+    gutterPosition: 'left',
+    mirrorMargins: false,
     pageMode: PageMode.PAGING,
     renderMode: RenderMode.SPEED,
     defaultHyperlinkColor: '#0000FF',
@@ -207,6 +244,7 @@ export function mergeOption(
     placeholder: placeholderOptions,
     group: groupOptions,
     pageBreak: pageBreakOptions,
+    columns: pageColumnsOptions,
     zone: zoneOptions,
     background: backgroundOptions,
     lineBreak: lineBreakOptions,
@@ -214,6 +252,7 @@ export function mergeOption(
     lineNumber: lineNumberOptions,
     pageBorder: pageBorderOptions,
     badge: badgeOptions,
-    modeRule: modeRuleOption
+    modeRule: modeRuleOption,
+    renderBackend: renderBackendOptions
   }
 }

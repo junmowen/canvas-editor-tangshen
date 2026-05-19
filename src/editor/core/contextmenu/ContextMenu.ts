@@ -108,7 +108,7 @@ export class ContextMenu {
   }
 
   private _proxyContextMenuEvent = (evt: MouseEvent) => {
-    this.context = this._getContext()
+    this.context = this._getContext(evt)
     const renderList = this._filterMenuList(this.contextMenuList)
     const isRegisterContextMenu = renderList.some(menu => !menu.isDivider)
     if (isRegisterContextMenu) {
@@ -140,7 +140,7 @@ export class ContextMenu {
     }
   }
 
-  private _getContext(): IContextMenuContext {
+  private _getContext(evt: MouseEvent): IContextMenuContext {
     // 是否是只读模式
     const isReadonly = this.draw.isReadonly()
     const {
@@ -153,10 +153,22 @@ export class ContextMenu {
     // 是否存在选区
     const editorHasSelection = editorTextFocus && startIndex !== endIndex
     // 是否在表格内
+    const hitContext = this.command.getPositionContextByEvent(evt, {
+      isMustDirectHit: false
+    })
+    const hitTableInfo = hitContext?.tableInfo || null
     const { isTable, trIndex, tdIndex, index } =
       this.position.getPositionContext()
     let tableElement: IElement | null = null
-    if (isTable) {
+    let tableTrIndex: number | null = trIndex ?? null
+    let tableTdIndex: number | null = tdIndex ?? null
+    if (hitTableInfo?.element) {
+      tableElement = zipElementList([hitTableInfo.element], {
+        extraPickAttrs: ['id']
+      })[0]
+      tableTrIndex = hitTableInfo.trIndex
+      tableTdIndex = hitTableInfo.tdIndex
+    } else if (isTable) {
       const originalElementList = this.draw.getOriginalElementList()
       const originTableElement = originalElementList[index!] || null
       if (originTableElement) {
@@ -166,7 +178,7 @@ export class ContextMenu {
       }
     }
     // 是否存在跨行/列
-    const isCrossRowCol = isTable && !!crossRowCol
+    const isCrossRowCol = !!tableElement && !!crossRowCol
     // 当前元素
     const elementList = this.draw.getElementList()
     const startElement = elementList[startIndex] || null
@@ -181,9 +193,9 @@ export class ContextMenu {
       editorTextFocus,
       isCrossRowCol,
       zone,
-      isInTable: isTable,
-      trIndex: trIndex ?? null,
-      tdIndex: tdIndex ?? null,
+      isInTable: !!tableElement,
+      trIndex: tableTrIndex,
+      tdIndex: tableTdIndex,
       tableElement,
       options: this.options
     }

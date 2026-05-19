@@ -15,7 +15,6 @@ interface IDrawTableBorderOption {
   width: number
   height: number
   borderExternalWidth?: number
-  isDrawFullBorder?: boolean
 }
 
 interface IDrawTdBorderPayload {
@@ -27,6 +26,12 @@ interface IDrawTdBorderPayload {
   height: number
   borderColor: string
   borderWidth: number
+  bounds?: {
+    left: number
+    top: number
+    right: number
+    bottom: number
+  }
 }
 
 interface IMergeSplittedTablePayload {
@@ -162,7 +167,6 @@ export class TableParticle {
       startY,
       width,
       height,
-      isDrawFullBorder,
       borderExternalWidth
     } = payload
     const { scale } = this.options
@@ -175,13 +179,7 @@ export class TableParticle {
     const x = Math.round(startX)
     const y = Math.round(startY)
     ctx.translate(0.5, 0.5)
-    if (isDrawFullBorder) {
-      ctx.rect(x, y, width, height)
-    } else {
-      ctx.moveTo(x, y + height)
-      ctx.lineTo(x, y)
-      ctx.lineTo(x + width, y)
-    }
+    ctx.rect(x, y, width, height)
     ctx.stroke()
     // 还原边框设置
     if (borderExternalWidth) {
@@ -217,8 +215,14 @@ export class TableParticle {
   }
 
   private _drawTdExplicitBorder(payload: IDrawTdBorderPayload) {
-    const { ctx, td, x, y, width, height, borderColor, borderWidth } = payload
+    const { ctx, td, x, y, width, height, borderColor, borderWidth, bounds } =
+      payload
     if (!td.borderTypes?.length) return
+    const left = bounds ? Math.max(bounds.left, x - width) : x - width
+    const right = bounds ? Math.min(bounds.right, x) : x
+    const top = bounds ? Math.max(bounds.top, y) : y
+    const bottom = bounds ? Math.min(bounds.bottom, y + height) : y + height
+    if (right <= left || bottom <= top) return
     const previousLineWidth = ctx.lineWidth
     const previousStrokeStyle: string | CanvasGradient | CanvasPattern =
       ctx.strokeStyle
@@ -227,20 +231,20 @@ export class TableParticle {
     ctx.strokeStyle = borderColor
     ctx.beginPath()
     if (td.borderTypes.includes(TdBorder.TOP)) {
-      ctx.moveTo(x - width, y)
-      ctx.lineTo(x, y)
+      ctx.moveTo(left, top)
+      ctx.lineTo(right, top)
     }
     if (td.borderTypes.includes(TdBorder.RIGHT)) {
-      ctx.moveTo(x, y)
-      ctx.lineTo(x, y + height)
+      ctx.moveTo(right, top)
+      ctx.lineTo(right, bottom)
     }
     if (td.borderTypes.includes(TdBorder.BOTTOM)) {
-      ctx.moveTo(x, y + height)
-      ctx.lineTo(x - width, y + height)
+      ctx.moveTo(right, bottom)
+      ctx.lineTo(left, bottom)
     }
     if (td.borderTypes.includes(TdBorder.LEFT)) {
-      ctx.moveTo(x - width, y)
-      ctx.lineTo(x - width, y + height)
+      ctx.moveTo(left, top)
+      ctx.lineTo(left, bottom)
     }
     ctx.stroke()
     ctx.beginPath()
@@ -269,6 +273,12 @@ export class TableParticle {
     } = this.options
     const tableWidth = element.width! * scale
     const tableHeight = element.height! * scale
+    const tableBounds = {
+      left: Math.round(startX),
+      top: Math.round(startY),
+      right: Math.round(startX + tableWidth),
+      bottom: Math.round(startY + tableHeight)
+    }
     const isFragmentTable = !!(element as any).logicalTableId
     // 无边框
     const isEmptyBorderType = borderType === TableBorder.EMPTY
@@ -291,8 +301,7 @@ export class TableParticle {
         startY,
         width: tableWidth,
         height: tableHeight,
-        borderExternalWidth,
-        isDrawFullBorder: isExternalBorderType
+        borderExternalWidth
       })
     }
     // 渲染单元格
@@ -315,6 +324,13 @@ export class TableParticle {
         const height = td.height! * scale
         const x = Math.round(td.x! * scale + startX + width)
         const y = Math.round(td.y! * scale + startY)
+        const cellLeft = Math.max(tableBounds.left, x - width)
+        const cellRight = Math.min(tableBounds.right, x)
+        const cellTop = Math.max(tableBounds.top, y)
+        const cellBottom = Math.min(tableBounds.bottom, y + height)
+        if (cellRight <= cellLeft || cellBottom <= cellTop) {
+          continue
+        }
         const tableBorderColor = borderColor || defaultBorderColor
         const tableBorderWidth = borderWidth * scale
         ctx.translate(0.5, 0.5)
@@ -327,8 +343,8 @@ export class TableParticle {
           !isInternalBorderType &&
           !td.borderTypes?.includes(TdBorder.TOP)
         ) {
-          ctx.moveTo(x - width, y)
-          ctx.lineTo(x, y)
+          ctx.moveTo(cellLeft, cellTop)
+          ctx.lineTo(cellRight, cellTop)
           ctx.stroke()
         }
         // 表格线
@@ -340,8 +356,8 @@ export class TableParticle {
             !isInternalBorderType ||
             td.colIndex! + td.colspan < colgroup.length
           ) {
-            ctx.moveTo(x, y)
-            ctx.lineTo(x, y + height)
+            ctx.moveTo(cellRight, cellTop)
+            ctx.lineTo(cellRight, cellBottom)
             // 外部边框宽度设置时 => 最右边框宽度单独设置
             if (
               borderExternalWidth &&
@@ -371,8 +387,8 @@ export class TableParticle {
               // 清空path
               ctx.beginPath()
             }
-            ctx.moveTo(x, y + height)
-            ctx.lineTo(x - width, y + height)
+            ctx.moveTo(cellRight, cellBottom)
+            ctx.lineTo(cellLeft, cellBottom)
             // 外部边框宽度设置时 => 最下边框宽度单独设置
             if (isSetExternalBottomBorder) {
               const lineWidth = ctx.lineWidth
@@ -407,7 +423,8 @@ export class TableParticle {
           width,
           height,
           borderColor: td.borderColor || borderColor || defaultBorderColor,
-          borderWidth: (td.borderWidth || borderWidth) * scale
+          borderWidth: (td.borderWidth || borderWidth) * scale,
+          bounds: tableBounds
         })
         ctx.translate(-0.5, -0.5)
       }
@@ -744,6 +761,14 @@ export class TableParticle {
     this._drawBackgroundColor(ctx, element, startX, startY)
     this._drawBorder(ctx, element, startX, startY)
     if ((element as any).logicalTableId) {
+      if (
+        element.borderType === TableBorder.EMPTY ||
+        element.borderType === TableBorder.DASH ||
+        element.borderType === TableBorder.INTERNAL ||
+        element.borderType === TableBorder.EXTERNAL
+      ) {
+        return
+      }
       const {
         scale,
         table: { defaultBorderColor }

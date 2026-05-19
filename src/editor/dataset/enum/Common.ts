@@ -13,6 +13,7 @@ export enum ImageDisplay {
   INLINE = 'inline',
   BLOCK = 'block',
   SURROUND = 'surround',
+  TIGHT = 'tight',
   FLOAT_TOP = 'float-top',
   FLOAT_BOTTOM = 'float-bottom'
 }

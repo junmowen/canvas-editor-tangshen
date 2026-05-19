@@ -19,11 +19,17 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
     removeHiddenElements(host, 'next')
   }
   let curIndex: number | null
+  let deletedCount = 1
+  let editIndex = startIndex + 1
   if (isCrossRowCol) {
     curIndex = clearCrossRowColSelection(draw)
     if (curIndex === null) return
+    deletedCount = Math.max(1, endIndex - startIndex)
+    editIndex = startIndex + 1
   } else if (elementList[endIndex + 1]?.controlId) {
     curIndex = control.removeControl(endIndex + 1)
+    deletedCount = 1
+    editIndex = endIndex + 1
   } else {
     curIndex = handleControlDeletion(
       control,
@@ -39,6 +45,8 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
       if (positionContext.isDirectHit && positionContext.isImage) {
         draw.spliceElementList(elementList, index, 1)
         curIndex = index - 1
+        deletedCount = 1
+        editIndex = index
       } else {
         const isCollapsed = rangeManager.getIsCollapsed()
         if (!isCollapsed) {
@@ -47,9 +55,13 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
             startIndex + 1,
             endIndex - startIndex
           )
+          deletedCount = Math.max(1, endIndex - startIndex)
+          editIndex = startIndex + 1
         } else {
           if (!elementList[index + 1]) return
           draw.spliceElementList(elementList, index + 1, 1)
+          deletedCount = 1
+          editIndex = index + 1
         }
         curIndex = isCollapsed
           ? tableNavigationService.resolveFragmentTransitionIndex({
@@ -61,5 +73,5 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
       }
     }
   }
-  finalizeDeletion({ draw, startIndex, curIndex })
+  finalizeDeletion({ draw, startIndex, curIndex, deletedCount, editIndex })
 }

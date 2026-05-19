@@ -32,7 +32,7 @@ export function renderSelectionDrag(payload: {
       pageRenderScope: 'visible'
     })
   } else {
-    draw.scheduleFrameRender({
+    draw.render({
       isSubmitHistory: false,
       isSetCursor: false,
       isCompute: false,

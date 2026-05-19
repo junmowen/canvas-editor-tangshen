@@ -3,6 +3,7 @@ import { EditorZone } from '../../dataset/enum/Editor'
 import { IEditorOption } from '../../interface/Editor'
 import { nextTick } from '../../utils'
 import { Draw } from '../draw/Draw'
+import { RenderLayer } from '../render-backend'
 import { I18n } from '../i18n/I18n'
 import { ZoneTip } from './ZoneTip'
 
@@ -109,7 +110,10 @@ export class Zone {
     const { scale } = this.options
     const isHeaderActive = this.isHeaderActive()
     const [offsetX, offsetY] = this.INDICATOR_TITLE_TRANSLATE
-    const pageList = this.draw.getPageList()
+    // 区域指示器按 base surface 数量绘制，避免继续依赖兼容 pageList。
+    const pageSurfaceList = this.draw
+      .getPageCanvasHost()
+      .getSurfaceList(RenderLayer.BASE)
     const margins = this.draw.getMargins()
     const innerWidth = this.draw.getInnerWidth()
     const pageHeight = this.draw.getHeight()
@@ -127,7 +131,7 @@ export class Zone {
     const indicatorTop = isHeaderActive
       ? header.getHeaderTop()
       : pageHeight - footer.getFooterBottom() - indicatorHeight
-    for (let p = 0; p < pageList.length; p++) {
+    for (let p = 0; p < pageSurfaceList.length; p++) {
       const startY = preY * p + indicatorTop
       const indicatorLeftX = margins[3] - this.INDICATOR_PADDING
       const indicatorRightX = margins[3] + innerWidth + this.INDICATOR_PADDING

@@ -38,6 +38,8 @@ export function runSelectionDragIntent(payload: {
     draw,
     startPosition: session.mouseDownStartPosition,
     positionResult: positionResult!,
+    pointerX: pagePoint.x,
+    pointerY: pagePoint.y,
     endBoundaryIndex: boundary.absoluteIndex,
     endHitTargetIndex: boundary.hitTargetIndex
   })

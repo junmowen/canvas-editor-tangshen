@@ -13,10 +13,8 @@ export class DrawExportStateService {
 
   public captureExportRenderState() {
     return {
-      pageCanvasHostState: this.draw.getPageCanvasHost().captureState(),
       pagePixelRatio: this.draw.getPagePixelRatio(),
       mode: this.draw.getMode(),
-      optionMode: this.draw.getOptions().mode,
       pageNo: this.draw.getPageNo(),
       zone: this.draw.getComponents().zone.getZone(),
       positionContext: deepClone(this.draw.getComponents().position.getPositionContext()),
@@ -30,7 +28,6 @@ export class DrawExportStateService {
   public restoreExportRenderState(
     state: ReturnType<Draw['captureExportRenderState']>
   ) {
-    this.draw.getPageCanvasHost().restoreState(state.pageCanvasHostState)
     this.draw.getViewState().replacePagePixelRatio(state.pagePixelRatio)
     this.draw.getRuntime().replaceMode(state.mode)
     this.draw.setPageNo(state.pageNo)
