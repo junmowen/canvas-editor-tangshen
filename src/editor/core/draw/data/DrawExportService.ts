@@ -99,6 +99,16 @@ export class DrawExportService {
       const layoutResult = this.draw.getServices().layoutPipeline.compute()
       // 等待所有图片加载完成
       await this.draw.getComponents().imageObserver.allSettled()
+      const { background } = this.draw.getRuntime().getOptions()
+      if (
+        background.image &&
+        !(
+          exportMode === EditorMode.PRINT &&
+          this.draw.getRuntime().getOptions().modeRule.print.backgroundDisabled
+        )
+      ) {
+        await this.draw.getBackground().preloadImage()
+      }
 
       const positionList = this.draw.getPosition().getLayoutMainPositionList()
       const elementList = this.draw.getLayoutMainElementList()

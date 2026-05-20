@@ -3249,9 +3249,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1249",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n需要将模板生成图片保存起来\n\n### What does the proposed API look like?\n\n通过 getImage 获取图片时能把背景图也绘制在获得的图片中",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已补充自动化回归并修复导出链路：getImage 首次导出前会预加载页面背景图，验证导出图片包含配置的背景图像素。",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

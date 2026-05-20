@@ -97,10 +97,7 @@ export class Background {
     if (imageElementCache) {
       this._drawImage(ctx, imageElementCache, width, height)
     } else {
-      const img = new Image()
-      img.setAttribute('crossOrigin', 'Anonymous')
-      img.src = background.image
-      img.onload = () => {
+      this.preloadImage().then(img => {
         this.imageCache.set(background.image, img)
         this._drawImage(ctx, img, width, height)
         // 避免层级上浮，触发编辑器二次渲染
@@ -109,8 +106,30 @@ export class Background {
           isSubmitHistory: false,
           pageRenderScope: 'visible'
         })
-      }
+      })
     }
+  }
+
+  public preloadImage(): Promise<HTMLImageElement> {
+    const {
+      background: { image }
+    } = this.options
+    const imageElementCache = this.imageCache.get(image)
+    if (imageElementCache) {
+      return Promise.resolve(imageElementCache)
+    }
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.setAttribute('crossOrigin', 'Anonymous')
+      img.onload = () => {
+        this.imageCache.set(image, img)
+        resolve(img)
+      }
+      img.onerror = () => {
+        reject(new Error('failed to load background image'))
+      }
+      img.src = image
+    })
   }
 
   /**

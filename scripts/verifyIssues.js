@@ -61,6 +61,10 @@ const ISSUE_SPECS = {
     title: '打印导出可禁用页面背景',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  1249: {
+    title: 'getImage 导出包含背景图片',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   1240: {
     title: '更新页边距后 getCursorPosition 坐标同步刷新',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']

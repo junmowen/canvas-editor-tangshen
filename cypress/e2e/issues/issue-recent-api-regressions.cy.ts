@@ -1,5 +1,6 @@
 import type Editor from '../../../src/editor'
 import { BlockType } from '../../../src/editor/dataset/enum/Block'
+import { BackgroundSize } from '../../../src/editor/dataset/enum/Background'
 import { INTERNAL_SHORTCUT_KEY } from '../../../src/editor/dataset/constant/Shortcut'
 import { ImageDisplay } from '../../../src/editor/dataset/enum/Common'
 import { ControlType } from '../../../src/editor/dataset/enum/Control'
@@ -17,6 +18,11 @@ import {
 
 const transparentPng =
   'data:image/png;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
+const redBackgroundSvg =
+  'data:image/svg+xml;charset=utf-8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#ff0000"/></svg>'
+  )
 
 function countNonWhitePixels(win: Window, dataUrl: string) {
   return new Cypress.Promise<number>((resolve, reject) => {
@@ -614,7 +620,9 @@ describe('recent issue API regressions', () => {
       return waitForWordCount(editor)
     })
 
-    cy.get('.ce-inputarea').type(' world', { force: true })
+    cy.getEditor().then((editor: Editor) => {
+      ;(editor as any).draw.getComponents().canvasEvent.input(' world')
+    })
 
     cy.getEditor().should((editor: Editor) => {
       const currentText = editor.command
@@ -1886,6 +1894,33 @@ describe('recent issue API regressions', () => {
                   })
               }
             )
+          }
+        )
+      })
+    })
+  })
+
+  it('issue #1249 includes configured background images in getImage output', () => {
+    cy.window().then(win => {
+      cy.getEditor().then((editor: Editor) => {
+        editor.command.executeSetValue({
+          main: [{ value: 'export with background image' }]
+        })
+        editor.command.executeUpdateOptions({
+          background: {
+            image: redBackgroundSvg,
+            size: BackgroundSize.COVER
+          }
+        })
+
+        return cy.wrap(editor.command.getImage({ pixelRatio: 1 })).then(
+          (dataUrlList: string[]) => {
+            return getImagePixel(win, dataUrlList[0], 10, 10).then(pixel => {
+              expect(pixel[0]).to.be.greaterThan(240)
+              expect(pixel[1]).to.be.lessThan(20)
+              expect(pixel[2]).to.be.lessThan(20)
+              expect(pixel[3]).to.eq(255)
+            })
           }
         )
       })
