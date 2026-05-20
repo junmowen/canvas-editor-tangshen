@@ -687,6 +687,10 @@ const ISSUE_SPECS = {
     title: '表单模式下首次点击 checkbox 可选中',
     specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
   },
+  1340: {
+    title: '下拉多选选择后保留弹窗滚动位置',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
   395: {
     title: '下拉选择控件无选中项时展示 placeholder',
     specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']

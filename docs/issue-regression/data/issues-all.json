@@ -1489,9 +1489,11 @@
       }
     ],
     "body": "### version\n\n0.9.122\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n插入一个有9个选项的的下拉多选控件。\n滑动到选项最后选择最后一个选项。\n下拉选项又回到最上方。\n\n### What is expected?\n\n下拉选项保持当前滚动位置\n\n### What is actually happening?\n\n多选时选择一个后重新创建下拉元素导致滚动条回到最上方\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已补 Cypress 回归：下拉多选选择底部选项后保留弹窗滚动位置。",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

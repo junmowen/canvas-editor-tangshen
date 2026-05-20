@@ -2170,6 +2170,63 @@ describe('control API regressions', () => {
       })
   })
 
+  it('issue #1340 preserves multi-select popup scroll after selecting lower options', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'scrollingMultiSelect',
+              type: ControlType.SELECT,
+              code: null,
+              value: null,
+              placeholder: '请选择',
+              isMultiSelect: true,
+              valueSets: Array.from({ length: 12 }, (_, index) => ({
+                value: `选项${index + 1}`,
+                code: `option-${index + 1}`
+              }))
+            }
+          }
+        ]
+      })
+
+      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const placeholderIndex = elementList.findIndex(
+        (element: any) =>
+          element.control?.conceptId === 'scrollingMultiSelect' &&
+          element.controlComponent === ControlComponent.PLACEHOLDER
+      )
+      expect(placeholderIndex).to.be.greaterThan(-1)
+      editor.command.executeSetRange(placeholderIndex, placeholderIndex)
+      ;(editor as any).draw.getControl().initControl()
+    })
+
+    cy.get('.ce-select-control-popup')
+      .should($popup => {
+        expect($popup[0].scrollHeight).to.be.greaterThan(
+          $popup[0].clientHeight
+        )
+      })
+      .then($popup => {
+        const popup = $popup[0] as HTMLDivElement
+        popup.scrollTop = popup.scrollHeight
+        const beforeScrollTop = popup.scrollTop
+        expect(beforeScrollTop).to.be.greaterThan(0)
+        cy.wrap(beforeScrollTop).as('beforeScrollTop')
+      })
+
+    cy.get('.ce-select-control-popup li').last().click()
+
+    cy.get<number>('@beforeScrollTop').then(beforeScrollTop => {
+      cy.get('.ce-select-control-popup').should($popup => {
+        expect($popup[0].scrollTop).to.eq(beforeScrollTop)
+      })
+    })
+  })
+
   it('issue #883 preserves line breaks inside control placeholders', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({

@@ -40,6 +40,8 @@ export class SelectControl implements IControlInstance {
   private isPopup: boolean
   /** 下拉框 DOM 元素 */
   private selectDom: HTMLDivElement | null
+  /** 多选重绘时保留弹窗滚动位置 */
+  private popupScrollTop: number
   /** 编辑器选项 */
   private options: DeepRequired<IEditorOption>
   /** 值分隔符 */
@@ -61,6 +63,7 @@ export class SelectControl implements IControlInstance {
     // 初始化状态
     this.isPopup = false
     this.selectDom = null
+    this.popupScrollTop = 0
   }
 
   /**
@@ -594,6 +597,7 @@ export class SelectControl implements IControlInstance {
     // 追加至container
     const container = this.control.getContainer()
     container.append(selectPopupContainer)
+    selectPopupContainer.scrollTop = this.popupScrollTop
     this.selectDom = selectPopupContainer
   }
   /**
@@ -623,6 +627,7 @@ export class SelectControl implements IControlInstance {
 
   public destroy() {
     if (!this.isPopup) return
+    this.popupScrollTop = this.selectDom?.scrollTop || 0
     this.selectDom?.remove()
     this.isPopup = false
   }
