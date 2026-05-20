@@ -2775,4 +2775,44 @@ describe('recent issue API regressions', () => {
       expect(editor.command.getText().main).to.contain('after image')
     })
   })
+
+  it('issue #981 replaces page number placeholders in watermark text', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeAddWatermark({
+        data: 'Page {pageNo}/{pageCount}',
+        size: 24,
+        repeat: false
+      })
+      editor.command.executeSetValue({
+        main: [{ value: 'watermark placeholder page' }]
+      })
+
+      const draw = (editor as any).draw
+      draw.flushScheduledFrameRender()
+      const canvas = Cypress.$('canvas[data-index="0"]')[0] as HTMLCanvasElement
+      const ctx = canvas.getContext('2d')!
+      const fillTextCalls: string[] = []
+      const originalFillText = ctx.fillText.bind(ctx)
+      cy.stub(ctx, 'fillText').callsFake(
+        (
+          text: string,
+          x: number,
+          y: number,
+          maxWidth?: number
+        ): void => {
+          fillTextCalls.push(String(text))
+          if (maxWidth === undefined) {
+            originalFillText(text, x, y)
+          } else {
+            originalFillText(text, x, y, maxWidth)
+          }
+        }
+      )
+
+      draw.getComponents().waterMark.renderText(ctx, 0)
+
+      expect(fillTextCalls).to.include('Page 1/1')
+      expect(fillTextCalls).not.to.include('Page {pageNo}/{pageCount}')
+    })
+  })
 })

@@ -8801,9 +8801,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n水印增加页码信息（当前页、总页数）显示\n\n### What does the proposed API look like?\n\n```ts\nconst FORMAT_PLACEHOLDER = {\n  PAGE_NO: '{pageNo}', // 页码\n  PAGE_COUNT: '{pageCount}' // 总页数\n}\n```",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已补充自动化回归：验证文本水印中的 {pageNo}/{pageCount} 占位符在绘制前会替换为当前页码和总页数。",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
