@@ -525,6 +525,15 @@ describe('recent issue API regressions', () => {
 
     cy.get('.ce-inputarea').type(' world 你好', { force: true })
 
+    cy.getEditor().should((editor: Editor) => {
+      const currentText = editor.command
+        .getValue()
+        .data.main.map(element => element.value)
+        .join('')
+      expect(currentText).to.contain('world')
+      expect(currentText).to.contain('你好')
+    })
+
     cy.getEditor().then((editor: Editor) => {
       return editor.command.getWordCount().then(count => {
         const currentText = editor.command
@@ -1077,6 +1086,22 @@ describe('recent issue API regressions', () => {
       expect(range.startIndex).to.eq(endIndex)
       expect(range.endIndex).to.eq(endIndex)
       expect(editor.command.getCursorPosition()?.index).to.eq(endIndex)
+    })
+  })
+
+  it('issue #985 keeps the cursor after an inserted element list', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [{ value: 'ABCD' }]
+      })
+      editor.command.executeSetRange(1, 1)
+      editor.command.executeInsertElementList([{ value: 'X' }])
+
+      const range = editor.command.getRange()
+      expect(editor.command.getText().main).to.eq('AXBCD')
+      expect(range.startIndex).to.eq(2)
+      expect(range.endIndex).to.eq(2)
+      expect(editor.command.getCursorPosition()?.index).to.eq(2)
     })
   })
 

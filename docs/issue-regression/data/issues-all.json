@@ -8772,9 +8772,11 @@
       }
     ],
     "body": "![Image](https://github.com/user-attachments/assets/f2644278-9b83-44af-b8de-096ec64de238)\n\n我外部有一个按钮，点击按钮调用command.executeInsertElementList插入元素的方法，元素插入成功后，光标失焦。\n我想需要光标应该出现在插入的元素后，请问这个如何解决。\n我尝试用command.executeFocus 聚焦，但是这个只能聚焦到文章末尾。我在中间插入后光标会跳到末尾。",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已补充自动化回归：验证在中间位置执行 executeInsertElementList 后，插入内容位于当前光标处，range 与 getCursorPosition 都停留在插入内容后。",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

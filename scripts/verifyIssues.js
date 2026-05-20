@@ -77,6 +77,10 @@ const ISSUE_SPECS = {
     title: 'executeAddWatermark 支持图片格式水印',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  985: {
+    title: 'executeInsertElementList 后光标停留在插入内容后',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   1181: {
     title: '水印可在添加时调整尺寸',
     specs: ['cypress/e2e/menus/watermark.cy.ts']
