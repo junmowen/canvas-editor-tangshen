@@ -807,6 +807,10 @@ const ISSUE_SPECS = {
     title: '控件可动态隐藏且隐藏内容不导出到 HTML',
     specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
   },
+  1100: {
+    title: '可定位到指定控件前后再插入元素',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
   1251: {
     title: 'executeSetHTML 保留表格行高',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']

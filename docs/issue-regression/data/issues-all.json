@@ -6327,9 +6327,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n作者你好，是否有办法在指定控件 前面或后面 插入控件？我发现所有的插入和追加API 都只能在光标位置进行插入或追加。\n\n是否有移动光标位置的API 或 别的解决方式？\n若无，则请求增强 插入(追加)API 或 添加移动光标位置的API 。（：\n\n \n\n\n\n\n\n### What does the proposed API look like?\n\n....",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已补充自动化回归：验证 executeLocationControl 可定位到指定控件外侧前/后，再通过 executeInsertElementList 在控件前后插入内容。",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

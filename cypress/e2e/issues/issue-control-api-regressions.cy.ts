@@ -2420,6 +2420,47 @@ describe('control API regressions', () => {
     })
   })
 
+  it('issue #1100 inserts elements before and after a specified control', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          { value: 'A' },
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'anchorControl',
+              type: ControlType.TEXT,
+              value: [{ value: '控件' }],
+              placeholder: 'anchor'
+            }
+          },
+          { value: 'Z' }
+        ]
+      })
+
+      const findValueElement = () =>
+        (editor as any).draw
+          .getElementList()
+          .find(
+            (element: any) =>
+              element.control?.conceptId === 'anchorControl' &&
+              element.controlComponent === ControlComponent.VALUE
+          )
+
+      editor.command.executeLocationControl(findValueElement().controlId, {
+        position: LocationPosition.OUTER_BEFORE
+      })
+      editor.command.executeInsertElementList([{ value: 'B' }])
+      editor.command.executeLocationControl(findValueElement().controlId, {
+        position: LocationPosition.OUTER_AFTER
+      })
+      editor.command.executeInsertElementList([{ value: 'Y' }])
+
+      expect(editor.command.getText().main).to.eq('AB控件YZ')
+    })
+  })
+
   it('issue #1125 emits inactive controlChange when the cursor moves after the control', () => {
     cy.getEditor().then((editor: Editor) => {
       const payloads: any[] = []
