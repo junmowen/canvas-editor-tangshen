@@ -3409,9 +3409,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1240",
     "labels": [],
     "body": "### version\n\n刚从github 拉下来的最新版\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n\n\n添加  测试代码\n` instance.eventBus.on('click', (event: any) => {\n        console.log(\"光标位置\", instance.command.getCursorPosition())\n      });\n`\n点击编辑器某个区域。\n\n更新页边距后 \n\n再次点击编辑器上次点击的区域，\n\n发现 coordinate   中只有 x 轴发生了改变 ,y坐标还是原来的值。详细请看视频\n\nhttps://github.com/user-attachments/assets/ae420ffc-b937-429b-b9e5-bb88a3aedcba\n### What is expected?\n\ny坐标与x轴坐标一样，发生同步改变\n\n### What is actually happening?\n\n....\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已补充自动化回归：验证 executeSetPaperMargin 后 getCursorPosition 返回的 y 坐标会随重排后的 positionList 同步刷新。",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

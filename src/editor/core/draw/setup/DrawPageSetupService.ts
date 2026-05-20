@@ -117,10 +117,12 @@ export class DrawPageSetupService {
   }
 
   public setPaperMargin(payload: IMargin) {
+    const cursorPosition = this.draw.getComponents().position.getCursorPosition()
     this.draw.getOptions().margins = payload
     this.draw.render({
       isSubmitHistory: false,
-      isSetCursor: false
+      isSetCursor: !!cursorPosition,
+      curIndex: cursorPosition?.index
     })
   }
 }

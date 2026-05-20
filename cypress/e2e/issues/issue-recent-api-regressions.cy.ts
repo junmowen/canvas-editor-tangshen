@@ -1876,6 +1876,45 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #1240 updates cursor coordinates after paper margin changes', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [{ value: 'margin coordinate cursor' }]
+      })
+      editor.command.executeSetRange(8, 8)
+      editor.command.executeFocus({
+        range: {
+          startIndex: 8,
+          endIndex: 8
+        },
+        isMoveCursorToVisible: false
+      })
+
+      const before = editor.command.getCursorPosition()
+      expect(before).to.not.eq(null)
+      const beforeY = before!.coordinate.leftTop[1]
+      const cursorIndex = before!.index
+      const margins = editor.command.getPaperMargin()
+      editor.command.executeSetPaperMargin([
+        margins[0] + 40,
+        margins[1],
+        margins[2],
+        margins[3] + 60
+      ])
+      const after = editor.command.getCursorPosition()
+      const expected = (editor as any).draw
+        .getPosition()
+        .getPositionList()[cursorIndex]
+
+      expect(after).to.not.eq(null)
+      expect(after!.index).to.eq(cursorIndex)
+      expect(after!.coordinate.leftTop[1]).to.be.greaterThan(beforeY)
+      expect(after!.coordinate.leftTop[1]).to.eq(
+        expected.coordinate.leftTop[1]
+      )
+    })
+  })
+
   it('issues #225 and #261 export and import page breaks through HTML', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
