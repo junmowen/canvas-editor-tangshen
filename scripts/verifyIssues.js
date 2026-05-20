@@ -89,6 +89,10 @@ const ISSUE_SPECS = {
     title: '水印支持页码占位符',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  973: {
+    title: 'getHTML 保留浮动图片显示方式',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   1181: {
     title: '水印可在添加时调整尺寸',
     specs: ['cypress/e2e/menus/watermark.cy.ts']

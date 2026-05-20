@@ -1,6 +1,7 @@
 import type Editor from '../../../src/editor'
 import { BlockType } from '../../../src/editor/dataset/enum/Block'
 import { INTERNAL_SHORTCUT_KEY } from '../../../src/editor/dataset/constant/Shortcut'
+import { ImageDisplay } from '../../../src/editor/dataset/enum/Common'
 import { ControlType } from '../../../src/editor/dataset/enum/Control'
 import { EditorMode, EditorZone } from '../../../src/editor/dataset/enum/Editor'
 import { ElementType } from '../../../src/editor/dataset/enum/Element'
@@ -404,6 +405,37 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #973 preserves floating image display through HTML export and import', () => {
+    const html = createDomFromElementList([
+      {
+        value: transparentPng,
+        type: ElementType.IMAGE,
+        width: 24,
+        height: 24,
+        imgDisplay: ImageDisplay.FLOAT_TOP,
+        imgFloatPosition: {
+          pageNo: 0,
+          x: 12,
+          y: 34
+        }
+      }
+    ]).innerHTML
+
+    expect(html).to.contain('data-ce-image-display="float-top"')
+    expect(html).to.contain('position: absolute')
+
+    const imported = getElementListByHTML(html, { innerWidth: 500 })
+    expect(imported[0]).to.include({
+      type: ElementType.IMAGE,
+      imgDisplay: ImageDisplay.FLOAT_TOP
+    })
+    expect(imported[0].imgFloatPosition).to.deep.eq({
+      pageNo: 0,
+      x: 12,
+      y: 34
+    })
+  })
+
   it('issue #906 supports setting a specific page scale through executePageScale', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executePageScale(1.3)
@@ -508,19 +540,37 @@ describe('recent issue API regressions', () => {
   })
 
   it('issue #862 updates word count after typed input', () => {
+    const waitForWordCount = (
+      editor: Editor,
+      validateText: (text: string) => void = () => {},
+      attempt = 0
+    ): Cypress.Chainable<void> => {
+      return cy.wrap(editor.command.getWordCount()).then(count => {
+        const currentText = editor.command
+          .getValue()
+          .data.main.map(element => element.value)
+          .join('')
+        const expected = countWordsLikeWorker(currentText)
+        if (count === expected) {
+          validateText(currentText)
+          return
+        }
+        if (attempt >= 20) {
+          expect(count).to.eq(expected)
+        }
+        return cy.wait(100).then(() =>
+          waitForWordCount(editor, validateText, attempt + 1)
+        )
+      })
+    }
+
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
         main: [{ value: 'Hello' }]
       })
       editor.command.executeSetRange(4, 4)
 
-      return editor.command.getWordCount().then(count => {
-        const currentText = editor.command
-          .getValue()
-          .data.main.map(element => element.value)
-          .join('')
-        expect(count).to.eq(countWordsLikeWorker(currentText))
-      })
+      return waitForWordCount(editor)
     })
 
     cy.get('.ce-inputarea').type(' world 你好', { force: true })
@@ -535,26 +585,10 @@ describe('recent issue API regressions', () => {
     })
 
     cy.getEditor().then((editor: Editor) => {
-      const waitForWordCount = (attempt = 0): Cypress.Chainable<void> => {
-        return cy.wrap(editor.command.getWordCount()).then(count => {
-          const currentText = editor.command
-            .getValue()
-            .data.main.map(element => element.value)
-            .join('')
-          const expected = countWordsLikeWorker(currentText)
-          if (count === expected) {
-            expect(currentText).to.contain('world')
-            expect(currentText).to.contain('你好')
-            return
-          }
-          if (attempt >= 20) {
-            expect(count).to.eq(expected)
-          }
-          return cy.wait(100).then(() => waitForWordCount(attempt + 1))
-        })
-      }
-
-      return waitForWordCount()
+      return waitForWordCount(editor, currentText => {
+        expect(currentText).to.contain('world')
+        expect(currentText).to.contain('你好')
+      })
     })
   })
 

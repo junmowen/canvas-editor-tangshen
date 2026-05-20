@@ -1600,6 +1600,26 @@ export function createDomFromElementList(
           img.width = element.width!
           img.height = element.height!
         }
+        if (element.imgDisplay) {
+          img.dataset.ceImageDisplay = element.imgDisplay
+          if (
+            element.imgDisplay === ImageDisplay.FLOAT_TOP ||
+            element.imgDisplay === ImageDisplay.FLOAT_BOTTOM
+          ) {
+            img.style.position = 'absolute'
+            img.style.zIndex =
+              element.imgDisplay === ImageDisplay.FLOAT_TOP ? '1' : '-1'
+          }
+        }
+        if (element.imgFloatPosition) {
+          img.dataset.ceImageFloatX = `${element.imgFloatPosition.x}`
+          img.dataset.ceImageFloatY = `${element.imgFloatPosition.y}`
+          if (element.imgFloatPosition.pageNo !== undefined) {
+            img.dataset.ceImageFloatPageNo = `${element.imgFloatPosition.pageNo}`
+          }
+          img.style.left = `${element.imgFloatPosition.x}px`
+          img.style.top = `${element.imgFloatPosition.y}px`
+        }
         clipboardDom.append(img)
       } else if (element.type === ElementType.BLOCK) {
         if (element.block?.type === BlockType.VIDEO) {
@@ -1972,13 +1992,35 @@ export function getElementListByHTML(
             type: ElementType.SEPARATOR
           })
         } else if (node.nodeName === 'IMG') {
-          const { src, width, height } = node as HTMLImageElement
+          const imageNode = node as HTMLImageElement
+          const { src, width, height } = imageNode
           if (src) {
             const imageElement: IElement = {
               width: width || 1,
               height: height || 1,
               value: src,
               type: ElementType.IMAGE
+            }
+            const imageDisplay = imageNode.dataset.ceImageDisplay as
+              | ImageDisplay
+              | undefined
+            if (
+              imageDisplay &&
+              Object.values(ImageDisplay).includes(imageDisplay)
+            ) {
+              imageElement.imgDisplay = imageDisplay
+            }
+            const x = Number(imageNode.dataset.ceImageFloatX)
+            const y = Number(imageNode.dataset.ceImageFloatY)
+            const pageNo = Number(imageNode.dataset.ceImageFloatPageNo)
+            if (!Number.isNaN(x) && !Number.isNaN(y)) {
+              imageElement.imgFloatPosition = {
+                x,
+                y
+              }
+              if (!Number.isNaN(pageNo)) {
+                imageElement.imgFloatPosition.pageNo = pageNo
+              }
             }
             const rowFlex = convertTextAlignToRowFlex(node.parentElement!)
             if (rowFlex !== RowFlex.LEFT) {
