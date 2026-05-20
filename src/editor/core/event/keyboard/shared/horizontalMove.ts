@@ -128,6 +128,9 @@ export function runHorizontalMove(
   anchorStartIndex = getNonHideElementIndex(newElementList, anchorStartIndex, location)
   anchorEndIndex = getNonHideElementIndex(newElementList, anchorEndIndex, location)
   rangeManager.setRange(anchorStartIndex, anchorEndIndex)
+  position.setPositionContext({
+    ...position.getPositionContext()
+  })
   const isAnchorCollapsed = anchorStartIndex === anchorEndIndex
   draw.render({
     curIndex: isAnchorCollapsed ? anchorStartIndex : undefined,

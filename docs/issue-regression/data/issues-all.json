@@ -5260,9 +5260,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1149",
     "labels": [],
     "body": "### version\n\n0.9.110\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n输入内容，通过键盘左右移动光标时，不会触发positionContextChange事件\n\n### What is expected?\n\n输入内容，通过键盘左右移动光标时，不会触发positionContextChange事件\n\n### What is actually happening?\n\n输入内容，通过键盘左右移动光标时，希望能够触发positionContextChange事件\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已补充自动化回归并补齐行为：左右方向键移动光标后会触发 positionContextChange 事件，监听者可感知键盘光标移动。",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

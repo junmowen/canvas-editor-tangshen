@@ -57,6 +57,10 @@ const ISSUE_SPECS = {
     title: '页眉页脚可分别配置正文激活时透明度',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  1149: {
+    title: '键盘移动光标触发 positionContextChange',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   1314: {
     title: '打印导出可禁用页面背景',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']

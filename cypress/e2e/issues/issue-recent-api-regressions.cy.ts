@@ -2034,6 +2034,35 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #1149 emits positionContextChange when the keyboard moves the cursor', () => {
+    cy.getEditor().then((editor: Editor) => {
+      const payloads: any[] = []
+      editor.eventBus.on('positionContextChange', payload => {
+        payloads.push(payload)
+      })
+      editor.command.executeSetValue({
+        main: [{ value: 'keyboard cursor move' }]
+      })
+      editor.command.executeSetRange(8, 8)
+      cy.wrap(payloads).as('positionContextChangePayloads')
+    })
+
+    dispatchKeyboard('ArrowLeft')
+
+    cy.get('@positionContextChangePayloads').then(value => {
+      const payloads = value as any[]
+      expect(payloads.length).to.be.greaterThan(0)
+      expect(payloads[payloads.length - 1].value).to.include({
+        isTable: false
+      })
+    })
+    cy.getEditor().then((editor: Editor) => {
+      const range = editor.command.getRange()
+      expect(range.startIndex).to.eq(7)
+      expect(range.endIndex).to.eq(7)
+    })
+  })
+
   it('issue #1361 supports Home and End keyboard navigation', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
