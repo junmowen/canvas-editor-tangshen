@@ -3797,9 +3797,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1218",
     "labels": [],
     "body": "### version\n\nv0.9.113\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n我是通过instance.command.getImage()获取到图片，然后后端保存为pdf。但是获取到的图片都带4个`页面边界指示器`。\n\n<img width=\"1516\" height=\"486\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/e7e8b811-45e8-4af5-bd5b-06b9357a0a78\" />\n\n有什么办法获取到不带`页面边界指示器`的图片吗？\n或者后端变成pdf的话，获取什么数据最好？\n\n### What is expected?\n\n1. instance.command.getImage() 获取的图片不带`页面边界指示器`\n2. 取消`页面边界指示器`的方法（我知道打印模式不带`页面边界指示器`）\n3. 后端变成pdf更好的方法\n\n### What is actually happening?\n\n无\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已补充自动化回归：验证普通 getImage 会导出页边距指示器，而 getImage({ mode: EditorMode.PRINT }) 不包含页边距指示器。",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

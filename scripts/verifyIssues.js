@@ -65,6 +65,10 @@ const ISSUE_SPECS = {
     title: '更新页边距后 getCursorPosition 坐标同步刷新',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  1218: {
+    title: 'getImage 打印模式导出不包含页边距指示器',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   1181: {
     title: '水印可在添加时调整尺寸',
     specs: ['cypress/e2e/menus/watermark.cy.ts']

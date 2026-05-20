@@ -63,6 +63,40 @@ function getImagePixel(win: Window, dataUrl: string, x: number, y: number) {
   )
 }
 
+function countImagePixels(
+  win: Window,
+  dataUrl: string,
+  predicate: (red: number, green: number, blue: number, alpha: number) => boolean
+) {
+  return new Cypress.Promise<number>((resolve, reject) => {
+    const image = new win.Image()
+    image.onload = () => {
+      const canvas = win.document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(image, 0, 0)
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+      let count = 0
+      for (let index = 0; index < data.length; index += 4) {
+        if (
+          predicate(
+            data[index],
+            data[index + 1],
+            data[index + 2],
+            data[index + 3]
+          )
+        ) {
+          count++
+        }
+      }
+      resolve(count)
+    }
+    image.onerror = () => reject(new Error('failed to decode exported image'))
+    image.src = dataUrl
+  })
+}
+
 function dispatchKeyboard(key: string, options: KeyboardEventInit = {}) {
   cy.get('.ce-inputarea').then($input => {
     const input = $input[0] as HTMLTextAreaElement
@@ -1692,6 +1726,56 @@ describe('recent issue API regressions', () => {
                   })
               }
             )
+          }
+        )
+      })
+    })
+  })
+
+  it('issue #1218 can export images without page margin indicators in print mode', () => {
+    cy.window().then(win => {
+      cy.getEditor().then((editor: Editor) => {
+        editor.command.executeUpdateOptions({
+          marginIndicatorColor: '#ff0000',
+          marginIndicatorSize: 60
+        })
+        editor.command.executeSetValue({
+          main: [{ value: 'image export without margin indicators' }]
+        })
+
+        const countRedPixels = (dataUrl: string) =>
+          countImagePixels(
+            win,
+            dataUrl,
+            (red, green, blue, alpha) =>
+              alpha > 0 && red > 220 && green < 40 && blue < 40
+          )
+
+        return cy.wrap(editor.command.getImage({ pixelRatio: 1 })).then(
+          (normalDataUrlList: string[]) => {
+            return countRedPixels(normalDataUrlList[0]).then(normalRedPixels => {
+              expect(
+                normalRedPixels,
+                'normal image export should include visible margin indicators'
+              ).to.be.greaterThan(100)
+              return cy
+                .wrap(
+                  editor.command.getImage({
+                    mode: EditorMode.PRINT,
+                    pixelRatio: 1
+                  })
+                )
+                .then((printDataUrlList: string[]) => {
+                  return countRedPixels(printDataUrlList[0]).then(
+                    printRedPixels => {
+                      expect(
+                        printRedPixels,
+                        'print image export should omit margin indicators'
+                      ).to.eq(0)
+                    }
+                  )
+                })
+            })
           }
         )
       })
