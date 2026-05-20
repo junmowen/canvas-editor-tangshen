@@ -76,6 +76,6 @@ export class IncrementalRenderScheduler {
 
   private shouldReplace(newTask: IRenderTask, oldTask: IRenderTask): boolean {
     const priorityMap = { immediate: 4, high: 3, normal: 2, low: 1 }
-    return priorityMap[newTask.priority] > priorityMap[oldTask.priority]
+    return priorityMap[newTask.priority] >= priorityMap[oldTask.priority]
   }
 }

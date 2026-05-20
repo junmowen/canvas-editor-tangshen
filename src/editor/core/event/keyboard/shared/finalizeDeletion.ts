@@ -17,9 +17,10 @@ export function finalizeDeletion(payload: {
     components.position.setCursorLogicalIndex(startIndex)
     if (draw.getTrackChange().isEnabled()) {
       // 留痕删除没有真实减少元素数量，跳过删除类 typing patch，避免索引增量误判。
+      // 删除痕迹本身是文档变更，需要提交历史并触发 contentChange 刷新右侧审阅卡片。
       draw.render({
         curIndex: startIndex,
-        isSubmitHistory: false,
+        isSubmitHistory: true,
         isLazy: false,
         pageRenderScope: 'visible'
       })
@@ -42,8 +43,10 @@ export function finalizeDeletion(payload: {
     components.position.setCursorLogicalIndex(curIndex)
     if (draw.getTrackChange().isEnabled()) {
       // 留痕删除没有真实减少元素数量，跳过删除类 typing patch，避免索引增量误判。
+      // 删除痕迹本身是文档变更，需要提交历史并触发 contentChange 刷新右侧审阅卡片。
       draw.render({
         curIndex,
+        isSubmitHistory: true,
         isLazy: false,
         pageRenderScope: 'visible'
       })

@@ -151,9 +151,27 @@ export class TrackChangeService {
   /** 聚合当前文档中的修订批次，供外部审阅面板使用。 */
   public getRecordList(): ITrackChangeRecord[] {
     const recordMap = new Map<string, ITrackChangeRecord>()
-    this.collectRecordList(this.draw.getHeaderElementList(), recordMap)
-    this.collectRecordList(this.draw.getOriginalMainElementList(), recordMap)
-    this.collectRecordList(this.draw.getFooterElementList(), recordMap)
+    const collectedElementKeySet = new Set<string>()
+    this.collectRecordList(
+      this.draw.getHeaderElementList(),
+      recordMap,
+      collectedElementKeySet
+    )
+    this.collectRecordList(
+      this.draw.getOriginalMainElementList(),
+      recordMap,
+      collectedElementKeySet
+    )
+    this.collectRecordList(
+      this.draw.getLayoutMainElementList(),
+      recordMap,
+      collectedElementKeySet
+    )
+    this.collectRecordList(
+      this.draw.getFooterElementList(),
+      recordMap,
+      collectedElementKeySet
+    )
     this.collectRecordRectList(recordMap)
     return Array.from(recordMap.values())
   }
@@ -171,6 +189,7 @@ export class TrackChangeService {
   private resolveAll(isAccept: boolean) {
     this.resolveElementList(this.draw.getHeaderElementList(), isAccept)
     this.resolveElementList(this.draw.getOriginalMainElementList(), isAccept)
+    this.resolveElementList(this.draw.getLayoutMainElementList(), isAccept)
     this.resolveElementList(this.draw.getFooterElementList(), isAccept)
   }
 
@@ -180,6 +199,7 @@ export class TrackChangeService {
     const zones = [
       this.draw.getHeaderElementList(),
       this.draw.getOriginalMainElementList(),
+      this.draw.getLayoutMainElementList(),
       this.draw.getFooterElementList()
     ]
     let isChanged = false
@@ -234,7 +254,8 @@ export class TrackChangeService {
   /** 递归收集修订批次。 */
   private collectRecordList(
     elementList: IElement[],
-    recordMap: Map<string, ITrackChangeRecord>
+    recordMap: Map<string, ITrackChangeRecord>,
+    collectedElementKeySet: Set<string>
   ) {
     elementList.forEach(element => {
       const change = element.trackChange
@@ -251,34 +272,132 @@ export class TrackChangeService {
               rectList: []
             })
             .get(change.id)!
-        record.elementList.push(deepClone(element))
+        const elementKey = [
+          change.id,
+          element.id,
+          element.value,
+          element.type,
+          element.pagingId,
+          element.pagingIndex
+        ].join(':')
+        if (!collectedElementKeySet.has(elementKey)) {
+          collectedElementKeySet.add(elementKey)
+          record.elementList.push(deepClone(element))
+        }
       }
       if (element.type === ElementType.TABLE && element.trList) {
         element.trList.forEach(tr => {
           tr.tdList.forEach(td => {
-            this.collectRecordList(td.value, recordMap)
+            this.collectRecordList(td.value, recordMap, collectedElementKeySet)
           })
         })
       }
       if (element.valueList?.length) {
-        this.collectRecordList(element.valueList, recordMap)
+        this.collectRecordList(
+          element.valueList,
+          recordMap,
+          collectedElementKeySet
+        )
       }
     })
   }
 
   /** 收集当前修订在正文坐标系下的可视矩形，供外部 UI 画关联虚线。 */
   private collectRecordRectList(recordMap: Map<string, ITrackChangeRecord>) {
-    const positionList = [
-      ...this.draw.getHeader().getPositionList(),
-      ...this.draw.getPosition().getLayoutMainPositionList(),
-      ...this.draw.getFooter().getPositionList()
-    ]
+    const collectedRectKeySet = new Set<string>()
+    this.collectPositionRectList(
+      this.draw.getHeader().getPositionList(),
+      recordMap,
+      collectedRectKeySet
+    )
+    this.collectPositionRectList(
+      this.draw.getPosition().getLayoutMainPositionList(),
+      recordMap,
+      collectedRectKeySet
+    )
+    this.collectPositionRectList(
+      this.draw.getFooter().getPositionList(),
+      recordMap,
+      collectedRectKeySet
+    )
+    this.collectElementPositionRectList(
+      this.draw.getHeaderElementList(),
+      recordMap,
+      collectedRectKeySet
+    )
+    this.collectElementPositionRectList(
+      this.draw.getLayoutMainElementList(),
+      recordMap,
+      collectedRectKeySet
+    )
+    this.collectElementPositionRectList(
+      this.draw.getOriginalMainElementList(),
+      recordMap,
+      collectedRectKeySet
+    )
+    this.collectElementPositionRectList(
+      this.draw.getFooterElementList(),
+      recordMap,
+      collectedRectKeySet
+    )
+  }
+
+  /** 把一组已布局位置转成审阅卡片可连接的矩形。 */
+  private collectPositionRectList(
+    positionList: IElementPosition[],
+    recordMap: Map<string, ITrackChangeRecord>,
+    collectedRectKeySet: Set<string>
+  ) {
     positionList.forEach(position => {
       const change = position.element?.trackChange
       if (!change) return
       const record = recordMap.get(change.id)
       if (!record) return
-      record.rectList.push(this.createTrackChangeRect(position))
+      const rect = this.createTrackChangeRect(position)
+      const rectKey = [
+        change.id,
+        rect.pageNo,
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height
+      ].join(':')
+      if (collectedRectKeySet.has(rectKey)) return
+      collectedRectKeySet.add(rectKey)
+      record.rectList.push(rect)
+    })
+  }
+
+  /** 递归收集表格单元格和嵌套 valueList 中的布局位置。 */
+  private collectElementPositionRectList(
+    elementList: IElement[],
+    recordMap: Map<string, ITrackChangeRecord>,
+    collectedRectKeySet: Set<string>
+  ) {
+    elementList.forEach(element => {
+      if (element.type === ElementType.TABLE && element.trList) {
+        element.trList.forEach(tr => {
+          tr.tdList.forEach(td => {
+            this.collectPositionRectList(
+              td.positionList || [],
+              recordMap,
+              collectedRectKeySet
+            )
+            this.collectElementPositionRectList(
+              td.value || [],
+              recordMap,
+              collectedRectKeySet
+            )
+          })
+        })
+      }
+      if (element.valueList?.length) {
+        this.collectElementPositionRectList(
+          element.valueList,
+          recordMap,
+          collectedRectKeySet
+        )
+      }
     })
   }
 

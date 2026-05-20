@@ -1426,6 +1426,25 @@ window.onload = function () {
       }
     }
   }
+  function getReviewFallbackAnchor(rectList: ReviewRect[]): ReviewAnchor | null {
+    const pageContainerDom =
+      container.querySelector<HTMLDivElement>('.ce-page-container')
+    if (!pageContainerDom) return null
+    const pageContainerRect = pageContainerDom.getBoundingClientRect()
+    const rect = rectList[0] || {
+      x: pageContainerRect.width,
+      y: Math.max(0, window.scrollY + 120 - pageContainerRect.top),
+      width: 1,
+      height: 1
+    }
+    return {
+      pageContainerRect,
+      sourcePoint: {
+        x: pageContainerRect.left + rect.x + rect.width,
+        y: pageContainerRect.top + rect.y + rect.height / 2
+      }
+    }
+  }
   function getVisibleTrackChangeAnchor(record: TrackChangeRecord) {
     return getVisibleReviewAnchor(record.rectList || [])
   }
@@ -1503,12 +1522,13 @@ window.onload = function () {
       )
       if (!cardDom) return
       const anchor = getVisibleTrackChangeAnchor(record)
-      if (!anchor) {
+      const fallbackAnchor = anchor || getReviewFallbackAnchor(record.rectList || [])
+      if (!fallbackAnchor) {
         cardDom.style.display = 'none'
         return
       }
       cardDom.style.display = 'block'
-      const { pageContainerRect, sourcePoint } = anchor
+      const { pageContainerRect, sourcePoint } = fallbackAnchor
       const cardWidth = cardDom.offsetWidth || 392
       placementList.push({
         cardDom,
@@ -1679,6 +1699,10 @@ window.onload = function () {
         author: trackChangeAuthor
       })
       updateTrackChangeMenu()
+      if (isTrackChangeEnabled) {
+        trackChangePanelDom.classList.add('is-visible')
+      }
+      updateTrackChangePanel()
     } else if (action === 'panel') {
       trackChangePanelDom.classList.add('is-visible')
       updateTrackChangePanel()
@@ -2445,9 +2469,15 @@ window.onload = function () {
     nextTick(() => {
       updateComment()
     })
-    // 留痕审阅面板打开时同步刷新修订列表。
-    if (trackChangePanelDom.classList.contains('is-visible')) {
+    // 留痕开启或审阅面板打开时同步刷新修订列表，避免表格内编辑后右侧卡片停留在旧状态。
+    if (
+      isTrackChangeEnabled ||
+      trackChangePanelDom.classList.contains('is-visible')
+    ) {
       nextTick(() => {
+        if (isTrackChangeEnabled && instance.command.getTrackChangeList().length) {
+          trackChangePanelDom.classList.add('is-visible')
+        }
         updateTrackChangePanel()
       })
     }

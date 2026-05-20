@@ -25,6 +25,8 @@ export class FastInputProcessor {
   private renderScheduler: IncrementalRenderScheduler
   private isComposing = false
   private compositionInfo: ICompositionInfo | null = null
+  private lastCompositionCommit: { value: string; timestamp: number } | null =
+    null
 
   constructor(private readonly draw: Draw) {
     this.inputBuffer = new InputBuffer()
@@ -43,14 +45,27 @@ export class FastInputProcessor {
     if (this.draw.isReadonly() || this.draw.isDisabled()) return
     if (!data) return
 
+    if (!this.isComposing && this.lastCompositionCommit) {
+      const { value, timestamp } = this.lastCompositionCommit
+      if (value === data && Date.now() - timestamp < 100) {
+        this.lastCompositionCommit = null
+        return
+      }
+      this.lastCompositionCommit = null
+    }
+
+    if (this.isComposing && this.compositionInfo?.value === data) return
+    if (this.isComposing && this.compositionInfo) {
+      this.renderScheduler.clear()
+      this.removeComposingInput()
+    }
+
     const components = this.draw.getComponents()
     const position = components.position
     const rangeManager = components.range
     const cursorPosition = position.getCursorPosition()
 
     if (!cursorPosition || !rangeManager.getIsCanInput()) return
-
-    if (this.isComposing && this.compositionInfo?.value === data) return
 
     const { startIndex, endIndex } = rangeManager.getEditBoundaryRange()
 
@@ -87,7 +102,13 @@ export class FastInputProcessor {
       })
     } else {
       if (this.compositionInfo) {
+        this.renderScheduler.clear()
+        this.removeComposingInput()
         this.processInput(data)
+        this.lastCompositionCommit = {
+          value: data,
+          timestamp: Date.now()
+        }
       }
     }
 
@@ -158,6 +179,7 @@ export class FastInputProcessor {
 
     if (~curIndex) {
       rangeManager.setRange(curIndex, curIndex)
+      components.position.setCursorLogicalIndex(curIndex)
 
       const shouldUseLayoutPatch =
         !this.isComposing &&
@@ -174,6 +196,9 @@ export class FastInputProcessor {
         payload: {
           curIndex,
           isSubmitHistory: !this.isComposing,
+          isTyping: true,
+          typingEditIndex: action.startIndex + 1,
+          typingInsertedCount: inputData.length,
           isLazy: false,
           pageRenderScope: 'visible',
           layoutPatch: shouldUseLayoutPatch
@@ -268,6 +293,7 @@ export class FastInputProcessor {
 
     const rangeManager = this.draw.getComponents().range
     rangeManager.setRange(startIndex, startIndex)
+    this.draw.getComponents().position.setCursorLogicalIndex(startIndex)
     this.compositionInfo = null
   }
 }

@@ -91,4 +91,113 @@ describe('colon input layout', () => {
       expect(cursorPosition?.rowNo).to.eq(0)
     })
   })
+
+  it('keeps the visible cursor aligned with the insertion range during rapid input', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            value: 'AB'
+          }
+        ]
+      })
+      editor.command.executeSetRange(1, 1)
+    })
+
+    cy.get('.ce-inputarea').then($input => {
+      const input = $input[0] as HTMLTextAreaElement
+      input.value = 'x'
+      input.dispatchEvent(
+        new InputEvent('input', {
+          data: 'x',
+          inputType: 'insertText',
+          bubbles: true
+        })
+      )
+      input.value = 'y'
+      input.dispatchEvent(
+        new InputEvent('input', {
+          data: 'y',
+          inputType: 'insertText',
+          bubbles: true
+        })
+      )
+    })
+
+    cy.getEditor().then((editor: Editor) => {
+      const draw = (editor as any).draw
+      const valueText = editor.command
+        .getValue()
+        .data.main.map((element: any) => element.value)
+        .join('')
+      const range = editor.command.getRange()
+      const cursorPosition = draw.getPosition().getCursorPosition()
+
+      expect(valueText).to.eq('AxyB')
+      expect(range.startIndex).to.eq(3)
+      expect(range.endIndex).to.eq(3)
+      expect(cursorPosition?.index).to.eq(3)
+    })
+  })
+
+  it('keeps committed IME text and cursor at the same insertion point', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            value: 'AB'
+          }
+        ]
+      })
+      editor.command.executeSetRange(1, 1)
+    })
+
+    cy.get('.ce-inputarea').then($input => {
+      const input = $input[0] as HTMLTextAreaElement
+      input.dispatchEvent(
+        new CompositionEvent('compositionstart', {
+          bubbles: true
+        })
+      )
+      ;['e', 'e\'e', 'e\'e\'e', '呃呃呃'].forEach(data => {
+        input.value = data
+        input.dispatchEvent(
+          new InputEvent('input', {
+            data,
+            inputType: 'insertCompositionText',
+            bubbles: true
+          })
+        )
+      })
+      input.dispatchEvent(
+        new CompositionEvent('compositionend', {
+          data: '呃呃呃',
+          bubbles: true
+        })
+      )
+      input.value = '呃呃呃'
+      input.dispatchEvent(
+        new InputEvent('input', {
+          data: '呃呃呃',
+          inputType: 'insertCompositionText',
+          bubbles: true
+        })
+      )
+    })
+
+    cy.getEditor().then((editor: Editor) => {
+      const draw = (editor as any).draw
+      const valueText = editor.command
+        .getValue()
+        .data.main.map((element: any) => element.value)
+        .join('')
+      const range = editor.command.getRange()
+      const cursorPosition = draw.getPosition().getCursorPosition()
+
+      expect(valueText).to.eq('A呃呃呃B')
+      expect(range.startIndex).to.eq(4)
+      expect(range.endIndex).to.eq(4)
+      expect(cursorPosition?.index).to.eq(4)
+    })
+  })
 })
