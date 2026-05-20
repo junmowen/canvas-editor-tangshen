@@ -486,6 +486,27 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #1016 emits updated range style after executing size command', () => {
+    cy.getEditor().then((editor: Editor) => {
+      const payloads: Array<{ size: number }> = []
+      editor.eventBus.on('rangeStyleChange', payload => {
+        payloads.push(payload)
+      })
+      editor.command.executeSetValue({
+        main: [{ value: 'range style size' }]
+      })
+      editor.command.executeSetRange(0, 5)
+      editor.command.executeSize(18)
+      cy.wrap(payloads).as('rangeStylePayloads')
+    })
+
+    cy.get('@rangeStylePayloads').should(value => {
+      const payloads = value as Array<{ size: number }>
+      expect(payloads.length).to.be.greaterThan(0)
+      expect(payloads[payloads.length - 1].size).to.eq(18)
+    })
+  })
+
   it('issue #862 updates word count after typed input', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
