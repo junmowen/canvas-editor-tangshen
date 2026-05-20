@@ -1,4 +1,6 @@
 import { ElementStyleKey } from '../../dataset/enum/ElementStyle'
+import { TEXTLIKE_ELEMENT_TYPE } from '../../dataset/constant/Element'
+import { NUMBER_LIKE_REG } from '../../dataset/constant/Regular'
 import { Draw } from '../draw/Draw'
 import { Position } from '../position/Position'
 import { RangeManager } from '../range/RangeManager'
@@ -104,7 +106,7 @@ export class CanvasEvent {
     if (!painterStyle) return
     const isDisabled = this.draw.isReadonly() || this.draw.isDisabled()
     if (isDisabled) return
-    const selection = this.range.getSelection()
+    const selection = this.range.getSelection() || this.resolvePainterWordSelection()
     if (!selection) return
     const painterStyleKeys = Object.keys(painterStyle)
     selection.forEach(s => {
@@ -119,6 +121,56 @@ export class CanvasEvent {
     if (!painterOptions || !painterOptions.isDblclick) {
       this.clearPainterStyle()
     }
+  }
+
+  private resolvePainterWordSelection() {
+    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
+    if (startIndex !== endIndex || !~endIndex) return null
+    const elementList = this.draw.getElementList()
+    const cursorIndex = endIndex
+    const cursorElement = elementList[cursorIndex]
+    if (
+      !cursorElement ||
+      (cursorElement.type && !TEXTLIKE_ELEMENT_TYPE.includes(cursorElement.type))
+    ) {
+      return null
+    }
+    const cursorValue = cursorElement.value
+    const isNumber = NUMBER_LIKE_REG.test(cursorValue)
+    const LETTER_REG = this.draw.getLetterReg()
+    if (!isNumber && !LETTER_REG.test(cursorValue)) return null
+
+    let wordStartIndex = cursorIndex
+    while (wordStartIndex > 0) {
+      const element = elementList[wordStartIndex - 1]
+      if (
+        !element ||
+        (element.type && !TEXTLIKE_ELEMENT_TYPE.includes(element.type)) ||
+        (isNumber
+          ? !NUMBER_LIKE_REG.test(element.value)
+          : !LETTER_REG.test(element.value))
+      ) {
+        break
+      }
+      wordStartIndex--
+    }
+
+    let wordEndIndex = cursorIndex
+    while (wordEndIndex < elementList.length - 1) {
+      const element = elementList[wordEndIndex + 1]
+      if (
+        !element ||
+        (element.type && !TEXTLIKE_ELEMENT_TYPE.includes(element.type)) ||
+        (isNumber
+          ? !NUMBER_LIKE_REG.test(element.value)
+          : !LETTER_REG.test(element.value))
+      ) {
+        break
+      }
+      wordEndIndex++
+    }
+
+    return elementList.slice(wordStartIndex, wordEndIndex + 1)
   }
 
   public selectAll() {

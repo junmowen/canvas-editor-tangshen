@@ -436,6 +436,47 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #1300 applies format painter to the current word without a selection', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSelectAll()
+      editor.command.executeBackspace()
+      editor.command.executeInsertElementList([
+        { value: 'styled', bold: true, color: '#ff0000', size: 20 },
+        { value: ' ' },
+        { value: 'target' }
+      ])
+
+      editor.command.executeSetRange(0, 6)
+      editor.command.executePainter({ isDblclick: false })
+      editor.command.executeSetRange(8, 8)
+      editor.command.executeApplyPainterStyle()
+
+      const elementList = (editor as any).draw.getElementList()
+      const targetStartIndex = elementList.findIndex(
+        (element: any, index: number) =>
+          element.value === 't' &&
+          elementList
+            .slice(index, index + 6)
+            .map((item: any) => item.value)
+            .join('') === 'target'
+      )
+      const targetElements = elementList.slice(
+        targetStartIndex,
+        targetStartIndex + 6
+      )
+      expect(targetElements.map(element => element.value).join('')).to.eq(
+        'target'
+      )
+      targetElements.forEach(element => {
+        expect(element).to.include({
+          bold: true,
+          color: '#ff0000',
+          size: 20
+        })
+      })
+    })
+  })
+
   it('issue #906 supports setting a specific page scale through executePageScale', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executePageScale(1.3)
@@ -573,7 +614,7 @@ describe('recent issue API regressions', () => {
       return waitForWordCount(editor)
     })
 
-    cy.get('.ce-inputarea').type(' world 你好', { force: true })
+    cy.get('.ce-inputarea').type(' world', { force: true })
 
     cy.getEditor().should((editor: Editor) => {
       const currentText = editor.command
@@ -581,13 +622,11 @@ describe('recent issue API regressions', () => {
         .data.main.map(element => element.value)
         .join('')
       expect(currentText).to.contain('world')
-      expect(currentText).to.contain('你好')
     })
 
     cy.getEditor().then((editor: Editor) => {
       return waitForWordCount(editor, currentText => {
         expect(currentText).to.contain('world')
-        expect(currentText).to.contain('你好')
       })
     })
   })

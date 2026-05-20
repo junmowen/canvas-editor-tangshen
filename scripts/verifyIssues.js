@@ -93,6 +93,10 @@ const ISSUE_SPECS = {
     title: 'getHTML 保留浮动图片显示方式',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  1300: {
+    title: '格式刷支持无选区时应用到当前单词',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   1181: {
     title: '水印可在添加时调整尺寸',
     specs: ['cypress/e2e/menus/watermark.cy.ts']
