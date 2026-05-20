@@ -57,6 +57,7 @@ export class DrawRenderFinalizeService {
       (payload.curIndex !== undefined &&
         this.draw.getComponents().historyManager.isStackEmpty())
     ) {
+      if (this.draw.getComponents().historyManager.isDisabledHistory()) return
       if (payload.isTyping) {
         this.draw.getServices().historyBridge.submitTypingHistory(payload.curIndex)
       } else {

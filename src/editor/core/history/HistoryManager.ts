@@ -4,13 +4,16 @@ export class HistoryManager {
   private undoStack: Array<Function> = []
   private redoStack: Array<Function> = []
   private maxRecordCount: number
+  private isDisabled: boolean
 
   constructor(draw: Draw) {
     // 忽略第一次历史记录
     this.maxRecordCount = draw.getOptions().historyMaxRecordCount + 1
+    this.isDisabled = false
   }
 
   public undo() {
+    if (this.isDisabled) return
     if (this.undoStack.length > 1) {
       const pop = this.undoStack.pop()!
       this.redoStack.push(pop)
@@ -21,6 +24,7 @@ export class HistoryManager {
   }
 
   public redo() {
+    if (this.isDisabled) return
     if (this.redoStack.length) {
       const pop = this.redoStack.pop()!
       this.undoStack.push(pop)
@@ -29,6 +33,7 @@ export class HistoryManager {
   }
 
   public execute(fn: Function) {
+    if (this.isDisabled) return
     this.undoStack.push(fn)
     if (this.redoStack.length) {
       this.redoStack = []
@@ -53,6 +58,19 @@ export class HistoryManager {
   public recovery() {
     this.undoStack = []
     this.redoStack = []
+  }
+
+  public disable() {
+    this.isDisabled = true
+  }
+
+  public enable() {
+    this.recovery()
+    this.isDisabled = false
+  }
+
+  public isDisabledHistory() {
+    return this.isDisabled
   }
 
   public popUndo() {

@@ -28,12 +28,14 @@ export class DrawHistoryBridge {
   private readonly typingHistoryDelay = 350
 
   public submitHistory(curIndex: number | undefined) {
+    if (this.draw.getHistoryManager().isDisabledHistory()) return
     this.cancelTypingHistory()
     this.commitHistory(curIndex)
   }
 
   /** 输入态历史提交，连续输入只保留最后一次全量快照。 */
   public submitTypingHistory(curIndex: number | undefined) {
+    if (this.draw.getHistoryManager().isDisabledHistory()) return
     this.pendingTypingCurIndex = curIndex
     if (this.typingHistoryTimer !== null) {
       window.clearTimeout(this.typingHistoryTimer)
@@ -57,6 +59,7 @@ export class DrawHistoryBridge {
 
   /** 立即提交一次完整历史快照。 */
   private commitHistory(curIndex: number | undefined) {
+    if (this.draw.getHistoryManager().isDisabledHistory()) return
     const components = this.draw.getComponents()
     const positionContext = components.position.getPositionContext()
     const oldElementList = getSlimCloneElementList(

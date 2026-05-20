@@ -905,6 +905,30 @@ describe('recent issue API regressions', () => {
       .and('eq', imageB)
   })
 
+  it('issue #1124 can disable and re-enable history recording', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [{ value: 'history base' }]
+      })
+      editor.command.executeSetRange(0, 0)
+
+      editor.command.executeDisableHistory()
+      editor.command.executeInsertElementList([{ value: ' no history' }])
+      expect(editor.command.getText().main).to.contain('no history')
+      const disabledBaseline = editor.command.getText().main
+      editor.command.executeUndo()
+      expect(editor.command.getText().main).to.eq(disabledBaseline)
+
+      editor.command.executeEnableHistory()
+      editor.command.executeInsertElementList([{ value: ' recorded' }])
+      expect(editor.command.getText().main).to.contain('recorded')
+      editor.command.executeForceUpdate({ isSubmitHistory: true })
+      editor.command.executeUndo()
+      expect(editor.command.getText().main).to.eq(disabledBaseline)
+      expect(editor.command.getText().main).not.to.contain('recorded')
+    })
+  })
+
   it('issue #1264 keeps inline font-family when importing HTML', () => {
     const imported = getElementListByHTML(
       '<span style="font-family: Microsoft YaHei; font-size: 16px;">测试文本</span>',

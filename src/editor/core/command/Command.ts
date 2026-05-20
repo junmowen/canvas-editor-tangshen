@@ -15,6 +15,8 @@ export class Command {
   public executeBlur: CommandAdapt['blur']
   public executeUndo: CommandAdapt['undo']
   public executeRedo: CommandAdapt['redo']
+  public executeDisableHistory: CommandAdapt['disableHistory']
+  public executeEnableHistory: CommandAdapt['enableHistory']
   public executePainter: CommandAdapt['painter']
   public executeApplyPainterStyle: CommandAdapt['applyPainterStyle']
   public executeFormat: CommandAdapt['format']
@@ -174,6 +176,8 @@ export class Command {
     // 撤销、重做、格式刷、清除格式
     this.executeUndo = adapt.undo.bind(adapt)
     this.executeRedo = adapt.redo.bind(adapt)
+    this.executeDisableHistory = adapt.disableHistory.bind(adapt)
+    this.executeEnableHistory = adapt.enableHistory.bind(adapt)
     this.executePainter = adapt.painter.bind(adapt)
     this.executeApplyPainterStyle = adapt.applyPainterStyle.bind(adapt)
     this.executeFormat = adapt.format.bind(adapt)

@@ -528,6 +528,16 @@ export class CommandAdapt {
     this.historyManager.redo()
   }
 
+  public disableHistory() {
+    this.historyManager.disable()
+    this.draw.getServices().historyBridge.cancelTypingHistory()
+  }
+
+  public enableHistory() {
+    this.historyManager.enable()
+    this.draw.submitHistory(undefined)
+  }
+
   public painter(options: IPainterOption) {
     // 如果单击且已经有样式设置则取消设置
     if (!options.isDblclick && this.draw.getPainterStyle()) {
