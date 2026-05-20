@@ -117,6 +117,10 @@ const ISSUE_SPECS = {
     title: '水印可在添加时调整尺寸',
     specs: ['cypress/e2e/menus/watermark.cy.ts']
   },
+  1173: {
+    title: '图片预览弹窗支持上一张和下一张切换',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   440: {
     title: '文档列表内容内无法取消或者增加子列表',
     specs: ['cypress/e2e/issues/issue-440-list-sublevel.cy.ts']

@@ -4786,9 +4786,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n图片预览弹窗支持切换上一张及下一张\n\n### What does the proposed API look like?\n\n图片预览弹窗支持切换上一张及下一张",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已补充自动化回归：验证图片预览弹窗可在多张正文图片间通过上一张/下一张按钮切换，并同步更新计数和禁用态。",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

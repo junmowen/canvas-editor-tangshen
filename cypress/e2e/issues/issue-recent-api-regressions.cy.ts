@@ -23,6 +23,11 @@ const redBackgroundSvg =
   encodeURIComponent(
     '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#ff0000"/></svg>'
   )
+const createSvgDataUrl = (fill: string) =>
+  'data:image/svg+xml;charset=utf-8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="${fill}"/></svg>`
+  )
 
 function countNonWhitePixels(win: Window, dataUrl: string) {
   return new Cypress.Promise<number>((resolve, reject) => {
@@ -839,6 +844,65 @@ describe('recent issue API regressions', () => {
       previewer.render()
       expect(Cypress.$('.ce-image-previewer')).to.have.length(0)
     })
+  })
+
+  it('issue #1173 supports previous and next navigation in the image previewer', () => {
+    const imageA = createSvgDataUrl('#ff0000')
+    const imageB = createSvgDataUrl('#00ff00')
+    const imageC = createSvgDataUrl('#0000ff')
+
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            id: 'preview-image-a',
+            type: ElementType.IMAGE,
+            value: imageA,
+            width: 16,
+            height: 16
+          },
+          { value: ' ' },
+          {
+            id: 'preview-image-b',
+            type: ElementType.IMAGE,
+            value: imageB,
+            width: 16,
+            height: 16
+          },
+          { value: ' ' },
+          {
+            id: 'preview-image-c',
+            type: ElementType.IMAGE,
+            value: imageC,
+            width: 16,
+            height: 16
+          }
+        ]
+      })
+
+      const imageList = editor.command
+        .getValue()
+        .data.main.filter(element => element.type === ElementType.IMAGE)
+      const previewer = (editor as any).draw.getComponents().previewer
+      previewer.drawResizer(imageList[1])
+      previewer.render()
+    })
+
+    cy.get('.ce-image-previewer .image-count').should('have.text', '2 / 3')
+    cy.get('.ce-image-previewer .ce-image-container img')
+      .should('have.attr', 'src')
+      .and('eq', imageB)
+    cy.get('.ce-image-previewer .image-next').click()
+    cy.get('.ce-image-previewer .image-count').should('have.text', '3 / 3')
+    cy.get('.ce-image-previewer .image-next').should('have.class', 'disabled')
+    cy.get('.ce-image-previewer .ce-image-container img')
+      .should('have.attr', 'src')
+      .and('eq', imageC)
+    cy.get('.ce-image-previewer .image-pre').click()
+    cy.get('.ce-image-previewer .image-count').should('have.text', '2 / 3')
+    cy.get('.ce-image-previewer .ce-image-container img')
+      .should('have.attr', 'src')
+      .and('eq', imageB)
   })
 
   it('issue #1264 keeps inline font-family when importing HTML', () => {
