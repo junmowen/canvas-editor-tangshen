@@ -8851,9 +8851,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n控件可配置隐藏属性\n\n### What does the proposed API look like?\n\n```ts\ninterface IControlRule {\n  hide?: boolean\n}\n```",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已补充自动化回归：验证控件 hide 可动态设置，getControlValue/getValue 保留隐藏状态，getHTML 不导出隐藏控件文本。",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

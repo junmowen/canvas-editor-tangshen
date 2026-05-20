@@ -1724,7 +1724,7 @@ describe('control API regressions', () => {
     })
   })
 
-  it('issue #1083 hides controls dynamically without exporting their text', () => {
+  it('issues #979 and #1083 hide controls dynamically without exporting their text', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
         main: [
