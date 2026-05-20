@@ -2,6 +2,7 @@ import {
   BackgroundRepeat,
   BackgroundSize
 } from '../../../dataset/enum/Background'
+import { EditorMode } from '../../../dataset/enum/Editor'
 import { DeepRequired } from '../../../interface/Common'
 import { IEditorOption } from '../../../interface/Editor'
 import { RenderLayer } from '../../render-backend'
@@ -122,6 +123,12 @@ export class Background {
     const {
       background: { image, color, applyPageNumbers }
     } = this.options
+    if (
+      this.draw.getMode() === EditorMode.PRINT &&
+      this.options.modeRule.print.backgroundDisabled
+    ) {
+      return
+    }
     if (
       image &&
       (!applyPageNumbers?.length || applyPageNumbers.includes(pageNo))

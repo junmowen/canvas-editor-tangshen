@@ -44,6 +44,25 @@ function countNonWhitePixels(win: Window, dataUrl: string) {
   })
 }
 
+function getImagePixel(win: Window, dataUrl: string, x: number, y: number) {
+  return new Cypress.Promise<[number, number, number, number]>(
+    (resolve, reject) => {
+      const image = new win.Image()
+      image.onload = () => {
+        const canvas = win.document.createElement('canvas')
+        canvas.width = image.naturalWidth
+        canvas.height = image.naturalHeight
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(image, 0, 0)
+        const data = ctx.getImageData(x, y, 1, 1).data
+        resolve([data[0], data[1], data[2], data[3]])
+      }
+      image.onerror = () => reject(new Error('failed to decode exported image'))
+      image.src = dataUrl
+    }
+  )
+}
+
 function dispatchKeyboard(key: string, options: KeyboardEventInit = {}) {
   cy.get('.ce-inputarea').then($input => {
     const input = $input[0] as HTMLTextAreaElement
@@ -1626,6 +1645,55 @@ describe('recent issue API regressions', () => {
             ).to.be.greaterThan(500)
           })
         })
+      })
+    })
+  })
+
+  it('issue #1314 disables page background in print image export', () => {
+    cy.window().then(win => {
+      cy.getEditor().then((editor: Editor) => {
+        editor.command.executeSetValue({
+          main: [{ value: 'print without page background' }]
+        })
+        editor.command.executeUpdateOptions({
+          background: {
+            color: '#ff0000'
+          },
+          modeRule: {
+            print: {
+              backgroundDisabled: true
+            }
+          }
+        })
+
+        return cy.wrap(editor.command.getImage({ pixelRatio: 1 })).then(
+          (normalDataUrlList: string[]) => {
+            return getImagePixel(win, normalDataUrlList[0], 10, 10).then(
+              normalPixel => {
+                expect(normalPixel[0]).to.be.greaterThan(240)
+                expect(normalPixel[1]).to.be.lessThan(20)
+                expect(normalPixel[2]).to.be.lessThan(20)
+                return cy
+                  .wrap(
+                    editor.command.getImage({
+                      mode: EditorMode.PRINT,
+                      pixelRatio: 1
+                    })
+                  )
+                  .then((printDataUrlList: string[]) => {
+                    return getImagePixel(win, printDataUrlList[0], 10, 10).then(
+                      printPixel => {
+                        expect(printPixel[0]).to.be.lessThan(20)
+                        expect(printPixel[1]).to.be.lessThan(20)
+                        expect(printPixel[2]).to.be.lessThan(20)
+                        expect(printPixel[3]).to.eq(0)
+                      }
+                    )
+                  })
+              }
+            )
+          }
+        )
       })
     })
   })

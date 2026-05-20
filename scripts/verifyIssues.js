@@ -57,6 +57,10 @@ const ISSUE_SPECS = {
     title: '页眉页脚可分别配置正文激活时透明度',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  1314: {
+    title: '打印导出可禁用页面背景',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   1181: {
     title: '水印可在添加时调整尺寸',
     specs: ['cypress/e2e/menus/watermark.cy.ts']

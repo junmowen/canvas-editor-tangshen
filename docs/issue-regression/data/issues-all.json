@@ -1978,9 +1978,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n打印的时候可以不把背景打印出来\n\n### What does the proposed API look like?\n\n打印的时候可以不把背景打印出来吗？",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已补充自动化回归：验证 modeRule.print.backgroundDisabled 可让打印模式 getImage 导出跳过页面背景，同时普通导出仍保留背景。",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
