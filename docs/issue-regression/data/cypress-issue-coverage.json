@@ -810,5 +810,14 @@
     "issueLinks": [
       "https://github.com/Hufe921/canvas-editor/issues/1181"
     ]
+  },
+  {
+    "spec": "date.cy.ts",
+    "issueNumbers": [
+      1256
+    ],
+    "issueLinks": [
+      "https://github.com/Hufe921/canvas-editor/issues/1256"
+    ]
   }
 ]

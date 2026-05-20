@@ -3086,9 +3086,11 @@
       }
     ],
     "body": "### version\n\n0.9.108\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n日期弹窗目前只支持年月日以上格式选择弹窗，能不能增加单独选择年份或月份的选择器。\n\n\n<img width=\"705\" height=\"702\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/7776af96-64a0-4d73-8c82-9a848dd6572a\" />\n\n\n类似elementplus年份选择器这种\n\n### What is expected?\n\n无\n\n### What is actually happening?\n\n无\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已补充自动化回归：验证 dateFormat 为 yyyy / yyyy-MM 时日期选择器分别进入年份和月份选择模式，并隐藏日期周行与时间选择入口。",
+    "regression_specs": [
+      "cypress/e2e/menus/date.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

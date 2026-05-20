@@ -76,4 +76,59 @@ describe('菜单-日期选择器', () => {
       })
     })
   })
+
+  it('支持按 yyyy 和 yyyy-MM 格式展示年份或月份选择器', () => {
+    const renderDatePicker = (editor: Editor, dateFormat: string) => {
+      const position = {
+        coordinate: {
+          leftTop: [0, 0]
+        },
+        lineHeight: 24,
+        pageNo: 0
+      }
+
+      ;(editor as any).draw.getComponents().dateParticle.renderDatePicker(
+        {
+          type: 'date',
+          value: '',
+          dateFormat,
+          valueList: [{ value: '2025-09-08' }]
+        },
+        position
+      )
+    }
+
+    cy.getEditor().then((editor: Editor) => {
+      renderDatePicker(editor, 'yyyy')
+    })
+    cy.get('.ce-date-container.active')
+      .should('have.class', 'ce-date-container--year')
+      .and('not.have.class', 'ce-date-container--month')
+    cy.get('.ce-date-week').should('not.be.visible')
+    cy.get('.ce-date-day')
+      .should('have.class', 'ce-date-day--grid')
+      .children()
+      .should('have.length', 12)
+      .first()
+      .invoke('text')
+      .should('match', /^\d{4}$/)
+    cy.get('.ce-date-menu__time').should('not.be.visible')
+    cy.get('.ce-date-menu__now').should('not.be.visible')
+
+    cy.getEditor().then((editor: Editor) => {
+      renderDatePicker(editor, 'yyyy-MM')
+    })
+    cy.get('.ce-date-container.active')
+      .should('have.class', 'ce-date-container--month')
+      .and('not.have.class', 'ce-date-container--year')
+    cy.get('.ce-date-week').should('not.be.visible')
+    cy.get('.ce-date-day')
+      .should('have.class', 'ce-date-day--grid')
+      .children()
+      .should('have.length', 12)
+      .first()
+      .should('have.text', '01')
+    cy.get('.ce-date-menu__time').should('not.be.visible')
+    cy.get('.ce-date-menu__now').should('not.be.visible')
+  })
 })
