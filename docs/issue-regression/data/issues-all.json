@@ -7524,9 +7524,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n水印可以增加图片形式的水印么，类似于文本，有些情况需要使用logo作为水印内容\n\n### What does the proposed API look like?\n\ncommand.executeAddWatermark({\n            type: 'image',\n            data: watermark.data, //文本或图片base64\n            color: watermark.color,\n            size: Number(watermark.size),\n            opacity: Number(watermark.opacity),\n            repeat,\n            gap:\n              repeat && watermark.horizontalGap && watermark.verticalGap\n                ? [\n                    Number(watermark.horizontalGap),\n                    Number(watermark.verticalGap)\n                  ]\n                : undefined\n          })",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已补充自动化回归：验证 executeAddWatermark 支持 WatermarkType.IMAGE，并保留图片水印 data、尺寸、透明度、repeat 与 gap 配置。",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

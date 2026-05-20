@@ -556,7 +556,7 @@ describe('recent issue API regressions', () => {
     })
   })
 
-  it('issue #1267 preserves image watermark options from executeAddWatermark', () => {
+  it('issues #1043 and #1267 preserve image watermark options from executeAddWatermark', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeAddWatermark({
         data: transparentPng,

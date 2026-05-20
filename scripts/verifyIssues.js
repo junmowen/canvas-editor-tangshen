@@ -73,6 +73,10 @@ const ISSUE_SPECS = {
     title: 'executeSize 后 rangeStyleChange 立即返回更新后的字号',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  1043: {
+    title: 'executeAddWatermark 支持图片格式水印',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   1181: {
     title: '水印可在添加时调整尺寸',
     specs: ['cypress/e2e/menus/watermark.cy.ts']
