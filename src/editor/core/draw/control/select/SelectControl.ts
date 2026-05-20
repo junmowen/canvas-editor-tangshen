@@ -96,8 +96,9 @@ export class SelectControl implements IControlInstance {
    * @returns 代码数组
    */
   public getCodes(): string[] {
-    return this.element?.control?.code
-      ? this.element.control.code.split(',')
+    return this.element?.control?.code !== undefined &&
+      this.element.control.code !== null
+      ? String(this.element.control.code).split(',')
       : []
   }
 
@@ -118,7 +119,7 @@ export class SelectControl implements IControlInstance {
     const valueList: string[] = []
     // 将代码转换为对应的值
     codes.forEach(code => {
-      const valueSet = valueSets.find(v => v.code === code)
+      const valueSet = valueSets.find(v => String(v.code) === code)
       if (valueSet && !isNonValue(valueSet.value)) {
         valueList.push(valueSet.value)
       }
@@ -379,7 +380,7 @@ export class SelectControl implements IControlInstance {
    */
 
   public setSelect(
-    code: string,
+    code: string | number,
     context: IControlContext = {},
     options: IControlRuleOption = {}
   ) {
@@ -393,14 +394,18 @@ export class SelectControl implements IControlInstance {
     const elementList = context.elementList || this.control.getElementList()
     const range = context.range || this.control.getEditBoundaryRange()
     const control = this.element.control!
-    const newCodes = code?.split(this.VALUE_DELIMITER) || []
+    const normalizedCode = String(code)
+    const newCodes = normalizedCode.split(this.VALUE_DELIMITER)
     // 缓存旧值
     const oldCode = control.code
-    const oldCodes = control.code?.split(this.VALUE_DELIMITER) || []
+    const oldCodes =
+      control.code !== undefined && control.code !== null
+        ? String(control.code).split(this.VALUE_DELIMITER)
+        : []
     // 选项相同时无需重复渲染
     const isMultiSelect = control.isMultiSelect
     if (
-      (!isMultiSelect && code === oldCode) ||
+      (!isMultiSelect && normalizedCode === String(oldCode)) ||
       (isMultiSelect && isArrayEqual(oldCodes, newCodes))
     ) {
       this.control.repaintControl({
@@ -471,7 +476,7 @@ export class SelectControl implements IControlInstance {
     // 设置状态
     this.control.setControlProperties(
       {
-        code
+        code: normalizedCode
       },
       {
         elementList,
@@ -510,22 +515,23 @@ export class SelectControl implements IControlInstance {
       const valueSet = valueSets[v]
       const li = document.createElement('li')
       let codes = this.getCodes()
-      if (codes.includes(valueSet.code)) {
+      const valueSetCode = String(valueSet.code)
+      if (codes.includes(valueSetCode)) {
         li.classList.add('active')
       }
       li.onclick = () => {
-        const codeIndex = codes.findIndex(code => code === valueSet.code)
+        const codeIndex = codes.findIndex(code => code === valueSetCode)
         if (control.isMultiSelect) {
           if (~codeIndex) {
             codes.splice(codeIndex, 1)
           } else {
-            codes.push(valueSet.code)
+            codes.push(valueSetCode)
           }
         } else {
           if (~codeIndex) {
             codes = []
           } else {
-            codes = [valueSet.code]
+            codes = [valueSetCode]
           }
         }
         this.setSelect(codes.join(this.VALUE_DELIMITER))

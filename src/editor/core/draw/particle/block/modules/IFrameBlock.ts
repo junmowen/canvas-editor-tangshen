@@ -1,3 +1,4 @@
+import type { Draw } from '../../../Draw'
 import { IRowElement } from '../../../../../interface/Row'
 
 export class IFrameBlock {
@@ -12,9 +13,11 @@ export class IFrameBlock {
     'allow-top-navigation-by-user-activation'
   ]
   private element: IRowElement
+  private draw: Draw
 
-  constructor(element: IRowElement) {
+  constructor(element: IRowElement, draw: Draw) {
     this.element = element
+    this.draw = draw
   }
 
   private _defineIframeProperties(iframeWindow: Window) {
@@ -47,6 +50,11 @@ export class IFrameBlock {
     iframe.style.border = 'none'
     iframe.style.width = '100%'
     iframe.style.height = '100%'
+    if (this.draw.isReadonly() || this.draw.isPrintMode()) {
+      iframe.setAttribute('inert', '')
+      iframe.tabIndex = -1
+      iframe.style.pointerEvents = 'none'
+    }
     if (block.iframeBlock?.src) {
       iframe.src = block.iframeBlock.src
     } else if (block.iframeBlock?.srcdoc) {
@@ -63,6 +71,7 @@ export class IFrameBlock {
     )
     const iframeBlock = this.element.block?.iframeBlock
     if (!iframe || !iframeBlock || !iframeBlock.srcdoc) return false
+    if (iframe.hasAttribute('inert')) return false
     try {
       const doc = iframe.contentDocument
       if (!doc) return false

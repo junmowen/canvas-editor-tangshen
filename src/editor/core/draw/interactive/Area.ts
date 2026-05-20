@@ -20,7 +20,7 @@ import { Position } from '../../position/Position'
 import { formatElementList, zipElementList } from '../../../utils/element'
 import { AreaMode } from '../../../dataset/enum/Area'
 import { IRange } from '../../../interface/Range'
-import { IElementPosition } from '../../../interface/Element'
+import { IElement, IElementPosition } from '../../../interface/Element'
 import { Placeholder } from '../frame/Placeholder'
 import { defaultPlaceholderOption } from '../../../dataset/constant/Placeholder'
 import { DeepRequired } from '../../../interface/Common'
@@ -301,6 +301,19 @@ export class Area {
         isCompute = true
       }
     })
+    const syncElementList = (elementList: IElement[]) => {
+      elementList.forEach(element => {
+        if (element.areaId === areaId) {
+          element.area = area
+        }
+        element.trList?.forEach(tr => {
+          tr.tdList.forEach(td => {
+            syncElementList(td.value)
+          })
+        })
+      })
+    }
+    syncElementList(this.draw.getOriginalMainElementList())
     this.draw.render({
       isCompute,
       isSetCursor: false,

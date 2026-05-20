@@ -81,6 +81,7 @@ export function formatElementList(
   const {
     isHandleFirstElement = true,
     isForceCompensation = false,
+    isFromControlValue = false,
     parentControlId,
     editorOptions
   } = options
@@ -241,8 +242,8 @@ export function formatElementList(
           const tr = el.trList[t]
           const trId = tr.id || getUUID()
           tr.id = trId
-          if (!tr.minHeight || tr.minHeight < defaultTrMinHeight) {
-            tr.minHeight = defaultTrMinHeight
+          if (tr.minHeight === undefined) {
+            tr.minHeight = tr.height || defaultTrMinHeight
           }
           if (tr.height < tr.minHeight) {
             tr.height = tr.minHeight
@@ -350,10 +351,21 @@ export function formatElementList(
         controlContext.parentControlId = parentControlId
       }
       // 控件设置的默认样式（以前缀为基准）
-      const controlDefaultStyle = pickObject(
+      const controlDefaultStyle = {
+        ...pickObject(el, CONTROL_STYLE_ATTR),
+        ...pickObject(<IElement>(<unknown>el.control), CONTROL_STYLE_ATTR)
+      }
+      const controlExplicitStyle = pickObject(
         <IElement>(<unknown>el.control),
         CONTROL_STYLE_ATTR
       )
+      if (
+        controlExplicitStyle.color === editorOptions.defaultColor &&
+        Array.isArray(value) &&
+        !value.some(valueElement => valueElement.color !== undefined)
+      ) {
+        delete controlExplicitStyle.color
+      }
       // 前后缀个性化设置
       const thePrePostfixArg: Omit<IElement, 'value'> = {
         ...controlDefaultStyle,
@@ -401,11 +413,16 @@ export function formatElementList(
         (value && value.length) ||
         type === ControlType.CHECKBOX ||
         type === ControlType.RADIO ||
-        (type === ControlType.SELECT && code && (!value || !value.length))
+        (type === ControlType.SELECT &&
+          code !== undefined &&
+          code !== null &&
+          (!value || !value.length))
       ) {
         let valueList: IElement[] = value ? deepClone(value) : []
         if (type === ControlType.CHECKBOX) {
-          const codeList = code ? code.split(',') : []
+          const codeList = code !== undefined && code !== null
+            ? String(code).split(',')
+            : []
           if (Array.isArray(valueSets) && valueSets.length) {
             // 拆分valueList优先使用其属性
             const valueStyleList = valueList.reduce(
@@ -429,7 +446,7 @@ export function formatElementList(
                 controlComponent: ControlComponent.CHECKBOX,
                 checkbox: {
                   code: valueSet.code,
-                  value: codeList.includes(valueSet.code)
+                  value: codeList.includes(String(valueSet.code))
                 }
               })
               i++
@@ -440,7 +457,7 @@ export function formatElementList(
                 const isLastLetter = e === valueStrList.length - 1
                 elementList.splice(i, 0, {
                   ...controlContext,
-                  ...controlDefaultStyle,
+                  ...controlExplicitStyle,
                   ...valueStyleList[valueStyleIndex],
                   controlId,
                   value: value === '\n' ? ZERO : value,
@@ -477,7 +494,10 @@ export function formatElementList(
                 controlComponent: ControlComponent.RADIO,
                 radio: {
                   code: valueSet.code,
-                  value: code === valueSet.code
+                  value:
+                    code !== undefined &&
+                    code !== null &&
+                    String(code) === String(valueSet.code)
                 }
               })
               i++
@@ -488,7 +508,7 @@ export function formatElementList(
                 const isLastLetter = e === valueStrList.length - 1
                 elementList.splice(i, 0, {
                   ...controlContext,
-                  ...controlDefaultStyle,
+                  ...controlExplicitStyle,
                   ...valueStyleList[valueStyleIndex],
                   controlId,
                   value: value === '\n' ? ZERO : value,
@@ -504,7 +524,12 @@ export function formatElementList(
         } else {
           if (!value || !value.length) {
             if (Array.isArray(valueSets) && valueSets.length) {
-              const valueSet = valueSets.find(v => v.code === code)
+              const valueSet = valueSets.find(
+                v =>
+                  code !== undefined &&
+                  code !== null &&
+                  String(v.code) === String(code)
+              )
               if (valueSet) {
                 valueList = [
                   {
@@ -536,7 +561,7 @@ export function formatElementList(
             const value = element.value
             elementList.splice(i, 0, {
               ...controlContext,
-              ...controlDefaultStyle,
+              ...controlExplicitStyle,
               ...element,
               controlId: element.parentControlId ? element.controlId : controlId,
               value: value === '\n' ? ZERO : value,
@@ -618,7 +643,15 @@ export function formatElementList(
       elementList.splice(i, 1)
       const valueList = splitText(el.value)
       for (let v = 0; v < valueList.length; v++) {
-        elementList.splice(i + v, 0, { ...el, value: valueList[v] })
+        const nextElement = { ...el, value: valueList[v] }
+        if (isFromControlValue) {
+          CONTROL_STYLE_ATTR.forEach(attr => {
+            if (el[attr] === undefined) {
+              delete nextElement[attr]
+            }
+          })
+        }
+        elementList.splice(i + v, 0, nextElement)
       }
       el = elementList[i]
     }
@@ -671,10 +704,10 @@ function getControlInlineValueText(
       control.type === ControlType.RADIO) &&
     Array.isArray(control.valueSets)
   ) {
-    if (control.code) {
-      const codeList = control.code.split(',')
+    if (control.code !== undefined && control.code !== null) {
+      const codeList = String(control.code).split(',')
       const valueList = control.valueSets
-        .filter(valueSet => codeList.includes(valueSet.code))
+        .filter(valueSet => codeList.includes(String(valueSet.code)))
         .map(valueSet => valueSet.value)
       if (valueList.length) {
         return valueList.join(control.multiSelectDelimiter || '、')
@@ -1013,10 +1046,11 @@ export function zipElementList(
           start++
         }
         if (isFull) {
-          // 以前缀为基准更新控件默认样式
-          const controlDefaultStyle = <IControlSelect>(
-            (<unknown>pickObject(element, CONTROL_STYLE_ATTR))
-          )
+          // 控件自身样式优先；没有声明时再继承前缀样式
+          const controlDefaultStyle = <IControlSelect>(<unknown>{
+            ...pickObject(element, CONTROL_STYLE_ATTR),
+            ...pickObject(<IElement>(<unknown>element.control), CONTROL_STYLE_ATTR)
+          })
           const control = {
             ...element.control!,
             ...controlDefaultStyle
@@ -1109,6 +1143,17 @@ export function zipElementList(
       e++
     }
     zipElementListData.push(pickElement)
+  }
+  if (
+    zipElementListData[0] &&
+    (!zipElementListData[0].type ||
+      zipElementListData[0].type === ElementType.TEXT) &&
+    /^\n{2,}/.test(zipElementListData[0].value)
+  ) {
+    zipElementListData[0].value = zipElementListData[0].value.replace(
+      /^\n+/,
+      '\n'
+    )
   }
   return zipElementListData
 }
@@ -1427,7 +1472,9 @@ export function groupElementListByRowFlex(
   // 压缩数据
   for (let g = 0; g < elementListGroupList.length; g++) {
     const elementListGroup = elementListGroupList[g]
-    elementListGroup.data = zipElementList(elementListGroup.data)
+    elementListGroup.data = zipElementList(elementListGroup.data, {
+      isClassifyArea: true
+    })
   }
   return elementListGroupList
 }
@@ -1542,6 +1589,10 @@ export function createDomFromElementList(
           list.append(li)
         })
         clipboardDom.append(list)
+      } else if (element.type === ElementType.AREA) {
+        if (!element.valueList?.length) continue
+        const childDom = buildDom(element.valueList)
+        clipboardDom.append(...Array.from(childDom.childNodes))
       } else if (element.type === ElementType.IMAGE) {
         const img = document.createElement('img')
         if (element.value) {
@@ -1606,6 +1657,10 @@ export function createDomFromElementList(
       } else if (element.type === ElementType.SEPARATOR) {
         const hr = document.createElement('hr')
         clipboardDom.append(hr)
+      } else if (element.type === ElementType.PAGE_BREAK) {
+        const pageBreak = document.createElement('span')
+        pageBreak.dataset.cePageBreak = 'true'
+        clipboardDom.append(pageBreak)
       } else if (element.type === ElementType.CHECKBOX) {
         const checkbox = document.createElement('input')
         checkbox.type = 'checkbox'
@@ -1823,6 +1878,13 @@ export function getElementListByHTML(
       const childNodes = dom.childNodes
       for (let n = 0; n < childNodes.length; n++) {
         const node = childNodes[n]
+        if ((node as HTMLElement).dataset?.cePageBreak === 'true') {
+          elementList.push({
+            type: ElementType.PAGE_BREAK,
+            value: '\n'
+          })
+          continue
+        }
         // br元素与display:block元素需换行
         if (node.nodeName === 'BR') {
           elementList.push({
@@ -1898,10 +1960,10 @@ export function getElementListByHTML(
           })
         } else if (node.nodeName === 'IMG') {
           const { src, width, height } = node as HTMLImageElement
-          if (src && width && height) {
+          if (src) {
             const imageElement: IElement = {
-              width,
-              height,
+              width: width || 1,
+              height: height || 1,
               value: src,
               type: ElementType.IMAGE
             }

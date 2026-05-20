@@ -11,14 +11,21 @@ export function applyCheckboxToggle(payload: { draw: Draw; element: IElement }) 
     draw.getCheckboxParticle().setSelect(element)
     return
   }
-  const codes = control?.code ? control.code.split(',') : []
+  const codes =
+    control.code !== undefined && control.code !== null
+      ? String(control.code).split(',')
+      : []
   if (checkbox?.value) {
-    const codeIndex = codes.findIndex(c => c === checkbox.code)
+    const codeIndex = codes.findIndex(c => c === String(checkbox.code))
     codes.splice(codeIndex, 1)
-  } else if (checkbox?.code) {
-    codes.push(checkbox.code)
+  } else if (checkbox?.code !== undefined && checkbox.code !== null) {
+    codes.push(String(checkbox.code))
   }
-  const activeControl = draw.getControl().getActiveControl()
+  const controlManager = draw.getControl()
+  if (!controlManager.getActiveControl()) {
+    controlManager.initControl()
+  }
+  const activeControl = controlManager.getActiveControl()
   if (activeControl instanceof CheckboxControl) {
     activeControl.setSelect(codes)
   }
@@ -31,8 +38,13 @@ export function applyRadioToggle(payload: { draw: Draw; element: IElement }) {
     draw.getRadioParticle().setSelect(element)
     return
   }
-  const codes = radio?.code ? [radio.code] : []
-  const activeControl = draw.getControl().getActiveControl()
+  const codes =
+    radio?.code !== undefined && radio.code !== null ? [String(radio.code)] : []
+  const controlManager = draw.getControl()
+  if (!controlManager.getActiveControl()) {
+    controlManager.initControl()
+  }
+  const activeControl = controlManager.getActiveControl()
   if (activeControl instanceof RadioControl) {
     activeControl.setSelect(codes)
   }

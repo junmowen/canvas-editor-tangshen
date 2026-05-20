@@ -144,10 +144,14 @@ export class DrawLayoutPipeline {
       // 计算页眉（如果未禁用）
       if (!header.disabled) {
         this.draw.getComponents().header.compute()
+      } else {
+        this.draw.getComponents().header.recovery()
       }
       // 计算页脚（如果未禁用）
       if (!footer.disabled) {
         this.draw.getComponents().footer.compute()
+      } else {
+        this.draw.getComponents().footer.recovery()
       }
     }
 
@@ -391,9 +395,13 @@ export class DrawLayoutPipeline {
     if (isPagingMode || this.draw.getOptions().pageMode === PageMode.CONTINUITY) {
       if (!header.disabled) {
         this.draw.getComponents().header.compute()
+      } else {
+        this.draw.getComponents().header.recovery()
       }
       if (!footer.disabled) {
         this.draw.getComponents().footer.compute()
+      } else {
+        this.draw.getComponents().footer.recovery()
       }
     }
     const margins = this.draw.getMargins()

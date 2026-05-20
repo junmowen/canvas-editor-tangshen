@@ -1654,13 +1654,18 @@ export class CommandAdapt {
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
     const options = this.draw.getOptions()
-    const { color, size, opacity, font, gap } = defaultWatermarkOption
+    const { type, color, size, opacity, font, gap, width, height, numberType } =
+      defaultWatermarkOption
     options.watermark.data = payload.data
+    options.watermark.type = payload.type || type
+    options.watermark.width = payload.width || width
+    options.watermark.height = payload.height || height
     options.watermark.color = payload.color || color
     options.watermark.size = payload.size || size
     options.watermark.opacity = payload.opacity || opacity
     options.watermark.font = payload.font || font
     options.watermark.repeat = !!payload.repeat
+    options.watermark.numberType = payload.numberType || numberType
     options.watermark.gap = payload.gap || gap
     this.draw.render({
       isSetCursor: false,
@@ -2376,10 +2381,28 @@ export class CommandAdapt {
     }
     // 更新内容
     if (!updateElementInfoList.length) return
+    const updateRangeInfoList: {
+      elementList: IElement[]
+      startIndex: number
+      endIndex: number
+    }[] = []
     for (let i = 0; i < updateElementInfoList.length; i++) {
       const { elementList, index } = updateElementInfoList[i]
+      const prevRange = updateRangeInfoList[updateRangeInfoList.length - 1]
+      if (prevRange?.elementList === elementList && prevRange.endIndex + 1 === index) {
+        prevRange.endIndex = index
+      } else {
+        updateRangeInfoList.push({
+          elementList,
+          startIndex: index,
+          endIndex: index
+        })
+      }
+    }
+    for (let i = updateRangeInfoList.length - 1; i >= 0; i--) {
+      const { elementList, startIndex, endIndex } = updateRangeInfoList[i]
       // 重新格式化元素
-      const oldElement = elementList[index]
+      const oldElement = elementList[startIndex]
       const newElement = [
         pickElementAttr(
           {
@@ -2403,7 +2426,7 @@ export class CommandAdapt {
         isHandleFirstElement: false,
         editorOptions: this.options
       })
-      elementList[index] = newElement[0]
+      elementList.splice(startIndex, endIndex - startIndex + 1, ...newElement)
     }
     this.draw.render({
       isSetCursor: false
@@ -3180,6 +3203,18 @@ export class CommandAdapt {
     } else {
       element = elementList[index] || null
       position = positionList[index] || null
+    }
+    if (element?.controlId) {
+      const controlValue = this.draw
+        .getControl()
+        .getList()
+        .find(controlElement => controlElement.controlId === element!.controlId)
+      if (controlValue?.control) {
+        element = {
+          ...element,
+          control: controlValue.control
+        }
+      }
     }
     // 元素包围信息
     let rangeRect: RangeRect | null = null

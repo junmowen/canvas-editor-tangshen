@@ -246,8 +246,8 @@ export class ImageParticle {
     } = {}
   ) {
     const { scale } = this.options
-    const width = element.width! * scale
-    const height = element.height! * scale
+    const width = element.metrics?.width || element.width! * scale
+    const height = element.metrics?.height || element.height! * scale
     const renderImage = (
       renderCtx: CanvasRenderingContext2D,
       img: HTMLImageElement

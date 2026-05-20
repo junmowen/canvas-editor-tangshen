@@ -51,7 +51,7 @@ export class RadioControl extends CheckboxControl {
       // 更新单选框值
       if (preElement.controlComponent === ControlComponent.RADIO) {
         const radio = preElement.radio!
-        radio.value = codes.includes(radio.code!)
+        radio.value = codes.includes(String(radio.code))
       }
       preIndex--
     }
@@ -70,7 +70,7 @@ export class RadioControl extends CheckboxControl {
       // 更新单选框值
       if (nextElement.controlComponent === ControlComponent.RADIO) {
         const radio = nextElement.radio!
-        radio.value = codes.includes(radio.code!)
+        radio.value = codes.includes(String(radio.code))
       }
       nextIndex++
     }

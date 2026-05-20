@@ -11,9 +11,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1413",
     "labels": [],
     "body": "### What problem does this feature solve?\n\nWhen writing record, some controls should not be deleted, so they should be protected.\n\n### What does the proposed API look like?\n\ncontrol protection",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -279,9 +281,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1397",
     "labels": [],
     "body": "### version\n\n0.9.128\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n页面模式是连页，水印设置不生效；\nhttps://hufe.club/canvas-editor/\n步骤一：设置水印；\n步骤二：页面模式切换成连页；\n现象：水印不见了\n\n### What is expected?\n\n希望页面模式是连页的情况，水印也能生效；\n\n<img width=\"2439\" height=\"1290\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/dbb2d7a8-bb32-40ce-b3b4-38383dea37d4\" />\n\n### What is actually happening?\n\n页面模式是连页，水印设置不生效；\nhttps://hufe.club/canvas-editor/\n步骤一：设置水印；\n步骤二：页面模式切换成连页；\n现象：水印不见了\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-94-continuity-large-doc.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-94-continuity-large-doc.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -369,9 +373,11 @@
       }
     ],
     "body": "### version\n\nlast\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\nIn the example, I'm pressing Ctrl + Shift + Left, but it also works when you place the cursor at the beginning of the line and switch to the right arrow key.\n\nhttps://github.com/user-attachments/assets/6e971c25-0143-4d8b-b598-47e00e793787\n\n### What is expected?\n\nIt's expected that selecting Ctrl + Shift + Left/Right will select one word at a time in the line, not the entire line, for example.\n\nhttps://github.com/user-attachments/assets/be3ae968-a029-48e1-97bb-b0add6230b0e\n\nOnly the shortcuts with Shift + Home select the entire line.\n\n### What is actually happening?\n\nThe keyboard shortcuts Ctrl + Shift + Left/Right select the entire line.\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -636,9 +642,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n作者你好，现在最新版的 executePrint 支持 block元素的iframe类型了。但测试发现 getImage  不支持。是否可以让 getImage 也支持，在某些情况下需要导出 图片，getImage  不支持的话比较难搞\n\n### What does the proposed API look like?\n\n像 executePrint  一样支持  block元素的iframe类型",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -718,9 +726,11 @@
       }
     ],
     "body": "### version\n\nlast\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\nOpen the demo, go to a paragraph that has more than one line, position the cursor at the beginning of the line (not necessarily on the first character). Then press the left arrow key to move the cursor back to the beginning of the line. When you reach the second character and try to return to the first character at the beginning of the line, the cursor will return to the previous line at the last position. Pressing the right arrow key to go to the first position of the line below will move the cursor to the second position.\n\nhttps://github.com/user-attachments/assets/d1c1aff9-c5f3-470b-87dc-43904bde3466\n\n### What is expected?\n\nIn paragraphs with more than one line, from the second line onwards, when navigating using the left arrow key, or the home key to go to the beginning of the line, the cursor returns to the first position of the line, and not to the second position as it usually does.\n\n### What is actually happening?\n\nThis does not happen in paragraphs with only one line. The problem only occurs if it is an element with text that generates two or more lines. I also noticed that it only happens on the second line onwards. If you navigate in the first line of the paragraph, the cursor returns to the first character on the normal line. This also happens when navigating using the home key.\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -745,9 +755,11 @@
       }
     ],
     "body": "### version\n\n最新版\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n将以下代码 添加到 官方代码 mock.ts 文件中\n运行项目，进行打印\n\n```\nconst srcdoc = `<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title></title>\n</head>\n\n<body>\nblock 内部元素:<input type=\"text\"  value=\"\"><br>\n\n<input type=\"submit\" value=\"提交\">\n</body>\n\n</html>`\nelementList.push({\n  value: '',\n  type: ElementType.BLOCK,\n  height: 200,\n  block: {\n    type: BlockType.IFRAME,\n    iframeBlock: {\n      srcdoc\n    }\n  }\n})\n```\n\n在打印预览中，发现 block 丢失\nhttps://github.com/user-attachments/assets/3f7ef1a4-7623-42a2-ab0a-7f012baa686a\n\n### What is expected?\n\n像其他控件一样正常打印\n\n### What is actually happening?\n\n....\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -772,9 +784,11 @@
       }
     ],
     "body": "### version\n\n最新版\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n在官方项目中 mock.ts 文件中添加\n```\nconst srcdoc = `<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title></title>\n</head>\n\n<body>\nblock 内部元素:<input type=\"text\"  value=\"\"><br>\n\n<input type=\"submit\" value=\"提交\">\n</body>\n\n</html>`\nelementList.push({\n  value: '',\n  type: ElementType.BLOCK,\n  height: 200,\n  block: {\n    type: BlockType.IFRAME,\n    iframeBlock: {\n      srcdoc\n    }\n  }\n})\n```\n\n然后为 options 添加  ` mode: EditorMode.PRINT` 将模式改为打印模式\n\n启动项目，发现 block 位置异常\n\n<img width=\"1137\" height=\"893\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/ccbf73af-4036-422b-a64b-1a92206616cf\" />\n\n### What is expected?\n\n应当与其他模式下位置保持一致\n\n### What is actually happening?\n\n.......\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -799,9 +813,11 @@
       }
     ],
     "body": "### version\n\n最新版\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n将编辑器改为只读或打印模式，尝试编辑 block iframe 内部元素，发现仍可编辑\n\nhttps://github.com/user-attachments/assets/bdc8d9a5-79ba-47c9-9127-684dfc953c65\n\n\n测试代码 \n``` \n\nconst srcdoc = `<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title></title>\n</head>\n\n<body>\nblock 内部元素:<input type=\"text\"  value=\"\"><br>\n\n<input type=\"submit\" value=\"提交\">\n</body>\n\n</html>`\nelementList.push({\n  value: '',\n  type: ElementType.BLOCK,\n  height: 200,\n  block: {\n    type: BlockType.IFRAME,\n    iframeBlock: {\n      srcdoc\n    }\n  }\n})\n\n ```\n\n### What is expected?\n\n与外部控件保持一致，应当禁止编辑\n\n### What is actually happening?\n\n.....\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -1039,9 +1055,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\nCurrently, there's no native way to work with the Home and End keys on the keyboard. I tried using the existing API, but the only effect I achieved was setting the cursor to the beginning/end of the line like this:\n\n```\n  const ctx = editor.command.getRangeContext()\n  editor.command.focus({ rowNo: ctx.startRowNo, position: 'before' })\n  editor.command.focus({ rowNo: ctx.startRowNo, position: 'after' })\n```\n\nBut I couldn't use getRangeContext in conjunction with executeSetRange to select the entire remaining part of the line, either to the left or right.\n\nFrom what I understand, the rangeContext information isn't sufficient to set the selection to the beginning/end of the line.\n\nI don't know if I'm not using the information correctly.\n\n### What does the proposed API look like?\n\nI implemented two files for the keydown handler, home and end. It works normally even within tables.\n\nhttps://github.com/user-attachments/assets/47c0a3c8-5e69-4774-9907-b8b2eda7d6c4\n\nI'll send a PR if the author is interested. As I said before, I don't know if the current API provides a way to achieve this result; if so, I would be grateful if the author could guide me.",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -1330,9 +1348,11 @@
       }
     ],
     "body": "### version\n\n0.9.123\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n<img width=\"789\" height=\"662\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/53cc359b-878a-40b2-9f0f-d7d2ed292e19\" />\n\n打开demo\n切换模式为表单模式\n点击checkbox的复现框\n第一次点击无效，再次点击才选中\n\n### What is expected?\n\n点击能选中复选框\n\n### What is actually happening?\n\n点击未选中复选框\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -2641,9 +2661,11 @@
       }
     ],
     "body": "### version\n\n0.9.117\n\n### Link to minimal reproduction\n\nhttps://hufe.club/canvas-editor/\n\n### Steps to reproduce\n\nhttps://hufe.club/canvas-editor/\n1. 页眉页脚为显示状态 编辑器配置  页眉页脚disabled为true设置为隐藏\n2.页眉页脚内容隐藏，但是依旧存在位置占用以及可以双击进入编辑模式，但是无法输入内容\n\n\n### What is expected?\n\n页眉页脚disabled为true设置为隐藏更新配置后不占用位置，也不能编辑\n\n### What is actually happening?\n\n配置更新后调用executeForceUpdate依旧无变化\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -2834,9 +2856,11 @@
       }
     ],
     "body": "### version\n\n0.9.116\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n之前有人提过这个问题，但是调用新增水印的时候没有传type类型这个\n\n<img width=\"893\" height=\"447\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/0b4af4c6-3fa6-4af3-9a11-243756a8b651\" />\n\n### What is expected?\n\n能够支持文本和图像进行添加水印，当前只有默认的文本才行，图像不可以\n\n### What is actually happening?\n\naddWatermark这个方法没有赋值入参中的type，导致一直是文本的水印\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -2989,9 +3013,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n有一些数据是分组，例如患者信息patientInfo:{sex:1,name:'张三'}护理单信息nursingInfo：{sex:1,name:'李四'}目前executeSetControlValueList方法中conceptId是唯一的，例子中patientInfo和nursingInfo中的字段不能一样的才能互不影响，\n期望实现效果：根据一个名称来来批量给某个字段下面的字段进行赋值，例如：对象：instance.command.executeSetControlValueList（‘patientInfo’，{sex:1,name:'张三'}）instance.command.executeSetControlValueList（‘nursingInfo’，{sex:1=0,name:'李四'}）\n\n### What does the proposed API look like?\n\n有一些数据是分组，例如患者信息patientInfo:{sex:1,name:'张三'}护理单信息nursingInfo：{sex:1,name:'李四'}目前executeSetControlValueList方法中conceptId是唯一的，例子中patientInfo和nursingInfo中的字段不能一样的才能互不影响，\n期望实现效果：根据一个名称来来批量给某个字段下面的字段进行赋值，例如：对象：instance.command.executeSetControlValueList（‘patientInfo’，{sex:1,name:'张三'}）instance.command.executeSetControlValueList（‘nursingInfo’，{sex:1=0,name:'李四'}）",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -3228,9 +3254,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1248",
     "labels": [],
     "body": "### version\n\n0.9.114\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n1、设置defaultTableOption中defaultTrMinHeight为20；\n2、新增一个空白table\n3、选择table空白行，通过设置小号字体实现 减小行高，保存\n4、再次渲染保存后的数据，table行高还原了... \n\n<img width=\"734\" height=\"213\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/22bd2241-abcd-4b50-8b49-16d23e16cda2\" />\n\n<img width=\"712\" height=\"397\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/56e15451-6d78-4938-880e-a10d2a74b020\" />\n\n### What is expected?\n\n想实现按设置的height高度渲染\n\n### What is actually happening?\n\n实际行高没有按照保存数据中trList中的height来处理\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -3279,9 +3307,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1245",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n动态设置图片元素隐藏和显示，如果有api请问要如何使用\n\n### What does the proposed API look like?\n\n调用api通过元素id控制图片的显隐,如果有api请问要如何使用?",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -3352,9 +3382,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1241",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n没有看到源码功能，怎么获取html文件呢？\n\n### What does the proposed API look like?\n\n没有看到源码功能，怎么获取html文件呢？",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -3491,9 +3523,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1234",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n请问怎么回显从getValue获得之后直接提交给后端的数据呢\n\n### What does the proposed API look like?\n\ngetValue和setValue",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -3799,9 +3833,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1215",
     "labels": [],
     "body": "### What problem does this feature solve?\n\nI'm inserting images into the editor using `executeInsertElementList`, like this:\n\n```\nwindow.editor_canvas.command.executeInsertElementList([\n  {\n    type: \"image\",\n    value: \"/path/to/image.jpg\",\n    width: 100,\n    height: 100,\n    extension: {\n      name: item.name,\n      type: item.type,\n      value: item.id,\n    }\n  }\n]);\n```\n\n\nThe image renders fine, but I want to delete it later programmatically using:\n\n`window.editor_canvas.command.executeDeleteElementById({ id });\n`\n\nThe problem is that `executeInsertElementList` doesn't expose or return the **internally generated** `id` for the inserted image.\n\nUsing `getValue() `shows an id, but it's not recognized by `executeDeleteElementById`.\nLikewise, `getHTML()` does not output any useful `id` on `<img>` tags.\n\nThe only way I've found to get the correct id is to **manually select the image** and access `getRangeContext().startElement.id.`\n\n### What does the proposed API look like?\n\nSome ideas:\n\n1 - Have `executeInsertElementList` **return the** **id**s of inserted elements:\n\n```\nconst ids = window.editor_canvas.command.executeInsertElementList([...]);\nconsole.log(ids); // ['uuid-1234']\n```\n\n2 - Provide a method like:\n\n`window.editor_canvas.command.getAllElementsByType('image')`\n\n...that returns all rendered images with their real **id**s.\n\n\n3 - Or, update `getHTML()` to include `data-id` attributes on rendered images:\n\n`<img src=\"/path/to/image.jpg\" data-id=\"uuid-1234\" />`\n\n`That would enable us to search and manipulate elements by id later.`",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -4048,9 +4084,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1203",
     "labels": [],
     "body": "### version\n\n0.9.113\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n使用 executeSetControlExtension 或者 executeSetAreaProperties 或者 executeSetControlValue api 添加属性与额外属性，无法添加成功。\n\n// 设置控件值\n`instance.command.executeSetControlValue({\n  conceptId: \"111\",\n  value: \"9999\",\n});\n`\n// 设置控件属性\n`instance.command.executeSetControlExtension({\n  conceptId: \"555\",\n  extension: \"extension\",\n});\n`\n// 设置选区内容\n`instance.command.executeSetAreaProperties({\n  conceptId: \"666\",\n  properties: {\n      extension: \"areaContent\"\n  },\n});`\n\n### What is expected?\n\n想要在单元格中添加属性与额外属性，或者通过鼠标选择内容添加属性与额外属性，怎么都添加不成功。我查阅了 issues ，没有找到对应的解释。\n\n### What is actually happening?\n\n查阅api使用规则，发现没有错误\n\n<img width=\"694\" height=\"663\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/21b14164-2a17-4769-b9cd-81e19deba317\" />\n\n<img width=\"639\" height=\"356\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/af9effe7-16a3-4b39-a10e-bbf0e2c287c2\" />\n\n<img width=\"710\" height=\"279\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/aabf87b4-f947-4545-b8d2-6fae36b96330\" />\n\n### Editor Value\n\n```json\n{\n    \"version\": \"0.9.113\",\n    \"data\": {\n        \"header\": [],\n        \"main\": [\n            {\n                \"value\": \"\\n\\n\",\n                \"size\": 16,\n                \"bold\": false,\n                \"color\": \"rgb(0, 0, 0)\",\n                \"italic\": false\n            },\n            {\n                \"value\": \"\\n\",\n                \"type\": \"table\",\n                \"trList\": [\n                    {\n                        \"height\": 42,\n                        \"tdList\": [\n                            {\n                                \"colspan\": 1,\n                                \"rowspan\": 1,\n                                \"value\": [\n                                    {\n                                        \"value\": \"理机构\",\n                                        \"size\": 12,\n                                        \"bold\": false,\n                                        \"color\": \"rgb(0, 0, 0)\",\n                                        \"italic\": false,\n                                        \"rowFlex\": \"center\"\n                                    }\n                                ]\n                            },\n                            {\n                                \"colspan\": 1,\n                                \"rowspan\": 1,\n                                \"value\": [\n                                    {\n                                        \"value\": \"项目   个，   个符合；\",\n                                        \"size\": 12,\n                                        \"bold\": false,\n                                        \"color\": \"rgb(0, 0, 0)\",\n                                        \"italic\": false\n                                    },\n                                    {\n                                        \"value\": \"\\n\"\n                                    },\n                                    {\n                                        \"value\": \"一准。 \",\n                                        \"size\": 12,\n                                        \"bold\": false,\n                                        \"color\": \"rgb(0, 0, 0)\",\n                                        \"italic\": false\n                                    }\n                                ]\n                            },\n                            {\n                                \"colspan\": 1,\n                                \"rowspan\": 1,\n                                \"value\": [\n                                    {\n                                        \"value\": \"□优良\",\n                                        \"size\": 12,\n                                        \"bold\": false,\n                                        \"color\": \"rgb(0, 0, 0)\",\n                                        \"italic\": false,\n                                        \"rowFlex\": \"alignment\"\n                                    },\n                                    {\n                                        \"value\": \"\\n\"\n                                    },\n                                    {\n                                        \"value\": \"□\",\n                                        \"size\": 12,\n                                        \"bold\": false,\n                                        \"color\": \"rgb(0, 0, 0)\",\n                                        \"italic\": false,\n                                        \"rowFlex\": \"alignment\"\n                                    }\n                                ]\n                            },\n                            {\n                                \"colspan\": 1,\n                                \"rowspan\": 1,\n                                \"value\": [\n                                    {\n                                        \"value\": \"理人：\",\n                                        \"size\": 12,\n                                        \"bold\": false,\n                                        \"color\": \"rgb(0, 0, 0)\",\n                                        \"italic\": false,\n                                        \"rowFlex\": \"alignment\"\n                                    },\n                                    {\n                                        \"value\": \"\\n\"\n                                    },\n                                    {\n                                        \"value\": \"年    月    日\",\n                                        \"size\": 12,\n                                        \"bold\": false,\n                                        \"color\": \"rgb(0, 0, 0)\",\n                                        \"italic\": false,\n                                        \"rowFlex\": \"right\"\n                                    }\n                                ]\n                            }\n                        ],\n                        \"minHeight\": 42\n                    }\n                ],\n                \"width\": 556,\n                \"height\": 42,\n                \"colgroup\": [\n                    {\n                        \"width\": 139\n                    },\n                    {\n                        \"width\": 139\n                    },\n                    {\n                        \"width\": 139\n                    },\n                    {\n                        \"width\": 139\n                    }\n                ]\n            },\n            {\n                \"value\": \"\\n\\n\",\n                \"size\": 16,\n                \"bold\": false,\n                \"color\": \"rgb(0, 0, 0)\",\n                \"italic\": false\n            },\n            {\n                \"value\": \"\\n\"\n            }\n        ],\n        \"footer\": []\n    },\n    \"options\": {\n        \"mode\": \"edit\",\n        \"locale\": \"zhCN\",\n        \"defaultType\": \"TEXT\",\n        \"defaultColor\": \"#000000\",\n        \"defaultFont\": \"Microsoft YaHei\",\n        \"defaultSize\": 12,\n        \"minSize\": 5,\n        \"maxSize\": 72,\n        \"defaultRowMargin\": 1,\n        \"defaultBasicRowMarginHeight\": 2,\n        \"defaultTabWidth\": 32,\n        \"width\": 794,\n        \"height\": 1123,\n        \"scale\": 1,\n        \"pageGap\": 20,\n        \"underlineColor\": \"#000000\",\n        \"strikeoutColor\": \"#FF0000\",\n        \"rangeAlpha\": 0.6,\n        \"rangeColor\": \"#AECBFA\",\n        \"rangeMinWidth\": 5,\n        \"searchMatchAlpha\": 0.6,\n        \"searchMatchColor\": \"#FFFF00\",\n        \"searchNavigateMatchColor\": \"#AAD280\",\n        \"highlightAlpha\": 0.6,\n        \"highlightMarginHeight\": 1,\n        \"resizerColor\": \"#4182D9\",\n        \"resizerSize\": 5,\n        \"marginIndicatorSize\": 35,\n        \"marginIndicatorColor\": \"#BABABA\",\n        \"margins\": [\n            100,\n            120,\n            100,\n            120\n        ],\n        \"pageMode\": \"continuity\",\n        \"renderMode\": \"speed\",\n        \"defaultHyperlinkColor\": \"#0000FF\",\n        \"paperDirection\": \"vertical\",\n        \"inactiveAlpha\": 0.6,\n        \"historyMaxRecordCount\": 100,\n        \"wordBreak\": \"break-word\",\n        \"printPixelRatio\": 3,\n        \"maskMargin\": [\n            60,\n            0,\n            30,\n            0\n        ],\n        \"letterClass\": [\n            \"A-Za-z\"\n        ],\n        \"contextMenuDisableKeys\": [],\n        \"shortcutDisableKeys\": [],\n        \"scrollContainerSelector\": \"\",\n        \"pageOuterSelectionDisable\": false,\n        \"watermark\": {\n            \"data\": \"CANVAS-EDITOR\",\n            \"type\": \"text\",\n            \"width\": 0,\n            \"height\": 0,\n            \"color\": \"#AEB5C0\",\n            \"opacity\": 0.3,\n            \"size\": 120,\n            \"font\": \"Microsoft YaHei\",\n            \"repeat\": false,\n            \"gap\": [\n                10,\n                10\n            ],\n            \"numberType\": \"arabic\"\n        },\n        \"pageNumber\": {\n            \"bottom\": 60,\n            \"size\": 12,\n            \"font\": \"Microsoft YaHei\",\n            \"color\": \"#000000\",\n            \"rowFlex\": \"center\",\n            \"format\": \"第{pageNo}页/共{pageCount}页\",\n            \"numberType\": \"arabic\",\n            \"disabled\": false,\n            \"startPageNo\": 1,\n            \"fromPageNo\": 0,\n            \"maxPageNo\": null\n        },\n        \"placeholder\": {\n            \"data\": \"请输入正文\",\n            \"color\": \"#DCDFE6\",\n            \"opacity\": 1,\n            \"size\": 16,\n            \"font\": \"Microsoft YaHei\"\n        },\n        \"zone\": {\n            \"tipDisabled\": false\n        },\n        \"table\": {\n            \"tdPadding\": [\n                0,\n                2,\n                0,\n                2\n            ],\n            \"defaultTrMinHeight\": 42,\n            \"defaultColMinWidth\": 40,\n            \"defaultBorderColor\": \"#000000\"\n        },\n        \"control\": {\n            \"placeholderColor\": \"#9c9b9b\",\n            \"bracketColor\": \"#000000\",\n            \"prefix\": \"‌\",\n            \"postfix\": \"‌\",\n            \"borderWidth\": 1,\n            \"borderColor\": \"#000000\",\n            \"activeBackgroundColor\": \"#f9ff04d6\",\n            \"disabledBackgroundColor\": \"red\",\n            \"existValueBackgroundColor\": \"#fff\",\n            \"noValueBackgroundColor\": \"yellow\"\n        },\n        \"checkbox\": {\n            \"width\": 12,\n            \"height\": 12,\n            \"gap\": 5,\n            \"lineWidth\": 1,\n            \"fillStyle\": \"#5175f4\",\n            \"strokeStyle\": \"#ffffff\",\n            \"verticalAlign\": \"bottom\"\n        },\n        \"radio\": {\n            \"width\": 12,\n            \"height\": 12,\n            \"gap\": 5,\n            \"lineWidth\": 1,\n            \"fillStyle\": \"#5175f4\",\n            \"strokeStyle\": \"#000000\",\n            \"verticalAlign\": \"bottom\"\n        },\n        \"header\": {\n            \"top\": 30,\n            \"inactiveAlpha\": 1,\n            \"maxHeightRadio\": \"half\",\n            \"disabled\": false,\n            \"editable\": true\n        },\n        \"footer\": {\n            \"bottom\": 30,\n            \"inactiveAlpha\": 1,\n            \"maxHeightRadio\": \"half\",\n            \"disabled\": false,\n            \"editable\": true\n        },\n        \"cursor\": {\n            \"width\": 1,\n            \"color\": \"#000000\",\n            \"dragWidth\": 2,\n            \"dragColor\": \"#0000FF\",\n            \"dragFloatImageDisabled\": false\n        },\n        \"title\": {\n            \"defaultFirstSize\": 26,\n            \"defaultSecondSize\": 24,\n            \"defaultThirdSize\": 22,\n            \"defaultFourthSize\": 20,\n            \"defaultFifthSize\": 18,\n            \"defaultSixthSize\": 16\n        },\n        \"group\": {\n            \"opacity\": 0.1,\n            \"backgroundColor\": \"#E99D00\",\n            \"activeOpacity\": 0.5,\n            \"activeBackgroundColor\": \"#E99D00\",\n            \"disabled\": false,\n            \"deletable\": true\n        },\n        \"pageBreak\": {\n            \"font\": \"Microsoft YaHei\",\n            \"fontSize\": 12,\n            \"lineDash\": [\n                3,\n                1\n            ]\n        },\n        \"background\": {\n            \"color\": \"#FFFFFF\",\n            \"image\": \"\",\n            \"size\": \"cover\",\n            \"repeat\": \"no-repeat\",\n            \"applyPageNumbers\": []\n        },\n        \"lineBreak\": {\n            \"disabled\": true,\n            \"color\": \"#CCCCCC\",\n            \"lineWidth\": 1.5\n        },\n        \"separator\": {\n            \"lineWidth\": 1,\n            \"strokeStyle\": \"#000000\"\n        },\n        \"lineNumber\": {\n            \"size\": 12,\n            \"font\": \"Microsoft YaHei\",\n            \"color\": \"#000000\",\n            \"disabled\": true,\n            \"right\": 20,\n            \"type\": \"continuity\"\n        },\n        \"pageBorder\": {\n            \"color\": \"#000000\",\n            \"lineWidth\": 1,\n            \"padding\": [\n                0,\n                5,\n                0,\n                5\n            ],\n            \"disabled\": true\n        },\n        \"badge\": {\n            \"top\": 0,\n            \"left\": 5\n        },\n        \"modeRule\": {\n            \"print\": {\n                \"imagePreviewerDisabled\": false\n            },\n            \"readonly\": {\n                \"imagePreviewerDisabled\": false\n            },\n            \"form\": {\n                \"controlDeletableDisabled\": false\n            }\n        }\n    }\n}\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n![Image](https://github.com/user-attachments/assets/32e96e7b-c15a-4c00-8c75-a740fb4a53ca)\n\n下图中1，2，3，目前使用哪个api都没有添加成功，是不是我使用的规则或者步骤不对\n\n<img width=\"608\" height=\"561\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/0f067516-0230-4d0b-83e4-4c687ba6fd45\" />",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -4103,9 +4141,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\nCurrently, it is not possible to associate custom metadata with image elements in `canvas-editor.` This limits use cases where it is necessary to identify, classify, or link additional information to inserted images (e.g., internal system IDs, tags, or external references).\n\nBeing able to retrieve these custom values via `getValue()` would make integrations and data persistence much easier, without relying on DOM hacks or external storage.\n\nIs there currently any way to:\n\n- Add custom properties to image elements (or other elements)?\n- Retrieve these properties through getValue() (or any other method)?\n\nIf not, are there plans to add support for this in future versions?\n\nThanks!\n\n### What does the proposed API look like?\n\nThe API could allow custom properties to be included in the object passed to `executeImage()` (and potentially other commands).\n\nExample:\n\n```\ninstance.command.executeImage({\n  width: 100,\n  height: 100,\n  value: \"example.png\",\n  customTag: \"myExtraValue\",\n  anotherMeta: \"anyOtherValue\"\n});\n```\nAnd getValue() would return:\n\n```\n[\n  {\n    width: 100,\n    height: 100,\n    value: \"example.png\",\n    customTag: \"myExtraValue\",\n    anotherMeta: \"anyOtherValue\"\n  }\n]\n```",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -4456,9 +4496,11 @@
       }
     ],
     "body": "### version\n\n1.0\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n场景一：\n1：输入一行文字后，选择复选框列表\n2：使用tab\n\n场景二：\n1: 使用tab空格\n2：输入内容后使用复选框列表\n\n### What is expected?\n\n能够正常勾选复选框\n\n### What is actually happening?\n\n无法勾选复选框\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-1190-tab-indent-text.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-1190-tab-indent-text.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -4534,9 +4576,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1182",
     "labels": [],
     "body": "### version\n\n0.9.98\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n1、页边距调整为80\n2、插入图片\n3、保存\n4、重新打开\n5、数据的图片宽高是正确的。但是渲染在页面上变小了。\n这导致再次保存的时候，他会按照变小后的尺寸保存。\n\n### What is expected?\n\n渲染正确的大小\n\n### What is actually happening?\n\n有可能是渲染顺序的问题。先出图片，因为被页边距限制，所以他被缩小了。这时候才渲染页边距的设置\n\n### Editor Value\n\n```json\n{\n    \"version\": \"0.9.79\",\n    \"width\": 794,\n    \"height\": 1123,\n    \"margins\": [\n        100,\n        80,\n        100,\n        80\n    ],\n    \"data\": {\n        \"header\": [],\n        \"main\": [\n            {\n                \"value\": \"http://10.92.100.239:9099/images/2025-07-03/1940588501899030529.jpeg?t=1751507327902\",\n                \"type\": \"image\",\n                \"width\": 634,\n                \"height\": 551.7027707808564\n            }\n        ],\n        \"footer\": []\n    }\n}\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -4551,9 +4595,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1181",
     "labels": [],
     "body": "### version\n\n0.9.108\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\nI am able to add a watermark. However, I am unable to resize it after adding.\n\n### What is expected?\n\nThe watermark needs to be resized after it has been added.\n\n\n\n### What is actually happening?\n\nunable to resize\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：watermark.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/menus/watermark.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -4834,9 +4880,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n如何禁止页面缩放 PageScale\n\n### What does the proposed API look like?\n\n如何禁止页面缩放 PageScale",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -4885,9 +4933,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1164",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n页眉页脚在正文激活时降低透明度\n\n### What does the proposed API look like?\n\n```ts\nexport const options: IEditorOption = {\n  header: {\n    inactiveAlpha: 0.6\n  },\n  footer: {\n    inactiveAlpha: 0.6\n  }\n}\n\n```",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -4975,9 +5025,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1160",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n增加点击图片时回调事件。\n使用场景如：插入按钮图片并绑定点击事件，触发业务交互\n\n### What does the proposed API look like?\n\n```ts\n  instance.eventBus.on('imageMousedown', payload => {\n    console.log(payload)\n  })\n```",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -5072,9 +5124,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1156",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n用户在输入@ / 等符号时触发特定业务交互\n\n### What does the proposed API look like?\n\n```ts\ninstance.eventBus.on('input', evt => {\n    console.log(evt)\n  })\n```",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -5123,9 +5177,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1153",
     "labels": [],
     "body": "### version\n\n0.9.109\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n修改options中的width、height的值\n\n### What is expected?\n\n页面初始化的纸张大小有变化\n\n### What is actually happening?\n\n页面初始化的纸张大小无变化\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -5389,9 +5445,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n项目中遇到个需求，组件之间需要有关联关系，如图示：父级checkbox勾选情况下，展示子项区域，取消勾选则隐藏子项区域，之前用的控件是在table单元格中插入table实现的，前阵子用作者control中的hide属性关联写了下，不是太理想，要批量写许多规则。\n\n![Image](https://github.com/user-attachments/assets/ca38fa60-163b-4ce4-92c1-5c1a9e9e16dc)\n\n### What does the proposed API look like?\n\n想问下后面是否会出类似的功能啊，目前遇到的是：1、area区域没有隐藏概念；2、单元格插入table不能聚焦，看了issue记录是不支持嵌套目前。\n\n或者有没有其他思路可以实现，帮指导下呢",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -5491,9 +5549,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n是否可以实现批注高亮的内容，在文档编辑时不可删除，可以的话可以提供一些思路吗？感谢\n\n### What does the proposed API look like?\n\n暂无",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -5635,9 +5695,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n作者你好，我想在渲染数据时，在页面的某行插入一个分页符，让后续的数据从下一页开始渲染。有没有api？或者通过改现有的代码来实现的一个思路呢？感谢感谢！！！\n\n### What does the proposed API look like?\n\n作者你好，我想在渲染数据时，在页面的某行插入一个分页符，让后续的数据从下一页开始渲染。有没有api？或者通过改现有的代码来实现的一个思路呢？感谢感谢！！！",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -5688,9 +5750,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n作者你好，我想使用 controlChange  事件，根据控件的 state 状态  实现当控件激活的弹出一个 自定义控件菜单\n但现在有个小问题。\n\n光标在控件内部时，controlChange   state 是active \n光标在 控件后面时，controlChange   state 也是active ,\n\n而我只想让光标在控件内部时弹出自定义控件菜单（就像官方的 控件一样）\n\n![Image](https://github.com/user-attachments/assets/c74fbcce-00c1-4af4-b3aa-76a82c66a8d6)\n\n![Image](https://github.com/user-attachments/assets/68e703c3-b3ec-4a3f-99bc-f3e5f87bc473)\n\n\n是否有办法 **检测光标在控件中的位置**，或者**让光标在控件后面时，controlChange  的 state 为 inactive**\n\n### What does the proposed API look like?\n\n....",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6044,9 +6108,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n在不希望控件编辑的情况下还能保持控件样式的设置。\n\n### What does the proposed API look like?\n\n业务场景不允许用户在编辑器中直接修改控件内容，通过方法设置控件值不受影响，所以给控件设置了disabled，但是导致给控件设置字体和字号等样式时也被禁止了，能否保留样式的修改，或者将样式修改新增一个disabled属性可以单独控制？",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6142,9 +6208,11 @@
       }
     ],
     "body": "### version\n\n0.9.106\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n无\n\n### What is expected?\n\n被禁用的控件没有特殊颜色标识？目前怎么解决，后续会不会增加这么个功能？\n\n![Image](https://github.com/user-attachments/assets/ace738a8-2a0b-436d-bd22-76c61ab2d8df)\n最好的办法实在再这个里面加个配置控件禁用颜色的属性\n\n### What is actually happening?\n\n无\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6291,9 +6359,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1098",
     "labels": [],
     "body": "### version\n\n0.9.106\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n使用以下方式 插入 area时，只会在文档最后插入area,而不是插入到光标位置\n   ```\n instance.command.executeInsertArea(\n      {\n        value: \"\",\n        type: \"area\",\n        valueList: [],\n        areaId: `area_1`,\n        area: {\n          placeholder: {\n            data: `请在此输入内容...`,\n            color: \"rgba(20, 20, 20, 0.5)\"\n          },\n          deletable: true,\n          backgroundColor: \"rgba(5,0,0,0.07)\"\n        }\n      },\n    );\n```\n\n![Image](https://github.com/user-attachments/assets/83f1f12c-f15a-4ab2-9bd7-15033f07c3a8)\n\n### What is expected?\n\n在光标位置或下一行插入\n\n### What is actually happening?\n\n.....\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6308,9 +6378,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1097",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n![Image](https://github.com/user-attachments/assets/b4dc48a9-3bba-4a14-a9aa-f81df50fa751)\n如图片展示，对于 getTitleValue 获取到的值是 是这个元素的下一个元素的值，不是 title 本身的值？不理解？\n还有 如何修改 valueList 的 元素是通过哪个方法去修改的?，找了好久没找出来，希望大佬能抽空解惑一下\n\n### What does the proposed API look like?\n\ngetTitleValue 相关解答",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6362,9 +6434,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n作者你好。我想要在鼠标移入 area 或其他组件时，在右上角显示控件提示信息（类似 前端的hover功能）\n所以需要在 mouseover 和 mouseout 等事件中获得当前的控件信息 和 控件坐标 。\n目前是否支持？\n\n若不支持则请求增强该功能。\n该功能可以解决以下两种需求或更多\n1、鼠标移上去显示hover提示信息\n2、可扩展自定义hover菜单\n\n\n### What does the proposed API look like?\n\n....",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6389,9 +6463,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\ntitle 元素的 概念是什么呢？valueList 我里面不管怎么嵌套最后都会被扁平成一维数组，这是出于什么考虑呢？\n\n### What does the proposed API look like?\n\n求大佬释惑",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6433,9 +6509,11 @@
       }
     ],
     "body": "### version\n\n0.9.106\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n当使用 以下方式 插入两个相邻的  **disabled**: **true** 属性的控件时，无法在两个控件中间输入文本。\n```\ninstance.command.executeInsertElementList([\n    {\n      type: ElementType.CONTROL,\n      value: '',\n      control: {\n        conceptId: '1',\n        type: ControlType.TEXT,\n        value: null,\n        placeholder: '控件1',\n        prefix: '{',\n        postfix: '}',\n        disabled: true,\n      }\n    },\n    {\n      type: ElementType.CONTROL,\n      value: '',\n      control: {\n        conceptId: '1',\n        type: ControlType.TEXT,\n        value: null,\n        placeholder: '控件2',\n        prefix: '{',\n        postfix: '}',\n        disabled: true,\n      }\n    }\n  ]);\n```\n\n![Image](https://github.com/user-attachments/assets/4d6fded6-9506-4e64-b632-d2b2baf62035)\n\n### What is expected?\n\n当两个控件的 **disabled** 为 **false**,可以正常在两个控件间输入文本，当 **disabled** 为 **true** 时，也应能正常输入文本\n\n### What is actually happening?\n\n....\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6450,9 +6528,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1091",
     "labels": [],
     "body": "### version\n\n0.9.106\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n使用 以下方式 插入 area  \n\n```\ninstance.command.executeInsertArea(\n    {\n      value: \"\",\n      type: \"area\",\n      valueList: [\n      ],\n      areaId: \"area1\",\n      area: {\n        deletable: false,\n        backgroundColor: \"rgba(5,0,0,0.07)\"\n      }\n    },\n  );\n\n```\n\n\n发现光标无法聚焦到区域后面，导致无法在区域后继续添加文本\n\n![Image](https://github.com/user-attachments/assets/0d3f9665-ffd7-4650-8d38-de79bd8689ae)\n\n\n\n\n另外发现，当使用 executeInsertArea 插入 area   后，再使用executeInsertElementList 插入元素，会导致，元素插入到 area   内部\n\n\n\n```\n // 插入区域\ninstance.command.executeInsertArea(\n  {\n    value: \"\",\n    type: \"area\",\n    valueList: [\n    ],\n    areaId: \"area1\",\n    area: {\n      deletable: false,\n      backgroundColor: \"rgba(5,0,0,0.07)\"\n    }\n  },\n);\n// 插入元素\ninstance.command.executeInsertElementList([\n{\n  value: null,\n  type: ElementType.TITLE,\n  level: TitleLevel.FIRST,\n  valueList: [\n    {\n      value:`测试`,\n      size: 18,\n    }\n  ]\n},\n]);\n```\n\n\n通过 executeInsertElementList 插入的 “测试”文本显示在 区域内部\n![Image](https://github.com/user-attachments/assets/667a3c91-a55c-4fa3-9d96-dd2008ac8d8f)\n\n### What is expected?\n\n  可以在区域后继续添加元素\n\n### What is actually happening?\n\n  ....\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6557,9 +6637,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1086",
     "labels": [],
     "body": "### version\n\n0.9.106\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n监听listener.saved然后插入文本控件，按ctrl+s后打印返回值。\n\n### What is expected?\n\nlistener.saved返回的数据应该是要存储在数据库的。然后在从数据库拿下来回显，回显的时候需要根据控件id去进行赋值，但是id从打印的数据来看没有返回。\n\n![Image](https://github.com/user-attachments/assets/0dd8cd8e-66ea-4eb6-9759-6a6a47b3299d)\n保存的时候难得是不存id吗？\n\n### What is actually happening?\n\n我指定控件id，保存时却没有生成id。\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6601,9 +6683,11 @@
       }
     ],
     "body": "### version\n\n106\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n使用executeUpdateElementById 更新area 里面的图片问题，执行后，图片不在area里面，会被单独成为一行元素\n\n![Image](https://github.com/user-attachments/assets/a24238e0-e620-43f1-ac1a-842f252ac767)\n\n![Image](https://github.com/user-attachments/assets/0a9b9cb2-4ddf-4b98-bb18-8d1546dce218)\n\n### What is expected?\n\n能够正常更新为area里面的元素\n\n### What is actually happening?\n\n更新不正常\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6618,9 +6702,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1083",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n现在通过控件的hide属性 实现了关联控件动态显隐，但是控件隐藏后还是会占位\n\n![Image](https://github.com/user-attachments/assets/44d0b8a4-1aa7-4969-9840-332f65e86609)\n\n### What does the proposed API look like?\n\n想实现控件动态显隐时，下面的内容位置也动态跟着调整，需要调另外命令吗？",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6706,9 +6792,11 @@
       }
     ],
     "body": "### version\n\n106\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n项目中换行符是独立的，需要的时候可以添加，但是使用area区域控件时，开头总是有换行符，强制换行，可否去掉换行符，有需要自己添加呢？\n\n",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6767,9 +6855,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n![Image](https://github.com/user-attachments/assets/52c47cde-758b-44df-acf7-95ae6ceffbaf)\n\n想实现页面中“在此输入正文内容...”刚开始为灰色（就和控件中的placeholder一样），鼠标点中并有内容输入时新内容取代提示。如果用控件实现的话，控件不支持表格插入，所以请求在非控件中增加placeholder属性\n\n",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -6784,9 +6874,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1075",
     "labels": [],
     "body": "### version\n\n102以上\n\n\n\n### Steps to reproduce\n\ninstance.command.getValue().data.main这句代码在101版本的时候能正常获取数据，102版本以上无法获取到数据，麻烦指点一下获取数据的写法，谢谢\n\n",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -7068,9 +7160,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1059",
     "labels": [],
     "body": "### What problem does this feature solve?\n\nhttps://github.com/user-attachments/assets/15cc318c-fc18-484a-a290-ebeba3922ccc\n代码如下\n\n![Image](https://github.com/user-attachments/assets/425180b6-0f81-4c2d-a384-1f8712bda989)\n\n### What does the proposed API look like?\n\n![Image](https://github.com/user-attachments/assets/52d78867-682f-4d72-bf1c-e54090c5c409)",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -7747,9 +7841,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1026",
     "labels": [],
     "body": "### version\n\n0.9.102\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n在线官方demo页面中，通过弹窗添加checkbox/radio时，值集中code为数值，控件操作异常\n\n### What is expected?\n\n1. 值集中code为0时能正常选中\n2. 添加checkbox控件，值集的code为数值时，控件为单选效果，code为最后选中项目的code\n\n### What is actually happening?\n\n1. 当添加checkbox/radio控件的值集中code为数据0时，控件选项无法点击\n2. 添加checkbox控件，值集中code为数值时，控件为单选效果，code会拼接每次选项点击的code\n\n![Image](https://github.com/user-attachments/assets/632a8e42-4209-4d2e-8205-c42f4f262783)\n\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -8050,9 +8146,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n想要有一个不可删除的区域，能通过一个id去获取到这个区域内的值，（区域内什么元素都能添加）。类似做一个word模板中的正文内容块\n\n### What does the proposed API look like?\n\n想请问下这个作者需求能怎么去实现。感谢感谢",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -8128,9 +8226,11 @@
       }
     ],
     "body": "### version\n\n0.9.102\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n1、鼠标点击到table元素上，监听getPositionContextByEvent，方法返回值大部分情况为null，偶尔会获取table信息。\n监听方法：\n\n![Image](https://github.com/user-attachments/assets/899ecff9-fc29-4eb8-a4a9-c5a42bc93840)\n返回值视频：\n\nhttps://github.com/user-attachments/assets/8bbbf7e2-1fb3-4e57-b21b-894987aa0dc4\n2、当鼠标点击到表格某一行时，如何获取光标所在的行在第几行，可以获取到这个行数。\n\n\n### What is expected?\n\n1、鼠标点击到表格上可以获取表格信息，鼠标点击到单元格时，获取到单元格信息。\n2、当鼠标点击到表格某一行时，如何获取光标所在的行在第几行，可以获取到这个行数。\n\n\n### What is actually happening?\n\n鼠标点击到table元素上，监听getPositionContextByEvent，方法返回值大部分情况为null，偶尔会获取table信息。\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -8250,9 +8350,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1004",
     "labels": [],
     "body": "### version\n\n0.9.102\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n1）文本控件，\n2）使用executeSetControlValue修改默认值，\n3）注册一个点击事件，用getPositionContextByEvent获取点击位置的控件，\n这里获取到的值总是不对，极个别点击获取的值的对的，还有个规律，修改后在getPositionContextByEvent执行前先执行一下executeSetControlProperties，getPositionContextByEvent获取的控件value就正确了\n\n### What is expected?\n\ngetPositionContextByEvent获取的element.control.value的值应该跟getControlValue获取的elementList一致吧？\n\n### What is actually happening?\n\n调试代码：\n\n<img width=\"782\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/3b75b3ec-b392-406e-8734-544c08c1f45c\" />\n\n结果：\n\n<img width=\"1434\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/f28af701-e53d-4ad4-90fb-13f41baa1878\" />\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -8277,9 +8379,11 @@
       }
     ],
     "body": null,
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -8563,9 +8667,11 @@
       }
     ],
     "body": null,
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -8797,9 +8903,11 @@
       }
     ],
     "body": "### version\n\n0.9.100\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n设置文本控件的disabled: true,进行搜索后，点击替换\n\n### What is expected?\n\n不可编辑的文本控件的内容不被替换（或者说不被检索出来吗）\n\n### What is actually happening?\n\n不可编辑的文本控件的内容被替换\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -9081,9 +9189,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/964",
     "labels": [],
     "body": "### What problem does this feature solve?\r\n\r\n1、感谢大佬开源，麻烦问下是否支持表单模式下，对输入域控件进行赋值填充和获取单个输入域控件内容和多个输入域控件内容\r\n\r\n### What does the proposed API look like?\r\n\r\n1、感谢大佬开源，麻烦问下是否支持表单模式下，对输入域控件进行赋值填充和获取单个输入域控件内容和多个输入域控件内容",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -9195,9 +9305,11 @@
       }
     ],
     "body": "### version\n\n0.9.100\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n![微信图片_20250104101135](https://github.com/user-attachments/assets/e7c2965d-680c-4e7e-925a-61cf49cb50a7)\r\n![微信图片_20250104101143](https://github.com/user-attachments/assets/0d83acb8-56ac-4775-8211-5ca7e0043c6e)\r\n![微信图片_20250104101148](https://github.com/user-attachments/assets/02c136ef-6062-47a1-afd5-15834a851073)\r\n我的操作是点击控件重新生成，使用调用executeUpdateElementById更新图片，使用executeSetControlValue设置签名日期控件值，就报了下图错误，然后就什么都操作不了了\n\n### What is expected?\n\n1\n\n### What is actually happening?\n\n1\n\n### Editor Value\n\n_No response_\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -9212,9 +9324,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/958",
     "labels": [],
     "body": "### version\n\n0.9.99\n\n### Link to minimal reproduction\n\nhttps://codesandbox.io/p/sandbox/elated-spence-sz8ln7?workspaceId=ws_Aac7TN8QwYP1nXZqPFp3CU\n\n### Steps to reproduce\n\n打开控制台，右键图片选择“测试getElementById”\n\n### What is expected?\n\n修复\n\n### What is actually happening?\n\n![PixPin_2025-01-03_16-29-08](https://github.com/user-attachments/assets/8459b4f7-4a4a-4123-b3c6-2cb90b7ed337)\r\n感觉是这\n\n### Editor Value\n\n_No response_\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -9371,9 +9485,11 @@
       }
     ],
     "body": "### version\n\n0.9.99\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\ngetElementById 不支持搜索表格中的元素，同时executeUpdateElementById不支持更新表格中的元素\n\n### What is expected?\n\n1\n\n### What is actually happening?\n\n1\n\n### Editor Value\n\n_No response_\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -9884,9 +10000,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n添加数值控件及数值选择器（计算器）\n\n### What does the proposed API look like?\n\nControlType.NUMBER",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -9989,9 +10107,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/919",
     "labels": [],
     "body": "### What problem does this feature solve?\n\nWe want to show a label for each area, the new badge feature only accepts an image\n\n### What does the proposed API look like?\n\nallow in badge.value a simple text string",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -10006,9 +10126,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/918",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n功能：增加文档状态徽章\r\n说明：用于显示文档的状态，如草稿、已保存、已审批等\r\n范围：正文（页眉下）、及区域（开头）\r\n\n\n### What does the proposed API look like?\n\n设置正文徽章：setMainBadge\r\n设置区域徽章：setAreaBadgeMap",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -10023,9 +10145,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/917",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n功能：增加文档状态徽章\r\n说明：用于显示文档的状态，如草稿、已保存、已审批等\r\n范围：正文（页眉下）、及区域（开头）\r\n\n\n### What does the proposed API look like?\n\n设置正文徽章：setMainBadge\r\n设置区域徽章：setAreaBadgeMap",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -10040,9 +10164,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/916",
     "labels": [],
     "body": "### version\n\n0.9.98\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n当一个控件有highlight值时,通过executeSetControlProperties修改控件highlight,可触发该bug\n\n### What is expected?\n\n通过executeSetControlProperties修改控件highlight时,能修改整个控件值\n\n### What is actually happening?\n\n具体原因: \r\n formatElementList 函数执行时 element 中的highlight 覆盖了 controlDefaultStyle 中的highlight\r\n\r\n复现视频: \r\n\r\nhttps://github.com/user-attachments/assets/198581f6-b10b-49a3-9eb7-c727fa385854\r\n\r\n目解决方法: \r\n将 formatElementList 函数第467 行,...element换至...controlDefaultStyle上可解决当前问题.(不确定是否有其他影响)\r\n\r\nhttps://github.com/user-attachments/assets/b6524140-d81f-4f64-9de3-3c93d4867a14\r\n\r\n\r\n\n\n### Editor Value\n\n_No response_\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -10175,9 +10301,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n问题：看executeUpdateOptions的ts定义不支持设置scale，实际设置后纸张大小并没有跟着一起缩放\r\n场景：回显编辑器内容时需要设置指定值scale，看文档现在只支持放大缩小一级和重置\n\n### What does the proposed API look like?\n\n添加executePageScale API",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -10202,9 +10330,11 @@
       }
     ],
     "body": "我这里实现了一个比较笨拙的，但是有一种情况就是在表格中存在控件时会出现控件删除不掉的问题，还有另一种情况是光标在表格内删除时只能删除掉光标所在表格这个位置的控件。\r\n![image](https://github.com/user-attachments/assets/73619189-0f8c-4a15-a4fa-69d5536176de)\r\n![image](https://github.com/user-attachments/assets/91744649-cf9e-4f5e-be8b-f9b214924f68)\r\n\r\n以下示例：\r\n![7329eee7ae6331d7c7d514ed28e533a](https://github.com/user-attachments/assets/936acce6-ccb8-4ea9-a64e-5e64eb096a5c)\r\n![30d1a1d53aa97842057aacef6900b27](https://github.com/user-attachments/assets/55af9722-63b7-48bd-b460-cc479a8215cc)\r\n![4e8b7c0478b6c9bc5343356a322f5ab](https://github.com/user-attachments/assets/5e9e4a30-12f3-4d20-b9a3-a3a09b94abaa)\r\n",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -10253,9 +10383,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/902",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n{前文本：占位符 后文本}\n\n### What does the proposed API look like?\n\n{\r\npreText:\"\",\r\npostText:\"\"\r\n}",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -10497,9 +10629,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/890",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n需要将HTML格式的内容转成editor编辑器的json格式，两边互转，请问有提供这方面的api或者方法可调用的吗？\n\n### What does the proposed API look like?\n\neditor编辑器格式和HTML格式的互转的api",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -10677,9 +10811,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n![image](https://github.com/user-attachments/assets/3a005106-9e4e-45b0-82df-a5718ed8a706)\r\n![image](https://github.com/user-attachments/assets/d1e43466-1ba3-4a59-90c4-3e92d2b1a7c3)\r\n\n\n### What does the proposed API look like?\n\naddPlaceholder 方法没有将 '\\n' 换成 ZERO ?\r\n\r\n![image](https://github.com/user-attachments/assets/92b5f887-f6b3-48d8-a293-2a86078810b6)\r\n\r\n",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -11095,9 +11231,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/862",
     "labels": [],
     "body": "### version\r\n\r\nv0.9.94\r\n\r\n### Link to minimal reproduction\r\n\r\nhttps://hufe.club/canvas-editor/\r\n\r\n### Steps to reproduce\r\n\r\nThe current live demo examples the word count not updating correctly.\r\n\r\nYou can see it works fine for deletes but as I type it doesn't update the word count correctly. It some slow increments by 1 at a rate not equal to the typing rate and doesn't end up converging to the true word count.\r\n\r\n### What is expected?\r\n\r\nIts expected to update correctly. The debounce is not long enough that this should impact it.\r\n\r\n### What is actually happening?\r\n\r\nFreely typing text isn't updating the word count.\r\n\r\n### Editor Value\r\n\r\n_No response_\r\n\r\n### System Info\r\n\r\n_No response_\r\n\r\n### Any additional comments?\r\n\r\n(https://www.loom.com/share/9cb11c4d0eec4aa3ac8cbf15907be210)",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -11288,9 +11426,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n由于业务需要希望作者能加上禁止粘贴的属性\r\n主要是文本和日期控件\r\n![image](https://github.com/user-attachments/assets/426170eb-5984-4e71-be82-a96a21c6145a)\r\n\n\n### What does the proposed API look like?\n\n暂无",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -11427,9 +11567,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/843",
     "labels": [],
     "body": "### version\r\n\r\n0.9.94\r\n\r\n### Link to minimal reproduction\r\n\r\nhttps://hufe.club/canvas-editor/\r\n\r\n### Steps to reproduce\r\n\r\n如下截图，下面那个控件是我按ctrl+c然后再ctrl+v粘贴出来的，颜色没有，然后按保存时右边console打印出来的内容每个控件中没有颜色值获取到，options里倒是有一个，但是保存后再按这个json渲染出来所有控件都是没有颜色的\r\n![image](https://github.com/user-attachments/assets/8da56ad3-3e56-4e5e-8cb8-3f71849b1fa6)\r\n\r\n![image](https://github.com/user-attachments/assets/37bf92c5-b54c-4f0c-9f46-cda88a68bed9)\r\n\r\n\r\n\r\n### What is expected?\r\n\r\n理论上控件能设置颜色那应该也能保存这个颜色，\r\n\r\n### What is actually happening?\r\n\r\n但是好像保存不了\r\n\r\n### Editor Value\r\n\r\n_No response_\r\n\r\n### System Info\r\n\r\n_No response_\r\n\r\n### Any additional comments?\r\n\r\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -11537,9 +11679,11 @@
       }
     ],
     "body": "### version\n\n官方demo\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n![image](https://github.com/user-attachments/assets/8e02877a-5f3f-43dc-bf48-49db5812a6dd)\r\n当日期组件 上下边缘 紧贴在表格上的时候替换日期失败，日期没有被改变\n\n### What is expected?\n\n日期应该被改变\n\n### What is actually happening?\n\n紧贴在表格上的时候替换日期失败，日期没有被改变。但是上下回车之后 左边加空格之后，又能正常替换\n\n### Editor Value\n\n_No response_\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -11676,9 +11820,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/821",
     "labels": [],
     "body": "### version\n\n0.9.93\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n表格中，文本控件值中包含列表，获取控件的getControlValue与getValue中解析出来的结果不一致\n\n### What is expected?\n\nvalue与实际的value一致\n\n### What is actually happening?\n\n使用该框架做了模板，当切换模板时，需要获取原来的值，重新加载并在新的模板中赋值，结果不一致\n\n### Editor Value\n\n_No response_\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -11720,9 +11866,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\r\n\r\n比如后端数据有存了多条 instance.command.getValue() 获取的json数据  后端返回前端多条数据时 有方法能转换成html/text的格式吗?不用实例化 new Editor() 用getHtml() 转化\r\n我看了源码 \r\n![image](https://github.com/user-attachments/assets/2c902158-5707-497c-8e6e-cfd1759114c3)\r\n  这个方法是实现的 就是没导出来  复制代码的话 引用的变量太多 有点麻烦\r\n\r\n### What does the proposed API look like?\r\nimport { jsonToHtml, jsonToText} from \"@hufe921/canvas-editor\";\r\nconst data =  instance.command.getValue() \r\nconst htmlStr= jsonToHtml(data ) \r\nconst textStr= jsonToText(data )",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -11882,9 +12030,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n能通过目录内的标题的id 获取页码数吗 想做一个页面插入目录的功能\n\n### What does the proposed API look like?\n\n能通过目录内的标题的id 获取页码数吗 想做一个页面插入目录的功能",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -12091,9 +12241,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n在使用表格过程中，表格的列与单元格需要自定义属性满足业务要求，如以下场景：\r\n![image](https://github.com/user-attachments/assets/1db1a030-c5f0-40ac-8e87-9ed648b3bcfc)\r\n\r\n1. 需要定义列为绑定数据项自增\r\n2. 需要定义单元格为合并\n\n### What does the proposed API look like?\n\n tr td增加extension属性",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-area-table-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-area-table-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -12570,9 +12722,11 @@
       }
     ],
     "body": "### version\n\n0.9.90\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n1. 多次getvalue与setvalue\r\n2. 丢失换行符\r\n![GIF 2024-8-20 18-51-34](https://github.com/user-attachments/assets/67c08485-92d9-457a-8928-2abceb2dde67)\r\n\n\n### What is expected?\n\n保持数据\n\n### What is actually happening?\n\n收个换行字符丢失\n\n### Editor Value\n\n_No response_\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -12871,9 +13025,11 @@
       }
     ],
     "body": "### version\r\n\r\n0.9.89\r\n\r\n### Link to minimal reproduction\r\n\r\n_No response_\r\n\r\n### Steps to reproduce\r\n\r\n0.9.89使用[executeInsertElementList](https://hufe.club/canvas-editor-docs/guide/command-execute.html#executeinsertelementlist)这个功能，设置了对齐方式为右对齐，不生效\r\n\r\n### What is expected?\r\n\r\n![微信截图_20240812091228](https://github.com/user-attachments/assets/d770bb57-10c8-4a25-b4cd-aab6e662ca9e)\r\n![微信截图_20240812155543](https://github.com/user-attachments/assets/8b887ab8-a6fe-45a8-9d93-767cdff766e7)\r\n\r\n\r\n### What is actually happening?\r\n\r\n之前在0.9.68版本下正常\r\n![微信截图_20240812163553](https://github.com/user-attachments/assets/48650844-d8d7-486d-b9d8-ff7746f9d62f)\r\n\r\n### Editor Value\r\n\r\n_No response_\r\n\r\n### System Info\r\n\r\n_No response_\r\n\r\n### Any additional comments?\r\n\r\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -13152,9 +13308,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n1、希望添加一个事件监听当前光标在哪个标题下，用于在目录中回显高亮\r\n2、希望添加获取各级标题所在页码的api，或直接生成表目录的api\n\n### What does the proposed API look like?\n\n添加目录相关api",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -13629,9 +13787,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n根据SSE推送数据实时更新executeSetValue时模拟打字机效果\n\n### What does the proposed API look like?\n\nexecuteSetValue({ main: main, cursorBlink: true })\r\n或\r\nexecuteCursorBlink()",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -13859,9 +14019,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/704",
     "labels": [],
     "body": "### version\r\n\r\n0.9.86\r\n\r\n\r\n\r\n`instance.command.executeSetHTML({       header: '',       main: '<p style=\"font-family: 仿宋; text-align: center; font-size: 32px;\">下午好</p>',       footer: ''     });`\r\n\r\n`instance.command.getHTML().main`\r\n结果` '<div style=\"text-align: center;\"><span style=\"font-family: 宋体; text-align: center; **color: rgba(0, 0, 0, 0.65)**; font-size: 32px;\">下午好</span></div>'`\r\n\r\n\r\n\r\n### What is expected?\r\n\r\n修正或找出问题\r\n\r\n### What is actually happening?\r\n\r\n0.65的透明度去不掉\r\n",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -14212,9 +14374,11 @@
       }
     ],
     "body": "### version\n\n0.9.85\n\n### Link to minimal reproduction\n\nhttps://hufe.club/canvas-editor/\n\n### Steps to reproduce\n\n1、在表格中插入多个输入控件，**输入控件的数量必须两个及以上**\r\n2、给控件都填上值\r\n3、在浏览器控制台执行如下代码\r\n```javascript\r\nconst controlList = editorInstance.command.getControlList();\r\ncontrolList.forEach(item => {\r\n    const conceptId = item.control.conceptId;\r\n    editorInstance.command.executeSetControlValue({ conceptId, value: '' });\r\n});\r\n```\n\n### What is expected?\n\n控件的值被清空，并正常的渲染 placeholder\n\n### What is actually happening?\n\n**情况一**：控制台报错，如下图\r\n![image](https://github.com/Hufe921/canvas-editor/assets/107550628/77e87683-e1cf-42da-9a3c-5f0ca9c76004)\r\n\r\n**情况二**：出现 placeholder 渲染异常\r\n![(KN(TXVXU@4$I X`Z2}(UHB](https://github.com/Hufe921/canvas-editor/assets/107550628/e94e444d-d162-44a7-a664-95426c0145c5)\r\n\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -14293,9 +14457,11 @@
       }
     ],
     "body": "### version\n\n0.9.85\n\n### Link to minimal reproduction\n\nhttps://hufe.club/canvas-editor/\n\n### Steps to reproduce\n\n1、创建一个标题，并在后面追加一个控件\r\n2、创建一个列表，并在后面追加一个控件\r\n\r\n如下图\r\n\r\n![5I1@PEW)U3JIXR{1LVKO@@E](https://github.com/Hufe921/canvas-editor/assets/107550628/f93918ce-4aaa-4458-b98b-36b953dd369d)\n\n### What is expected?\n\n返回仅有控件组成的数组\n\n### What is actually happening?\n\n标题和列表中的控件会被包裹相应的类型之中，见重现步骤中的截图\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -14435,9 +14601,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/677",
     "labels": [],
     "body": "### What problem does this feature solve?\n\nexecuteSetHTML设置base64图片不生效\n\n### What does the proposed API look like?\n\nexecuteSetHTML设置base64图片不生效",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -14702,9 +14870,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/664",
     "labels": [],
     "body": "### version\n\n0.9.83\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n\t\t\t\tlet main = `<p>为台州市制造业原材料和其他产品提供了更加便捷的运输条件。</p>\r\n\t\t\t   <p><img src=\"data:image/png;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=\" alt=\"\" /></p>\r\n\t\t\t  <p> 临海东站物流仓储中心投运后，金台铁路货运功能进一步提升。浙江交通集团供图</p>`;\r\n\t\t\t\tthis.editorCtx.command.executeSetHTML({\r\n\t\t\t\t\tmain: main,\r\n\t\t\t\t})\r\n\t\t\t\tsetTimeout(() => {\r\n\t\t\t\t\tthis.editorCtx.command.executeSetHTML({\r\n\t\t\t\t\t\tmain: main,\r\n\t\t\t\t\t})\r\n\t\t\t\t},10)\n\n### What is expected?\n\n\t\t\t\tthis.editorCtx.command.executeSetHTML({\r\n\t\t\t\t\tmain: main,\r\n\t\t\t\t}) \n\n### What is actually happening?\n\n需要两次executeSetHTML 编辑器中才会显示图片，拷贝进去一样。\n\n### System Info\n\n```shell\nSystem:\r\n    OS: macOS 14.5\r\n    CPU: (11) arm64 Apple M3 Pro\r\n    Memory: 126.73 MB / 18.00 GB\r\n    Shell: 5.9 - /bin/zsh\r\n  Binaries:\r\n    Node: 22.2.0 - /opt/homebrew/bin/node\r\n    npm: 10.7.0 - /opt/homebrew/bin/npm\r\n    pnpm: 8.15.5 - /opt/homebrew/bin/pnpm\r\n  Browsers:\r\n    Chrome: 126.0.6478.114\r\n    Safari: 17.5\n```\n\n\n### Any additional comments?\n\n拷贝进去也一样，需要拷贝两次。",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -15342,9 +15512,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/633",
     "labels": [],
     "body": "### version\n\n0.9.79\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n作者你好，我尝试使用 disabled 来控制控件不被用户删除，当设置    disabled: true 时，光标放在控件后无法删除控件。但当把光标放在控件前，然后按del键仍可以删除控件。不知道这是不是个bug?  \r\n\r\n\r\n另外还有个问题，当使用 disabled 时 ，组件仅仅是只读了。\r\n假如说我想让文档保持大体的结构，即不想让用户乱删除控件，又想让用户仍然可以编辑。\r\n例如 一个select,  用户不可以删除它，但仍可以改变它的选项。这种方式支持不？\n\n### What is expected?\n\n...\n\n### What is actually happening?\n\n![GIF 2024-06-01 18-56-53](https://github.com/Hufe921/canvas-editor/assets/38812759/0a843898-fc02-41c5-bf75-971f062aacf8)\r\n\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -15537,9 +15709,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/622",
     "labels": [],
     "body": "### version\n\n0.9.79\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n复现代码\r\n\r\n ```\r\n const res = instance.command.getValue()\r\n\r\n    res.width = 2000\r\n    res.height = 2000\r\n\r\n    instance.command.executeUpdateOptions({\r\n      ...res\r\n    })\r\n```\n\n### What is expected?\n\n应该和 executePaperSize 效果一致\n\n### What is actually happening?\n\n出现渲染异常\r\n![Quicker_20240530_111232](https://github.com/Hufe921/canvas-editor/assets/38812759/0b6ae396-9cb8-4d58-9ae1-239037641c91)\r\n\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -17204,9 +17378,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n根据标题上的概念获取对应标题下的内容\n\n### What does the proposed API look like?\n\ngetValueByTitle",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -17890,9 +18066,11 @@
       }
     ],
     "body": "### version\r\n\r\n0.9.72\r\n\r\n### Link to minimal reproduction\r\n\r\n_No response_\r\n\r\n### Steps to reproduce\r\n\r\n\r\n```javascript\r\nfunction addControl(text) {\r\n  const conceptId = (Math.floor(Math.random() * 10000) + new Date().getTime()).toString()\r\n  instance.command.executeInsertElementList([\r\n    {\r\n      type: 'control',\r\n      value: '',\r\n      control: {\r\n        conceptId: conceptId,\r\n        type: 'text',\r\n        value: '',\r\n        placeholder: text,\r\n        prefix: '<',\r\n        postfix: '>'\r\n      }\r\n    }\r\n  ])\r\n}\r\n```\r\n  \r\n  调用addControl方法插入控件，text参数重复，但是conceptId确保唯一，然后调用\r\n\r\n```javascript\r\nfunction replace() {\r\n  console.log(instance.command.getValue())\r\n  let list = [...instance.command.getControlList()]\r\n  for (let i in list) {\r\n    switch (list[i].control.placeholder) {\r\n      case '当事人姓名':\r\n        instance.command.executeSetControlValue({\r\n          conceptId: list[i].control.conceptId,\r\n          value: '张三'\r\n        })\r\n        break\r\n      case '联系电话':\r\n        instance.command.executeSetControlValue({\r\n          conceptId: list[i].control.conceptId,\r\n          value: '10086'\r\n        })\r\n        break\r\n    }\r\n  }\r\n}\r\n```\r\n\r\n第一个控件成功替换，第二个控件报错，插入控件是顺序是从左至右，如果从右至左则不报错\r\n\r\n### What is expected?\r\n\r\n设置所有控件的值\r\n\r\n### What is actually happening?\r\n\r\n`chunk-CXGALDMG.js?v=2f069663:1714 Uncaught TypeError: Cannot read properties of undefined (reading 'controlComponent')\r\n    at RangeManager.shrinkBoundary (chunk-YFTWWUMN.js?v=2f069663:8069:24)\r\n    at Control.shrinkBoundary (chunk-YFTWWUMN.js?v=2f069663:10508:16)\r\n    at TextControl.setValue (chunk-YFTWWUMN.js?v=2f069663:10276:18)\r\n    at setValue (chunk-YFTWWUMN.js?v=2f069663:10867:18)\r\n    at Control.setValueByConceptId (chunk-YFTWWUMN.js?v=2f069663:10899:7)\r\n    at CommandAdapt.setControlValue (chunk-YFTWWUMN.js?v=2f069663:17137:28)\r\n    at Proxy.replace (IndexView.vue:65:26)\r\n    at _createVNode.onClick._cache.<computed>._cache.<computed> (IndexView.vue:5:26)\r\n    at callWithErrorHandling (chunk-CXGALDMG.js?v=2f069663:1652:19)\r\n    at callWithAsyncErrorHandling (chunk-CXGALDMG.js?v=2f069663:1659:17)\r\n    at emit (chunk-CXGALDMG.js?v=2f069663:2175:5)\r\n    at chunk-CXGALDMG.js?v=2f069663:9254:45\r\n    at handleClick (chunk-N4BKEAS7.js?v=2f069663:29590:7)\r\n    at callWithErrorHandling (chunk-CXGALDMG.js?v=2f069663:1652:19)\r\n    at callWithAsyncErrorHandling (chunk-CXGALDMG.js?v=2f069663:1659:17)\r\n    at HTMLButtonElement.invoker (chunk-CXGALDMG.js?v=2f069663:10271:5)`\r\n\r\n\r\n\r\n### System Info\r\n\r\n_No response_\r\n\r\n### Any additional comments?\r\n\r\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -18147,9 +18325,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/488",
     "labels": [],
     "body": "### version\n\n1\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n1.将富文本数据的文字设置为“宋体”字体后，使用getHTML方法获取数据。\r\n2.然后通过executeSetHTML方法将获取到的HTML数据重新设置回去，您会发现“字体”样式不生效。\n\n### What is expected?\n\n可以将HTML原有的font-family字体属性设置上去\n\n### What is actually happening?\n\nexecuteSetHTML 未兼容html 字体\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -19118,9 +19298,11 @@
       }
     ],
     "body": "### version\n\n0.9.66\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\nwindow.editor.command.executeSetControlValue({\r\n      conceptId: '1',\r\n      value: ''\r\n    })\n\n### What is expected?\n\n当设置为空串应当展示placeholder\n\n### What is actually happening?\n\n执行clearValue中的const value = this.getValue() 这段，getValue报错，大概是在this.control.getRange()找节点的时候报错\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -20074,9 +20256,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/395",
     "labels": [],
     "body": "### version\n\n最新\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n![image](https://github.com/Hufe921/canvas-editor/assets/33524998/0a6d56d3-a217-4fb4-8434-ece428c48359)\r\n![image](https://github.com/Hufe921/canvas-editor/assets/33524998/96b99017-f5db-4533-a33f-c5ce3ecf9804)\r\n\n\n### What is expected?\n\n希望尽快修复该bug\n\n### What is actually happening?\n\n无\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -20394,9 +20578,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/380",
     "labels": [],
     "body": "步骤：\r\n1.在富文本编辑一段文字（设置了字体），通过instance.command.getHTML()获取并保存至服务器\r\n2.初始化编辑器之后，通过executeSetHTML设置内容值，字体会丢失。\r\n示例：\r\n`\r\n//赋值\r\ninstance.command.executeSetHTML({\r\n  header: ``,\r\n  main: `<span style=\"font-family: 华文楷体; font-size: 48px;\">123</span>`,\r\n  footer: ``\r\n})\r\n`",
-    "regression_status": "未覆盖",
-    "regression_note": "未发现对应自动化回归用例；该记录更偏咨询、重复、文档、无足够复现信息或非当前可执行回归范围。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -20624,9 +20810,11 @@
       }
     ],
     "body": "### version\n\n0.9.58\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n使用executeSetValue作为切换数据的api，但是如果同一个模板多次使用executeSetValue会出现整个网页奔溃\n\n### What is expected?\n\n可以多次点击\n\n### What is actually happening?\n\n![Snipaste_2023-12-21_08-34-13](https://github.com/Hufe921/canvas-editor/assets/93261537/45c92b5d-02d4-4129-8cb8-9cfaaaafb5a2)\r\n![Snipaste_2023-12-21_08-34-33](https://github.com/Hufe921/canvas-editor/assets/93261537/e0a71e5a-56fa-4303-854e-4b94daac971a)\r\n![Snipaste_2023-12-21_08-36-17](https://github.com/Hufe921/canvas-editor/assets/93261537/30cc04ad-e762-4eb1-9a76-81fa97c01dd7)\r\n\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -22023,9 +22211,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/299",
     "labels": [],
     "body": "### version\n\n0.9.52\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n1、选中要设置的字体大小的文字\r\n2、设置字体大小\r\n3、选择控件值\r\n![Uploading image.png…]()\r\n\n\n### What is expected?\n\n控制值的文字大小应该使用之前选择的字体大小\n\n### What is actually happening?\n\n控件值的文字大小还是默认大小\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -22050,9 +22240,11 @@
       }
     ],
     "body": "### version\n\n0.9.52\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n1、选中要设置的字体大小的文字\r\n2、设置字体大小\r\n3、选择控件值\r\n![Uploading image.png…]()\r\n\n\n### What is expected?\n\n控制值的文字大小应该使用之前选择的字体大小\n\n### What is actually happening?\n\n控件值的文字大小还是默认大小\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -22077,9 +22269,11 @@
       }
     ],
     "body": "### version\n\n0.9.52\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n`listener.controlChange = (payload) => {\r\n        if(payload && payload.type){\r\n          payload.minWidth=180;\r\n          this.active=payload;\r\n        }\r\n      }`\n\n### What is expected?\n\n能不能做到可以修改控件的任意属性值啊？\n\n### What is actually happening?\n\n想问问大佬，在获取到当前控件对象后，可以通过executeSetControlValue来设置控件的value值，有没有提供修改“minWidth”这个属性值的方法？我看了文档只找到了一个“executeSetControlExtension”的方法，后面仔细看，它是修改控件的自定义属性“extension”下的子属性值。在问题反馈列表也没找到类似的问题，所以我来提问请教一下。\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -22416,9 +22610,11 @@
       }
     ],
     "body": "### What problem does this feature solve?\n\n![image](https://github.com/Hufe921/canvas-editor/assets/16410281/58273e08-6d3b-4c45-abc0-dfa406c37839)\r\n类似这样的效果，需要提取出来病历中字段的值，以方便方便做数据模板，另一方面可以做检索使用。\r\n因此需要获取和回写输入框等输入控件的值，最好可以根据key进行设置。\n\n### What does the proposed API look like?\n\n比如setValueByKey 和 getValueByKey",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-control-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-control-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -22477,9 +22673,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/273",
     "labels": [],
     "body": "### version\n\n0.9.45\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\nmode设置为readonly状态时，实例变成空白，不显示内容\n\n### What is expected?\n\nmode设置为readonly状态时，实例变成空白，不显示内容\n\n### What is actually happening?\n\nmode设置为readonly状态时，实例变成空白，不显示内容\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -22707,9 +22905,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/261",
     "labels": [],
     "body": "### What problem does this feature solve?\n\n麻烦作者能不能加下这个功能呢。在setHTML的时候，针对分页符加个类似这种标识呢<!-- pagebreak -->。不然现在的分页符感觉没有意义，保存完再次回显的时候就没了呢\r\n\n\n### What does the proposed API look like?\n\ngetHTML希望能获取到分页符标识，以便数据回显的时候识别",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {
@@ -23468,9 +23668,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/225",
     "labels": [],
     "body": "### version\n\n0.9.41\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n文档插入分页符，执行 await instance.command.getHTML()\n\n### What is expected?\n\nconst {\r\n  header: string\r\n  main: string\r\n  footer: string\r\n} = await instance.command.getHTML()\r\n\r\n获取到的main字符串 包含分页符信息，如<pageBreak>\n\n### What is actually happening?\n\n没有分页符信息，\r\n\r\n空白文档插入分页符后，获取到的html为空字符串 \"\"\n\n### System Info\n\n_No response_\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

@@ -36,13 +36,16 @@ export class BaseBlock {
   private _createBlockItem(): HTMLDivElement {
     const blockItem = document.createElement('div')
     blockItem.classList.add(`${EDITOR_PREFIX}-block-item`)
+    if (this.draw.isReadonly() || this.draw.isPrintMode()) {
+      blockItem.classList.add(`${EDITOR_PREFIX}-block-item__disabled`)
+    }
     return blockItem
   }
 
   public render() {
     const block = this.element.block!
     if (block.type === BlockType.IFRAME) {
-      this.block = new IFrameBlock(this.element)
+      this.block = new IFrameBlock(this.element, this.draw)
       this.block.render(this.blockItem)
     } else if (block.type === BlockType.VIDEO) {
       this.block = new VideoBlock(this.element)

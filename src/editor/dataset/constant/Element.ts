@@ -103,6 +103,7 @@ export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
   'colgroup',
   'valueList',
   'control',
+  'controlId',
   'checkbox',
   'radio',
   'dateFormat',
@@ -198,6 +199,7 @@ export const CONTROL_CONTEXT_ATTR: Array<keyof IElement> = [
 export const CONTROL_STYLE_ATTR: Array<keyof IControlStyle> = [
   'font',
   'size',
+  'color',
   'bold',
   'highlight',
   'italic',

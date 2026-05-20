@@ -15,11 +15,11 @@ import { IRow, IRowElement } from './Row'
 
 export interface IValueSet {
   value: string
-  code: string
+  code: string | number
 }
 
 export interface IControlSelect {
-  code: string | null
+  code: string | number | null
   valueSets: IValueSet[]
   isMultiSelect?: boolean
   multiSelectDelimiter?: string
@@ -29,7 +29,7 @@ export interface IControlSelect {
 }
 
 export interface IControlCheckbox {
-  code: string | null
+  code: string | number | null
   min?: number
   max?: number
   flexDirection: FlexDirection
@@ -37,7 +37,7 @@ export interface IControlCheckbox {
 }
 
 export interface IControlRadio {
-  code: string | null
+  code: string | number | null
   flexDirection: FlexDirection
   valueSets: IValueSet[]
 }
@@ -85,6 +85,7 @@ export interface IControlBasic {
 export interface IControlStyle {
   font?: string
   size?: number
+  color?: string
   bold?: boolean
   highlight?: string
   italic?: boolean

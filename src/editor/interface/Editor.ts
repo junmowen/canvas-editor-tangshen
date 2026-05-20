@@ -161,8 +161,6 @@ export type IEditorText = IEditorHTML
 export type IUpdateOption = Omit<
   IEditorOption,
   | 'mode'
-  | 'width'
-  | 'height'
   | 'scale'
   | 'pageGap'
   | 'pageMode'

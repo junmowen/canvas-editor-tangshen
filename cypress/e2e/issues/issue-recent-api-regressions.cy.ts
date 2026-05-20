@@ -1,18 +1,99 @@
 import type Editor from '../../../src/editor'
 import { BlockType } from '../../../src/editor/dataset/enum/Block'
+import { INTERNAL_SHORTCUT_KEY } from '../../../src/editor/dataset/constant/Shortcut'
 import { ControlType } from '../../../src/editor/dataset/enum/Control'
-import { EditorMode } from '../../../src/editor/dataset/enum/Editor'
+import { EditorMode, EditorZone } from '../../../src/editor/dataset/enum/Editor'
 import { ElementType } from '../../../src/editor/dataset/enum/Element'
 import { ListStyle, ListType } from '../../../src/editor/dataset/enum/List'
 import { RowFlex } from '../../../src/editor/dataset/enum/Row'
 import { TitleLevel } from '../../../src/editor/dataset/enum/Title'
+import { WatermarkType } from '../../../src/editor/dataset/enum/Watermark'
 import {
   createDomFromElementList,
-  getElementListByHTML
+  getElementListByHTML,
+  getTextFromElementList
 } from '../../../src/editor/utils/element'
 
 const transparentPng =
   'data:image/png;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
+
+function countNonWhitePixels(win: Window, dataUrl: string) {
+  return new Cypress.Promise<number>((resolve, reject) => {
+    const image = new win.Image()
+    image.onload = () => {
+      const canvas = win.document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(image, 0, 0)
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+      let nonWhite = 0
+      for (let index = 0; index < data.length; index += 4) {
+        const alpha = data[index + 3]
+        const red = data[index]
+        const green = data[index + 1]
+        const blue = data[index + 2]
+        if (alpha > 0 && (red < 245 || green < 245 || blue < 245)) {
+          nonWhite++
+        }
+      }
+      resolve(nonWhite)
+    }
+    image.onerror = () => reject(new Error('failed to decode exported image'))
+    image.src = dataUrl
+  })
+}
+
+function dispatchKeyboard(key: string, options: KeyboardEventInit = {}) {
+  cy.get('.ce-inputarea').then($input => {
+    const input = $input[0] as HTMLTextAreaElement
+    const KeyboardEventCtor = input.ownerDocument.defaultView!.KeyboardEvent
+    input.dispatchEvent(
+      new KeyboardEventCtor('keydown', {
+        key,
+        bubbles: true,
+        cancelable: true,
+        ...options
+      })
+    )
+  })
+}
+
+function countWordsLikeWorker(text: string) {
+  const filtered = text.replace(/^\u200B/, '').replace(/\u200B/g, '\n')
+  const characterList: string[] = []
+  let compositionText = ''
+  let isPreLetter = false
+  let isPreNumber = false
+  const pushCompositionText = () => {
+    if (compositionText) {
+      characterList.push(compositionText)
+      compositionText = ''
+    }
+  }
+  for (const char of filtered) {
+    if (/[A-Za-z]/.test(char)) {
+      if (!isPreLetter) pushCompositionText()
+      compositionText += char
+      isPreLetter = true
+      isPreNumber = false
+    } else if (/[0-9]/.test(char)) {
+      if (!isPreNumber) pushCompositionText()
+      compositionText += char
+      isPreLetter = false
+      isPreNumber = true
+    } else {
+      pushCompositionText()
+      isPreLetter = false
+      isPreNumber = false
+      if (!/\s/.test(char)) {
+        characterList.push(char)
+      }
+    }
+  }
+  pushCompositionText()
+  return characterList.length
+}
 
 describe('recent issue API regressions', () => {
   beforeEach(() => {
@@ -147,6 +228,24 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #754 keeps right rowFlex from executeInsertElementList input', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSelectAll()
+      editor.command.executeBackspace()
+      editor.command.executeInsertElementList([
+        {
+          value: 'Right aligned inserted text',
+          rowFlex: RowFlex.RIGHT
+        }
+      ])
+
+      expect(editor.command.getValue().data.main[0]).to.include({
+        value: 'Right aligned inserted text',
+        rowFlex: RowFlex.RIGHT
+      })
+    })
+  })
+
   it('issue #1357 exports and imports groupIds through HTML data attributes', () => {
     const dom = createDomFromElementList([
       {
@@ -160,6 +259,28 @@ describe('recent issue API regressions', () => {
 
     const imported = getElementListByHTML(html, { innerWidth: 500 })
     expect(imported[0].groupIds).to.deep.eq(['comment-a', 'comment-b'])
+  })
+
+  it('issues #819 and #890 convert editor JSON to HTML/text and HTML back to JSON without an editor instance', () => {
+    const elementList = [
+      {
+        value: 'standalone conversion',
+        bold: true,
+        rowFlex: RowFlex.CENTER
+      }
+    ]
+    const html = createDomFromElementList(elementList).innerHTML
+    const text = getTextFromElementList(elementList)
+    const imported = getElementListByHTML(html, { innerWidth: 500 })
+
+    expect(html).to.contain('standalone conversion')
+    expect(html).to.contain('font-weight: 600')
+    expect(text).to.eq('standalone conversion')
+    expect(imported[0]).to.include({
+      value: 'standalone conversion',
+      bold: true,
+      rowFlex: RowFlex.CENTER
+    })
   })
 
   it.skip('issue #1406 adds group ids to selected main text in form mode', () => {
@@ -230,6 +351,162 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #906 supports setting a specific page scale through executePageScale', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executePageScale(1.3)
+
+      expect(editor.command.getOptions().scale).to.eq(1.3)
+
+      editor.command.executePageScale(1)
+      expect(editor.command.getOptions().scale).to.eq(1)
+    })
+  })
+
+  it('issue #622 updates paper width and height through executeUpdateOptions', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeUpdateOptions({
+        width: 640,
+        height: 900
+      })
+
+      const options = editor.command.getOptions()
+      expect(options.width).to.eq(640)
+      expect(options.height).to.eq(900)
+    })
+  })
+
+  it('issue #1153 applies width and height from constructor options', () => {
+    cy.document().then(doc => {
+      const container = doc.createElement('div')
+      container.style.width = '1000px'
+      container.style.height = '1000px'
+      doc.body.append(container)
+
+      const EditorConstructor = ((doc.defaultView as any).editor as Editor)
+        .constructor
+      const customEditor = new EditorConstructor(
+        container,
+        {
+          main: [{ value: 'custom paper size' }]
+        },
+        {
+          width: 560,
+          height: 780
+        }
+      ) as Editor
+
+      const options = customEditor.command.getOptions()
+      const draw = (customEditor as any).draw
+      expect(options.width).to.eq(560)
+      expect(options.height).to.eq(780)
+      expect(draw.getOriginalWidth()).to.eq(560)
+      expect(draw.getOriginalHeight()).to.eq(780)
+      expect(draw.getWidth()).to.eq(560)
+      expect(draw.getHeight()).to.eq(780)
+
+      customEditor.destroy()
+      container.remove()
+    })
+  })
+
+  it('issue #1156 emits input events from the internal cursor textarea', () => {
+    cy.getEditor().then((editor: Editor) => {
+      const payloads: Event[] = []
+      editor.eventBus.on('input', payload => {
+        payloads.push(payload)
+      })
+      editor.command.executeSetValue({
+        main: [{ value: 'start' }]
+      })
+      editor.command.executeSetRange(4, 4)
+      cy.wrap(payloads).as('inputEvents')
+    })
+
+    cy.get('.ce-inputarea').type('@', { force: true })
+
+    cy.get('@inputEvents').then(value => {
+      const payloads = value as Event[]
+      expect(payloads.length).to.be.greaterThan(0)
+      expect(payloads[payloads.length - 1]).to.include({
+        type: 'input'
+      })
+    })
+  })
+
+  it('issue #862 updates word count after typed input', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [{ value: 'Hello' }]
+      })
+      editor.command.executeSetRange(4, 4)
+
+      return editor.command.getWordCount().then(count => {
+        const currentText = editor.command
+          .getValue()
+          .data.main.map(element => element.value)
+          .join('')
+        expect(count).to.eq(countWordsLikeWorker(currentText))
+      })
+    })
+
+    cy.get('.ce-inputarea').type(' world 你好', { force: true })
+
+    cy.getEditor().then((editor: Editor) => {
+      return editor.command.getWordCount().then(count => {
+        const currentText = editor.command
+          .getValue()
+          .data.main.map(element => element.value)
+          .join('')
+        expect(count).to.eq(countWordsLikeWorker(currentText))
+        expect(currentText).to.contain('world')
+        expect(currentText).to.contain('你好')
+      })
+    })
+  })
+
+  it('issue #1164 configures inactive alpha for header and footer separately', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeUpdateOptions({
+        header: {
+          inactiveAlpha: 0.35
+        },
+        footer: {
+          inactiveAlpha: 0.45
+        }
+      })
+
+      const options = editor.command.getOptions()
+      expect(options.header.inactiveAlpha).to.eq(0.35)
+      expect(options.footer.inactiveAlpha).to.eq(0.45)
+      expect(options.inactiveAlpha).to.eq(0.6)
+    })
+  })
+
+  it('issue #1267 preserves image watermark options from executeAddWatermark', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeAddWatermark({
+        data: transparentPng,
+        type: WatermarkType.IMAGE,
+        width: 24,
+        height: 16,
+        opacity: 0.5,
+        repeat: true,
+        gap: [12, 18]
+      })
+
+      const watermark = editor.command.getValue().options.watermark
+      expect(watermark).to.include({
+        data: transparentPng,
+        type: WatermarkType.IMAGE,
+        width: 24,
+        height: 16,
+        opacity: 0.5,
+        repeat: true
+      })
+      expect(watermark?.gap).to.deep.eq([12, 18])
+    })
+  })
+
   it('issue #1296 preserves custom image id through insert and getValue', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSelectAll()
@@ -256,6 +533,70 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #1160 emits imageMousedown with the clicked image element', () => {
+    cy.getEditor().then((editor: Editor) => {
+      const payloads: any[] = []
+      editor.eventBus.on('imageMousedown', payload => {
+        payloads.push(payload)
+      })
+      editor.command.executeSetValue({
+        main: [
+          {
+            id: 'event-image',
+            type: ElementType.IMAGE,
+            value: transparentPng,
+            width: 36,
+            height: 36
+          }
+        ]
+      })
+
+      const draw = (editor as any).draw
+      draw.flushScheduledFrameRender()
+      const imageIndex = draw
+        .getElementList()
+        .findIndex((element: any) => element.id === 'event-image')
+      const position = draw.getPosition().getPositionList()[imageIndex]
+      const clickPoint = {
+        x: Math.floor(
+          (position.coordinate.leftTop[0] + position.coordinate.rightTop[0]) /
+            2
+        ),
+        y: Math.floor(
+          (position.coordinate.leftTop[1] + position.coordinate.leftBottom[1]) /
+            2
+        )
+      }
+      cy.wrap({ clickPoint, payloads }).as('imageMousedownCase')
+    })
+
+    cy.get('@imageMousedownCase').then(value => {
+      const { clickPoint } = value as {
+        clickPoint: { x: number; y: number }
+        payloads: any[]
+      }
+      cy.get('canvas[data-index="0"]').trigger(
+        'mousedown',
+        clickPoint.x,
+        clickPoint.y,
+        { button: 0, force: true }
+      )
+    })
+
+    cy.get('@imageMousedownCase').then(value => {
+      const { payloads } = value as { payloads: any[] }
+      expect(payloads).to.have.length(1)
+      expect(payloads[0].element).to.include({
+        id: 'event-image',
+        type: ElementType.IMAGE
+      })
+      expect(payloads[0].evt).to.include({
+        type: 'mousedown',
+        button: 0
+      })
+    })
+  })
+
   it('issue #1264 keeps inline font-family when importing HTML', () => {
     const imported = getElementListByHTML(
       '<span style="font-family: Microsoft YaHei; font-size: 16px;">测试文本</span>',
@@ -269,7 +610,7 @@ describe('recent issue API regressions', () => {
     })
   })
 
-  it('issue #1088 preserves font-family through executeSetHTML and getValue', () => {
+  it('issues #380, #488, and #1088 preserve font-family through HTML import and round-trip', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetHTML({
         main:
@@ -281,6 +622,20 @@ describe('recent issue API regressions', () => {
         value: '测试文字',
         font: 'STKaiti',
         color: 'rgb(0, 0, 0)',
+        size: 16
+      })
+
+      const html = editor.command.getHTML().main
+      expect(html).to.contain('font-family')
+
+      editor.command.executeSetHTML({
+        main: html
+      })
+
+      const restored = editor.command.getValue().data.main[0]
+      expect(restored).to.include({
+        value: '测试文字',
+        font: 'STKaiti',
         size: 16
       })
     })
@@ -400,6 +755,53 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #771 preserves leading line breaks through repeated getValue and setValue', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [{ value: '\n' }, { value: 'after leading break' }]
+      })
+
+      const firstRound = editor.command.getValue().data.main
+      editor.command.executeSetValue({ main: firstRound })
+      const secondRound = editor.command.getValue().data.main
+      editor.command.executeSetValue({ main: secondRound })
+      const thirdRound = editor.command.getValue().data.main
+
+      const roundTripText = thirdRound.map(element => element.value).join('')
+      expect(roundTripText.startsWith('\n')).to.eq(true)
+      expect(roundTripText).to.contain('after leading break')
+    })
+  })
+
+  it('issues #664 and #677 import base64 images from executeSetHTML in a single call', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetHTML({
+        main: `<p>before</p><p><img src="${transparentPng}" alt="" /></p><p>after</p>`
+      })
+
+      const image = editor.command
+        .getValue()
+        .data.main.find(element => element.type === ElementType.IMAGE)
+      expect(image).to.include({
+        type: ElementType.IMAGE,
+        value: transparentPng
+      })
+      expect(editor.command.getHTML().main).to.contain(transparentPng)
+    })
+  })
+
+  it('issue #704 does not inject rgba alpha color when importing plain styled HTML', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetHTML({
+        main: '<p style="font-family: 仿宋; text-align: center; font-size: 32px;">下午好</p>'
+      })
+
+      const html = editor.command.getHTML().main
+      expect(html).to.contain('下午好')
+      expect(html).not.to.contain('rgba(0, 0, 0, 0.65)')
+    })
+  })
+
   it('issue #1049 preserves titleId when reading getValue output', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
@@ -429,6 +831,286 @@ describe('recent issue API regressions', () => {
       expect(title.valueList?.[0]).to.include({
         value: '标题内容'
       })
+    })
+  })
+
+  it('issue #536 reads content that belongs to a title concept id', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.TITLE,
+            value: '',
+            titleId: 'history-title',
+            level: TitleLevel.FIRST,
+            title: {
+              conceptId: 'history'
+            },
+            valueList: [{ value: '现病史' }]
+          },
+          { value: '患者发热三天' },
+          {
+            type: ElementType.TITLE,
+            value: '',
+            titleId: 'diagnosis-title',
+            level: TitleLevel.FIRST,
+            title: {
+              conceptId: 'diagnosis'
+            },
+            valueList: [{ value: '诊断' }]
+          },
+          { value: '上呼吸道感染' }
+        ]
+      })
+
+      const history = editor.command.getTitleValue({ conceptId: 'history' })?.[0]
+      expect(history).to.include({
+        conceptId: 'history',
+        value: '患者发热三天',
+        zone: 'main'
+      })
+      expect(history?.elementList?.[0]).to.include({
+        value: '患者发热三天'
+      })
+    })
+  })
+
+  it('issues #1097 and #1094 keep title valueList separate from title body values and update it by id', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            id: 'title-element',
+            type: ElementType.TITLE,
+            value: '',
+            titleId: 'title-concept',
+            level: TitleLevel.FIRST,
+            title: {
+              conceptId: 'titleConcept'
+            },
+            valueList: [{ id: 'title-label', value: '原标题' }]
+          },
+          { value: '标题下正文' }
+        ]
+      })
+
+      const titleValue = editor.command.getTitleValue({
+        conceptId: 'titleConcept'
+      })?.[0]
+      expect(titleValue).to.include({
+        conceptId: 'titleConcept',
+        value: '标题下正文'
+      })
+      expect(editor.command.getValue().data.main[0].valueList?.[0]).to.include({
+        id: 'title-label',
+        value: '原标题'
+      })
+
+      editor.command.executeUpdateElementById({
+        id: 'title-label',
+        properties: {
+          value: '新标题'
+        }
+      })
+
+      expect(editor.command.getValue().data.main[0].valueList?.[0]).to.include({
+        id: 'title-label',
+        value: '新标题'
+      })
+      expect(
+        editor.command.getTitleValue({ conceptId: 'titleConcept' })?.[0].value
+      ).to.eq('标题下正文')
+    })
+  })
+
+  it('issue #738 exposes catalog title ids, levels, names, and page numbers', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.TITLE,
+            value: '',
+            titleId: 'catalog-a',
+            level: TitleLevel.FIRST,
+            valueList: [{ value: '第一章' }]
+          },
+          { value: '正文' },
+          {
+            type: ElementType.TITLE,
+            value: '',
+            titleId: 'catalog-b',
+            level: TitleLevel.SECOND,
+            valueList: [{ value: '第一节' }]
+          }
+        ]
+      })
+
+      return editor.command.getCatalog().then(catalog => {
+        expect(catalog?.[0]).to.include({
+          id: 'catalog-a',
+          name: '第一章',
+          level: TitleLevel.FIRST,
+          pageNo: 0
+        })
+        expect(catalog?.[0].subCatalog[0]).to.include({
+          id: 'catalog-b',
+          name: '第一节',
+          level: TitleLevel.SECOND,
+          pageNo: 0
+        })
+      })
+    })
+  })
+
+  it('issue #812 returns page numbers for catalog title ids', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.TITLE,
+            value: '',
+            titleId: 'page-title-id',
+            level: TitleLevel.FIRST,
+            valueList: [{ value: '目录页码标题' }]
+          },
+          { value: '标题正文' }
+        ]
+      })
+
+      return editor.command.getCatalog().then(catalog => {
+        const item = catalog?.find(entry => entry.id === 'page-title-id')
+        expect(item).to.include({
+          id: 'page-title-id',
+          pageNo: 0
+        })
+      })
+    })
+  })
+
+  it('issue #715 can set the cursor at the end after executeSetValue', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue(
+        {
+          main: [{ value: 'streamed' }, { value: ' content' }]
+        },
+        {
+          isSetCursor: true
+        }
+      )
+
+      const range = editor.command.getRange()
+      const endIndex = (editor as any).draw.getOriginalMainElementList().length - 1
+      expect(range.startIndex).to.eq(endIndex)
+      expect(range.endIndex).to.eq(endIndex)
+      expect(editor.command.getCursorPosition()?.index).to.eq(endIndex)
+    })
+  })
+
+  it('issues #917, #918, and #919 configure main and area badges including text values', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.AREA,
+            value: '',
+            areaId: 'badge-area',
+            area: {
+              backgroundColor: 'rgba(5,0,0,0.07)'
+            },
+            valueList: [{ value: '区域内容' }]
+          }
+        ]
+      })
+      editor.command.executeSetMainBadge({
+        value: transparentPng,
+        width: 20,
+        height: 10,
+        left: 2,
+        top: 3
+      })
+      editor.command.executeSetAreaBadge([
+        {
+          areaId: 'badge-area',
+          badge: {
+            value: '草稿',
+            width: 30,
+            height: 12,
+            left: 4,
+            top: 5
+          }
+        }
+      ])
+
+      const badge = (editor as any).draw.getBadge()
+      const renderable = badge.getRenderableBadgeList(0)
+      expect(renderable).to.have.length(2)
+      expect(renderable.find((item: any) => item.value === transparentPng)).to.include({
+        width: 20,
+        height: 10
+      })
+      expect(renderable.find((item: any) => item.value === '草稿')).to.include({
+        width: 30,
+        height: 12
+      })
+    })
+  })
+
+  it('issue #683 returns plain control elements from titles and lists in getControlList', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.TITLE,
+            value: '',
+            titleId: 'title-with-control',
+            level: TitleLevel.FIRST,
+            valueList: [
+              { value: '标题' },
+              {
+                type: ElementType.CONTROL,
+                value: '',
+                control: {
+                  conceptId: 'titleControl',
+                  type: ControlType.TEXT,
+                  value: [{ value: '标题控件' }],
+                  placeholder: '标题控件'
+                }
+              }
+            ]
+          },
+          {
+            type: ElementType.LIST,
+            value: '',
+            listType: ListType.OL,
+            valueList: [
+              { value: '\n列表' },
+              {
+                type: ElementType.CONTROL,
+                value: '',
+                control: {
+                  conceptId: 'listControl',
+                  type: ControlType.TEXT,
+                  value: [{ value: '列表控件' }],
+                  placeholder: '列表控件'
+                }
+              }
+            ]
+          }
+        ]
+      })
+
+      const controlList = editor.command.getControlList()
+      const conceptIds = controlList.map(element => element.control?.conceptId)
+      expect(conceptIds).to.include.members(['titleControl', 'listControl'])
+      expect(controlList.every(element => element.type === ElementType.CONTROL)).to.eq(
+        true
+      )
+      expect(controlList.some(element => element.type === ElementType.TITLE)).to.eq(
+        false
+      )
+      expect(controlList.some(element => element.type === ElementType.LIST)).to.eq(
+        false
+      )
     })
   })
 
@@ -596,6 +1278,57 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #1167 disables Ctrl wheel page scaling through shortcutDisableKeys', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeUpdateOptions({
+        shortcutDisableKeys: [INTERNAL_SHORTCUT_KEY.PAGE_SCALE]
+      })
+
+      cy.document().trigger('wheel', {
+        deltaY: -100,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true
+      })
+
+      cy.getEditor().then((nextEditor: Editor) => {
+        expect(nextEditor.command.getOptions().scale).to.eq(1)
+      })
+    })
+  })
+
+  it('issue #1278 removes disabled header and footer from layout and editing zones', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        header: [{ value: 'Header value' }],
+        main: [{ value: 'Main value' }],
+        footer: [{ value: 'Footer value' }]
+      })
+
+      const draw = (editor as any).draw
+      expect(draw.getHeader().getHeight()).to.be.greaterThan(0)
+      expect(draw.getFooter().getHeight()).to.be.greaterThan(0)
+
+      editor.command.executeUpdateOptions({
+        header: { disabled: true },
+        footer: { disabled: true }
+      })
+      editor.command.executeForceUpdate()
+
+      expect(draw.getHeader().getHeight()).to.eq(0)
+      expect(draw.getFooter().getHeight()).to.eq(0)
+      expect(draw.getMainOuterHeight()).to.eq(
+        draw.getMargins()[0] + draw.getMargins()[2]
+      )
+
+      const pageHeight = draw.getPageCanvasHost().getPageHeight(0)
+      expect(draw.getZone().getZoneByY(1, 0)).to.eq(EditorZone.MAIN)
+      expect(draw.getZone().getZoneByY(pageHeight - 1, 0)).to.eq(
+        EditorZone.MAIN
+      )
+    })
+  })
+
   it('issue #1260 allows iframe blocks to request fullscreen and popup navigation', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
@@ -672,6 +1405,231 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #1373 disables iframe block interaction in readonly and print modes', () => {
+    const srcdoc =
+      '<html><body><input id="field" value="locked"><button id="cell">cell</button></body></html>'
+
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            id: 'readonly-iframe-block',
+            value: '',
+            type: ElementType.BLOCK,
+            width: 260,
+            height: 120,
+            block: {
+              type: BlockType.IFRAME,
+              iframeBlock: {
+                srcdoc
+              }
+            }
+          }
+        ]
+      })
+      editor.command.executeMode(EditorMode.READONLY)
+    })
+
+    cy.get('iframe[data-id="readonly-iframe-block"]').should($iframe => {
+      const iframe = $iframe[0] as HTMLIFrameElement
+      expect(iframe.hasAttribute('inert')).to.eq(true)
+      expect(iframe.tabIndex).to.eq(-1)
+      expect(iframe.style.pointerEvents).to.eq('none')
+      const input = iframe.contentDocument?.querySelector(
+        '#field'
+      ) as HTMLInputElement | null
+      expect(input?.value).to.eq('locked')
+      if (input) {
+        input.value = 'changed while readonly'
+      }
+    })
+
+    cy.getEditor().then((editor: Editor) => {
+      const block = editor.command.getValue().data.main[0]
+      expect(block.block?.iframeBlock?.srcdoc).to.contain('locked')
+      expect(block.block?.iframeBlock?.srcdoc).not.to.contain(
+        'changed while readonly'
+      )
+
+      editor.command.executeMode(EditorMode.PRINT)
+    })
+
+    cy.get('iframe[data-id="readonly-iframe-block"]').should($iframe => {
+      const iframe = $iframe[0] as HTMLIFrameElement
+      expect(iframe.hasAttribute('inert')).to.eq(true)
+      expect(iframe.tabIndex).to.eq(-1)
+      expect(iframe.style.pointerEvents).to.eq('none')
+    })
+  })
+
+  it('issue #1374 keeps iframe block position stable in print mode', () => {
+    const srcdoc =
+      '<div style="width:260px;height:120px;background:#1f6feb;color:white">PRINT POSITION</div>'
+
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeMode(EditorMode.PRINT)
+      editor.command.executeSetValue({
+        main: [
+          {
+            value: 'before print block\n'
+          },
+          {
+            id: 'print-position-iframe',
+            value: '',
+            type: ElementType.BLOCK,
+            width: 260,
+            height: 120,
+            block: {
+              type: BlockType.IFRAME,
+              iframeBlock: {
+                srcdoc
+              }
+            }
+          }
+        ]
+      })
+    })
+
+    cy.get('iframe[data-id="print-position-iframe"]')
+      .parents('.ce-block-item')
+      .should($blockItem => {
+        expect($blockItem).to.have.length(1)
+        const top = Number.parseFloat($blockItem[0].style.top)
+        const left = Number.parseFloat($blockItem[0].style.left)
+        const width = Number.parseFloat($blockItem[0].style.width)
+        const height = Number.parseFloat($blockItem[0].style.height)
+        expect(top, 'print block top').to.be.greaterThan(0)
+        expect(left, 'print block left').to.be.greaterThan(0)
+        expect(width, 'print block width').to.eq(260)
+        expect(height, 'print block height').to.eq(120)
+      })
+
+    cy.getEditor().then((editor: Editor) => {
+      const draw = (editor as any).draw
+      const rowList = draw.getRowList()
+      let blockRow: any
+      let blockIndex = -1
+      let positionOffset = 0
+      for (const row of rowList) {
+        blockIndex = row.elementList.findIndex(
+          (element: any) => element.id === 'print-position-iframe'
+        )
+        if (blockIndex !== -1) {
+          blockRow = row
+          break
+        }
+        positionOffset += row.elementList.length
+      }
+      const rowPosition = draw
+        .getPosition()
+        .getPositionList()[positionOffset + blockIndex]
+      const blockElement = blockRow.elementList.find(
+        (element: any) => element.id === 'print-position-iframe'
+      )
+      const expectedTop =
+        rowPosition.coordinate.leftTop[1] + rowPosition.ascent
+      const expectedLeft = rowPosition.coordinate.leftTop[0]
+
+      cy.get('iframe[data-id="print-position-iframe"]')
+        .parents('.ce-block-item')
+        .should($blockItem => {
+          expect(Number.parseFloat($blockItem[0].style.top)).to.be.closeTo(
+            expectedTop,
+            1
+          )
+          expect(Number.parseFloat($blockItem[0].style.left)).to.be.closeTo(
+            expectedLeft,
+            1
+          )
+        })
+      expect(blockElement.metrics.width).to.eq(260)
+      expect(blockElement.metrics.height).to.eq(120)
+      editor.command.executeMode(EditorMode.EDIT)
+    })
+  })
+
+  it('issue #1375 prints iframe blocks through image export', () => {
+    cy.window().then(win => {
+      cy.getEditor().then((editor: Editor) => {
+        editor.command.executeMode(EditorMode.PRINT)
+        editor.command.executeSetValue({
+          main: [
+            {
+              value: 'iframe print export\n'
+            },
+            {
+              id: 'print-export-iframe',
+              type: ElementType.BLOCK,
+              value: '',
+              width: 240,
+              height: 100,
+              block: {
+                type: BlockType.IFRAME,
+                iframeBlock: {
+                  srcdoc:
+                    '<div style="width:240px;height:100px;background:#d1242f;color:white;font:22px sans-serif;display:flex;align-items:center;justify-content:center">IFRAME PRINT</div>'
+                }
+              }
+            }
+          ]
+        })
+
+        return cy.wrap(editor.command.getImage()).then((dataUrlList: string[]) => {
+          expect(dataUrlList.length).to.be.greaterThan(0)
+          expect(dataUrlList[0]).to.match(/^data:image\/png/)
+          return countNonWhitePixels(win, dataUrlList[0]).then(nonWhite => {
+            expect(
+              nonWhite,
+              'print mode iframe block should be rasterized into output'
+            ).to.be.greaterThan(500)
+          })
+        })
+      })
+    })
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeMode(EditorMode.EDIT)
+    })
+  })
+
+  it('issue #1380 exports iframe blocks through getImage', () => {
+    cy.window().then(win => {
+      cy.getEditor().then((editor: Editor) => {
+        editor.command.executeSetValue({
+          main: [
+            {
+              value: 'iframe image export\n'
+            },
+            {
+              id: 'get-image-iframe',
+              type: ElementType.BLOCK,
+              value: '',
+              width: 220,
+              height: 80,
+              block: {
+                type: BlockType.IFRAME,
+                iframeBlock: {
+                  srcdoc:
+                    '<div style="width:220px;height:80px;background:#1f6feb;color:white;font:20px sans-serif;display:flex;align-items:center;justify-content:center">IFRAME EXPORT</div>'
+                }
+              }
+            }
+          ]
+        })
+
+        return cy.wrap(editor.command.getImage()).then((dataUrlList: string[]) => {
+          expect(dataUrlList.length).to.be.greaterThan(0)
+          expect(dataUrlList[0]).to.match(/^data:image\/png/)
+          return countNonWhitePixels(win, dataUrlList[0]).then(nonWhite => {
+            expect(
+              nonWhite,
+              'iframe block should be rasterized into getImage output'
+            ).to.be.greaterThan(500)
+          })
+        })
+      })
+    })
+  })
+
   it('issue #1308 supports regular expression search patterns', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
@@ -685,6 +1643,234 @@ describe('recent issue API regressions', () => {
 
       editor.command.executeSearch('item-\\d+')
       expect(editor.command.getSearchNavigateInfo()).to.eq(null)
+    })
+  })
+
+  it('issue #1392 keeps Ctrl+Shift+Arrow word selection inside the current row', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [{ value: 'alpha beta gamma\nnext row' }]
+      })
+      editor.command.executeSetRange(16, 16)
+    })
+
+    dispatchKeyboard('ArrowLeft', {
+      ctrlKey: true,
+      shiftKey: true
+    })
+
+    cy.getEditor().then((editor: Editor) => {
+      let range = editor.command.getRange()
+      expect(range.endIndex - range.startIndex).to.be.lessThan(8)
+      expect(editor.command.getRangeContext()?.selectionText).to.contain(
+        'gamma'
+      )
+      expect(editor.command.getRangeContext()?.selectionText).not.to.contain(
+        'alpha'
+      )
+
+      editor.command.executeSetRange(6, 6)
+    })
+
+    dispatchKeyboard('ArrowRight', {
+      ctrlKey: true,
+      shiftKey: true
+    })
+
+    cy.getEditor().then((editor: Editor) => {
+      const range = editor.command.getRange()
+      expect(range.endIndex - range.startIndex).to.be.lessThan(8)
+      expect(editor.command.getRangeContext()?.selectionText).to.contain('beta')
+      expect(editor.command.getRangeContext()?.selectionText).not.to.contain(
+        'gamma'
+      )
+    })
+  })
+
+  it('issue #1361 supports Home and End keyboard navigation', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [{ value: 'first line\nsecond line' }]
+      })
+      const positionList = (editor as any).draw
+        .getPosition()
+        .getPositionList()
+      const rowIndexPositions = positionList.filter(
+        (position: any) => position.rowIndex === 1
+      )
+      expect(rowIndexPositions.length).to.be.greaterThan(2)
+      const middlePosition =
+        rowIndexPositions[Math.floor(rowIndexPositions.length / 2)]
+      const secondRowPositions = positionList.filter(
+        (position: any) =>
+          position.pageNo === middlePosition.pageNo &&
+          position.rowNo === middlePosition.rowNo
+      )
+      expect(secondRowPositions.length).to.be.greaterThan(2)
+      cy.wrap(secondRowPositions[0].index).as('secondRowStartIndex')
+      cy.wrap(secondRowPositions[secondRowPositions.length - 1].index).as(
+        'secondRowEndIndex'
+      )
+      editor.command.executeSetRange(middlePosition.index, middlePosition.index)
+      cy.wrap(middlePosition.index).as('secondRowMiddleIndex')
+    })
+
+    dispatchKeyboard('Home')
+
+    cy.getEditor().then((editor: Editor) => {
+      const range = editor.command.getRange()
+      expect(range.startIndex).to.eq(range.endIndex)
+      cy.get('@secondRowMiddleIndex').then(middleIndex => {
+        expect(range.startIndex).to.be.lessThan(Number(middleIndex))
+      })
+    })
+
+    dispatchKeyboard('End', {
+      shiftKey: true
+    })
+
+    cy.getEditor().then((editor: Editor) => {
+      const range = editor.command.getRange()
+      const context = editor.command.getRangeContext()
+      expect(range.endIndex).to.be.greaterThan(range.startIndex)
+      expect(context?.selectionText).to.contain('second line')
+      expect(context?.selectionText).not.to.contain('first')
+    })
+
+    cy.getEditor().then((editor: Editor) => {
+      const range = editor.command.getRange()
+      editor.command.executeSetRange(range.endIndex, range.endIndex)
+    })
+
+    dispatchKeyboard('Home', {
+      shiftKey: true
+    })
+
+    cy.getEditor().then((editor: Editor) => {
+      const range = editor.command.getRange()
+      const context = editor.command.getRangeContext()
+      expect(range.endIndex).to.be.greaterThan(range.startIndex)
+      expect(context?.selectionText).to.contain('second')
+      expect(context?.selectionText).not.to.contain('first')
+    })
+  })
+
+  it('issue #1376 keeps arrow navigation at the first position of wrapped visual lines', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeUpdateOptions({
+        width: 260,
+        margins: [40, 40, 40, 40]
+      })
+      editor.command.executeSetValue({
+        main: [
+          {
+            value:
+              'alpha beta gamma delta epsilon zeta eta theta iota kappa lambda'
+          }
+        ]
+      })
+
+      const positionList = (editor as any).draw.getPosition().getPositionList()
+      const secondVisualRow = positionList.filter(
+        (position: any) => position.rowIndex === 1
+      )
+      expect(secondVisualRow.length).to.be.greaterThan(2)
+      cy.wrap(secondVisualRow[0].index).as('wrappedRowStartIndex')
+      cy.wrap(secondVisualRow[1].index).as('wrappedRowSecondIndex')
+      editor.command.executeSetRange(
+        secondVisualRow[1].index,
+        secondVisualRow[1].index
+      )
+    })
+
+    dispatchKeyboard('ArrowLeft')
+
+    cy.get('@wrappedRowStartIndex').then(startIndex => {
+      cy.getEditor().then((editor: Editor) => {
+        const range = editor.command.getRange()
+        const cursor = editor.command.getCursorPosition()
+        expect(range.startIndex).to.eq(startIndex)
+        expect(range.endIndex).to.eq(startIndex)
+        expect(cursor?.rowIndex).to.eq(1)
+      })
+    })
+
+    dispatchKeyboard('ArrowRight')
+
+    cy.get('@wrappedRowSecondIndex').then(secondIndex => {
+      cy.getEditor().then((editor: Editor) => {
+        const range = editor.command.getRange()
+        const cursor = editor.command.getCursorPosition()
+        expect(range.startIndex).to.eq(secondIndex)
+        expect(range.endIndex).to.eq(secondIndex)
+        expect(cursor?.rowIndex).to.eq(1)
+      })
+    })
+  })
+
+  it('issues #225 and #261 export and import page breaks through HTML', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [{ value: 'before page break' }]
+      })
+      editor.command.executeSetRange(16, 16)
+      editor.command.executePageBreak()
+
+      const html = editor.command.getHTML().main
+      expect(html).to.contain('data-ce-page-break="true"')
+
+      const imported = getElementListByHTML(html)
+      expect(
+        imported.some(element => element.type === ElementType.PAGE_BREAK)
+      ).to.eq(true)
+    })
+  })
+
+  it('issue #273 renders content when initialized in readonly mode', () => {
+    cy.document().then(doc => {
+      const container = doc.createElement('div')
+      container.style.width = '800px'
+      container.style.height = '600px'
+      doc.body.append(container)
+
+      const EditorConstructor = ((doc.defaultView as any).editor as Editor)
+        .constructor
+      const readonlyEditor = new EditorConstructor(
+        container,
+        {
+          main: [{ value: 'readonly content visible' }]
+        },
+        {
+          mode: EditorMode.READONLY
+        }
+      ) as Editor
+
+      expect(readonlyEditor.command.getValue().data.main[0].value).to.eq(
+        'readonly content visible'
+      )
+      expect((readonlyEditor as any).draw.getRowList().length).to.be.greaterThan(
+        0
+      )
+      readonlyEditor.destroy()
+      container.remove()
+    })
+  })
+
+  it('issue #369 can switch document data repeatedly with executeSetValue', () => {
+    cy.getEditor().then((editor: Editor) => {
+      for (let index = 0; index < 12; index++) {
+        editor.command.executeSetValue({
+          main: [
+            {
+              value: `template switch ${index}`
+            }
+          ]
+        })
+        expect(editor.command.getValue().data.main[0].value).to.eq(
+          `template switch ${index}`
+        )
+        expect((editor as any).draw.getRowList().length).to.be.greaterThan(0)
+      }
     })
   })
 
@@ -788,7 +1974,7 @@ describe('recent issue API regressions', () => {
     })
   })
 
-  it('issue #1003 deletes elements by id without removing adjacent content', () => {
+  it('issues #1003 and #951 find, update, and delete elements by id including table cells', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
         main: [
@@ -818,6 +2004,34 @@ describe('recent issue API regressions', () => {
           }
         ]
       })
+
+      expect(
+        editor.command
+          .getElementById({ id: 'table-delete' })
+          .map(element => element.value)
+          .join('')
+      ).to.eq('delete')
+
+      editor.command.executeUpdateElementById({
+        id: 'table-delete',
+        properties: {
+          value: 'updated table text',
+          color: '#ff0000'
+        }
+      })
+
+      const updatedTableElements = editor.command.getElementById({
+        id: 'table-delete'
+      })
+      expect(updatedTableElements.map(element => element.value).join('')).to.eq(
+        'updated table text'
+      )
+      expect(updatedTableElements.every(element => element.id === 'table-delete')).to.eq(
+        true
+      )
+      expect(updatedTableElements.every(element => element.color === '#ff0000')).to.eq(
+        true
+      )
 
       editor.command.executeDeleteElementById({ id: 'delete-target' })
       editor.command.executeDeleteElementById({ id: 'table-delete' })
@@ -879,6 +2093,403 @@ describe('recent issue API regressions', () => {
         width: 20,
         height: 12
       })
+    })
+  })
+
+  it('issue #959 updates image elements next to controls without breaking subsequent control updates', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'signatureDate',
+              type: ControlType.DATE,
+              value: null,
+              placeholder: 'date'
+            }
+          },
+          {
+            id: 'signature-image',
+            type: ElementType.IMAGE,
+            value: transparentPng,
+            width: 24,
+            height: 12
+          },
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'signatureName',
+              type: ControlType.TEXT,
+              value: null,
+              placeholder: 'name'
+            }
+          }
+        ]
+      })
+
+      editor.command.executeUpdateElementById({
+        id: 'signature-image',
+        properties: {
+          value: transparentPng,
+          width: 36,
+          height: 18
+        }
+      })
+      editor.command.executeSetControlValue({
+        conceptId: 'signatureDate',
+        value: '2026-05-20'
+      })
+      editor.command.executeSetControlValue({
+        conceptId: 'signatureName',
+        value: 'Dr. Canvas'
+      })
+
+      const image = editor.command.getElementById({ id: 'signature-image' })[0]
+      expect(image).to.include({
+        id: 'signature-image',
+        type: ElementType.IMAGE,
+        width: 36,
+        height: 18,
+        value: transparentPng
+      })
+      expect(
+        editor.command.getControlValue({ conceptId: 'signatureDate' })[0]
+      ).to.include({
+        value: '2026-05-20',
+        innerText: '2026-05-20'
+      })
+      expect(
+        editor.command.getControlValue({ conceptId: 'signatureName' })[0]
+      ).to.include({
+        value: 'Dr. Canvas',
+        innerText: 'Dr. Canvas'
+      })
+    })
+  })
+
+  it('issue #1086 keeps explicit control ids in saved listener payloads', () => {
+    cy.getEditor().then((editor: Editor) => {
+      let savedPayload: ReturnType<Editor['command']['getValue']> | null = null
+      editor.listener.saved = payload => {
+        savedPayload = payload
+      }
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            controlId: 'saved-control-id',
+            control: {
+              conceptId: 'savedConcept',
+              type: ControlType.TEXT,
+              value: [{ value: 'saved value' }],
+              placeholder: 'saved'
+            }
+          }
+        ]
+      })
+
+      cy.get('canvas[data-index]').first().type('{ctrl+s}')
+
+      cy.wrap(null).should(() => {
+        expect(savedPayload).not.to.eq(null)
+        const control = savedPayload!.data.main[0]
+        expect(control).to.include({
+          type: ElementType.CONTROL,
+          controlId: 'saved-control-id'
+        })
+        expect(control.control).to.include({
+          conceptId: 'savedConcept',
+          type: ControlType.TEXT
+        })
+      })
+    })
+  })
+
+  it('issue #1245 dynamically hides and shows image elements by id', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            id: 'toggle-image',
+            type: ElementType.IMAGE,
+            value: transparentPng,
+            width: 24,
+            height: 24
+          },
+          { value: 'visible text' }
+        ]
+      })
+
+      editor.command.executeUpdateElementById({
+        id: 'toggle-image',
+        properties: { hide: true }
+      })
+      let image = editor.command.getValue().data.main.find(
+        element => element.id === 'toggle-image'
+      )
+      expect(image).to.include({
+        id: 'toggle-image',
+        type: ElementType.IMAGE,
+        hide: true
+      })
+      expect(editor.command.getHTML().main).not.to.contain('<img')
+
+      editor.command.executeUpdateElementById({
+        id: 'toggle-image',
+        properties: { hide: false }
+      })
+      image = editor.command.getValue().data.main.find(
+        element => element.id === 'toggle-image'
+      )
+      expect(image).to.include({
+        id: 'toggle-image',
+        type: ElementType.IMAGE,
+        hide: false
+      })
+      expect(editor.command.getHTML().main).to.contain('<img')
+    })
+  })
+
+  it('issue #1234 can restore a document directly from getValue data', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        header: [{ value: 'Header value' }],
+        main: [
+          { value: 'Plain value ' },
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            controlId: 'roundtrip-control',
+            control: {
+              conceptId: 'roundtripConcept',
+              type: ControlType.TEXT,
+              value: [{ value: 'control value' }],
+              placeholder: 'control'
+            }
+          },
+          {
+            type: ElementType.TABLE,
+            value: '',
+            width: 200,
+            colgroup: [{ width: 200 }],
+            trList: [
+              {
+                height: 40,
+                tdList: [
+                  {
+                    colspan: 1,
+                    rowspan: 1,
+                    value: [{ value: 'cell value' }]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        footer: [{ value: 'Footer value' }]
+      })
+      const saved = editor.command.getValue()
+
+      editor.command.executeSetValue(saved.data)
+      const restored = editor.command.getValue()
+
+      expect(restored.data).to.deep.eq(saved.data)
+      expect(editor.command.getText().main).to.contain('Plain value')
+      expect(editor.command.getText().main).to.contain('control value')
+      expect(editor.command.getText().main).to.contain('cell value')
+    })
+  })
+
+  it('issue #1241 exports header, main, and footer content through getHTML', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        header: [{ value: 'Header HTML' }],
+        main: [
+          { value: 'Main HTML ' },
+          {
+            type: ElementType.HYPERLINK,
+            value: '',
+            url: 'https://example.com',
+            valueList: [{ value: 'link text' }]
+          }
+        ],
+        footer: [{ value: 'Footer HTML' }]
+      })
+
+      const html = editor.command.getHTML()
+
+      expect(html.header).to.contain('Header HTML')
+      expect(html.main).to.contain('Main HTML')
+      expect(html.main).to.contain('https://example.com')
+      expect(html.main).to.contain('link text')
+      expect(html.footer).to.contain('Footer HTML')
+    })
+  })
+
+  it('issue #1236 exports and re-imports video and iframe block HTML', () => {
+    const html = createDomFromElementList([
+      {
+        value: '',
+        type: ElementType.BLOCK,
+        width: 240,
+        height: 120,
+        block: {
+          type: BlockType.VIDEO,
+          videoBlock: {
+            src: 'https://example.com/video.mp4'
+          }
+        }
+      },
+      {
+        value: '',
+        type: ElementType.BLOCK,
+        width: 260,
+        height: 140,
+        block: {
+          type: BlockType.IFRAME,
+          iframeBlock: {
+            srcdoc: '<html><body><strong>iframe block</strong></body></html>'
+          }
+        }
+      }
+    ]).innerHTML
+
+    expect(html).to.contain('<video')
+    expect(html).to.contain('https://example.com/video.mp4')
+    expect(html).to.contain('<iframe')
+    expect(html).to.contain('iframe block')
+
+    const imported = getElementListByHTML(html, { innerWidth: 500 })
+    expect(imported[0]).to.include({
+      type: ElementType.BLOCK,
+      width: 240,
+      height: 120
+    })
+    expect(imported[0].block?.type).to.eq(BlockType.VIDEO)
+    expect(imported[0].block?.videoBlock?.src).to.eq(
+      'https://example.com/video.mp4'
+    )
+    expect(imported[1]).to.include({
+      type: ElementType.BLOCK,
+      width: 260,
+      height: 140
+    })
+    expect(imported[1].block?.type).to.eq(BlockType.IFRAME)
+    expect(imported[1].block?.iframeBlock?.srcdoc).to.contain('iframe block')
+  })
+
+  it('issue #1201 preserves custom image metadata through getValue', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            id: 'image-with-metadata',
+            type: ElementType.IMAGE,
+            value: transparentPng,
+            width: 32,
+            height: 16,
+            conceptId: 'signature-image',
+            externalId: 'external-image-001',
+            extension: {
+              customTag: 'myExtraValue',
+              source: 'template'
+            }
+          }
+        ]
+      })
+
+      const image = editor.command.getValue().data.main[0]
+      expect(image).to.include({
+        id: 'image-with-metadata',
+        type: ElementType.IMAGE,
+        value: transparentPng,
+        width: 32,
+        height: 16,
+        conceptId: 'signature-image',
+        externalId: 'external-image-001'
+      })
+      expect(image.extension).to.deep.eq({
+        customTag: 'myExtraValue',
+        source: 'template'
+      })
+    })
+  })
+
+  it('issue #1182 keeps full-width image dimensions after margins and value round-trip', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            value: transparentPng,
+            type: ElementType.IMAGE,
+            width: 634,
+            height: 551.7027707808564
+          }
+        ]
+      })
+      editor.command.executeUpdateOptions({
+        width: 794,
+        height: 1123,
+        margins: [100, 80, 100, 80]
+      })
+
+      const saved = editor.command.getValue()
+      const image = saved.data.main[0]
+      expect(image).to.include({
+        type: ElementType.IMAGE,
+        width: 634,
+        height: 551.7027707808564
+      })
+
+      editor.command.executeSetValue(saved.data)
+      const restored = editor.command.getValue().data.main[0]
+      expect(restored).to.include({
+        type: ElementType.IMAGE,
+        width: 634,
+        height: 551.7027707808564
+      })
+    })
+  })
+
+  it('issue #1215 can read an inserted image id from getValue and delete by that id', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSelectAll()
+      editor.command.executeBackspace()
+      editor.command.executeInsertElementList([
+        {
+          type: ElementType.IMAGE,
+          value: transparentPng,
+          width: 24,
+          height: 24,
+          extension: {
+            name: 'inserted image',
+            value: 'image-record-1'
+          }
+        },
+        { value: ' after image' }
+      ])
+
+      const image = editor.command
+        .getValue()
+        .data.main.find(element => element.type === ElementType.IMAGE)
+      expect(image?.id).to.be.a('string').and.not.eq('')
+      expect(image?.extension).to.deep.eq({
+        name: 'inserted image',
+        value: 'image-record-1'
+      })
+
+      editor.command.executeDeleteElementById({ id: image!.id })
+
+      const value = editor.command.getValue().data.main
+      expect(value.some(element => element.id === image!.id)).to.eq(false)
+      expect(value.some(element => element.type === ElementType.IMAGE)).to.eq(
+        false
+      )
+      expect(editor.command.getText().main).to.contain('after image')
     })
   })
 })

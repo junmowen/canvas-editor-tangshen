@@ -53,6 +53,9 @@ export function runSelectionStartIntent(payload: {
   const isDirectHitImage = !!(isDirectHit && isImage)
   const isDirectHitCheckbox = !!(isDirectHit && isCheckbox)
   const isDirectHitRadio = !!(isDirectHit && isRadio)
+  const canToggleFormControl =
+    draw.getMode() === EditorMode.FORM &&
+    (isDirectHitCheckbox || isDirectHitRadio)
 
   if (~index) {
     let startIndex = curIndex
@@ -77,9 +80,27 @@ export function runSelectionStartIntent(payload: {
     const nextCursorPosition = positionResult.cursorPosition || positionList[curIndex]
     position.setCursorPosition(nextCursorPosition)
 
-    if (isDirectHitCheckbox && !isReadonly) {
+    if (isDirectHitCheckbox && (!isReadonly || canToggleFormControl)) {
+      if (draw.getMode() === EditorMode.FORM) {
+        draw.render({
+          curIndex,
+          isSetCursor: false,
+          isCompute: false,
+          isSubmitHistory: false,
+          pageRenderScope: 'visible'
+        })
+      }
       applyCheckboxToggle({ draw, element: curElement })
-    } else if (isDirectHitRadio && !isReadonly) {
+    } else if (isDirectHitRadio && (!isReadonly || canToggleFormControl)) {
+      if (draw.getMode() === EditorMode.FORM) {
+        draw.render({
+          curIndex,
+          isSetCursor: false,
+          isCompute: false,
+          isSubmitHistory: false,
+          pageRenderScope: 'visible'
+        })
+      }
       applyRadioToggle({ draw, element: curElement })
     } else {
       const isHandledLinkedControl = applyValueLinkedControlToggle({

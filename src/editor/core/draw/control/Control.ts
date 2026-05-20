@@ -46,6 +46,7 @@ import {
   getControlInlineContentText,
   getControlInlineText,
   getNonHideElementIndex,
+  getTextFromElementList,
   pickElementAttr,
   zipElementList
 } from '../../../utils/element'
@@ -932,8 +933,8 @@ export class Control {
       !startElement?.control?.hide &&
       !startElement?.area?.hide
     ) {
-      const { deletable = true } = startElement.control!
-      if (!deletable) return null
+      const { deletable = true, disabled = false } = startElement.control!
+      if (!deletable || disabled) return null
       // 表单模式控件删除权限验证
       const mode = this.draw.getMode()
       if (
@@ -1237,19 +1238,25 @@ export class Control {
 
   private getControlDisplayText(control: IControl): string {
     if (Array.isArray(control.value) && control.value.length) {
-      return control.value.map(element => element.value).join('')
+      return getTextFromElementList(control.value)
+        .replace(new RegExp(`${ZERO}`, 'g'), '')
+        .trim()
     }
     if (
       (control.type === ControlType.SELECT ||
         control.type === ControlType.CHECKBOX ||
         control.type === ControlType.RADIO) &&
-      control.code &&
+      control.code !== undefined &&
+      control.code !== null &&
       Array.isArray(control.valueSets)
     ) {
-      return control.code
+      return String(control.code)
         .split(',')
         .map(
-          code => control.valueSets?.find(valueSet => valueSet.code === code)?.value
+          code =>
+            control.valueSets?.find(
+              valueSet => String(valueSet.code) === code
+            )?.value
         )
         .filter(Boolean)
         .join(control.multiSelectDelimiter || '、')
@@ -1342,11 +1349,14 @@ export class Control {
           type === ControlType.DATE ||
           type === ControlType.NUMBER
         ) {
+          const textControlDisplayValue = textControlValue
+            .replace(new RegExp(`${ZERO}`, 'g'), '')
+            .trim()
           result.push({
             ...element.control,
             zone,
-            value: textControlValue || null,
-            innerText: textControlValue || null,
+            value: textControlDisplayValue || null,
+            innerText: textControlDisplayValue || null,
             elementList: zipElementList(textControlElementList)
           })
         } else if (
@@ -1354,18 +1364,23 @@ export class Control {
           type === ControlType.CHECKBOX ||
           type === ControlType.RADIO
         ) {
-          const innerText = code
-            ?.split(',')
+          const innerText = (code !== undefined && code !== null
+            ? String(code)
+            : ''
+          )
+            .split(',')
             .map(
               selectCode =>
-                valueSets?.find(valueSet => valueSet.code === selectCode)?.value
+                valueSets?.find(valueSet => String(valueSet.code) === selectCode)
+                  ?.value
             )
             .filter(Boolean)
             .join('')
           result.push({
             ...element.control,
             zone,
-            value: code || null,
+            value:
+              code !== undefined && code !== null ? String(code) || null : null,
             innerText: innerText || null
           })
         }
@@ -1705,10 +1720,17 @@ export class Control {
           }
         )
         // 控件默认样式
+        const controlStartIndex = i - 1
         CONTROL_STYLE_ATTR.forEach(key => {
           const controlStyleProperty = properties[key]
-          if (controlStyleProperty) {
-            Reflect.set(element, key, controlStyleProperty)
+          if (controlStyleProperty !== undefined) {
+            let styleIndex = controlStartIndex
+            while (styleIndex < elementList.length) {
+              const styleElement = elementList[styleIndex]
+              if (styleElement.controlId !== element.controlId) break
+              Reflect.set(styleElement, key, controlStyleProperty)
+              styleIndex++
+            }
           }
         })
         // 修改后控件结束索引

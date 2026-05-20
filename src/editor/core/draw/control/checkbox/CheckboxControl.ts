@@ -54,7 +54,8 @@ export class CheckboxControl implements IControlInstance {
    * @returns 控件代码，不存在时返回 null
    */
   public getCode(): string | null {
-    return this.element.control?.code || null
+    const code = this.element.control?.code
+    return code !== undefined && code !== null ? String(code) : null
   }
 
   /**
@@ -164,7 +165,7 @@ export class CheckboxControl implements IControlInstance {
       // 更新复选框值
       if (preElement.controlComponent === ControlComponent.CHECKBOX) {
         const checkbox = preElement.checkbox!
-        checkbox.value = codes.includes(checkbox.code!)
+        checkbox.value = codes.includes(String(checkbox.code))
       }
       preIndex--
     }
@@ -183,7 +184,7 @@ export class CheckboxControl implements IControlInstance {
       // 更新复选框值
       if (nextElement.controlComponent === ControlComponent.CHECKBOX) {
         const checkbox = nextElement.checkbox!
-        checkbox.value = codes.includes(checkbox.code!)
+        checkbox.value = codes.includes(String(checkbox.code))
       }
       nextIndex++
     }

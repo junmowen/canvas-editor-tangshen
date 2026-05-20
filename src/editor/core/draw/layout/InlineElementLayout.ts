@@ -103,8 +103,6 @@ export class InlineElementLayout {
         if (elementWidth > availableWidth) {
           // 计算自适应高度
           const adaptiveHeight = (elementHeight * availableWidth) / elementWidth
-          element.width = availableWidth / scale
-          element.height = adaptiveHeight / scale
           metrics.width = availableWidth
           metrics.height = adaptiveHeight
           metrics.boundingBoxDescent = adaptiveHeight
