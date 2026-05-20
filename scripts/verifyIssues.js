@@ -93,6 +93,10 @@ const ISSUE_SPECS = {
     title: '图片可禁用预览和缩放工具',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  1132: {
+    title: '只读和打印模式下可禁用图片选中与预览',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   981: {
     title: '水印支持页码占位符',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']

@@ -802,6 +802,45 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #1132 can disable image selection and preview in readonly and print modes', () => {
+    cy.getEditor().then((editor: Editor) => {
+      const draw = (editor as any).draw
+      const previewer = draw.getComponents().previewer
+      const image = {
+        id: 'mode-disabled-image-preview',
+        type: ElementType.IMAGE,
+        value: transparentPng,
+        width: 36,
+        height: 36
+      }
+
+      editor.command.executeUpdateOptions({
+        modeRule: {
+          readonly: {
+            imagePreviewerDisabled: true
+          },
+          print: {
+            imagePreviewerDisabled: true
+          }
+        }
+      })
+
+      editor.command.executeMode(EditorMode.READONLY)
+      previewer.drawResizer(image)
+      expect(Cypress.$('.ce-resizer-selection').css('display')).to.eq('none')
+      previewer.updateResizer(image)
+      previewer.render()
+      expect(Cypress.$('.ce-image-previewer')).to.have.length(0)
+
+      editor.command.executeMode(EditorMode.PRINT)
+      previewer.drawResizer(image)
+      expect(Cypress.$('.ce-resizer-selection').css('display')).to.eq('none')
+      previewer.updateResizer(image)
+      previewer.render()
+      expect(Cypress.$('.ce-image-previewer')).to.have.length(0)
+    })
+  })
+
   it('issue #1264 keeps inline font-family when importing HTML', () => {
     const imported = getElementListByHTML(
       '<span style="font-family: Microsoft YaHei; font-size: 16px;">测试文本</span>',
