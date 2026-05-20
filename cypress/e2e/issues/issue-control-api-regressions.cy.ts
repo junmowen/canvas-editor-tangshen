@@ -1768,6 +1768,49 @@ describe('control API regressions', () => {
     })
   })
 
+  it('issue #1036 lets Backspace pass hidden non-deletable controls', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          { value: '111' },
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'hiddenLockedControl',
+              type: ControlType.TEXT,
+              value: [{ value: 'hidden' }],
+              placeholder: 'hidden',
+              hide: true,
+              deletable: false
+            }
+          },
+          { value: '222' }
+        ]
+      })
+
+      const elementList = (editor as any).draw.getOriginalMainElementList()
+      editor.command.executeSetRange(elementList.length - 1, elementList.length - 1)
+    })
+
+    cy.get('.ce-inputarea')
+      .type('{backspace}{backspace}{backspace}{backspace}', { force: true })
+      .then(() => {
+        cy.getEditor().then((editor: Editor) => {
+          const text = editor.command.getText().main.replace(/\u200B/g, '')
+          expect(text).to.eq('11')
+          expect(
+            (editor as any).draw
+              .getOriginalMainElementList()
+              .some(
+                (element: any) =>
+                  element.control?.conceptId === 'hiddenLockedControl'
+              )
+          ).to.eq(false)
+        })
+      })
+  })
+
   it('issue #1203 sets extension on controls inside table cells', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
@@ -2044,6 +2087,87 @@ describe('control API regressions', () => {
         placeholderElements.map((element: any) => element.value).join('')
       ).to.eq('请选择状态')
     })
+  })
+
+  it('issue #1310 deletes one character at a time in input-able select controls', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'inputAbleSelect',
+              type: ControlType.SELECT,
+              code: null,
+              value: null,
+              placeholder: '请选择或输入',
+              valueSets: [
+                { value: '启用', code: 'enabled' },
+                { value: '停用', code: 'disabled' }
+              ],
+              selectExclusiveOptions: {
+                inputAble: true
+              }
+            }
+          }
+        ]
+      })
+
+      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const placeholderIndex = elementList.findIndex(
+        (element: any) =>
+          element.control?.conceptId === 'inputAbleSelect' &&
+          element.controlComponent === ControlComponent.PLACEHOLDER
+      )
+      expect(placeholderIndex).to.be.greaterThan(-1)
+      editor.command.executeSetRange(placeholderIndex, placeholderIndex)
+    })
+
+    cy.get('.ce-inputarea')
+      .type('abc{backspace}', { force: true })
+      .then(() => {
+        cy.getEditor().then((editor: Editor) => {
+          const valueText = (editor as any).draw
+            .getOriginalMainElementList()
+            .filter(
+              (element: any) =>
+                element.control?.conceptId === 'inputAbleSelect' &&
+                element.controlComponent === ControlComponent.VALUE
+            )
+            .map((element: any) => element.value)
+            .join('')
+          expect(valueText).to.eq('ab')
+        })
+      })
+
+    cy.getEditor().then((editor: Editor) => {
+      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const firstValueIndex = elementList.findIndex(
+        (element: any) =>
+          element.control?.conceptId === 'inputAbleSelect' &&
+          element.controlComponent === ControlComponent.VALUE
+      )
+      expect(firstValueIndex).to.be.greaterThan(-1)
+      editor.command.executeSetRange(firstValueIndex, firstValueIndex)
+    })
+
+    cy.get('.ce-inputarea')
+      .type('{del}', { force: true })
+      .then(() => {
+        cy.getEditor().then((editor: Editor) => {
+          const valueText = (editor as any).draw
+            .getOriginalMainElementList()
+            .filter(
+              (element: any) =>
+                element.control?.conceptId === 'inputAbleSelect' &&
+                element.controlComponent === ControlComponent.VALUE
+            )
+            .map((element: any) => element.value)
+            .join('')
+          expect(valueText).to.eq('a')
+        })
+      })
   })
 
   it('issue #883 preserves line breaks inside control placeholders', () => {

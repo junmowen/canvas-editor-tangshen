@@ -244,6 +244,17 @@ export class SelectControl implements IControlInstance {
     if (evt.key === KeyMap.Backspace) {
       // 清空选项
       if (startIndex !== endIndex) {
+        if (this.element.control?.selectExclusiveOptions?.inputAble) {
+          this.control
+            .getDraw()
+            .spliceElementList(
+              elementList,
+              startIndex + 1,
+              endIndex - startIndex
+            )
+          this.addPlaceholderIfEmpty(startIndex)
+          return startIndex
+        }
         return this.clearSelect()
       } else {
         if (
@@ -256,6 +267,11 @@ export class SelectControl implements IControlInstance {
           // 前缀、后缀、占位符
           return this.control.removeControl(startIndex)
         } else {
+          if (this.element.control?.selectExclusiveOptions?.inputAble) {
+            this.control.getDraw().spliceElementList(elementList, startIndex, 1)
+            this.addPlaceholderIfEmpty(startIndex - 1)
+            return startIndex - 1
+          }
           // 清空选项
           return this.clearSelect()
         }
@@ -263,6 +279,17 @@ export class SelectControl implements IControlInstance {
     } else if (evt.key === KeyMap.Delete) {
       // 移除选区元素
       if (startIndex !== endIndex) {
+        if (this.element.control?.selectExclusiveOptions?.inputAble) {
+          this.control
+            .getDraw()
+            .spliceElementList(
+              elementList,
+              startIndex + 1,
+              endIndex - startIndex
+            )
+          this.addPlaceholderIfEmpty(startIndex)
+          return startIndex
+        }
         // 清空选项
         return this.clearSelect()
       } else {
@@ -278,6 +305,13 @@ export class SelectControl implements IControlInstance {
           // 前缀、后缀、占位符
           return this.control.removeControl(startIndex)
         } else {
+          if (this.element.control?.selectExclusiveOptions?.inputAble) {
+            this.control
+              .getDraw()
+              .spliceElementList(elementList, startIndex + 1, 1)
+            this.addPlaceholderIfEmpty(startIndex)
+            return startIndex
+          }
           // 清空选项
           return this.clearSelect()
         }
@@ -369,6 +403,13 @@ export class SelectControl implements IControlInstance {
       }
     )
     return leftIndex
+  }
+
+  private addPlaceholderIfEmpty(startIndex: number, context: IControlContext = {}) {
+    const value = this.getValue(context)
+    if (!value.length) {
+      this.control.addPlaceholder(startIndex, context)
+    }
   }
 
   /**

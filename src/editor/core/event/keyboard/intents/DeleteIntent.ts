@@ -26,16 +26,17 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
     if (curIndex === null) return
     deletedCount = Math.max(1, endIndex - startIndex)
     editIndex = startIndex + 1
-  } else if (elementList[endIndex + 1]?.controlId) {
-    curIndex = control.removeControl(endIndex + 1)
-    deletedCount = 1
-    editIndex = endIndex + 1
   } else {
     curIndex = handleControlDeletion(
       control,
       evt,
       () => !!(control.getActiveControl() && control.getIsRangeWithinControl())
     )
+    if (curIndex === null && elementList[endIndex + 1]?.controlId) {
+      curIndex = control.removeControl(endIndex + 1)
+      deletedCount = 1
+      editIndex = endIndex + 1
+    }
     if (curIndex === null) {
       const position = components.position
       const cursorPosition = position.getCursorPosition()

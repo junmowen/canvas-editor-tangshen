@@ -1799,10 +1799,12 @@ export function convertTextNodeToElement(
   const element: IElement = {
     value,
     font: style.fontFamily.replace(/^["']|["']$/g, ''),
-    color: style.color,
     bold: Number(style.fontWeight) > 500,
     italic: style.fontStyle.includes('italic'),
     size: Math.floor(parseFloat(style.fontSize))
+  }
+  if (getHasExplicitTextColor(anchorNode)) {
+    element.color = style.color
   }
   const groupIds = anchorNode.dataset.groupIds
   if (groupIds) {
@@ -1855,6 +1857,17 @@ export function convertTextNodeToElement(
     element.strikeout = true
   }
   return element
+}
+
+function getHasExplicitTextColor(node: HTMLElement): boolean {
+  let currentNode: HTMLElement | null = node
+  while (currentNode && currentNode !== document.body) {
+    if (currentNode.style.color) {
+      return true
+    }
+    currentNode = currentNode.parentElement
+  }
+  return false
 }
 
 export interface IGetElementListByHTMLOption {

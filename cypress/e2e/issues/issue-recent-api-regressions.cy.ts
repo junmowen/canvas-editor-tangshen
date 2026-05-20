@@ -1974,6 +1974,52 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #1359 keeps pasted plain HTML from inheriting global text color', () => {
+    const pastedText = 'plain black paste'
+    const htmlText = '<p>plain black paste</p>'
+
+    cy.window().then(win => {
+      const style = win.document.createElement('style')
+      style.setAttribute('data-cy', 'issue-1359-global-color')
+      style.textContent = 'body, p { color: rgb(108, 117, 125); }'
+      win.document.head.append(style)
+
+      const clipboardItem = {
+        types: ['text/plain', 'text/html'],
+        getType: (type: string) =>
+          Promise.resolve(
+            new Blob([type === 'text/html' ? htmlText : pastedText], { type })
+          )
+      }
+      Object.defineProperty(win.navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          readText: () => Promise.resolve(pastedText),
+          read: () => Promise.resolve([clipboardItem])
+        }
+      })
+    })
+
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSelectAll()
+      editor.command.executeBackspace()
+      editor.command.executePaste()
+
+      return cy.wrap(null).should(() => {
+        const pastedElements = editor.command
+          .getValue()
+          .data.main.filter(element => element.value.trim())
+        expect(pastedElements.map(element => element.value).join('')).to.eq(
+          pastedText
+        )
+        expect(pastedElements.every(element => element.color === undefined)).to.eq(
+          true
+        )
+        expect(editor.command.getHTML().main).not.to.contain('rgb(108, 117, 125)')
+      })
+    })
+  })
+
   it('issues #1003 and #951 find, update, and delete elements by id including table cells', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({

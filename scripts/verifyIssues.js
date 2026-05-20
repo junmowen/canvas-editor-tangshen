@@ -471,6 +471,10 @@ const ISSUE_SPECS = {
     title: '自定义粘贴可委托非图片内容走内置流程',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  1359: {
+    title: '粘贴普通 HTML 不继承 Bootstrap 全局灰色文本颜色',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   1361: {
     title: '支持 Home 和 End 键盘导航及行内选择',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
@@ -675,6 +679,10 @@ const ISSUE_SPECS = {
     title: 'checkbox/radio/select 支持数值 code 包括 0',
     specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
   },
+  1036: {
+    title: '隐藏且不可删除控件不阻塞连续退格',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
   1347: {
     title: '表单模式下首次点击 checkbox 可选中',
     specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
@@ -753,6 +761,10 @@ const ISSUE_SPECS = {
   },
   1259: {
     title: '按区域维度批量设置重复 conceptId 控件值',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1310: {
+    title: '可手输下拉选择控件退格/删除仅删除单个字符',
     specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
   },
   1037: {
