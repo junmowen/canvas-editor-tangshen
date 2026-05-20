@@ -535,15 +535,26 @@ describe('recent issue API regressions', () => {
     })
 
     cy.getEditor().then((editor: Editor) => {
-      return editor.command.getWordCount().then(count => {
-        const currentText = editor.command
-          .getValue()
-          .data.main.map(element => element.value)
-          .join('')
-        expect(count).to.eq(countWordsLikeWorker(currentText))
-        expect(currentText).to.contain('world')
-        expect(currentText).to.contain('你好')
-      })
+      const waitForWordCount = (attempt = 0): Cypress.Chainable<void> => {
+        return cy.wrap(editor.command.getWordCount()).then(count => {
+          const currentText = editor.command
+            .getValue()
+            .data.main.map(element => element.value)
+            .join('')
+          const expected = countWordsLikeWorker(currentText)
+          if (count === expected) {
+            expect(currentText).to.contain('world')
+            expect(currentText).to.contain('你好')
+            return
+          }
+          if (attempt >= 20) {
+            expect(count).to.eq(expected)
+          }
+          return cy.wait(100).then(() => waitForWordCount(attempt + 1))
+        })
+      }
+
+      return waitForWordCount()
     })
   })
 
@@ -677,6 +688,36 @@ describe('recent issue API regressions', () => {
         type: 'mousedown',
         button: 0
       })
+    })
+  })
+
+  it('issue #1028 does not draw image tools when imgToolDisabled is enabled', () => {
+    cy.getEditor().then((editor: Editor) => {
+      const draw = (editor as any).draw
+      const previewer = draw.getComponents().previewer
+      const enabledImage = {
+        id: 'enabled-image-tool',
+        type: ElementType.IMAGE,
+        value: transparentPng,
+        width: 36,
+        height: 36
+      }
+      const disabledImage = {
+        ...enabledImage,
+        id: 'disabled-image-tool',
+        imgToolDisabled: true
+      }
+
+      previewer.drawResizer(enabledImage)
+      expect(Cypress.$('.ce-resizer-selection').css('display')).to.eq('block')
+
+      previewer.clearResizer()
+      previewer.drawResizer(disabledImage)
+      expect(Cypress.$('.ce-resizer-selection').css('display')).to.eq('none')
+
+      editor.command.executeMode(EditorMode.DESIGN)
+      previewer.drawResizer(disabledImage)
+      expect(Cypress.$('.ce-resizer-selection').css('display')).to.eq('block')
     })
   })
 
