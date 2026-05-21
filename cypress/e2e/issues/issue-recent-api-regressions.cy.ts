@@ -2224,6 +2224,38 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #1328 keeps uncommon characters on the same wrapped row', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeUpdateOptions({
+        width: 240,
+        margins: [40, 40, 40, 40]
+      })
+      editor.command.executeSetValue({
+        main: [
+          {
+            value:
+              'The quick brown fox jumps over the lazy dog the quick brown fox jumps ove presença'
+          }
+        ]
+      })
+
+      const draw = (editor as any).draw
+      draw.flushScheduledFrameRender()
+      const rowTexts = draw.getOriginalRowList().map((row: any) =>
+        row.elementList
+          .map((element: any) => element.value)
+          .join('')
+          .replace(/\u200B/g, '')
+      )
+      const targetRowText = rowTexts.find((text: string) => text.includes('pres'))
+
+      expect(rowTexts.length).to.be.greaterThan(1)
+      expect(targetRowText).to.exist
+      expect(targetRowText).to.contain('presença')
+      expect(rowTexts.some((text: string) => text.includes('presen') && !text.includes('presença'))).to.eq(false)
+    })
+  })
+
   it('issue #1149 emits positionContextChange when the keyboard moves the cursor', () => {
     cy.getEditor().then((editor: Editor) => {
       const payloads: any[] = []

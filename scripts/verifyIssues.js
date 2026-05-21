@@ -599,6 +599,10 @@ const ISSUE_SPECS = {
     title: '搜索支持正则表达式',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  1328: {
+    title: '包含特殊字符的单词换行不应拆分',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   1296: {
     title: 'Element 里的 id 属性保留',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
