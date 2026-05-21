@@ -59,11 +59,9 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1408",
     "labels": [],
     "body": "### version\n\nman\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n<img width=\"657\" height=\"537\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/b6f614ba-3a81-419d-aab0-ae22b56323ba\" />\n\n### What is expected?\n\n参考图片\n\n### What is actually happening?\n\n[](url)\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "已覆盖",
-    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
-    "regression_specs": [
-      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
-    ],
+    "regression_status": "需要补测试",
+    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
+    "regression_specs": [],
     "regression_failed_specs": []
   },
   {
