@@ -88,9 +88,11 @@
       }
     ],
     "body": "### version\n\nlast\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\nMy scenario is as follows: my application has a permissions scheme that the user who created the document can configure for other users; they can edit or view in readonly mode, and they can also comment on the document.\n\nMy application starts in form mode by default, either directly through the options when instantiating or set via API right after creating the instance:\n`instance.command.executeMode(EditorMode.FORM)`\n\nSince the editor doesn't allow adding groupIds in readonly mode (I included readonly mode, form mode, etc.), I implemented the following scheme: in the menu registration, in the comments option, I removed the `when` rule that says the menu only appears if it's not readonly:\n\n```\n{\n  name: '批注',\n  when: payload => {\n   return (\n     // !payload.isReadonly &&\n    payload.editorHasSelection &&\n    payload.zone === EditorZone.MAIN\n   )\n },\n ...\n}\n```\n\nIn the `onConfirm` event, I modified it so that before inserting the group, it switches to edit mode, and after performing all operations, it returns to form mode (or readonly):\n```\nonConfirm: payload => {\n  const value = payload.find(p => p.name === 'value')?.value\n  if (!value) return\n  instance.command.executeMode(EditorMode.EDIT)\n  instance.command.executeForceUpdate()\n  const groupId = command.executeSetGroup()\n  if (!groupId) return\n  commentList.push({\n    id: groupId,\n    content: value,\n    userName: 'Hufe',\n    rangeText: command.getRangeText(),\n    createdDate: new Date().toLocaleString()\n  })\n  instance.command.executeMode(EditorMode.FORM)\n}\n```\n\nThe editor remains in edit mode, but executeSetGroup() does not insert the groups, even if the editor remains in edit mode without returning to form mode as I did in the example, it still does not insert them.\n\n### What is expected?\n\nI would like a way for the document to be in form or read-only mode, and for the user viewing it to be able to insert comments if their permissions allow it.\n\n### What is actually happening?\n\nIt's not possible to add groupId in form mode even if I explicitly change the mode to edit before trying to insert the groups.\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-colon-input.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-colon-input.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

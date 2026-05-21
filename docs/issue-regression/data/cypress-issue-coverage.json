@@ -379,10 +379,12 @@
   {
     "spec": "issue-colon-input.cy.ts",
     "issueNumbers": [
-      200
+      200,
+      1193
     ],
     "issueLinks": [
-      "https://github.com/Hufe921/canvas-editor/issues/200"
+      "https://github.com/Hufe921/canvas-editor/issues/200",
+      "https://github.com/Hufe921/canvas-editor/issues/1193"
     ]
   },
   {
