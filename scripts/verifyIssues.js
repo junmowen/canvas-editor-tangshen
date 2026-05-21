@@ -479,6 +479,10 @@ const ISSUE_SPECS = {
     title: '列表内元素按 id 获取和更新',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  1396: {
+    title: '有序列表 10 项后间距保持一致',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   989: {
     title: 'executeImage 返回插入图片 id',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']

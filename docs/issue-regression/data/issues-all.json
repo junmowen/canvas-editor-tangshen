@@ -316,9 +316,11 @@
       }
     ],
     "body": "### version\n\nmain\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n<img width=\"896\" height=\"750\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/548caac1-ac99-4c38-8764-d17aa0b469c7\" />\n\n<img width=\"606\" height=\"710\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/54087d97-8d50-4c6a-af4a-b95584a897c8\" />\n\n\n### What is expected?\n\n宽度应该保持一致\n\n### What is actually happening?\n\n \n<img width=\"606\" height=\"710\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/dcc77009-077f-4de6-86f5-661ad3ea3e69\" />\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

@@ -1,4 +1,5 @@
 import type Editor from '../../../src/editor'
+import { ZERO } from '../../../src/editor/dataset/constant/Common'
 import { BlockType } from '../../../src/editor/dataset/enum/Block'
 import { BackgroundSize } from '../../../src/editor/dataset/enum/Background'
 import { INTERNAL_SHORTCUT_KEY } from '../../../src/editor/dataset/constant/Shortcut'
@@ -28,6 +29,40 @@ const createSvgDataUrl = (fill: string) =>
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="${fill}"/></svg>`
   )
+
+function createOrderedListElements(itemCount: number) {
+  const listId = `ordered-list-${Date.now()}-${Math.random()}`
+  const elementList: any[] = []
+  for (let index = 0; index < itemCount; index++) {
+    elementList.push({
+      value: ZERO,
+      listId,
+      listType: ListType.OL,
+      listStyle: ListStyle.DECIMAL,
+      listLevel: 0
+    })
+    const text = `列表项${index + 1}`
+    text.split('').forEach(value => {
+      elementList.push({
+        value,
+        listId,
+        listType: ListType.OL,
+        listStyle: ListStyle.DECIMAL,
+        listLevel: 0
+      })
+    })
+    if (index < itemCount - 1) {
+      elementList.push({
+        value: '\n',
+        listId,
+        listType: ListType.OL,
+        listStyle: ListStyle.DECIMAL,
+        listLevel: 0
+      })
+    }
+  }
+  return elementList
+}
 
 function countNonWhitePixels(win: Window, dataUrl: string) {
   return new Cypress.Promise<number>((resolve, reject) => {
@@ -225,6 +260,34 @@ describe('recent issue API regressions', () => {
         height: 32
       })
       expect(data).to.have.length(1)
+    })
+  })
+
+  it('issue #1396 keeps ordered list spacing stable after the 10th item', () => {
+    cy.getEditor().then((editor: Editor) => {
+      const elementList = createOrderedListElements(12)
+      editor.command.executeSetValue(
+        {
+          main: elementList
+        },
+        {
+          isSetCursor: true
+        }
+      )
+
+      const draw = (editor as any).draw
+      draw.flushScheduledFrameRender()
+      const positionList = draw.getPosition().getPositionList()
+      const itemStartIndexes = elementList.flatMap((element, index) =>
+        element.value === ZERO ? [index] : []
+      )
+      const contentLeftList = itemStartIndexes.map(index =>
+        Math.round(positionList[index + 1].coordinate.leftTop[0])
+      )
+
+      expect(new Set(contentLeftList).size).to.eq(1)
+      expect(contentLeftList[8]).to.eq(contentLeftList[9])
+      expect(contentLeftList[9]).to.eq(contentLeftList[10])
     })
   })
 
