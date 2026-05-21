@@ -168,5 +168,7 @@ export class Dialog {
   private _dispose() {
     this.mask?.remove()
     this.container?.remove()
+    const inputarea = document.querySelector<HTMLTextAreaElement>('.ce-inputarea')
+    inputarea?.focus()
   }
 }

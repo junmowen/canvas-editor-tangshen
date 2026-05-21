@@ -3293,9 +3293,11 @@
     "html_url": "https://github.com/Hufe921/canvas-editor/issues/1247",
     "labels": [],
     "body": "### version\n\nCurrent demo of Hufe Canvas Editor\n\n### Link to minimal reproduction\n\n_No response_\n\n### Steps to reproduce\n\n1. Open the Canvas Editor.\n2. Trigger any function that opens a modal.\n3. Close the modal using the “X” or the close/cancel button.\n4. Try to type immediately in the editor.\n\n### What is expected?\n\nAfter closing the modal, the editor should retain focus and allow typing without needing to click on the screen.\n\n### What is actually happening?\n\nAfter closing the modal, the editor loses focus and does not allow typing until the user clicks on the screen again.\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n\n```\n\n### Any additional comments?\n\nA possible solution could be to use the function `instance.command.executeFocus(payload?: IFocusOption) `after closing the modal, to ensure the editor automatically regains focus.",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

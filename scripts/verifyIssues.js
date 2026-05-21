@@ -73,6 +73,10 @@ const ISSUE_SPECS = {
     title: 'getImage 导出包含背景图片',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  1247: {
+    title: '关闭弹窗后恢复编辑器焦点',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   1240: {
     title: '更新页边距后 getCursorPosition 坐标同步刷新',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']

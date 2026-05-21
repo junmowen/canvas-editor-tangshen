@@ -1417,6 +1417,23 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #1247 restores editor focus after closing the codeblock modal', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSelectAll()
+      editor.command.executeBackspace()
+    })
+
+    cy.get('.menu-item__codeblock').click()
+    cy.get('.dialog-title i').click()
+
+    cy.focused().should('have.class', 'ce-inputarea')
+    cy.focused().type('restored', { force: true })
+
+    cy.getEditor().then((editor: Editor) => {
+      expect(editor.command.getText().main).to.eq('restored')
+    })
+  })
+
   it('issues #917, #918, and #919 configure main and area badges including text values', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
