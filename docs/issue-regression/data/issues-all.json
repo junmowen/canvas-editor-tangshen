@@ -164,9 +164,11 @@
       }
     ],
     "body": "### version\n\nv0.9.131 \n\n### Link to minimal reproduction\n\nhttps://hufe.club/canvas-editor/\n\n### Steps to reproduce\n\n1.向下滚动一段距离\n2.选中一段文字内容\n3.点击顶部菜单栏的按钮\n4. 滚动条向上滚动\n\n<img width=\"1515\" height=\"733\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/0b81e5ed-72e5-4853-9da1-e060d20c621d\" />\n\n### What is expected?\n\n选中一段文字内容，点击顶部菜单栏的按钮 ( 如: 改变样式 )，不触发滚动条上移。\n\n### What is actually happening?\n\n1.向下滚动一段距离\n2.选中一段文字内容\n3.点击顶部菜单栏的按钮，（以 点击“加粗”按钮为例，但使用快捷键 Ctrl+b ,则不会触发问题）\n4. 滚动条向上滚动\n--------------------------\n演示视频： https://github.com/user-attachments/assets/b3d188a1-f127-42fb-8929-05b46b14f7eb\n\n\n\n### Editor Value\n\n```json\n\n```\n\n### System Info\n\n```shell\n截止v0.9.131 ，以及官网demo都有这个现象\n```\n\n### Any additional comments?\n\n_No response_",
-    "regression_status": "需要补测试",
-    "regression_note": "未发现对应自动化回归用例，且 issue 描述为功能/缺陷/可验证行为。",
-    "regression_specs": [],
+    "regression_status": "已覆盖",
+    "regression_note": "已有自动化回归覆盖：issue-recent-api-regressions.cy.ts",
+    "regression_specs": [
+      "cypress/e2e/issues/issue-recent-api-regressions.cy.ts"
+    ],
     "regression_failed_specs": []
   },
   {

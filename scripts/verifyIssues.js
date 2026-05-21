@@ -61,6 +61,10 @@ const ISSUE_SPECS = {
     title: '键盘移动光标触发 positionContextChange',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  1175: {
+    title: '宋体缩放后光标坐标保持一致',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   1314: {
     title: '打印导出可禁用页面背景',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']

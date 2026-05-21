@@ -2350,6 +2350,44 @@ describe('recent issue API regressions', () => {
     })
   })
 
+  it('issue #1175 keeps cursor coordinates aligned after scaling with Songti', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeUpdateOptions({
+        defaultFont: '宋体'
+      })
+      editor.command.executeSetValue({
+        main: [{ value: '宋体缩放光标测试' }]
+      })
+      editor.command.executeSetRange(4, 4)
+      editor.command.executeFocus({
+        range: {
+          startIndex: 4,
+          endIndex: 4
+        },
+        isMoveCursorToVisible: false
+      })
+
+      const draw = (editor as any).draw
+      const before = editor.command.getCursorPosition()
+      expect(before).to.not.eq(null)
+      const cursorIndex = before!.index
+
+      editor.command.executePageScale(1.1)
+
+      const after = editor.command.getCursorPosition()
+      const expected = draw.getPosition().getPositionList()[cursorIndex]
+
+      expect(after).to.not.eq(null)
+      expect(after!.index).to.eq(cursorIndex)
+      expect(after!.coordinate.leftTop[0]).to.eq(
+        expected.coordinate.leftTop[0]
+      )
+      expect(after!.coordinate.leftTop[1]).to.eq(
+        expected.coordinate.leftTop[1]
+      )
+    })
+  })
+
   it('issues #225 and #261 export and import page breaks through HTML', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
