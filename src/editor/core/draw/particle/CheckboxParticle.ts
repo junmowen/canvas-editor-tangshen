@@ -1,26 +1,12 @@
-import { NBSP, ZERO } from '../../../dataset/constant/Common'
-import { VerticalAlign } from '../../../dataset/enum/VerticalAlign'
 import { DeepRequired } from '../../../interface/Common'
 import { IEditorOption } from '../../../interface/Editor'
 import { IElement } from '../../../interface/Element'
-import { IRow, IRowElement } from '../../../interface/Row'
 import { Draw } from '../Draw'
-
-/**
- * 复选框渲染选项接口。
- */
-interface ICheckboxRenderOption {
-  /** 画布上下文 */
-  ctx: CanvasRenderingContext2D
-  /** X 坐标 */
-  x: number
-  /** Y 坐标 */
-  y: number
-  /** 行 */
-  row: IRow
-  /** 元素索引 */
-  index: number
-}
+import {
+  ICheckableRenderOption,
+  resolveCheckableRenderState,
+  toggleCheckableElement
+} from './checkableParticle'
 
 /**
  * 复选框粒子。
@@ -49,22 +35,7 @@ export class CheckboxParticle {
    * @param element - 复选框元素
    */
   public setSelect(element: IElement) {
-    const { checkbox } = element
-    // 切换复选框状态
-    if (checkbox) {
-      checkbox.value = !checkbox.value
-    } else {
-      // 如果复选框对象不存在，创建并设置为选中
-      element.checkbox = {
-        value: true
-      }
-    }
-    // 重新渲染
-    this.draw.render({
-      isCompute: false,
-      isSetCursor: false,
-      pageRenderScope: 'visible'
-    })
+    toggleCheckableElement(this.draw, element, 'checkbox')
   }
 
   /**
@@ -72,46 +43,23 @@ export class CheckboxParticle {
    *
    * @param payload - 渲染参数
    */
-  public render(payload: ICheckboxRenderOption) {
-    const { ctx, x, index, row } = payload
-    let { y } = payload
+  public render(payload: ICheckableRenderOption) {
+    const { checkbox } = payload.row.elementList[payload.index]
     const {
-      checkbox: { gap, lineWidth, fillStyle, strokeStyle, verticalAlign },
+      ctx,
+      left,
+      top,
+      width,
+      height,
+      lineWidth,
+      fillStyle,
+      strokeStyle,
       scale
-    } = this.options
-    const { metrics, checkbox } = row.elementList[index]
-    // 垂直布局设置
-    if (
-      verticalAlign === VerticalAlign.TOP ||
-      verticalAlign === VerticalAlign.MIDDLE
-    ) {
-      let nextIndex = index + 1
-      let nextElement: IRowElement | null = null
-      while (nextIndex < row.elementList.length) {
-        nextElement = row.elementList[nextIndex]
-        if (nextElement.value !== ZERO && nextElement.value !== NBSP) break
-        nextIndex++
-      }
-      // 以后一个非空格元素为基准
-      if (nextElement) {
-        const {
-          metrics: { boundingBoxAscent, boundingBoxDescent }
-        } = nextElement
-        const textHeight = boundingBoxAscent + boundingBoxDescent
-        if (textHeight > metrics.height) {
-          if (verticalAlign === VerticalAlign.TOP) {
-            y -= boundingBoxAscent - metrics.height
-          } else if (verticalAlign === VerticalAlign.MIDDLE) {
-            y -= (textHeight - metrics.height) / 2
-          }
-        }
-      }
-    }
-    // left top 四舍五入避免1像素问题
-    const left = Math.round(x + gap * scale)
-    const top = Math.round(y - metrics.height + lineWidth)
-    const width = metrics.width - gap * 2 * scale
-    const height = metrics.height
+    } = resolveCheckableRenderState(
+      payload,
+      this.options,
+      this.options.checkbox
+    )
     ctx.save()
     ctx.beginPath()
     ctx.translate(0.5, 0.5)

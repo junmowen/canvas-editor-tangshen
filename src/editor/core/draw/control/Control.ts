@@ -1157,10 +1157,18 @@ export class Control {
     value: ISetControlValueOption['value']
   ): IElement[] {
     if (!value || Array.isArray(value)) return []
+    const elementStyle = pickObject(
+      element,
+      CONTROL_STYLE_ATTR as Array<keyof IElement>
+    ) as Partial<IElement>
+    const controlStyle = pickObject(
+      element.control!,
+      CONTROL_STYLE_ATTR as Array<keyof NonNullable<IElement['control']>>
+    ) as unknown as Partial<IElement>
     return [
       {
-        ...pickObject(element, CONTROL_STYLE_ATTR),
-        ...pickObject(element.control!, CONTROL_STYLE_ATTR),
+        ...elementStyle,
+        ...controlStyle,
         value
       }
     ]

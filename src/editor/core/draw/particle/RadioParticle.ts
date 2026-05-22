@@ -1,18 +1,12 @@
-import { NBSP, ZERO } from '../../../dataset/constant/Common'
-import { VerticalAlign } from '../../../dataset/enum/VerticalAlign'
 import { DeepRequired } from '../../../interface/Common'
 import { IEditorOption } from '../../../interface/Editor'
 import { IElement } from '../../../interface/Element'
-import { IRow, IRowElement } from '../../../interface/Row'
 import { Draw } from '../Draw'
-
-interface IRadioRenderOption {
-  ctx: CanvasRenderingContext2D
-  x: number
-  y: number
-  row: IRow
-  index: number
-}
+import {
+  ICheckableRenderOption,
+  resolveCheckableRenderState,
+  toggleCheckableElement
+} from './checkableParticle'
 
 export class RadioParticle {
   private draw: Draw
@@ -24,61 +18,21 @@ export class RadioParticle {
   }
 
   public setSelect(element: IElement) {
-    const { radio } = element
-    if (radio) {
-      radio.value = !radio.value
-    } else {
-      element.radio = {
-        value: true
-      }
-    }
-    this.draw.render({
-      isCompute: false,
-      isSetCursor: false,
-      pageRenderScope: 'visible'
-    })
+    toggleCheckableElement(this.draw, element, 'radio')
   }
 
-  public render(payload: IRadioRenderOption) {
-    const { ctx, x, index, row } = payload
-    let { y } = payload
+  public render(payload: ICheckableRenderOption) {
+    const { radio } = payload.row.elementList[payload.index]
     const {
-      radio: { gap, lineWidth, fillStyle, strokeStyle, verticalAlign },
-      scale
-    } = this.options
-    const { metrics, radio } = row.elementList[index]
-    // 垂直布局设置
-    if (
-      verticalAlign === VerticalAlign.TOP ||
-      verticalAlign === VerticalAlign.MIDDLE
-    ) {
-      let nextIndex = index + 1
-      let nextElement: IRowElement | null = null
-      while (nextIndex < row.elementList.length) {
-        nextElement = row.elementList[nextIndex]
-        if (nextElement.value !== ZERO && nextElement.value !== NBSP) break
-        nextIndex++
-      }
-      // 以后一个非空格元素为基准
-      if (nextElement) {
-        const {
-          metrics: { boundingBoxAscent, boundingBoxDescent }
-        } = nextElement
-        const textHeight = boundingBoxAscent + boundingBoxDescent
-        if (textHeight > metrics.height) {
-          if (verticalAlign === VerticalAlign.TOP) {
-            y -= boundingBoxAscent - metrics.height
-          } else if (verticalAlign === VerticalAlign.MIDDLE) {
-            y -= (textHeight - metrics.height) / 2
-          }
-        }
-      }
-    }
-    // left top 四舍五入避免1像素问题
-    const left = Math.round(x + gap * scale)
-    const top = Math.round(y - metrics.height + lineWidth)
-    const width = metrics.width - gap * 2 * scale
-    const height = metrics.height
+      ctx,
+      left,
+      top,
+      width,
+      height,
+      lineWidth,
+      fillStyle,
+      strokeStyle
+    } = resolveCheckableRenderState(payload, this.options, this.options.radio)
     ctx.save()
     ctx.beginPath()
     ctx.translate(0.5, 0.5)

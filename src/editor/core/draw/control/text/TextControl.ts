@@ -21,6 +21,7 @@ import {
   formatElementList
 } from '../../../../utils/element'
 import { Control } from '../Control'
+import { collectControlValueElementList } from '../controlValue'
 
 /**
  * 文本控件。
@@ -75,51 +76,11 @@ export class TextControl implements IControlInstance {
   public getValue(context: IControlContext = {}): IElement[] {
     const elementList = context.elementList || this.control.getElementList()
     const { startIndex } = context.range || this.control.getEditBoundaryRange()
-    const startElement = elementList[startIndex]
-    const data: IElement[] = []
-    // 向左查找
-    let preIndex = startIndex
-    while (preIndex > 0) {
-      const preElement = elementList[preIndex]
-      if (preElement.parentControlId === startElement.controlId) {
-        data.unshift(preElement)
-        preIndex--
-        continue
-      }
-      if (
-        preElement.controlId !== startElement.controlId ||
-        preElement.controlComponent === ControlComponent.PREFIX ||
-        preElement.controlComponent === ControlComponent.PRE_TEXT
-      ) {
-        break
-      }
-      if (preElement.controlComponent === ControlComponent.VALUE) {
-        data.unshift(preElement)
-      }
-      preIndex--
-    }
-    // 向右查找
-    let nextIndex = startIndex + 1
-    while (nextIndex < elementList.length) {
-      const nextElement = elementList[nextIndex]
-      if (nextElement.parentControlId === startElement.controlId) {
-        data.push(nextElement)
-        nextIndex++
-        continue
-      }
-      if (
-        nextElement.controlId !== startElement.controlId ||
-        nextElement.controlComponent === ControlComponent.POSTFIX ||
-        nextElement.controlComponent === ControlComponent.POST_TEXT
-      ) {
-        break
-      }
-      if (nextElement.controlComponent === ControlComponent.VALUE) {
-        data.push(nextElement)
-      }
-      nextIndex++
-    }
-    return data
+    return collectControlValueElementList({
+      elementList,
+      startIndex,
+      includeNestedParentControl: true
+    })
   }
 
   public setValue(

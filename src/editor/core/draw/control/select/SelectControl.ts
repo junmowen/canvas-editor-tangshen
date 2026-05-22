@@ -23,6 +23,10 @@ import {
 } from '../../../../utils'
 import { formatElementContext } from '../../../../utils/element'
 import { Control } from '../Control'
+import {
+  collectControlValueElementList,
+  resolveControlValueBoundary
+} from '../controlValue'
 import { EDITOR_COMPONENT, EDITOR_PREFIX } from '../../../../dataset/constant/Editor'
 import { EditorComponent } from '../../../../dataset/enum/Editor'
 
@@ -140,41 +144,7 @@ export class SelectControl implements IControlInstance {
   public getValue(context: IControlContext = {}): IElement[] {
     const elementList = context.elementList || this.control.getElementList()
     const { startIndex } = context.range || this.control.getEditBoundaryRange()
-    const startElement = elementList[startIndex]
-    const data: IElement[] = []
-    // 向左查找
-    let preIndex = startIndex
-    while (preIndex > 0) {
-      const preElement = elementList[preIndex]
-      if (
-        preElement.controlId !== startElement.controlId ||
-        preElement.controlComponent === ControlComponent.PREFIX ||
-        preElement.controlComponent === ControlComponent.PRE_TEXT
-      ) {
-        break
-      }
-      if (preElement.controlComponent === ControlComponent.VALUE) {
-        data.unshift(preElement)
-      }
-      preIndex--
-    }
-    // 向右查找
-    let nextIndex = startIndex + 1
-    while (nextIndex < elementList.length) {
-      const nextElement = elementList[nextIndex]
-      if (
-        nextElement.controlId !== startElement.controlId ||
-        nextElement.controlComponent === ControlComponent.POSTFIX ||
-        nextElement.controlComponent === ControlComponent.POST_TEXT
-      ) {
-        break
-      }
-      if (nextElement.controlComponent === ControlComponent.VALUE) {
-        data.push(nextElement)
-      }
-      nextIndex++
-    }
-    return data
+    return collectControlValueElementList({ elementList, startIndex })
   }
 
   public setValue(
@@ -347,39 +317,14 @@ export class SelectControl implements IControlInstance {
     }
     const elementList = context.elementList || this.control.getElementList()
     const { startIndex } = context.range || this.control.getEditBoundaryRange()
-    const startElement = elementList[startIndex]
-    let leftIndex = -1
-    let rightIndex = -1
-    // 向左查找值元素边界
-    let preIndex = startIndex
-    while (preIndex > 0) {
-      const preElement = elementList[preIndex]
-      if (
-        preElement.controlId !== startElement.controlId ||
-        preElement.controlComponent === ControlComponent.PREFIX ||
-        preElement.controlComponent === ControlComponent.PRE_TEXT
-      ) {
-        leftIndex = preIndex
-        break
-      }
-      preIndex--
-    }
-    // 向右查找值元素边界
-    let nextIndex = startIndex + 1
-    while (nextIndex < elementList.length) {
-      const nextElement = elementList[nextIndex]
-      if (
-        nextElement.controlId !== startElement.controlId ||
-        nextElement.controlComponent === ControlComponent.POSTFIX ||
-        nextElement.controlComponent === ControlComponent.POST_TEXT
-      ) {
-        rightIndex = nextIndex - 1
-        break
-      }
-      nextIndex++
-    }
+    const boundary = resolveControlValueBoundary({
+      elementList,
+      startIndex,
+      requireExplicitRightBoundary: true
+    })
     // 如果边界无效，返回 -1
-    if (!~leftIndex || !~rightIndex) return -1
+    if (!boundary) return -1
+    const [leftIndex, rightIndex] = boundary
     // 删除值元素
     const draw = this.control.getDraw()
     draw.spliceElementList(

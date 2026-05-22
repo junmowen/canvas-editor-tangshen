@@ -2,7 +2,7 @@ import { EDITOR_PREFIX } from '../../../dataset/constant/Editor'
 import { ImageDisplay } from '../../../dataset/enum/Common'
 import { ElementType } from '../../../dataset/enum/Element'
 import { IEditorOption } from '../../../interface/Editor'
-import { IElement } from '../../../interface/Element'
+import { IElement, IElementMetrics } from '../../../interface/Element'
 import { RenderLayer } from '../../render-backend'
 import { convertStringToBase64 } from '../../../utils'
 import { Draw } from '../Draw'
@@ -246,8 +246,10 @@ export class ImageParticle {
     } = {}
   ) {
     const { scale } = this.options
-    const width = element.metrics?.width || element.width! * scale
-    const height = element.metrics?.height || element.height! * scale
+    const metrics =
+      'metrics' in element ? (element.metrics as IElementMetrics) : undefined
+    const width = metrics?.width || element.width! * scale
+    const height = metrics?.height || element.height! * scale
     const renderImage = (
       renderCtx: CanvasRenderingContext2D,
       img: HTMLImageElement

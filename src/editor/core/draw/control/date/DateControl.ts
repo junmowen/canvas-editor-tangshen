@@ -19,6 +19,10 @@ import { formatElementContext } from '../../../../utils/element'
 import { Draw } from '../../Draw'
 import { DatePicker } from '../../particle/date/DatePicker'
 import { Control } from '../Control'
+import {
+  collectControlValueElementList,
+  resolveControlValueBoundary
+} from '../controlValue'
 
 /**
  * 日期控件。
@@ -89,48 +93,11 @@ export class DateControl implements IControlInstance {
    * @param context - 控件上下文
    * @returns 控件值的起始和结束索引，不存在时返回 null
    */
-  /**
-   * 获取控件值的范围索引。
-   *
-   * @param context - 控件上下文
-   * @returns 控件值的起始和结束索引，不存在时返回 null
-   */
   public getValueRange(context: IControlContext = {}): [number, number] | null {
     const elementList = context.elementList || this.control.getElementList()
     const { startIndex } =
       context.range || this.control.getEditBoundaryRange()
-    const startElement = elementList[startIndex]
-    // 向左查找值元素范围
-    let preIndex = startIndex
-    while (preIndex > 0) {
-      const preElement = elementList[preIndex]
-      // 遇到前缀或前文本时停止
-      if (
-        preElement.controlId !== startElement.controlId ||
-        preElement.controlComponent === ControlComponent.PREFIX ||
-        preElement.controlComponent === ControlComponent.PRE_TEXT
-      ) {
-        break
-      }
-      preIndex--
-    }
-    // 向右查找值元素范围
-    let nextIndex = startIndex + 1
-    while (nextIndex < elementList.length) {
-      const nextElement = elementList[nextIndex]
-      // 遇到后缀或后文本时停止
-      if (
-        nextElement.controlId !== startElement.controlId ||
-        nextElement.controlComponent === ControlComponent.POSTFIX ||
-        nextElement.controlComponent === ControlComponent.POST_TEXT
-      ) {
-        break
-      }
-      nextIndex++
-    }
-    // 如果范围为空，返回 null
-    if (preIndex === nextIndex) return null
-    return [preIndex, nextIndex - 1]
+    return resolveControlValueBoundary({ elementList, startIndex })
   }
 
   /**
@@ -139,26 +106,11 @@ export class DateControl implements IControlInstance {
    * @param context - 控件上下文
    * @returns 控件值元素列表
    */
-  /**
-   * 获取控件值。
-   *
-   * @param context - 控件上下文
-   * @returns 控件值元素列表
-   */
   public getValue(context: IControlContext = {}): IElement[] {
     const elementList = context.elementList || this.control.getElementList()
-    const range = this.getValueRange(context)
-    if (!range) return []
-    // 收集值元素
-    const data: IElement[] = []
-    const [startIndex, endIndex] = range
-    for (let i = startIndex; i <= endIndex; i++) {
-      const element = elementList[i]
-      if (element.controlComponent === ControlComponent.VALUE) {
-        data.push(element)
-      }
-    }
-    return data
+    const { startIndex } =
+      context.range || this.control.getEditBoundaryRange()
+    return collectControlValueElementList({ elementList, startIndex })
   }
 
   /**
