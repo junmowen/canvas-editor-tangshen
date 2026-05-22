@@ -1,29 +1,24 @@
 import { IPasteOption } from '../../../interface/Event'
-import { getClipboardData, removeClipboardData } from '../../../utils/clipboard'
-import { IOverrideResult } from '../../override/Override'
+import { removeClipboardData } from '../../../utils/clipboard'
 import { CanvasEvent } from '../CanvasEvent'
-import { applyPasteElements } from './applyPasteElements'
 import { pasteHtml } from './pasteHtml'
 import { pasteImageFile } from './pasteImageFile'
+import {
+  canRunPaste,
+  getClipboardImageType,
+  getClipboardTextType,
+  hasClipboardHtmlType,
+  tryApplyEditorClipboardData
+} from './pasteClipboardCommon'
 import { pastePlainText } from './pastePlainText'
 
 export async function pasteByClipboardApi(
   host: CanvasEvent,
   options?: IPasteOption
 ) {
-  const draw = host.getDraw()
-  if (draw.isReadonly() || draw.isDisabled()) return
-  const { paste } = draw.getOverride()
-  if (paste) {
-    const overrideResult = paste()
-    if ((<IOverrideResult>overrideResult)?.preventDefault !== false) return
-  }
+  if (!canRunPaste(host)) return
   const clipboardText = await navigator.clipboard.readText()
-  const editorClipboardData = getClipboardData()
-  if (clipboardText === editorClipboardData?.text) {
-    applyPasteElements(host, editorClipboardData.elementList)
-    return
-  }
+  if (tryApplyEditorClipboardData(host, clipboardText)) return
   removeClipboardData()
   if (options?.isPlainText) {
     if (clipboardText) {
@@ -32,28 +27,23 @@ export async function pasteByClipboardApi(
     return
   }
   const clipboardData = await navigator.clipboard.read()
-  let isHTML = false
+  const isHTML = clipboardData.some(item => hasClipboardHtmlType(item.types))
   for (const item of clipboardData) {
-    if (item.types.includes('text/html')) {
-      isHTML = true
-      break
-    }
-  }
-  for (const item of clipboardData) {
-    if (item.types.includes('text/plain') && !isHTML) {
-      const textBlob = await item.getType('text/plain')
+    const textType = getClipboardTextType(item.types, isHTML)
+    if (textType) {
+      const textBlob = await item.getType(textType)
       const text = await textBlob.text()
       if (text) {
-        pastePlainText(host, text)
+        if (textType === 'text/html') {
+          pasteHtml(host, text)
+        } else {
+          pastePlainText(host, text)
+        }
       }
-    } else if (item.types.includes('text/html') && isHTML) {
-      const htmlTextBlob = await item.getType('text/html')
-      const htmlText = await htmlTextBlob.text()
-      if (htmlText) {
-        pasteHtml(host, htmlText)
-      }
-    } else if (item.types.some(type => type.startsWith('image/'))) {
-      const type = item.types.find(type => type.startsWith('image/'))!
+      continue
+    }
+    const type = getClipboardImageType(item.types)
+    if (type) {
       const imageBlob = await item.getType(type)
       pasteImageFile(host, imageBlob)
     }

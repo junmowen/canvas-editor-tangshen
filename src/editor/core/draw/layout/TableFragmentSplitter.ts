@@ -161,14 +161,16 @@ export class TableFragmentSplitter {
 
       fragmentOrder++
       if ((splitResult.tail.height || 0) >= workingHeight) {
-        fragments.push(
-          this.decorateFragment(
-            splitResult.tail,
-            logicalTableId,
-            logicalTableIndex,
-            fragmentOrder
-          )
+        const tailFragment = this.decorateFragment(
+          splitResult.tail,
+          logicalTableId,
+          logicalTableIndex,
+          fragmentOrder
         )
+        if (tailFragment.fragmentOrder > 0) {
+          tailFragment.pageStartOffsetY = pageStartOffsetY
+        }
+        fragments.push(tailFragment)
         break
       }
       workingFragment = this.decorateFragment(
@@ -371,33 +373,7 @@ export class TableFragmentSplitter {
     tailTrList.unshift(tailCarryTr)
     fragment.height = this.computeFragmentHeight(trList)
 
-    const repeatTrList = trList.filter(tr => tr.repeatOnPageStart)
-    if (repeatTrList.length) {
-      const repeatedHeadTrList = deepClone(repeatTrList)
-      repeatedHeadTrList.forEach(tr => (tr.id = getUUID()))
-      this.ensureFragmentOriginMeta(repeatedHeadTrList)
-      tailTrList.unshift(...repeatedHeadTrList)
-    }
-
-    const tailFragment: ITableFragmentDescriptor = {
-      tableId: getUUID(),
-      logicalTableId: fragment.logicalTableId,
-      logicalTableIndex: fragment.logicalTableIndex,
-      fragmentOrder: fragment.fragmentOrder + 1,
-      colgroup: fragment.colgroup,
-      trList: tailTrList,
-      borderType: fragment.borderType,
-      borderColor: fragment.borderColor,
-      borderWidth: fragment.borderWidth,
-      borderExternalWidth: fragment.borderExternalWidth,
-      width: fragment.width,
-      height: tailTrList.reduce((pre, cur) => pre + (cur.originHeight || cur.height), 0)
-    }
-
-    this.draw.getTableParticle().computeRowColInfo(fragment as unknown as IElement)
-    this.draw.getTableParticle().computeRowColInfo(tailFragment as unknown as IElement)
-
-    return { head: fragment, tail: tailFragment, moveToNextPage: false }
+    return this.createSplitResult(fragment, tailTrList)
   }
 
   private splitFragmentBeforeRow(payload: {
@@ -409,15 +385,40 @@ export class TableFragmentSplitter {
     const tailTrList = trList.splice(splitTrIndex)
     fragment.height = this.computeFragmentHeight(trList)
 
-    const repeatTrList = trList.filter(tr => tr.repeatOnPageStart)
+    return this.createSplitResult(fragment, tailTrList)
+  }
+
+  private createSplitResult(
+    fragment: ITableFragmentDescriptor,
+    tailTrList: ITableFragmentRow[]
+  ): ISplitTableFragmentResult {
+    this.prependRepeatedPageStartRows(fragment.trList || [], tailTrList)
+    const tailFragment = this.createTailFragment(fragment, tailTrList)
+
+    this.draw.getTableParticle().computeRowColInfo(fragment as unknown as IElement)
+    this.draw.getTableParticle().computeRowColInfo(tailFragment as unknown as IElement)
+
+    return { head: fragment, tail: tailFragment, moveToNextPage: false }
+  }
+
+  private prependRepeatedPageStartRows(
+    sourceTrList: ITableFragmentRow[],
+    tailTrList: ITableFragmentRow[]
+  ) {
+    const repeatTrList = sourceTrList.filter(tr => tr.repeatOnPageStart)
     if (repeatTrList.length) {
       const repeatedHeadTrList = deepClone(repeatTrList)
       repeatedHeadTrList.forEach(tr => (tr.id = getUUID()))
       this.ensureFragmentOriginMeta(repeatedHeadTrList)
       tailTrList.unshift(...repeatedHeadTrList)
     }
+  }
 
-    const tailFragment: ITableFragmentDescriptor = {
+  private createTailFragment(
+    fragment: ITableFragmentDescriptor,
+    tailTrList: ITableFragmentRow[]
+  ): ITableFragmentDescriptor {
+    return {
       tableId: getUUID(),
       logicalTableId: fragment.logicalTableId,
       logicalTableIndex: fragment.logicalTableIndex,
@@ -431,11 +432,6 @@ export class TableFragmentSplitter {
       width: fragment.width,
       height: this.computeFragmentHeight(tailTrList)
     }
-
-    this.draw.getTableParticle().computeRowColInfo(fragment as unknown as IElement)
-    this.draw.getTableParticle().computeRowColInfo(tailFragment as unknown as IElement)
-
-    return { head: fragment, tail: tailFragment, moveToNextPage: false }
   }
 
   /** 为拆分后的 fragment 补齐逻辑 table 元信息与 fragment 顺序。 */

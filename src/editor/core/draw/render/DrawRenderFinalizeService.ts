@@ -1,5 +1,6 @@
 import { ElementType } from '../../../dataset/enum/Element'
 import { PageMode } from '../../../dataset/enum/Editor'
+import { MoveDirection } from '../../../dataset/enum/Observer'
 import { nextTick } from '../../../utils'
 import type { Draw } from '../Draw'
 
@@ -26,9 +27,12 @@ export class DrawRenderFinalizeService {
   public finalizeCursor(payload: {
     curIndex?: number
     isSetCursor: boolean
+    isTyping?: boolean
   }) {
     if (payload.isSetCursor) {
-      return this.draw.setCursor(payload.curIndex)
+      const curIndex = this.draw.setCursor(payload.curIndex)
+      this.scrollCursorIntoView(payload.isTyping)
+      return curIndex
     }
     if (this.draw.getRange().getIsSelection()) {
       this.draw.getComponents().cursor.focus()
@@ -40,9 +44,20 @@ export class DrawRenderFinalizeService {
   public finalizeCursorWhenIndexAvailable(curIndex?: number) {
     if (curIndex !== undefined) {
       this.draw.setCursor(curIndex)
+      this.scrollCursorIntoView(true)
     } else if (this.draw.getRange().getIsSelection()) {
       this.draw.getComponents().cursor.focus()
     }
+  }
+
+  private scrollCursorIntoView(isTyping?: boolean) {
+    if (!isTyping) return
+    const cursorPosition = this.draw.getPosition().getCursorPosition()
+    if (!cursorPosition) return
+    this.draw.getCursor().moveCursorToVisible({
+      cursorPosition,
+      direction: MoveDirection.DOWN
+    })
   }
 
   /** 提交输入或普通历史。 */

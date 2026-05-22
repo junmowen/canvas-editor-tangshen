@@ -210,6 +210,27 @@ export class RowRenderer {
     })
   }
 
+  private drawSpaceMarker(
+    ctx: CanvasRenderingContext2D,
+    element: IDrawRowPayload['rowList'][number]['elementList'][number],
+    rowPosition: IDrawRowPayload['positionList'][number],
+    options: ReturnType<Draw['getOptions']>
+  ) {
+    const leftTop = rowPosition.coordinate.leftTop
+    const markerX = leftTop[0] + element.metrics.width / 2
+    const markerY = leftTop[1] + rowPosition.lineHeight / 2
+    const markerRadius = Math.max(
+      1,
+      Math.round(options.lineBreak.lineWidth * options.scale * 1.25)
+    )
+    ctx.save()
+    ctx.fillStyle = options.lineBreak.color
+    ctx.beginPath()
+    ctx.arc(markerX, markerY, markerRadius, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+
   private renderRowElement(payload: {
     ctx: CanvasRenderingContext2D
     curRow: IDrawRowPayload['rowList'][number]
@@ -405,6 +426,14 @@ export class RowRenderer {
             : options.trackChange.deleteColor)
       }
       textParticle.record(ctx, element, x, y + offsetY)
+      if (
+        (element.value === ' ' || element.value === '\u00A0') &&
+        mode !== EditorMode.CLEAN &&
+        !isPrintMode &&
+        rowPosition
+      ) {
+        this.drawSpaceMarker(ctx, element, rowPosition, options)
+      }
       if (element.width || element.letterSpacing || PUNCTUATION_REG.test(element.value)) {
         textParticle.complete()
       }

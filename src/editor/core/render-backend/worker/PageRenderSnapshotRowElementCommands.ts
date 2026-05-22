@@ -173,6 +173,14 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
       rowPosition,
       alpha
     )
+    if (
+      rowPosition &&
+      (element.value === ' ' || element.value === '\u00A0') &&
+      this.draw.getMode() !== EditorMode.CLEAN &&
+      this.draw.getMode() !== EditorMode.PRINT
+    ) {
+      this.pushSpaceMarkerCommands(commandList, element, rowPosition, alpha)
+    }
   }
 
   private pushTextElementCommand(payload: IPushRowElementCommandPayload) {

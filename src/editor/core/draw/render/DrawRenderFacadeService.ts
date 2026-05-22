@@ -225,7 +225,11 @@ export class DrawRenderFacadeService {
         requiresSurfaceClear: finalPatchResult.requiresSurfaceClear,
         oldPageSize
       })
-      this.finalizeService.finalizeCursor({ curIndex, isSetCursor })
+      this.finalizeService.finalizeCursor({
+        curIndex,
+        isSetCursor,
+        isTyping: true
+      })
     } else {
       // chunk 和单行正式 patch 都覆盖不了的复杂场景保持 dirty，不再回退整篇 layout。
       this.draw.getComponents().cursor.drawCursor()
@@ -280,7 +284,11 @@ export class DrawRenderFacadeService {
       isLazy: false,
       pageRenderScope: 'visible'
     })
-    this.finalizeService.finalizeCursor({ curIndex, isSetCursor })
+    this.finalizeService.finalizeCursor({
+      curIndex,
+      isSetCursor,
+      isTyping: true
+    })
     this.finalizeService.submitHistory({
       curIndex,
       isTyping: true,

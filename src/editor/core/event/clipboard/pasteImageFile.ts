@@ -1,11 +1,12 @@
 import { ElementType } from '../../../dataset/enum/Element'
 import { IElement } from '../../../interface/Element'
 import { formatElementContext } from '../../../utils/element'
+import { isEditorDisabled } from '../../utils/editorState'
 import { CanvasEvent } from '../CanvasEvent'
 
 export function pasteImageFile(host: CanvasEvent, file: File | Blob) {
   const draw = host.getDraw()
-  if (draw.isReadonly() || draw.isDisabled()) return
+  if (isEditorDisabled(draw)) return
   const rangeManager = draw.getComponents().range
   const { startIndex } = rangeManager.getEditBoundaryRange()
   const elementList = draw.getElementList()

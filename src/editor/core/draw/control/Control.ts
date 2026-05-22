@@ -313,6 +313,44 @@ export class Control {
   }
 
   /**
+   * 判断当前选区是否命中了“表单模式下不可删除的控件结构”。
+   *
+   * 仅用于键盘删除分支的保护，避免直接 splice 绕过控件自身的删除校验。
+   */
+  public getIsRangeControlDeletionDisabled(
+    context: IControlContext = {}
+  ): boolean {
+    if (
+      this.draw.getMode() !== EditorMode.FORM ||
+      !this.options.modeRule[EditorMode.FORM].controlDeletableDisabled
+    ) {
+      return false
+    }
+    const { startIndex, endIndex } =
+      context.range || this.range.getEditBoundaryRange()
+    if (startIndex === endIndex) return false
+    const elementList = context.elementList || this.draw.getElementList()
+    const startElement = elementList[startIndex]
+    const endElement = elementList[endIndex]
+    if (
+      !startElement?.controlId ||
+      startElement.controlId !== endElement?.controlId
+    ) {
+      return false
+    }
+    for (let i = startIndex + 1; i <= endIndex; i++) {
+      const element = elementList[i]
+      if (
+        element?.controlId &&
+        element.controlComponent !== ControlComponent.VALUE
+      ) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
    * 判断选区是否在控件后缀处。
    *
    * @returns 是否在后缀处
@@ -1114,6 +1152,20 @@ export class Control {
     )
   }
 
+  private getStringControlValueElementList(
+    element: IElement,
+    value: ISetControlValueOption['value']
+  ): IElement[] {
+    if (!value || Array.isArray(value)) return []
+    return [
+      {
+        ...pickObject(element, CONTROL_STYLE_ATTR),
+        ...pickObject(element.control!, CONTROL_STYLE_ATTR),
+        value
+      }
+    ]
+  }
+
   private getNestedControlValueResult(
     element: IElement,
     zone: EditorZone
@@ -1151,9 +1203,7 @@ export class Control {
     ) {
       const formatValue = Array.isArray(value)
         ? deepClone(value)
-        : value
-        ? [{ value }]
-        : []
+        : this.getStringControlValueElementList(element, value)
       if (formatValue.length) {
         formatElementList(formatValue, {
           isHandleFirstElement: false,
@@ -1196,9 +1246,7 @@ export class Control {
     ) {
       const formatValue = Array.isArray(value)
         ? deepClone(value)
-        : value
-        ? [{ value }]
-        : []
+        : this.getStringControlValueElementList(prefixElement, value)
       if (formatValue.length) {
         formatElementList(formatValue, {
           isHandleFirstElement: false,
@@ -1502,9 +1550,7 @@ export class Control {
         if (type === ControlType.TEXT) {
           const formatValue = Array.isArray(value)
             ? value
-            : value
-            ? [{ value }]
-            : []
+            : this.getStringControlValueElementList(element, value)
           if (formatValue.length) {
             formatElementList(formatValue, {
               isHandleFirstElement: false,
@@ -1558,9 +1604,7 @@ export class Control {
         } else if (type === ControlType.NUMBER) {
           const formatValue = Array.isArray(value)
             ? value
-            : value
-            ? [{ value }]
-            : []
+            : this.getStringControlValueElementList(element, value)
           if (formatValue.length) {
             formatElementList(formatValue, {
               isHandleFirstElement: false,

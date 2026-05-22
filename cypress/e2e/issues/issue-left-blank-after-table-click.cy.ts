@@ -77,6 +77,67 @@ function prepareDocument(editor: Editor) {
   }
 }
 
+function prepareDocumentWithLineBeforeTable(editor: Editor) {
+  editor.command.executeSetValue(
+    {
+      header: [],
+      main: [{ value: ZERO }],
+      footer: []
+    },
+    {
+      isSetCursor: true
+    } as any
+  )
+  editor.command.executePaperSize(360, 640)
+  editor.command.executeSetPaperMargin([40, 40, 40, 40])
+  editor.command.executeInsertTable(1, 1)
+
+  const table = editor.command
+    .getValue({
+      extraPickAttrs: ['id']
+    })
+    .data.main.find(element => element.type === 'table')
+  if (!table?.id) throw new Error('table not found')
+
+  const tableText = 'CELL'
+  editor.command.executeSetPositionContext({
+    startIndex: 0,
+    endIndex: 0,
+    tableId: table.id,
+    startTdIndex: 0,
+    endTdIndex: 0,
+    startTrIndex: 0,
+    endTrIndex: 0
+  } as any)
+  editor.command.executeSetRange(0, 0)
+  editor.command.executeInsertElementList(
+    tableText.split('').map(value => ({
+      value
+    }))
+  )
+
+  editor.command.executeAppendElementList(
+    'intro\nABOVE'.split('').map(value => ({
+      value
+    })),
+    {
+      isPrepend: true
+    } as any
+  )
+
+  const draw = (editor as any).draw
+  const tableIndex = draw
+    .getOriginalElementList()
+    .findIndex((element: any) => element.type === 'table' && element.id === table.id)
+  if (!~tableIndex) throw new Error('table index not found')
+
+  return {
+    tableId: table.id,
+    tableIndex,
+    tableText
+  }
+}
+
 function resolveTableFirstTextClick(editor: Editor, tableId: string): ClickPoint {
   editor.command.executeSetPositionContext({
     startIndex: 0,
@@ -139,6 +200,53 @@ function resolvePlainLeftBlankClick(
           rowNo: position.rowNo,
           pageNo: position.pageNo
         }))
+      })
+    )
+  }
+  const headPosition = targetRow[0]
+  const headPositionListIndex = positionList.indexOf(headPosition)
+  const boundaryPosition = positionList[headPositionListIndex - 1]
+  if (!boundaryPosition) throw new Error('line start boundary not found')
+
+  return {
+    pageNo: headPosition.pageNo,
+    x: Math.floor(headPosition.coordinate.leftTop[0] - 4),
+    y: Math.floor(
+      (headPosition.coordinate.leftTop[1] + headPosition.coordinate.leftBottom[1]) /
+        2
+    ),
+    boundaryIndex: boundaryPosition.index,
+    headX: headPosition.coordinate.leftTop[0]
+  }
+}
+
+function resolvePlainBeforeTableLeftBlankClick(
+  editor: Editor,
+  tableIndex: number
+): PlainLineStartPoint {
+  editor.command.executeSetRange(tableIndex, tableIndex)
+  const draw = (editor as any).draw
+  const elementList = draw.getOriginalElementList()
+  const positionList = draw.getPosition().getOriginalPositionList()
+  const rows = new Map<string, any[]>()
+
+  positionList.forEach((position: any) => {
+    const element = elementList[position.index]
+    if (!element || element.type === 'table' || element.value === ZERO) return
+    if (position.index >= tableIndex) return
+    const key = `${position.pageNo}:${position.rowNo}`
+    rows.set(key, [...(rows.get(key) || []), position])
+  })
+
+  const rowList = [...rows.values()].filter(row => row.length > 2)
+  const targetRow = rowList[rowList.length - 1]
+  if (!targetRow) {
+    throw new Error(
+      JSON.stringify({
+        message: 'plain text row before table not found',
+        tableIndex,
+        elementLength: elementList.length,
+        positionLength: positionList.length
       })
     )
   }
@@ -341,6 +449,59 @@ describe('left blank click after table click', () => {
     })
 
     cy.get('@leftBlankState').then(payload => {
+      const { plainClick, tableId, tableText } = payload as {
+        plainClick: PlainLineStartPoint
+        tableId: string
+        tableText: string
+      }
+      cy.getEditor().then((editor: Editor) => {
+        const draw = (editor as any).draw
+        const cursor = editor.command.getCursorPosition()
+        expect(draw.getPosition().getPositionContext().isTable).to.eq(false)
+        expect(cursor?.index).to.eq(plainClick.boundaryIndex)
+        expect(cursor?.coordinate.rightTop[0]).to.eq(plainClick.headX)
+
+        editor.command.executeInsertElementList([{ value: 'X' }])
+        const elementList = draw.getOriginalElementList()
+        expect(elementList[plainClick.boundaryIndex + 1]?.value).to.eq('X')
+        expect(getTableCellText(editor, tableId)).to.eq(tableText)
+      })
+    })
+  })
+
+  it('issue #1348 places caret on the line before a first-line table', () => {
+    cy.getEditor().then((editor: Editor) => {
+      const documentState = prepareDocumentWithLineBeforeTable(editor)
+      const tableClick = resolveTableFirstTextClick(editor, documentState.tableId)
+      const plainClick = resolvePlainBeforeTableLeftBlankClick(
+        editor,
+        documentState.tableIndex
+      )
+      cy.wrap({
+        ...documentState,
+        tableClick,
+        plainClick
+      }).as('beforeTableBlankState')
+    })
+
+    cy.get('@beforeTableBlankState').then(payload => {
+      const { tableClick, plainClick } = payload as {
+        tableClick: ClickPoint
+        plainClick: PlainLineStartPoint
+      }
+      cy.get(`canvas[data-index="${tableClick.pageNo}"]`).click(
+        tableClick.x,
+        tableClick.y,
+        { force: true }
+      )
+      cy.get(`canvas[data-index="${plainClick.pageNo}"]`).click(
+        plainClick.x,
+        plainClick.y,
+        { force: true }
+      )
+    })
+
+    cy.get('@beforeTableBlankState').then(payload => {
       const { plainClick, tableId, tableText } = payload as {
         plainClick: PlainLineStartPoint
         tableId: string

@@ -13,6 +13,10 @@ export function threeClick(host: CanvasEvent, evt: MouseEvent): void {
   const hit = resolvePointerHitIntent({ host, evt })
   if (!hit || hit.hitTestResult.positionResult?.isTable) return
 
+  if (draw.getControl().selectAllValue()) {
+    return
+  }
+
   const paragraphRange = resolveParagraphSelectionIntent(host)
   if (!paragraphRange) return
 

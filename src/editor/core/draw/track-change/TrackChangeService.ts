@@ -151,29 +151,86 @@ export class TrackChangeService {
   /** 聚合当前文档中的修订批次，供外部审阅面板使用。 */
   public getRecordList(): ITrackChangeRecord[] {
     const recordMap = new Map<string, ITrackChangeRecord>()
+    const trackChangeMap = new Map<string, ITrackChange>()
     const collectedElementKeySet = new Set<string>()
+    const elementTrackChangeIdMap = new Map<string, string>()
     this.collectRecordList(
       this.draw.getHeaderElementList(),
       recordMap,
-      collectedElementKeySet
+      collectedElementKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
     )
     this.collectRecordList(
       this.draw.getOriginalMainElementList(),
       recordMap,
-      collectedElementKeySet
+      collectedElementKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
     )
     this.collectRecordList(
       this.draw.getLayoutMainElementList(),
       recordMap,
-      collectedElementKeySet
+      collectedElementKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
     )
     this.collectRecordList(
       this.draw.getFooterElementList(),
       recordMap,
-      collectedElementKeySet
+      collectedElementKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
     )
-    this.collectRecordRectList(recordMap)
-    return Array.from(recordMap.values())
+    this.collectRecordListFromPositionList(
+      this.draw.getHeader().getPositionList(),
+      recordMap,
+      collectedElementKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
+    )
+    this.collectRecordListFromPositionList(
+      this.draw.getPosition().getLayoutMainPositionList(),
+      recordMap,
+      collectedElementKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
+    )
+    this.collectRecordListFromPositionList(
+      this.draw.getFooter().getPositionList(),
+      recordMap,
+      collectedElementKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
+    )
+    this.collectRecordRectList(
+      recordMap,
+      elementTrackChangeIdMap,
+      trackChangeMap
+    )
+    const recordList = Array.from(recordMap.values())
+    console.log('[track-change] record list summary', {
+      headerCount: this.draw.getHeaderElementList().length,
+      mainCount: this.draw.getOriginalMainElementList().length,
+      layoutCount: this.draw.getLayoutMainElementList().length,
+      footerCount: this.draw.getFooterElementList().length,
+      recordCount: recordMap.size,
+      tableRecordCount: recordList.filter(record =>
+        record.elementList.some(element => element.type === ElementType.TABLE)
+      ).length,
+      emptyRectRecordCount: recordList.filter(record => !record.rectList.length)
+        .length,
+      records: recordList.map(record => ({
+        id: record.id,
+        type: record.type,
+        author: record.author || '',
+        elementCount: record.elementList.length,
+        rectCount: record.rectList.length,
+        firstElementType: record.elementList[0]?.type || '',
+        firstElementValue: record.elementList[0]?.value || ''
+      }))
+    })
+    return recordList
   }
 
   /** 主动结束当前连续编辑动作。 */
@@ -255,10 +312,24 @@ export class TrackChangeService {
   private collectRecordList(
     elementList: IElement[],
     recordMap: Map<string, ITrackChangeRecord>,
-    collectedElementKeySet: Set<string>
+    collectedElementKeySet: Set<string>,
+    elementTrackChangeIdMap: Map<string, string>,
+    trackChangeMap: Map<string, ITrackChange>
   ) {
     elementList.forEach(element => {
       const change = element.trackChange
+      if (element.type === ElementType.TABLE || element.valueList?.length) {
+        console.log('[track-change] collect element', {
+          elementType: element.type,
+          elementId: element.id,
+          elementValue: element.value || '',
+          hasTrackChange: !!change,
+          changeId: change?.id || '',
+          changeType: change?.type || '',
+          childCount: element.valueList?.length || 0,
+          tableRowCount: element.type === ElementType.TABLE ? element.trList?.length || 0 : 0
+        })
+      }
       if (change) {
         const record =
           recordMap.get(change.id) ||
@@ -283,12 +354,29 @@ export class TrackChangeService {
         if (!collectedElementKeySet.has(elementKey)) {
           collectedElementKeySet.add(elementKey)
           record.elementList.push(deepClone(element))
+          if (element.id) {
+            elementTrackChangeIdMap.set(element.id, change.id)
+          }
+          trackChangeMap.set(change.id, change)
         }
       }
       if (element.type === ElementType.TABLE && element.trList) {
         element.trList.forEach(tr => {
           tr.tdList.forEach(td => {
-            this.collectRecordList(td.value, recordMap, collectedElementKeySet)
+            this.collectRecordList(
+              td.value,
+              recordMap,
+              collectedElementKeySet,
+              elementTrackChangeIdMap,
+              trackChangeMap
+            )
+            this.collectRecordListFromPositionList(
+              td.positionList || [],
+              recordMap,
+              collectedElementKeySet,
+              elementTrackChangeIdMap,
+              trackChangeMap
+            )
           })
         })
       }
@@ -296,49 +384,127 @@ export class TrackChangeService {
         this.collectRecordList(
           element.valueList,
           recordMap,
-          collectedElementKeySet
+          collectedElementKeySet,
+          elementTrackChangeIdMap,
+          trackChangeMap
         )
       }
     })
   }
 
+  /** 直接按布局位置补充修订批次，兜住表格分页片段等元素树不完整的情况。 */
+  private collectRecordListFromPositionList(
+    positionList: IElementPosition[],
+    recordMap: Map<string, ITrackChangeRecord>,
+    collectedElementKeySet: Set<string>,
+    elementTrackChangeIdMap: Map<string, string>,
+    trackChangeMap: Map<string, ITrackChange>
+  ) {
+    positionList.forEach(position => {
+      const change = this.resolvePositionTrackChange(
+        position,
+        elementTrackChangeIdMap,
+        trackChangeMap
+      )
+      if (!change) return
+      console.log('[track-change] position hit', {
+        pageNo: position.pageNo,
+        index: position.index,
+        rowIndex: position.rowIndex,
+        rowNo: position.rowNo,
+        value: position.value,
+        elementType: position.element?.type || '',
+        changeId: change.id,
+        changeType: change.type,
+        tableFragment: !!position.tableFragment,
+        tableId:
+          position.tableFragment?.tableId || position.element?.tableId || '',
+        coordinate: position.coordinate
+      })
+      const record =
+        recordMap.get(change.id) ||
+        recordMap
+          .set(change.id, {
+            id: change.id,
+            type: change.type,
+            author: change.author,
+            timestamp: change.timestamp,
+            elementList: [],
+            rectList: []
+          })
+          .get(change.id)!
+      const element = position.element!
+      const elementKey = [
+        change.id,
+        element.id,
+        element.value,
+        element.type,
+        element.pagingId,
+        element.pagingIndex
+      ].join(':')
+      if (!collectedElementKeySet.has(elementKey)) {
+        collectedElementKeySet.add(elementKey)
+        record.elementList.push(deepClone(element))
+      }
+    })
+  }
+
   /** 收集当前修订在正文坐标系下的可视矩形，供外部 UI 画关联虚线。 */
-  private collectRecordRectList(recordMap: Map<string, ITrackChangeRecord>) {
+  private collectRecordRectList(
+    recordMap: Map<string, ITrackChangeRecord>,
+    elementTrackChangeIdMap: Map<string, string>,
+    trackChangeMap: Map<string, ITrackChange>
+  ) {
     const collectedRectKeySet = new Set<string>()
     this.collectPositionRectList(
       this.draw.getHeader().getPositionList(),
       recordMap,
-      collectedRectKeySet
+      collectedRectKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
     )
     this.collectPositionRectList(
       this.draw.getPosition().getLayoutMainPositionList(),
       recordMap,
-      collectedRectKeySet
+      collectedRectKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
     )
     this.collectPositionRectList(
       this.draw.getFooter().getPositionList(),
       recordMap,
-      collectedRectKeySet
+      collectedRectKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
     )
+    this.collectPageTableFragmentRectList(recordMap, collectedRectKeySet)
     this.collectElementPositionRectList(
       this.draw.getHeaderElementList(),
       recordMap,
-      collectedRectKeySet
+      collectedRectKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
     )
     this.collectElementPositionRectList(
       this.draw.getLayoutMainElementList(),
       recordMap,
-      collectedRectKeySet
+      collectedRectKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
     )
     this.collectElementPositionRectList(
       this.draw.getOriginalMainElementList(),
       recordMap,
-      collectedRectKeySet
+      collectedRectKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
     )
     this.collectElementPositionRectList(
       this.draw.getFooterElementList(),
       recordMap,
-      collectedRectKeySet
+      collectedRectKeySet,
+      elementTrackChangeIdMap,
+      trackChangeMap
     )
   }
 
@@ -346,10 +512,16 @@ export class TrackChangeService {
   private collectPositionRectList(
     positionList: IElementPosition[],
     recordMap: Map<string, ITrackChangeRecord>,
-    collectedRectKeySet: Set<string>
+    collectedRectKeySet: Set<string>,
+    elementTrackChangeIdMap: Map<string, string>,
+    trackChangeMap: Map<string, ITrackChange>
   ) {
     positionList.forEach(position => {
-      const change = position.element?.trackChange
+      const change = this.resolvePositionTrackChange(
+        position,
+        elementTrackChangeIdMap,
+        trackChangeMap
+      )
       if (!change) return
       const record = recordMap.get(change.id)
       if (!record) return
@@ -372,7 +544,9 @@ export class TrackChangeService {
   private collectElementPositionRectList(
     elementList: IElement[],
     recordMap: Map<string, ITrackChangeRecord>,
-    collectedRectKeySet: Set<string>
+    collectedRectKeySet: Set<string>,
+    elementTrackChangeIdMap: Map<string, string>,
+    trackChangeMap: Map<string, ITrackChange>
   ) {
     elementList.forEach(element => {
       if (element.type === ElementType.TABLE && element.trList) {
@@ -381,12 +555,22 @@ export class TrackChangeService {
             this.collectPositionRectList(
               td.positionList || [],
               recordMap,
+              collectedRectKeySet,
+              elementTrackChangeIdMap,
+              trackChangeMap
+            )
+            this.collectTableCellFallbackRectList(
+              td.value || [],
+              td.positionList || [],
+              recordMap,
               collectedRectKeySet
             )
             this.collectElementPositionRectList(
               td.value || [],
               recordMap,
-              collectedRectKeySet
+              collectedRectKeySet,
+              elementTrackChangeIdMap,
+              trackChangeMap
             )
           })
         })
@@ -395,20 +579,160 @@ export class TrackChangeService {
         this.collectElementPositionRectList(
           element.valueList,
           recordMap,
-          collectedRectKeySet
+          collectedRectKeySet,
+          elementTrackChangeIdMap,
+          trackChangeMap
         )
       }
     })
   }
 
+  /** 表格 position 使用布局中间元素时，按单元格内容反推修订矩形。 */
+  private collectTableCellFallbackRectList(
+    cellElementList: IElement[],
+    positionList: IElementPosition[],
+    recordMap: Map<string, ITrackChangeRecord>,
+    collectedRectKeySet: Set<string>
+  ) {
+    if (!cellElementList.length || !positionList.length) return
+    const changeIdSet = new Set<string>()
+    this.collectElementTrackChangeIdSet(cellElementList, changeIdSet)
+    changeIdSet.forEach(changeId => {
+      const record = recordMap.get(changeId)
+      if (!record) return
+      let addedCount = 0
+      positionList.forEach(position => {
+        const rect = this.createTrackChangeRect(position)
+        const rectKey = [
+          changeId,
+          rect.pageNo,
+          rect.x,
+          rect.y,
+          rect.width,
+          rect.height
+        ].join(':')
+        if (collectedRectKeySet.has(rectKey)) return
+        collectedRectKeySet.add(rectKey)
+        record.rectList.push(rect)
+        addedCount++
+      })
+      if (addedCount) {
+        console.log('[track-change] table cell fallback rect', {
+          changeId,
+          positionCount: positionList.length,
+          addedCount,
+          firstRect: record.rectList[record.rectList.length - addedCount]
+        })
+      }
+    })
+  }
+
+  /** 递归收集元素树中的修订批次 id。 */
+  private collectElementTrackChangeIdSet(
+    elementList: IElement[],
+    changeIdSet: Set<string>
+  ) {
+    elementList.forEach(element => {
+      if (element.trackChange) {
+        changeIdSet.add(element.trackChange.id)
+      }
+      if (element.type === ElementType.TABLE && element.trList) {
+        element.trList.forEach(tr => {
+          tr.tdList.forEach(td => {
+            this.collectElementTrackChangeIdSet(td.value || [], changeIdSet)
+          })
+        })
+      }
+      if (element.valueList?.length) {
+        this.collectElementTrackChangeIdSet(element.valueList, changeIdSet)
+      }
+    })
+  }
+
+  /** 从实际分页表格片段的渲染行中收集修订矩形，保证表格内卡片定位使用真实页码。 */
+  private collectPageTableFragmentRectList(
+    recordMap: Map<string, ITrackChangeRecord>,
+    collectedRectKeySet: Set<string>
+  ) {
+    this.draw.getPageRowList().forEach((rowList, pageNo) => {
+      rowList.forEach(row => {
+        const tableFragment = row.tableFragment
+        if (!tableFragment?.trList?.length) return
+        tableFragment.trList.forEach(tr => {
+          tr.tdList.forEach(td => {
+            const positionList = td.positionList || []
+            if (!td.rowList?.length || !positionList.length) return
+            let positionIndex = 0
+            td.rowList.forEach(tdRow => {
+              tdRow.elementList.forEach(element => {
+                const position = positionList[positionIndex]
+                positionIndex++
+                const change = element.trackChange
+                if (!change || !position) return
+                const record = recordMap.get(change.id)
+                if (!record) return
+                const rect = this.createTrackChangeRect(position, pageNo)
+                const rectKey = [
+                  change.id,
+                  rect.pageNo,
+                  rect.x,
+                  rect.y,
+                  rect.width,
+                  rect.height
+                ].join(':')
+                if (collectedRectKeySet.has(rectKey)) return
+                collectedRectKeySet.add(rectKey)
+                record.rectList.push(rect)
+                console.log('[track-change] table fragment row rect', {
+                  changeId: change.id,
+                  pageNo,
+                  value: element.value,
+                  rect
+                })
+              })
+            })
+          })
+        })
+      })
+    })
+  }
+
+  /** 从 position 或元素 id 回查对应的修订元信息。 */
+  private resolvePositionTrackChange(
+    position: IElementPosition,
+    elementTrackChangeIdMap: Map<string, string>,
+    trackChangeMap: Map<string, ITrackChange>
+  ): ITrackChange | null {
+    if (position.element?.trackChange) {
+      return position.element.trackChange
+    }
+    const elementId = position.element?.id
+    const changeId = elementId && elementTrackChangeIdMap.get(elementId)
+    if (!changeId) return null
+    const change = trackChangeMap.get(changeId)
+    if (change) {
+      console.log('[track-change] position resolved by element id', {
+        elementId,
+        changeId,
+        elementType: position.element?.type || '',
+        pageNo: position.pageNo,
+        rowNo: position.rowNo
+      })
+    }
+    return change || null
+  }
+
   /** 把元素位置归一到编辑器页面容器坐标，页间距和连页高度由 PageCanvasHost 提供。 */
-  private createTrackChangeRect(position: IElementPosition): ITrackChangeRect {
+  private createTrackChangeRect(
+    position: IElementPosition,
+    pageNo: number = position.pageNo
+  ): ITrackChangeRect {
     const pageCanvasHost = this.draw.getPageCanvasHost()
     const { leftTop, rightBottom } = position.coordinate
     return {
-      pageNo: position.pageNo,
+      pageNo,
       x: leftTop[0],
-      y: pageCanvasHost.getPageTop(position.pageNo) + leftTop[1],
+      y: pageCanvasHost.getPageTop(pageNo) + leftTop[1],
       width: Math.max(1, rightBottom[0] - leftTop[0]),
       height: Math.max(1, rightBottom[1] - leftTop[1])
     }

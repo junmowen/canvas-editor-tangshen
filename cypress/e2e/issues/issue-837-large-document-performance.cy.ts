@@ -23,6 +23,13 @@ function buildLargeDocument(lineCount: number) {
   }))
 }
 
+function buildThirtyThousandCharacterDocument() {
+  const line = 'canvas-editor-large-document-visible-content-'
+  return Array.from({ length: 700 }, (_, index) => ({
+    value: `${line}${String(index).padStart(4, '0')}\n`
+  }))
+}
+
 describe('issue #837 large document performance baseline', () => {
   beforeEach(() => {
     cy.visit('http://localhost:3000/canvas-editor/')
@@ -53,6 +60,33 @@ describe('issue #837 large document performance baseline', () => {
       ) as HTMLCanvasElement | null
       expect(firstPage, 'first paged canvas').to.not.eq(null)
       expect(secondPage, 'second paged canvas').to.not.eq(null)
+      expect(countNonWhitePixels(firstPage!)).to.be.greaterThan(1000)
+      expect(countNonWhitePixels(secondPage!)).to.be.greaterThan(1000)
+    })
+  })
+
+  it('issue #1312 renders thirty-thousand-character content without blanking pages', () => {
+    cy.getEditor().then((editor: any) => {
+      editor.command.executeSetValue({
+        header: [],
+        main: buildThirtyThousandCharacterDocument(),
+        footer: []
+      })
+
+      expect(editor.command.getText().main.length).to.be.greaterThan(30000)
+      expect(editor.draw.getPageRowList().length).to.be.greaterThan(6)
+      editor.draw.getServices().pageRenderer.immediateRender()
+    })
+
+    cy.document().then(doc => {
+      const firstPage = doc.querySelector(
+        'canvas[data-index="0"]'
+      ) as HTMLCanvasElement | null
+      const secondPage = doc.querySelector(
+        'canvas[data-index="1"]'
+      ) as HTMLCanvasElement | null
+      expect(firstPage, 'first large text canvas').to.not.eq(null)
+      expect(secondPage, 'second large text canvas').to.not.eq(null)
       expect(countNonWhitePixels(firstPage!)).to.be.greaterThan(1000)
       expect(countNonWhitePixels(secondPage!)).to.be.greaterThan(1000)
     })

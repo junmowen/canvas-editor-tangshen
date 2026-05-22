@@ -1,5 +1,7 @@
 import http from 'http'
 import { spawn } from 'child_process'
+import { existsSync, readFileSync } from 'fs'
+import { resolve } from 'path'
 
 const ISSUE_SPECS = {
   41: {
@@ -25,6 +27,22 @@ const ISSUE_SPECS = {
     title: '连页模式下水印仍然生效',
     specs: ['cypress/e2e/issues/issue-94-continuity-large-doc.cy.ts']
   },
+  376: {
+    title: '通过两次回车的方式取消有序/无序列表',
+    specs: ['cypress/e2e/issues/issue-376-list-double-enter.cy.ts']
+  },
+  776: {
+    title: '希望实现分割线可删除或设置成透明功能',
+    specs: ['cypress/e2e/menus/separator.cy.ts']
+  },
+  721: {
+    title: '点击自定义的工具栏，编辑面板会失焦',
+    specs: ['cypress/e2e/issues/issue-721-toolbar-component-focus.cy.ts']
+  },
+  871: {
+    title: '点击操作栏后快捷键仍可作用于当前编辑选区',
+    specs: ['cypress/e2e/issues/issue-721-toolbar-component-focus.cy.ts']
+  },
   390: {
     title: '是否可以生成如下的表格',
     specs: ['cypress/e2e/issues/issue-390-dynamic-table-data.cy.ts'],
@@ -36,6 +54,10 @@ const ISSUE_SPECS = {
       'cypress/e2e/issues/issue-425-control-in-text-control.cy.ts',
       'cypress/e2e/control/text.cy.ts'
     ]
+  },
+  111: {
+    title: 'Issue with selection using Shift + Left/Right',
+    specs: ['cypress/e2e/issues/issue-111-shift-selection-direction.cy.ts']
   },
   1146: {
     title: '文本控件内嵌控件回写后保留 prefix/postfix',
@@ -113,6 +135,26 @@ const ISSUE_SPECS = {
     title: '韩文输入可正常提交',
     specs: ['cypress/e2e/issues/issue-colon-input.cy.ts']
   },
+  1162: {
+    title: '电子病历全角冒号输入不丢失',
+    specs: ['cypress/e2e/issues/issue-colon-input.cy.ts']
+  },
+  1323: {
+    title: '首个 j 输入不应引起后续文本抖动',
+    specs: ['cypress/e2e/issues/issue-colon-input.cy.ts']
+  },
+  1209: {
+    title: '输入字母 j 不应引起整行排版抖动',
+    specs: ['cypress/e2e/issues/issue-colon-input.cy.ts']
+  },
+  1356: {
+    title: '表格高度计算 API 修正',
+    specs: ['cypress/e2e/issues/issue-1356-table-height.cy.ts']
+  },
+  1290: {
+    title: '表格跨页时候后续executeInsertElementList内容位置有误',
+    specs: ['cypress/e2e/issues/issue-table-typing-chunk-isolation.cy.ts']
+  },
   981: {
     title: '水印支持页码占位符',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
@@ -128,6 +170,10 @@ const ISSUE_SPECS = {
   1256: {
     title: '日期选择器支持年份和月份选择模式',
     specs: ['cypress/e2e/menus/date.cy.ts']
+  },
+  1364: {
+    title: '代码块内容过长时自动换行',
+    specs: ['cypress/e2e/menus/codeblock.cy.ts']
   },
   1181: {
     title: '水印可在添加时调整尺寸',
@@ -241,6 +287,10 @@ const ISSUE_SPECS = {
     title: 'executeInsertElementList 插入标题保留 conceptId',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  608: {
+    title: '英文与中文混合输入可正确计算字数',
+    specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
+  },
   621: {
     title: '支持序号元素或段落拖拽',
     specs: ['cypress/e2e/issues/issue-621-list-drag-reorder.cy.ts']
@@ -270,12 +320,40 @@ const ISSUE_SPECS = {
       'cypress/e2e/issues/issue-94-continuity-large-doc.cy.ts'
     ]
   },
+  1176: {
+    title: '长文本文档中继续输入保持性能基线',
+    specs: ['cypress/e2e/issues/issue-837-large-document-performance.cy.ts']
+  },
+  1192: {
+    title: '超长文本内容输入保持性能基线',
+    specs: ['cypress/e2e/issues/issue-837-large-document-performance.cy.ts']
+  },
+  1312: {
+    title: '三万字内容渲染不白屏',
+    specs: ['cypress/e2e/issues/issue-837-large-document-performance.cy.ts']
+  },
   877: {
     title: '分页符行为优化',
     specs: [
       'cypress/e2e/issues/issue-877-pagebreak-behavior.cy.ts',
       'cypress/e2e/menus/pagebreak.cy.ts'
     ]
+  },
+  290: {
+    title: '单元格属性增加斜线',
+    specs: ['cypress/e2e/issues/issue-290-table-cell-slash.cy.ts']
+  },
+  466: {
+    title: '表格添加斜线保存以后再打开没有斜线了',
+    specs: ['cypress/e2e/issues/issue-290-table-cell-slash.cy.ts']
+  },
+  858: {
+    title: '表格虚线边框',
+    specs: ['cypress/e2e/issues/issue-1053-table-cell-border.cy.ts']
+  },
+  1029: {
+    title: '粘贴表格后保留虚线边框表现',
+    specs: ['cypress/e2e/issues/issue-1053-table-cell-border.cy.ts']
   },
   1053: {
     title: '单元格框线设置',
@@ -317,6 +395,10 @@ const ISSUE_SPECS = {
   1200: {
     title: 'Smart Word Wrapping Around Images ("SURROUND")',
     specs: ['cypress/e2e/issues/issue-1372-1200-image-surround.cy.ts']
+  },
+  1211: {
+    title: '跨单元格选择时选区高亮样式正确',
+    specs: ['cypress/e2e/menus/table-selection-nonpaged.cy.ts']
   },
   1202: {
     title: 'getValue 获取表格 id',
@@ -368,6 +450,10 @@ const ISSUE_SPECS = {
   },
   1223: {
     title: 'executeInsertArea 支持按光标插入并保留 id',
+    specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
+  },
+  898: {
+    title: '插入 AREA 元素遵循当前光标位置',
     specs: ['cypress/e2e/issues/issue-area-table-api-regressions.cy.ts']
   },
   1281: {
@@ -532,7 +618,8 @@ const ISSUE_SPECS = {
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
   1215: {
-    title: 'executeInsertElementList 插入图片后可从 getValue 读取 id 并按 id 删除',
+    title:
+      'executeInsertElementList 插入图片后可从 getValue 读取 id 并按 id 删除',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
   1393: {
@@ -643,6 +730,18 @@ const ISSUE_SPECS = {
     title: 'executeSetHTML 回显保留 font-family',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
   },
+  1063: {
+    title: '101版本升级102版本，程序报错',
+    specs: ['cypress/e2e/issues/issue-1063-proxy-data.cy.ts']
+  },
+  1019: {
+    title: '更新到0.9.103后报错',
+    specs: ['cypress/e2e/issues/issue-1063-proxy-data.cy.ts']
+  },
+  1090: {
+    title: '在编辑器聚焦过之后使用executeSetRange时未将选区置为可视范围',
+    specs: ['cypress/e2e/issues/issue-1090-setrange-visible.cy.ts']
+  },
   1094: {
     title: '标题 valueList 与标题正文值保持独立',
     specs: ['cypress/e2e/issues/issue-recent-api-regressions.cy.ts']
@@ -695,6 +794,46 @@ const ISSUE_SPECS = {
     title: 'controlChange 可区分控件内部和后缀位置',
     specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
   },
+  806: {
+    title: 'executeUpdateElementById 更新表格 extension 不污染单元格数据',
+    specs: ['cypress/e2e/issues/issue-api-coverage-batch-10.cy.ts']
+  },
+  933: {
+    title: 'executeUpdateElementById 可更新图片 value',
+    specs: ['cypress/e2e/issues/issue-api-coverage-batch-10.cy.ts']
+  },
+  1006: {
+    title: 'executeUpdateElementById 更新表格 trList 保留表格和单元格样式',
+    specs: ['cypress/e2e/issues/issue-api-coverage-batch-10.cy.ts']
+  },
+  972: {
+    title: '表格 getValue 后再次 setValue 回显保留单元格文字',
+    specs: ['cypress/e2e/issues/issue-api-coverage-batch-10.cy.ts']
+  },
+  920: {
+    title: 'controlChange inactive payload 保留 control',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  997: {
+    title: '横向复选框控件可点击选中',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1023: {
+    title: 'executeSetControlProperties 保留控件内表格规则',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  691: {
+    title: '清空控件后 placeholder 保留控件字号',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  1101: {
+    title: '控件内 IME 输入字符不丢失',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  996: {
+    title: '相邻文本控件删除不报错且只删除目标控件',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
   1319: {
     title: 'NUMBER 控件阻止回车写入换行',
     specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
@@ -725,6 +864,10 @@ const ISSUE_SPECS = {
   },
   1143: {
     title: '表单模式下控件结构删除保护',
+    specs: ['cypress/e2e/issues/issue-form-control-deletion-disabled.cy.ts']
+  },
+  301: {
+    title: '表单模式下禁止删除控件结构',
     specs: ['cypress/e2e/issues/issue-form-control-deletion-disabled.cy.ts']
   },
   1128: {
@@ -771,12 +914,24 @@ const ISSUE_SPECS = {
     title: '表单模式下首次点击 checkbox 可选中',
     specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
   },
+  1348: {
+    title: '首行插入表格后可定位到表格上一行',
+    specs: ['cypress/e2e/issues/issue-left-blank-after-table-click.cy.ts']
+  },
+  1349: {
+    title: '连页模式表格最后一行高度调整后点击单元格可聚焦',
+    specs: ['cypress/e2e/issues/issue-table-row-height-range-context.cy.ts']
+  },
   1340: {
     title: '下拉多选选择后保留弹窗滚动位置',
     specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
   },
   395: {
     title: '下拉选择控件无选中项时展示 placeholder',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  407: {
+    title: '文本控件值内换行保存回显不丢失',
     specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
   },
   883: {
@@ -793,6 +948,11 @@ const ISSUE_SPECS = {
   },
   1004: {
     title: 'getPositionContextByEvent 返回控件最新 value',
+    specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
+  },
+  998: {
+    title:
+      '修改control类型的元素的值，会导致元素的类型丢失，数据结构也会全部改变',
     specs: ['cypress/e2e/issues/issue-control-api-regressions.cy.ts']
   },
   1075: {
@@ -918,9 +1078,8 @@ const ISSUE_SPECS = {
 }
 
 const CURRENT_ISSUES = [
-  41, 1399, 1385, 1404, 440, 425, 813,
-  837, 1372, 1200, 1190, 1053, 877, 725, 692, 621, 605, 390,
-  1387
+  41, 1399, 1385, 1404, 440, 425, 813, 837, 1372, 1200, 1190, 1053, 877, 725,
+  692, 621, 605, 390, 1387
 ]
 
 function parseArgs(argv) {
@@ -986,8 +1145,63 @@ function dedupe(list) {
   return [...new Set(list)]
 }
 
+let coverageIssueSpecs = null
+
+function loadCoverageIssueSpecs() {
+  if (coverageIssueSpecs) {
+    return coverageIssueSpecs
+  }
+  coverageIssueSpecs = new Map()
+  const coveragePath = resolve(
+    process.cwd(),
+    'docs/issue-regression/data/cypress-issue-coverage.json'
+  )
+  try {
+    const coverage = JSON.parse(readFileSync(coveragePath, 'utf8'))
+    for (const entry of coverage) {
+      const spec = resolveCoverageSpec(entry.spec)
+      for (const issueNo of entry.issueNumbers || []) {
+        if (!coverageIssueSpecs.has(issueNo)) {
+          coverageIssueSpecs.set(issueNo, [])
+        }
+        coverageIssueSpecs.get(issueNo).push(spec)
+      }
+    }
+  } catch {
+    // Hard-coded ISSUE_SPECS remains the source of truth if the generated
+    // coverage index is not available in a downstream checkout.
+  }
+  return coverageIssueSpecs
+}
+
+function resolveCoverageSpec(spec) {
+  if (spec?.startsWith('cypress/')) {
+    return spec
+  }
+  const issueSpec = `cypress/e2e/issues/${spec}`
+  if (existsSync(resolve(process.cwd(), issueSpec))) {
+    return issueSpec
+  }
+  const menuSpec = `cypress/e2e/menus/${spec}`
+  if (existsSync(resolve(process.cwd(), menuSpec))) {
+    return menuSpec
+  }
+  return issueSpec
+}
+
 function getIssueConfig(issueNo) {
-  return ISSUE_SPECS[issueNo] || null
+  const config = ISSUE_SPECS[issueNo]
+  if (config) {
+    return config
+  }
+  const specs = loadCoverageIssueSpecs().get(issueNo)
+  if (!specs?.length) {
+    return null
+  }
+  return {
+    title: `Issue #${issueNo}`,
+    specs: dedupe(specs)
+  }
 }
 
 function printList() {
@@ -1091,14 +1305,28 @@ function startDevServer() {
     process.platform === 'win32'
       ? spawn(
           'cmd.exe',
-          ['/d', '/s', '/c', 'npm run dev -- --host 127.0.0.1 --port 3000 --strictPort'],
+          [
+            '/d',
+            '/s',
+            '/c',
+            'npm run dev -- --host 127.0.0.1 --port 3000 --strictPort'
+          ],
           {
             stdio: 'inherit'
           }
         )
       : spawn(
           'npm',
-          ['run', 'dev', '--', '--host', '127.0.0.1', '--port', '3000', '--strictPort'],
+          [
+            'run',
+            'dev',
+            '--',
+            '--host',
+            '127.0.0.1',
+            '--port',
+            '3000',
+            '--strictPort'
+          ],
           {
             stdio: 'inherit',
             shell: false
@@ -1132,16 +1360,22 @@ async function run() {
     return
   }
   if (!issueList.length) {
-    console.log('No issues selected. Use --current, --issue 41,94,813, or --list.')
+    console.log(
+      'No issues selected. Use --current, --issue 41,94,813, or --list.'
+    )
     return
   }
 
   const { specs, manualIssues, unknownIssues } = resolveSpecs(issueList)
   if (unknownIssues.length) {
-    console.log(`Unknown issues: ${unknownIssues.map(no => `#${no}`).join(', ')}`)
+    console.log(
+      `Unknown issues: ${unknownIssues.map(no => `#${no}`).join(', ')}`
+    )
   }
   if (manualIssues.length) {
-    console.log(`Manual-only issues: ${manualIssues.map(no => `#${no}`).join(', ')}`)
+    console.log(
+      `Manual-only issues: ${manualIssues.map(no => `#${no}`).join(', ')}`
+    )
     for (const issueNo of manualIssues) {
       const config = getIssueConfig(issueNo)
       if (config?.note) {

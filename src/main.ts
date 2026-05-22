@@ -728,6 +728,7 @@ window.onload = function () {
       onConfirm: payload => {
         const codeblock = payload.find(p => p.name === 'codeblock')?.value
         if (!codeblock) return
+        const codeblockExtension = 'codeblock'
         const tokenList = prism.tokenize(codeblock, prism.languages.javascript)
         const formatTokenList = formatPrismToken(tokenList)
         const elementList: IElement[] = []
@@ -737,7 +738,8 @@ window.onload = function () {
           for (let j = 0; j < tokenStringList.length; j++) {
             const value = tokenStringList[j]
             const element: IElement = {
-              value
+              value,
+              extension: codeblockExtension
             }
             if (formatToken.color) {
               element.color = formatToken.color
@@ -752,7 +754,8 @@ window.onload = function () {
           }
         }
         elementList.unshift({
-          value: '\n'
+          value: '\n',
+          extension: codeblockExtension
         })
         instance.command.executeInsertElementList(elementList)
       }
@@ -1357,14 +1360,27 @@ window.onload = function () {
     )!
   const commentDom = document.querySelector<HTMLDivElement>('.comment')!
   let isTrackChangeEnabled = !!instance.command.getOptions().trackChange.enabled
+  let isTrackChangePanelManuallyClosed = false
   let trackChangeLinkFrame: number | null = null
   const trackChangeAuthor = '君莫问'
+  function setTrackChangePanelVisible(visible: boolean) {
+    trackChangePanelDom.classList.toggle('is-visible', visible)
+    isTrackChangePanelManuallyClosed = !visible
+    updateTrackChangeMenu()
+    scheduleReviewLinksRender(visible ? undefined : [])
+  }
   function updateTrackChangeMenu() {
     trackChangeDom.classList.toggle('active', isTrackChangeEnabled)
     const toggleDom = trackChangeOptionDom.querySelector<HTMLLIElement>(
       '[data-track-change="toggle"]'
     )!
     toggleDom.innerText = isTrackChangeEnabled ? '关闭留痕' : '开启留痕'
+    const panelDom = trackChangeOptionDom.querySelector<HTMLLIElement>(
+      '[data-track-change="panel"]'
+    )!
+    panelDom.innerText = trackChangePanelDom.classList.contains('is-visible')
+      ? '关闭留痕面板'
+      : '显示留痕'
   }
   function formatTrackChangeTime(timestamp: number) {
     const date = new Date(timestamp)
@@ -1426,25 +1442,6 @@ window.onload = function () {
       }
     }
   }
-  function getReviewFallbackAnchor(rectList: ReviewRect[]): ReviewAnchor | null {
-    const pageContainerDom =
-      container.querySelector<HTMLDivElement>('.ce-page-container')
-    if (!pageContainerDom) return null
-    const pageContainerRect = pageContainerDom.getBoundingClientRect()
-    const rect = rectList[0] || {
-      x: pageContainerRect.width,
-      y: Math.max(0, window.scrollY + 120 - pageContainerRect.top),
-      width: 1,
-      height: 1
-    }
-    return {
-      pageContainerRect,
-      sourcePoint: {
-        x: pageContainerRect.left + rect.x + rect.width,
-        y: pageContainerRect.top + rect.y + rect.height / 2
-      }
-    }
-  }
   function getVisibleTrackChangeAnchor(record: TrackChangeRecord) {
     return getVisibleReviewAnchor(record.rectList || [])
   }
@@ -1487,17 +1484,19 @@ window.onload = function () {
     placementList.forEach(placement => {
       const cardHeight = placement.cardDom.offsetHeight || 66
       const stableTop = placement.top
-      if (stableTop + cardHeight < 60 || stableTop > window.innerHeight) {
-        placement.cardDom.style.display = 'none'
-        return
-      }
-      const top = Math.max(stableTop, nextTop)
-      if (top > window.innerHeight - 12) {
-        placement.cardDom.style.display = 'none'
-        return
-      }
+      const minTop = 60
+      const maxTop = Math.max(minTop, window.innerHeight - cardHeight - 12)
+      const top = Math.min(Math.max(stableTop, nextTop, minTop), maxTop)
       placement.cardDom.style.top = `${top}px`
       placement.cardDom.style.left = `${placement.left}px`
+      console.log('[track-change-ui] card layout placed', {
+        recordId: placement.cardDom.dataset.id || '',
+        top,
+        left: placement.left,
+        cardHeight,
+        stableTop,
+        maxTop
+      })
       nextTop = top + cardHeight + 10
     })
   }
@@ -1511,6 +1510,11 @@ window.onload = function () {
   function positionReviewCards(
     recordList: ReturnType<typeof instance.command.getTrackChangeList>
   ) {
+    console.log('[track-change-ui] positionReviewCards start', {
+      recordCount: recordList.length,
+      visiblePanel: trackChangePanelDom.classList.contains('is-visible'),
+      commentCount: commentDom.querySelectorAll('.comment-item').length
+    })
     const placementList: Array<{
       cardDom: HTMLDivElement
       top: number
@@ -1520,16 +1524,40 @@ window.onload = function () {
       const cardDom = trackChangeListDom.querySelector<HTMLDivElement>(
         `.track-change-card[data-id='${record.id}']`
       )
-      if (!cardDom) return
+      if (!cardDom) {
+        console.log('[track-change-ui] card missing', {
+          recordId: record.id,
+          type: record.type,
+          elementCount: record.elementList.length,
+          rectCount: record.rectList.length
+        })
+        return
+      }
       const anchor = getVisibleTrackChangeAnchor(record)
-      const fallbackAnchor = anchor || getReviewFallbackAnchor(record.rectList || [])
-      if (!fallbackAnchor) {
+      console.log('[track-change-ui] card anchor resolve', {
+        recordId: record.id,
+        type: record.type,
+        elementCount: record.elementList.length,
+        rectCount: record.rectList.length,
+        visibleAnchor: !!anchor
+      })
+      if (!anchor) {
         cardDom.style.display = 'none'
+        console.log('[track-change-ui] card hidden no visible anchor', {
+          recordId: record.id
+        })
         return
       }
       cardDom.style.display = 'block'
-      const { pageContainerRect, sourcePoint } = fallbackAnchor
+      const { pageContainerRect, sourcePoint } = anchor
       const cardWidth = cardDom.offsetWidth || 392
+      console.log('[track-change-ui] card placement', {
+        recordId: record.id,
+        sourcePoint,
+        cardWidth,
+        pageContainerLeft: pageContainerRect.left,
+        pageContainerTop: pageContainerRect.top
+      })
       placementList.push({
         cardDom,
         top: sourcePoint.y - 18,
@@ -1542,6 +1570,9 @@ window.onload = function () {
       const anchor = getVisibleCommentAnchor(commentId)
       if (!anchor) {
         cardDom.style.display = 'none'
+        console.log('[track-change-ui] comment hidden no visible anchor', {
+          commentId
+        })
         return
       }
       cardDom.style.display = 'block'
@@ -1554,6 +1585,9 @@ window.onload = function () {
       })
     })
     layoutReviewCards(placementList)
+    console.log('[track-change-ui] positionReviewCards done', {
+      placementCount: placementList.length
+    })
   }
   function renderReviewLinks(
     recordList: ReturnType<typeof instance.command.getTrackChangeList>
@@ -1566,6 +1600,12 @@ window.onload = function () {
       'is-visible',
       hasComment || (isTrackChangePanelVisible && !!recordList.length)
     )
+    console.log('[track-change-ui] renderReviewLinks', {
+      recordCount: recordList.length,
+      isTrackChangePanelVisible,
+      hasComment,
+      linkLayerVisible: trackChangeLinkLayerDom.classList.contains('is-visible')
+    })
     trackChangePanelDom
       .querySelectorAll<HTMLDivElement>('.track-change-card')
       .forEach(cardDom => {
@@ -1625,6 +1665,24 @@ window.onload = function () {
   }
   function updateTrackChangePanel() {
     const recordList = instance.command.getTrackChangeList()
+    console.log('[track-change-ui] updateTrackChangePanel', {
+      recordCount: recordList.length,
+      isTrackChangeEnabled,
+      panelVisible: trackChangePanelDom.classList.contains('is-visible'),
+      records: recordList.map(record => ({
+        id: record.id,
+        type: record.type,
+        elementCount: record.elementList.length,
+        rectCount: record.rectList.length,
+        hasTable: record.elementList.some(
+          element => element.type === ElementType.TABLE
+        )
+      }))
+    })
+    if (recordList.length && !isTrackChangePanelManuallyClosed) {
+      trackChangePanelDom.classList.add('is-visible')
+    }
+    updateTrackChangeMenu()
     trackChangeListDom.innerHTML = ''
     if (!recordList.length) {
       const emptyDom = document.createElement('div')
@@ -1700,11 +1758,17 @@ window.onload = function () {
       })
       updateTrackChangeMenu()
       if (isTrackChangeEnabled) {
+        isTrackChangePanelManuallyClosed = false
         trackChangePanelDom.classList.add('is-visible')
+      } else {
+        trackChangePanelDom.classList.remove('is-visible')
+        isTrackChangePanelManuallyClosed = true
       }
       updateTrackChangePanel()
     } else if (action === 'panel') {
-      trackChangePanelDom.classList.add('is-visible')
+      setTrackChangePanelVisible(
+        !trackChangePanelDom.classList.contains('is-visible')
+      )
       updateTrackChangePanel()
     } else if (action === 'accept-all') {
       instance.command.executeAcceptAllTrackChange()
@@ -1716,8 +1780,7 @@ window.onload = function () {
     trackChangeOptionDom.classList.remove('visible')
   }
   trackChangeCloseDom.onclick = function () {
-    trackChangePanelDom.classList.remove('is-visible')
-    scheduleReviewLinksRender([])
+    setTrackChangePanelVisible(false)
   }
   window.addEventListener('scroll', () => scheduleReviewLinksRender(), true)
   window.addEventListener('resize', () => scheduleReviewLinksRender())
@@ -2469,18 +2532,10 @@ window.onload = function () {
     nextTick(() => {
       updateComment()
     })
-    // 留痕开启或审阅面板打开时同步刷新修订列表，避免表格内编辑后右侧卡片停留在旧状态。
-    if (
-      isTrackChangeEnabled ||
-      trackChangePanelDom.classList.contains('is-visible')
-    ) {
-      nextTick(() => {
-        if (isTrackChangeEnabled && instance.command.getTrackChangeList().length) {
-          trackChangePanelDom.classList.add('is-visible')
-        }
-        updateTrackChangePanel()
-      })
-    }
+    // 留痕列表按内容变化直接刷新，避免开关状态和文档已有留痕不同步时右侧一直空白。
+    nextTick(() => {
+      updateTrackChangePanel()
+    })
   }
   instance.listener.contentChange = debounce(handleContentChange, 200)
   handleContentChange()

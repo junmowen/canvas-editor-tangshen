@@ -113,6 +113,7 @@ export class Command {
   public executeDeleteGroup: CommandAdapt['deleteGroup']
   public executeLocationGroup: CommandAdapt['locationGroup']
   public executeSetZone: CommandAdapt['setZone']
+  public executeComputeElementListHeight: CommandAdapt['computeElementListHeight']
   public executeSetControlValue: CommandAdapt['setControlValue']
   public executeSetControlValueList: CommandAdapt['setControlValueList']
   public executeSetControlExtension: CommandAdapt['setControlExtension']
@@ -285,6 +286,8 @@ export class Command {
     this.executeDeleteGroup = adapt.deleteGroup.bind(adapt)
     this.executeLocationGroup = adapt.locationGroup.bind(adapt)
     this.executeSetZone = adapt.setZone.bind(adapt)
+    this.executeComputeElementListHeight =
+      adapt.computeElementListHeight.bind(adapt)
     this.executeUpdateOptions = adapt.updateOptions.bind(adapt)
     this.executeSetTrackChange = adapt.setTrackChange.bind(adapt)
     this.executeAcceptTrackChange = adapt.acceptTrackChange.bind(adapt)

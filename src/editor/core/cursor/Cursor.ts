@@ -227,9 +227,21 @@ export class Cursor {
       !(x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom)
     ) {
       const { scrollLeft, scrollTop } = scrollContainer
-      isUp
-        ? scrollContainer.scroll(scrollLeft, scrollTop - (rect.top - y))
-        : scrollContainer.scroll(scrollLeft, scrollTop + y - rect.bottom)
+      const nextScrollTop = isUp
+        ? scrollTop - (rect.top - y)
+        : scrollTop + y - rect.bottom
+      if (
+        scrollContainer === document.documentElement ||
+        scrollContainer === document.body
+      ) {
+        document.documentElement.scrollTop = nextScrollTop
+        document.body.scrollTop = nextScrollTop
+        window.scrollTo(scrollLeft, nextScrollTop)
+      } else {
+        scrollContainer.scrollLeft = scrollLeft
+        scrollContainer.scrollTop = nextScrollTop
+        scrollContainer.scrollTo(scrollLeft, nextScrollTop)
+      }
     }
   }
 }

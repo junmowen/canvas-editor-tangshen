@@ -70,6 +70,30 @@ export abstract class PageRenderSnapshotInlineMarkerCommands extends PageRenderS
     })
   }
 
+  /** 输出编辑态空格标记命令。 */
+  protected pushSpaceMarkerCommands(
+    commandList: IWorkerPaintCommand[],
+    element: IRowElement,
+    rowPosition: IElementPosition,
+    alpha: number
+  ) {
+    const {
+      scale,
+      lineBreak: { color, lineWidth }
+    } = this.draw.getRuntime().getOptions()
+    const markerRadius = Math.max(1, Math.round(lineWidth * scale * 1.25))
+    commandList.push({
+      type: 'fillCircle',
+      x: element.metrics.width / 2,
+      y: rowPosition.lineHeight / 2,
+      radius: markerRadius,
+      fillStyle: color,
+      alpha,
+      translateX: rowPosition.coordinate.leftTop[0],
+      translateY: rowPosition.coordinate.leftTop[1]
+    })
+  }
+
   /** 输出分页符辅助线与文案命令。 */
   protected pushPageBreakCommands(
     commandList: IWorkerPaintCommand[],

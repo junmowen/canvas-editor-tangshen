@@ -27,6 +27,15 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
     deletedCount = Math.max(1, endIndex - startIndex)
     editIndex = startIndex + 1
   } else {
+    if (
+      control.getIsRangeControlDeletionDisabled({
+        range: rangeManager.getEditBoundaryRange(),
+        elementList
+      })
+    ) {
+      evt.preventDefault()
+      return
+    }
     curIndex = handleControlDeletion(
       control,
       evt,

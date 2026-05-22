@@ -29,10 +29,16 @@ export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
     deletedCount = Math.max(1, endIndex - startIndex)
     editIndex = startIndex + 1
   } else {
-    curIndex = handleControlDeletion(
-      control,
-      evt,
-      () => !!(control.getActiveControl() && control.getIsRangeCanCaptureEvent())
+    if (
+      control.getIsRangeControlDeletionDisabled({
+        range: rangeManager.getEditBoundaryRange()
+      })
+    ) {
+      evt.preventDefault()
+      return
+    }
+    curIndex = handleControlDeletion(control, evt, () =>
+      !!(control.getActiveControl() && control.getIsRangeCanCaptureEvent())
     )
     if (curIndex === null) {
       const cursorPosition = components.position.getCursorPosition()

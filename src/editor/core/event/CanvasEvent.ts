@@ -4,6 +4,7 @@ import { NUMBER_LIKE_REG } from '../../dataset/constant/Regular'
 import { Draw } from '../draw/Draw'
 import { Position } from '../position/Position'
 import { RangeManager } from '../range/RangeManager'
+import { isEditorDisabled } from '../utils/editorState'
 import { threeClick } from '../../utils'
 import { IRangeElementStyle } from '../../interface/Range'
 import { ICopyOption } from '../../interface/Event'
@@ -104,8 +105,7 @@ export class CanvasEvent {
   public applyPainterStyle() {
     const painterStyle = this.draw.getPainterStyle()
     if (!painterStyle) return
-    const isDisabled = this.draw.isReadonly() || this.draw.isDisabled()
-    if (isDisabled) return
+    if (isEditorDisabled(this.draw)) return
     const selection = this.range.getSelection() || this.resolvePainterWordSelection()
     if (!selection) return
     const painterStyleKeys = Object.keys(painterStyle)

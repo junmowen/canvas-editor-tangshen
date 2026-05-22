@@ -1,4 +1,5 @@
 import { IMAGE_ELEMENT_TYPE } from '../../../dataset/constant/Element'
+import { MoveDirection } from '../../../dataset/enum/Observer'
 import type { Draw } from '../Draw'
 
 /**
@@ -63,6 +64,13 @@ export class DrawCursorService {
     components.cursor.drawCursor({
       isShow: isShowCursor
     })
+    const cursorPosition = components.position.getCursorPosition()
+    if (cursorPosition && isShowCursor) {
+      this.draw.getCursor().moveCursorToVisible({
+        cursorPosition,
+        direction: MoveDirection.DOWN
+      })
+    }
     return curIndex
   }
 }

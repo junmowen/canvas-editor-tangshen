@@ -88,8 +88,9 @@ export function formatElementList(
   const startElement = elementList[0]
   // 非首字符零宽节点文本元素则补偿-列表元素内部会补偿此处忽略
   if (
-    isForceCompensation ||
-    (isHandleFirstElement &&
+    (isForceCompensation && startElement?.value !== ZERO) ||
+    (!isForceCompensation &&
+      isHandleFirstElement &&
       startElement?.type !== ElementType.LIST &&
       ((startElement?.type && startElement.type !== ElementType.TEXT) ||
         !START_LINE_BREAK_REG.test(startElement?.value)))
@@ -376,8 +377,8 @@ export function formatElementList(
       const prefixStrList = isOnlyNestedControlValue
         ? ['']
         : prefixValue
-        ? splitText(prefixValue)
-        : []
+          ? splitText(prefixValue)
+          : []
       for (let p = 0; p < prefixStrList.length; p++) {
         const value = prefixStrList[p]
         elementList.splice(i, 0, {
@@ -420,9 +421,8 @@ export function formatElementList(
       ) {
         let valueList: IElement[] = value ? deepClone(value) : []
         if (type === ControlType.CHECKBOX) {
-          const codeList = code !== undefined && code !== null
-            ? String(code).split(',')
-            : []
+          const codeList =
+            code !== undefined && code !== null ? String(code).split(',') : []
           if (Array.isArray(valueSets) && valueSets.length) {
             // 拆分valueList优先使用其属性
             const valueStyleList = valueList.reduce(
@@ -563,7 +563,9 @@ export function formatElementList(
               ...controlContext,
               ...controlExplicitStyle,
               ...element,
-              controlId: element.parentControlId ? element.controlId : controlId,
+              controlId: element.parentControlId
+                ? element.controlId
+                : controlId,
               value: value === '\n' ? ZERO : value,
               type: element.type || ElementType.TEXT,
               control:
@@ -620,8 +622,8 @@ export function formatElementList(
       const postfixStrList = isOnlyNestedControlValue
         ? ['']
         : postfixValue
-        ? splitText(postfixValue)
-        : []
+          ? splitText(postfixValue)
+          : []
       for (let p = 0; p < postfixStrList.length; p++) {
         const value = postfixStrList[p]
         elementList.splice(i, 0, {
@@ -1049,7 +1051,10 @@ export function zipElementList(
           // 控件自身样式优先；没有声明时再继承前缀样式
           const controlDefaultStyle = <IControlSelect>(<unknown>{
             ...pickObject(element, CONTROL_STYLE_ATTR),
-            ...pickObject(<IElement>(<unknown>element.control), CONTROL_STYLE_ATTR)
+            ...pickObject(
+              <IElement>(<unknown>element.control),
+              CONTROL_STYLE_ATTR
+            )
           })
           const control = {
             ...element.control!,
@@ -2274,7 +2279,10 @@ export function getSlimCloneElementList(elementList: IElement[]) {
 }
 
 export function getIsBlockElement(element?: IElement) {
-  if (element?.type === ElementType.TABLE && element.tableDisplay === 'inline') {
+  if (
+    element?.type === ElementType.TABLE &&
+    element.tableDisplay === 'inline'
+  ) {
     return false
   }
   return (

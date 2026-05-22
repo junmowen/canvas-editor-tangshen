@@ -30,8 +30,7 @@ describe('area and table API regressions', () => {
   it('issue #1059 imports a custom table HTML string into editable table data', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetHTML({
-        main:
-          '<table><tbody><tr><td>姓名</td><td>张三</td></tr><tr><td>诊断</td><td>感冒</td></tr></tbody></table>'
+        main: '<table><tbody><tr><td>姓名</td><td>张三</td></tr><tr><td>诊断</td><td>感冒</td></tr></tbody></table>'
       })
 
       const table = editor.command
@@ -40,18 +39,18 @@ describe('area and table API regressions', () => {
 
       expect(table?.trList).to.have.length(2)
       expect(table?.trList?.[0].tdList).to.have.length(2)
-      expect(table?.trList?.[0].tdList[0].value.map(v => v.value).join('')).to.eq(
-        '姓名'
-      )
-      expect(table?.trList?.[0].tdList[1].value.map(v => v.value).join('')).to.eq(
-        '张三'
-      )
-      expect(table?.trList?.[1].tdList[0].value.map(v => v.value).join('')).to.eq(
-        '诊断'
-      )
-      expect(table?.trList?.[1].tdList[1].value.map(v => v.value).join('')).to.eq(
-        '感冒'
-      )
+      expect(
+        table?.trList?.[0].tdList[0].value.map(v => v.value).join('')
+      ).to.eq('姓名')
+      expect(
+        table?.trList?.[0].tdList[1].value.map(v => v.value).join('')
+      ).to.eq('张三')
+      expect(
+        table?.trList?.[1].tdList[0].value.map(v => v.value).join('')
+      ).to.eq('诊断')
+      expect(
+        table?.trList?.[1].tdList[1].value.map(v => v.value).join('')
+      ).to.eq('感冒')
 
       const html = editor.command.getHTML().main
       expect(html).to.contain('<table')
@@ -78,9 +77,9 @@ describe('area and table API regressions', () => {
         }
       ])
 
-      const area = editor.command.getValue().data.main.find(
-        element => element.type === ElementType.AREA
-      )
+      const area = editor.command
+        .getValue()
+        .data.main.find(element => element.type === ElementType.AREA)
       expect(area).to.include({
         type: ElementType.AREA,
         areaId: 'area-from-insert-element-list',
@@ -90,6 +89,49 @@ describe('area and table API regressions', () => {
       expect(area?.valueList?.map(element => element.value).join('')).to.eq(
         'inside area'
       )
+    })
+  })
+
+  it('issue #898 inserts an area at the cursor instead of appending it to the document end', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [{ value: 'before' }, { value: '\n' }, { value: 'after' }]
+      })
+      editor.command.executeSetRange(7, 7)
+
+      editor.command.executeInsertElementList([
+        {
+          type: ElementType.AREA,
+          value: '',
+          areaId: 'cursor-position-area',
+          area: {
+            backgroundColor: 'rgba(5,0,0,0.07)'
+          },
+          valueList: [{ value: 'area content' }]
+        }
+      ])
+
+      const value = editor.command.getValue().data.main
+      const areaIndex = value.findIndex(
+        element => element.areaId === 'cursor-position-area'
+      )
+      expect(areaIndex).to.be.greaterThan(0)
+      expect(areaIndex).to.be.lessThan(value.length - 1)
+      expect(
+        value
+          .slice(0, areaIndex)
+          .map(element => element.value)
+          .join('')
+      ).to.contain('before')
+      expect(
+        value
+          .slice(areaIndex + 1)
+          .map(element => element.value)
+          .join('')
+      ).to.contain('after')
+      expect(
+        value[areaIndex].valueList?.map(element => element.value).join('')
+      ).to.eq('area content')
     })
   })
 
@@ -146,7 +188,6 @@ describe('area and table API regressions', () => {
         id: 'area-set-value',
         value: [{ value: 'updated area value' }]
       })
-
       ;(editor as any).draw.flushScheduledFrameRender()
       const area = editor.command.getAreaValue({
         id: 'area-set-value'
@@ -334,8 +375,8 @@ describe('area and table API regressions', () => {
         ]
       })
 
-      const tdValue = editor.command.getValue().data.main[0].trList?.[0]
-        .tdList[0].value
+      const tdValue =
+        editor.command.getValue().data.main[0].trList?.[0].tdList[0].value
       expect(tdValue?.[0]).to.include({
         type: ElementType.LIST,
         value: ''
@@ -344,7 +385,9 @@ describe('area and table API regressions', () => {
       expect(
         tdValue?.[0].valueList?.some(element => element.value === '\n')
       ).to.eq(false)
-      expect(tdValue?.slice(1).some(element => element.value === '\n')).to.eq(false)
+      expect(tdValue?.slice(1).some(element => element.value === '\n')).to.eq(
+        false
+      )
     })
   })
 
@@ -383,19 +426,17 @@ describe('area and table API regressions', () => {
         ]
       })
 
-      const tdValue = editor.command.getValue().data.main[0].trList?.[0]
-        .tdList[0].value
+      const tdValue =
+        editor.command.getValue().data.main[0].trList?.[0].tdList[0].value
       expect(tdValue?.[0]).to.include({
         type: ElementType.AREA,
         value: '',
         areaId: 'table-cell-area'
       })
-      expect(tdValue?.[0].area?.backgroundColor).to.eq(
-        'rgba(0,0,255,0.08)'
-      )
-      expect(tdValue?.[0].valueList?.map(element => element.value).join('')).to.eq(
-        'area in table'
-      )
+      expect(tdValue?.[0].area?.backgroundColor).to.eq('rgba(0,0,255,0.08)')
+      expect(
+        tdValue?.[0].valueList?.map(element => element.value).join('')
+      ).to.eq('area in table')
     })
   })
 
@@ -461,8 +502,8 @@ describe('area and table API regressions', () => {
         }
       ])
 
-      const tdValue = editor.command.getValue().data.main[0].trList?.[0]
-        .tdList[0].value
+      const tdValue =
+        editor.command.getValue().data.main[0].trList?.[0].tdList[0].value
       const area = tdValue?.find(
         element => element.areaId === 'inserted-table-cell-area'
       )
@@ -713,9 +754,9 @@ describe('area and table API regressions', () => {
         ]
       })
 
-      const image = editor.command.getValue().data.main.find(
-        element => element.id === 'hidden-image'
-      )
+      const image = editor.command
+        .getValue()
+        .data.main.find(element => element.id === 'hidden-image')
       expect(image).to.include({
         type: ElementType.IMAGE,
         hide: true,
@@ -803,9 +844,9 @@ describe('area and table API regressions', () => {
       expect(text).not.to.contain('before table')
       expect(text).not.to.contain('inside table')
       expect(text).not.to.contain('after table')
-      expect((editor as any).draw.getPosition().getPositionContext().isTable).to.eq(
-        false
-      )
+      expect(
+        (editor as any).draw.getPosition().getPositionContext().isTable
+      ).to.eq(false)
     })
   })
 
@@ -847,8 +888,8 @@ describe('area and table API regressions', () => {
       const groupId = editor.command.executeSetGroup()
 
       expect(groupId).to.be.a('string').and.not.eq('')
-      const tdValue = editor.command.getValue().data.main[0].trList?.[0]
-        .tdList[0].value
+      const tdValue =
+        editor.command.getValue().data.main[0].trList?.[0].tdList[0].value
       expect(
         tdValue
           ?.filter(element => element.groupIds?.includes(groupId!))
@@ -1373,9 +1414,9 @@ describe('area and table API regressions', () => {
       expect(area?.area.extension).to.deep.eq({
         group: 'child-section'
       })
-      const valueArea = editor.command.getValue().data.main.find(
-        element => element.areaId === 'conditional-area'
-      )
+      const valueArea = editor.command
+        .getValue()
+        .data.main.find(element => element.areaId === 'conditional-area')
       expect(valueArea?.area?.hide).to.eq(true)
       expect(valueArea?.area?.extension).to.deep.eq({
         group: 'child-section'

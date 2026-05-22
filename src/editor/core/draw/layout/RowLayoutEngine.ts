@@ -180,7 +180,16 @@ export class RowLayoutEngine {
       const isPreInlineTable =
         preElement?.type === ElementType.TABLE && preElement.tableDisplay === 'inline'
 
-      if (this.draw.getOptions().wordBreak === WordBreak.BREAK_WORD) {
+      const isCodeblockElement =
+        element.extension === 'codeblock' ||
+        (typeof element.extension === 'object' &&
+          element.extension !== null &&
+          (element.extension as { codeblock?: boolean }).codeblock === true)
+      const wordBreak = isCodeblockElement
+        ? WordBreak.BREAK_ALL
+        : this.draw.getOptions().wordBreak
+
+      if (wordBreak === WordBreak.BREAK_WORD) {
         if (
           (!preElement?.type || preElement?.type === ElementType.TEXT) &&
           (!element.type || element.type === ElementType.TEXT)
@@ -251,7 +260,7 @@ export class RowLayoutEngine {
         (i !== 0 && element.value === ZERO && !element.area?.hide)
       const isHangingPunctuation =
         !isFromTable &&
-        this.draw.getOptions().wordBreak === WordBreak.BREAK_WORD &&
+        wordBreak === WordBreak.BREAK_WORD &&
         PUNCTUATION_LIST.includes(element.value) &&
         curRow.width <= availableWidth
       const isWidthNotEnough =

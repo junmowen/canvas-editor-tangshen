@@ -29,6 +29,39 @@ import {
   renderTableToolIfNeeded
 } from '../../effects/TableToolEffect'
 
+function resolveDisabledControlCursorIndex(
+  elementList: any[],
+  targetElementIndex: number
+) {
+  const targetElement = elementList[targetElementIndex]
+  const controlId = targetElement?.controlId
+  if (!controlId) return targetElementIndex
+
+  let controlStartIndex = targetElementIndex
+  while (
+    controlStartIndex > 0 &&
+    elementList[controlStartIndex - 1]?.controlId === controlId
+  ) {
+    controlStartIndex--
+  }
+
+  let controlEndIndex = targetElementIndex
+  while (
+    controlEndIndex + 1 < elementList.length &&
+    elementList[controlEndIndex + 1]?.controlId === controlId
+  ) {
+    controlEndIndex++
+  }
+
+  if (controlStartIndex > 0) {
+    return controlStartIndex - 1
+  }
+  if (controlEndIndex + 1 < elementList.length) {
+    return controlEndIndex + 1
+  }
+  return targetElementIndex
+}
+
 export function runSelectionStartIntent(payload: {
   host: CanvasEvent
   evt: MouseEvent
@@ -53,13 +86,17 @@ export function runSelectionStartIntent(payload: {
   const isDirectHitImage = !!(isDirectHit && isImage)
   const isDirectHitCheckbox = !!(isDirectHit && isCheckbox)
   const isDirectHitRadio = !!(isDirectHit && isRadio)
+  const isDisabledControl = !!curElement?.control?.disabled
+  const resolvedCursorIndex = isDisabledControl
+    ? resolveDisabledControlCursorIndex(elementList, targetElementIndex)
+    : curIndex
   const canToggleFormControl =
     draw.getMode() === EditorMode.FORM &&
     (isDirectHitCheckbox || isDirectHitRadio)
 
-  if (~index) {
-    let startIndex = curIndex
-    let endIndex = curIndex
+  if (~resolvedCursorIndex) {
+    let startIndex = resolvedCursorIndex
+    let endIndex = resolvedCursorIndex
     if (evt.shiftKey) {
       const { startIndex: oldStartIndex } = rangeManager.getEditBoundaryRange()
       if (~oldStartIndex) {
@@ -77,7 +114,10 @@ export function runSelectionStartIntent(payload: {
     rangeManager.setRange(startIndex, endIndex)
     // 点击当前视觉行左侧空白时，命中边界可能仍是上一逻辑边界，
     // 但光标必须画在“当前行最前面”的显式位置。
-    const nextCursorPosition = positionResult.cursorPosition || positionList[curIndex]
+    const nextCursorPosition =
+      isDisabledControl
+        ? positionList[resolvedCursorIndex]
+        : positionResult.cursorPosition || positionList[curIndex]
     position.setCursorPosition(nextCursorPosition)
 
     if (isDirectHitCheckbox && (!isReadonly || canToggleFormControl)) {
@@ -111,9 +151,10 @@ export function runSelectionStartIntent(payload: {
       if (!isHandledLinkedControl) {
         renderSelectionStart({
           draw,
-          curIndex,
+          curIndex: resolvedCursorIndex,
           isSetCursor: !isDirectHitImage && !isDirectHitCheckbox && !isDirectHitRadio,
-          preserveCurrentCursor: !!positionResult.cursorPosition
+          preserveCurrentCursor:
+            !!positionResult.cursorPosition && !isDisabledControl
         })
       }
     }

@@ -1,6 +1,9 @@
 import type Editor from '../../../src/editor'
 import { ZERO } from '../../../src/editor/dataset/constant/Common'
-import { LocationPosition } from '../../../src/editor/dataset/enum/Common'
+import {
+  FlexDirection,
+  LocationPosition
+} from '../../../src/editor/dataset/enum/Common'
 import {
   ControlComponent,
   ControlState,
@@ -122,10 +125,12 @@ describe('control API regressions', () => {
         { conceptId: 'xbs', value: '高血压' }
       ])
 
-      expect(editor.command.getControlValue({ conceptId: 'zs' })[0]).to.include({
-        value: '咳嗽三天',
-        innerText: '咳嗽三天'
-      })
+      expect(editor.command.getControlValue({ conceptId: 'zs' })[0]).to.include(
+        {
+          value: '咳嗽三天',
+          innerText: '咳嗽三天'
+        }
+      )
       expect(
         editor.command
           .getControlList()
@@ -137,6 +142,264 @@ describe('control API regressions', () => {
         ['zs', '咳嗽三天'],
         ['xbs', '高血压']
       ])
+    })
+  })
+
+  it('issue #1007 preserves styled element arrays when setting text control values', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'content',
+              type: ControlType.TEXT,
+              value: null,
+              placeholder: 'content'
+            }
+          }
+        ]
+      })
+
+      editor.command.executeSetControlValue({
+        conceptId: 'content',
+        value: [
+          {
+            value: '富文本',
+            color: '#ff0000',
+            bold: true
+          },
+          {
+            value: '结构',
+            highlight: '#00ff00',
+            italic: true
+          }
+        ]
+      })
+
+      const control = editor.command.getControlValue({
+        conceptId: 'content'
+      })[0]
+
+      expect(control).to.include({
+        value: '富文本结构',
+        innerText: '富文本结构'
+      })
+      expect(control.elementList).to.have.length(2)
+      expect(control.elementList?.[0]).to.include({
+        value: '富文本',
+        color: '#ff0000',
+        bold: true
+      })
+      expect(control.elementList?.[1]).to.include({
+        value: '结构',
+        highlight: '#00ff00',
+        italic: true
+      })
+      expect(control.elementList?.map(element => element.value)).to.deep.eq([
+        '富文本',
+        '结构'
+      ])
+    })
+  })
+
+  it('issue #1293 selects only the control value on triple click', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          { value: 'before ' },
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'tripleClickControl',
+              type: ControlType.TEXT,
+              value: [{ value: '三击全选内容' }],
+              placeholder: 'triple click',
+              prefix: '{',
+              postfix: '}'
+            }
+          },
+          { value: ' after' }
+        ]
+      })
+
+      const draw = (editor as any).draw
+      draw.flushScheduledFrameRender()
+      const elementList = draw.getOriginalMainElementList()
+      const positionList = draw.getPosition().getOriginalPositionList()
+      const controlValueIndexes = elementList.reduce(
+        (indexes: number[], element: any, index: number) => {
+          if (
+            element.control?.conceptId === 'tripleClickControl' &&
+            element.controlComponent === ControlComponent.VALUE
+          ) {
+            indexes.push(index)
+          }
+          return indexes
+        },
+        []
+      )
+      expect(controlValueIndexes).to.have.length.greaterThan(0)
+
+      const midIndex =
+        controlValueIndexes[Math.floor(controlValueIndexes.length / 2)]
+      const position = positionList[midIndex]
+      const pageWrapper = draw.getPageCanvasHost().getPageWrapperList()[
+        position.pageNo
+      ]
+      const pageRect = pageWrapper.getBoundingClientRect()
+      const leftTop = position.coordinate.leftTop
+      const rightTop = position.coordinate.rightTop
+      const clientX = pageRect.left + (leftTop[0] + rightTop[0]) / 2
+      const clientY = pageRect.top + leftTop[1] + position.lineHeight / 2
+      const canvas = cy.get('@canvas')
+
+      canvas.then($canvas => {
+        const target = $canvas[0] as HTMLCanvasElement
+        const win = target.ownerDocument.defaultView!
+        const dispatch = (type: 'mousedown' | 'mouseup' | 'click') => {
+          target.dispatchEvent(
+            new win.MouseEvent(type, {
+              bubbles: true,
+              clientX,
+              clientY,
+              button: 0,
+              buttons: 1,
+              detail: 1
+            })
+          )
+        }
+
+        dispatch('mousedown')
+        dispatch('mouseup')
+        dispatch('click')
+        dispatch('mousedown')
+        dispatch('mouseup')
+        dispatch('click')
+        dispatch('mousedown')
+        dispatch('mouseup')
+        dispatch('click')
+
+        draw.flushScheduledFrameRender()
+
+        const context = editor.command.getRangeContext()
+        expect(draw.getRange().getSelectionElementList()).to.not.eq(null)
+        expect(editor.command.getRangeText()).to.eq('三击全选内容')
+        expect(context?.startElement.controlId).to.eq(
+          context?.endElement.controlId
+        )
+        expect(context?.startElement.controlId).to.be.a('string')
+        expect(context?.startElement.controlComponent).to.eq(
+          ControlComponent.VALUE
+        )
+        expect(context?.endElement.controlComponent).to.eq(
+          ControlComponent.VALUE
+        )
+        expect(context?.selectionText).to.eq('三击全选内容')
+      })
+    })
+  })
+
+  it('issue #1352 keeps the caret out of disabled controls', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          { value: 'before ' },
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'disabledControl',
+              type: ControlType.TEXT,
+              value: [{ value: '不可编辑' }],
+              placeholder: 'disabled',
+              prefix: '{',
+              postfix: '}',
+              disabled: true
+            }
+          },
+          { value: ' after' }
+        ]
+      })
+
+      const draw = (editor as any).draw
+      draw.flushScheduledFrameRender()
+      const elementList = draw.getOriginalMainElementList()
+      const positionList = draw.getPosition().getOriginalPositionList()
+      const controlId = elementList.find(
+        (element: any) => element.control?.conceptId === 'disabledControl'
+      )?.controlId
+      expect(controlId).to.be.a('string')
+
+      const controlIndexes = elementList
+        .map((element: any, index: number) =>
+          element.controlId === controlId ? index : -1
+        )
+        .filter((index: number) => index >= 0)
+      const controlValueIndex = controlIndexes.find((index: number) => {
+        return elementList[index].controlComponent === ControlComponent.VALUE
+      }) as number
+      const controlPosition = positionList[controlValueIndex]
+      const pageWrapper = draw.getPageCanvasHost().getPageWrapperList()[
+        controlPosition.pageNo
+      ]
+      const pageRect = pageWrapper.getBoundingClientRect()
+      const clientX =
+        pageRect.left +
+        (controlPosition.coordinate.leftTop[0] +
+          controlPosition.coordinate.rightTop[0]) /
+          2
+      const clientY =
+        pageRect.top +
+        controlPosition.coordinate.leftTop[1] +
+        controlPosition.lineHeight / 2
+      const canvas = cy.get('@canvas')
+
+      canvas.then($canvas => {
+        const target = $canvas[0] as HTMLCanvasElement
+        const win = target.ownerDocument.defaultView!
+        const dispatch = (type: 'mousedown' | 'mouseup' | 'click') => {
+          target.dispatchEvent(
+            new win.MouseEvent(type, {
+              bubbles: true,
+              clientX,
+              clientY,
+              button: 0,
+              buttons: 1,
+              detail: 1
+            })
+          )
+        }
+
+        dispatch('mousedown')
+        dispatch('mouseup')
+        dispatch('click')
+      })
+
+      cy.getEditor().then((nextEditor: Editor) => {
+        const nextDraw = (nextEditor as any).draw
+        const cursor = nextEditor.command.getCursorPosition()
+        const nextElementList = nextDraw.getOriginalMainElementList()
+        const nextControlId = nextElementList.find(
+          (element: any) => element.control?.conceptId === 'disabledControl'
+        )?.controlId
+        const nextControlIndexes = nextElementList
+          .map((element: any, index: number) =>
+            element.controlId === nextControlId ? index : -1
+          )
+          .filter((index: number) => index >= 0)
+        const controlStartIndex = nextControlIndexes[0]
+        const controlEndIndex =
+          nextControlIndexes[nextControlIndexes.length - 1]
+
+        expect(cursor?.index).to.satisfy((index: number) => {
+          return index < controlStartIndex || index > controlEndIndex
+        })
+        expect(nextDraw.getControl().getIsRangeWithinControl()).to.eq(false)
+        expect(nextDraw.getControl().getActiveControl()).to.eq(null)
+      })
     })
   })
 
@@ -175,9 +438,9 @@ describe('control API regressions', () => {
       expect(control.elementList?.map(element => element.value).join('')).to.eq(
         'highlighted value'
       )
-      expect(control.elementList?.some(element => element.highlight === '#00ff00')).to.eq(
-        true
-      )
+      expect(
+        control.elementList?.some(element => element.highlight === '#00ff00')
+      ).to.eq(true)
     })
   })
 
@@ -450,7 +713,9 @@ describe('control API regressions', () => {
 
       const rawControl = (editor as any).draw
         .getOriginalMainElementList()
-        .find((element: any) => element.control?.conceptId === 'globalEmptyAffix')
+        .find(
+          (element: any) => element.control?.conceptId === 'globalEmptyAffix'
+        )
       expect(rawControl?.control).to.include({
         conceptId: 'globalEmptyAffix',
         placeholder: '空前后缀'
@@ -555,7 +820,10 @@ describe('control API regressions', () => {
       )
       expect(firstControlIndex).to.be.greaterThan(0)
 
-      editor.command.executeSetRange(firstControlIndex - 1, firstControlIndex - 1)
+      editor.command.executeSetRange(
+        firstControlIndex - 1,
+        firstControlIndex - 1
+      )
       cy.get('.ce-inputarea').type('{del}', { force: true })
 
       cy.getEditor().then((nextEditor: Editor) => {
@@ -641,14 +909,20 @@ describe('control API regressions', () => {
         ]
       })
 
-      expect(editor.command.getControlValue({ conceptId: 'batchDelete' })).to.have.length(2)
+      expect(
+        editor.command.getControlValue({ conceptId: 'batchDelete' })
+      ).to.have.length(2)
 
       editor.command.executeRemoveControl({
         conceptId: 'batchDelete'
       })
 
-      expect(editor.command.getControlValue({ conceptId: 'batchDelete' })).to.deep.eq([])
-      expect(editor.command.getControlValue({ conceptId: 'keepTable' })[0]).to.include({
+      expect(
+        editor.command.getControlValue({ conceptId: 'batchDelete' })
+      ).to.deep.eq([])
+      expect(
+        editor.command.getControlValue({ conceptId: 'keepTable' })[0]
+      ).to.include({
         value: 'keep-table',
         innerText: 'keep-table'
       })
@@ -735,12 +1009,10 @@ describe('control API regressions', () => {
         .map((element: any) => element.value)
         .join('')
       expect(rawText).to.contain('empty string placeholder')
-      expect(
-        editor.command.getValue().data.main[0].control?.value
-      ).to.deep.eq([])
-      expect(editor.command.getText().main).not.to.contain(
-        'initial'
+      expect(editor.command.getValue().data.main[0].control?.value).to.deep.eq(
+        []
       )
+      expect(editor.command.getText().main).not.to.contain('initial')
     })
   })
 
@@ -872,19 +1144,27 @@ describe('control API regressions', () => {
         ]
       })
 
-      expect(editor.command.getControlValue({ conceptId: 'loadedSelect' })[0]).to.include({
+      expect(
+        editor.command.getControlValue({ conceptId: 'loadedSelect' })[0]
+      ).to.include({
         value: 'yes',
         innerText: '有'
       })
-      expect(editor.command.getControlValue({ conceptId: 'loadedCheckbox' })[0]).to.include({
+      expect(
+        editor.command.getControlValue({ conceptId: 'loadedCheckbox' })[0]
+      ).to.include({
         value: 'left,right',
         innerText: '左右'
       })
-      expect(editor.command.getControlValue({ conceptId: 'loadedRadio' })[0]).to.include({
+      expect(
+        editor.command.getControlValue({ conceptId: 'loadedRadio' })[0]
+      ).to.include({
         value: 'female',
         innerText: '女'
       })
-      expect(editor.command.getControlValue({ conceptId: 'areaTableSelect' })[0]).to.include({
+      expect(
+        editor.command.getControlValue({ conceptId: 'areaTableSelect' })[0]
+      ).to.include({
         value: 'ok',
         innerText: '正常'
       })
@@ -950,8 +1230,9 @@ describe('control API regressions', () => {
       const control = editor.command.getControlValue({
         conceptId: 'tableListControl'
       })[0]
-      const savedControl = editor.command.getValue().data.main[0].trList?.[0]
-        .tdList[0].value[0].control
+      const savedControl =
+        editor.command.getValue().data.main[0].trList?.[0].tdList[0].value[0]
+          .control
       expect(control.elementList).to.deep.eq(savedControl?.value)
       expect(control.value).to.eq('嵌套列表值')
       expect(savedControl?.value?.[0]).to.include({
@@ -1265,7 +1546,9 @@ describe('control API regressions', () => {
         .getControlHighlight(elementList, valueIndex)
 
       expect(highlight).to.eq('#f2dede')
-      expect(editor.command.getControlValue({ conceptId: 'disabledHighlight' })[0]).to.include({
+      expect(
+        editor.command.getControlValue({ conceptId: 'disabledHighlight' })[0]
+      ).to.include({
         disabled: true,
         value: 'locked'
       })
@@ -1303,7 +1586,9 @@ describe('control API regressions', () => {
         value: 'content',
         minWidth: 180
       })
-      expect(editor.command.getValue().data.main[0].control?.minWidth).to.eq(180)
+      expect(editor.command.getValue().data.main[0].control?.minWidth).to.eq(
+        180
+      )
     })
   })
 
@@ -1386,10 +1671,14 @@ describe('control API regressions', () => {
       expect(text).to.contain('中间文本')
 
       const value = editor.command.getValue().data.main
-      const insertedIndex = value.findIndex(element => element.value === '中间文本')
+      const insertedIndex = value.findIndex(
+        element => element.value === '中间文本'
+      )
       expect(insertedIndex).to.be.greaterThan(-1)
       expect(value[insertedIndex - 1].control?.conceptId).to.eq('disabled-left')
-      expect(value[insertedIndex + 1].control?.conceptId).to.eq('disabled-right')
+      expect(value[insertedIndex + 1].control?.conceptId).to.eq(
+        'disabled-right'
+      )
       expect(value[insertedIndex - 1].control?.disabled).to.eq(true)
       expect(value[insertedIndex + 1].control?.disabled).to.eq(true)
       expect(value[insertedIndex]).to.not.have.property('control')
@@ -1443,11 +1732,15 @@ describe('control API regressions', () => {
         }
       })
 
-      expect(editor.command.getControlValue({ conceptId: 'partyName' })[0]).to.include({
+      expect(
+        editor.command.getControlValue({ conceptId: 'partyName' })[0]
+      ).to.include({
         value: '张三',
         innerText: '张三'
       })
-      expect(editor.command.getControlValue({ conceptId: 'phoneNumber' })[0]).to.include({
+      expect(
+        editor.command.getControlValue({ conceptId: 'phoneNumber' })[0]
+      ).to.include({
         value: '10086',
         innerText: '10086'
       })
@@ -1618,8 +1911,9 @@ describe('control API regressions', () => {
         innerText: '2026-05-20',
         type: ControlType.DATE
       })
-      const tableControl = editor.command.getValue().data.main[0].trList?.[0]
-        .tdList[0].value[0].control
+      const tableControl =
+        editor.command.getValue().data.main[0].trList?.[0].tdList[0].value[0]
+          .control
       expect(tableControl?.value?.map(element => element.value).join('')).to.eq(
         '2026-05-20'
       )
@@ -1757,9 +2051,9 @@ describe('control API regressions', () => {
         innerText: 'hidden control value',
         hide: true
       })
-      const value = editor.command.getValue().data.main.find(
-        element => element.control?.conceptId === 'hideControl'
-      )
+      const value = editor.command
+        .getValue()
+        .data.main.find(element => element.control?.conceptId === 'hideControl')
       expect(value?.control?.hide).to.eq(true)
       expect(editor.command.getHTML().main).not.to.contain(
         'hidden control value'
@@ -1790,7 +2084,10 @@ describe('control API regressions', () => {
       })
 
       const elementList = (editor as any).draw.getOriginalMainElementList()
-      editor.command.executeSetRange(elementList.length - 1, elementList.length - 1)
+      editor.command.executeSetRange(
+        elementList.length - 1,
+        elementList.length - 1
+      )
     })
 
     cy.get('.ce-inputarea')
@@ -1862,8 +2159,8 @@ describe('control API regressions', () => {
         source: 'table-cell',
         code: 'extension'
       })
-      const tableControl = editor.command.getValue().data.main[0].trList?.[0]
-        .tdList[0].value[0]
+      const tableControl =
+        editor.command.getValue().data.main[0].trList?.[0].tdList[0].value[0]
       expect(tableControl?.control?.extension).to.deep.eq({
         source: 'table-cell',
         code: 'extension'
@@ -2206,9 +2503,7 @@ describe('control API regressions', () => {
 
     cy.get('.ce-select-control-popup')
       .should($popup => {
-        expect($popup[0].scrollHeight).to.be.greaterThan(
-          $popup[0].clientHeight
-        )
+        expect($popup[0].scrollHeight).to.be.greaterThan($popup[0].clientHeight)
       })
       .then($popup => {
         const popup = $popup[0] as HTMLDivElement
@@ -2252,15 +2547,45 @@ describe('control API regressions', () => {
             element.controlComponent === ControlComponent.PLACEHOLDER
         )
 
-      expect(placeholderElements.map((element: any) => element.value)).to.deep.eq([
-        '第',
-        '一',
-        '行',
-        ZERO,
-        '第',
-        '二',
-        '行'
-      ])
+      expect(
+        placeholderElements.map((element: any) => element.value)
+      ).to.deep.eq(['第', '一', '行', ZERO, '第', '二', '行'])
+    })
+  })
+
+  it('issue #407 preserves line breaks inside text control values after save and reload', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'multilineControlValue',
+              type: ControlType.TEXT,
+              value: [
+                { value: '第一行' },
+                { value: '\n' },
+                { value: '第二行' }
+              ],
+              placeholder: 'multiline'
+            }
+          }
+        ]
+      })
+
+      const saved = editor.command.getValue()
+      const savedControl = saved.data.main[0].control
+      expect(savedControl?.value?.map(element => element.value).join('')).to.eq(
+        '第一行\n第二行'
+      )
+
+      editor.command.executeSetValue(saved.data)
+
+      const reloadedControl = editor.command.getValue().data.main[0].control
+      expect(
+        reloadedControl?.value?.map(element => element.value).join('')
+      ).to.eq('第一行\n第二行')
     })
   })
 
@@ -2499,15 +2824,372 @@ describe('control API regressions', () => {
       draw.getControl().initControl()
 
       expect(payloads[0].state).to.eq(ControlState.ACTIVE)
-      expect(payloads[payloads.length - 1].state).to.eq(
-        ControlState.INACTIVE
-      )
+      expect(payloads[payloads.length - 1].state).to.eq(ControlState.INACTIVE)
       expect(payloads[payloads.length - 1]).to.include({
         controlId: controlElement.controlId
       })
       expect(payloads[payloads.length - 1].control).to.include({
         conceptId: 'controlChangePosition',
         type: ControlType.TEXT
+      })
+    })
+  })
+
+  it('issue #920 emits inactive controlChange with a defined control payload after value changes', () => {
+    cy.getEditor().then((editor: Editor) => {
+      const payloads: any[] = []
+      editor.eventBus.on('controlChange', payload => {
+        payloads.push(payload)
+      })
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            controlId: 'inactive-payload-control',
+            control: {
+              conceptId: 'inactivePayloadControl',
+              type: ControlType.TEXT,
+              value: [{ value: '原始值' }],
+              placeholder: 'inactive'
+            }
+          }
+        ]
+      })
+
+      const draw = (editor as any).draw
+      editor.command.executeLocationControl('inactive-payload-control', {
+        position: LocationPosition.AFTER
+      })
+      draw.getControl().initControl()
+      editor.command.executeSetControlValue({
+        conceptId: 'inactivePayloadControl',
+        value: '更新值'
+      })
+      editor.command.executeLocationControl('inactive-payload-control', {
+        position: LocationPosition.OUTER_AFTER
+      })
+      draw.getControl().initControl()
+
+      const inactivePayload = payloads.find(
+        payload => payload.state === ControlState.INACTIVE
+      )
+      expect(inactivePayload).to.not.eq(undefined)
+      expect(inactivePayload).to.include({
+        controlId: 'inactive-payload-control'
+      })
+      expect(inactivePayload.control).to.include({
+        conceptId: 'inactivePayloadControl',
+        type: ControlType.TEXT
+      })
+    })
+  })
+
+  it('issue #997 selects a horizontal checkbox control on the first click', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'horizontalCheckbox',
+              type: ControlType.CHECKBOX,
+              code: null,
+              value: null,
+              flexDirection: FlexDirection.ROW,
+              valueSets: [
+                { value: '左侧', code: 'left' },
+                { value: '右侧', code: 'right' }
+              ]
+            }
+          }
+        ]
+      })
+      editor.command.executeMode(EditorMode.FORM)
+
+      const draw = (editor as any).draw
+      const elementList = draw.getOriginalMainElementList()
+      const positionList = draw.getPosition().getOriginalPositionList()
+      const checkboxIndex = elementList.findIndex(
+        (element: any) =>
+          element.control?.conceptId === 'horizontalCheckbox' &&
+          element.controlComponent === ControlComponent.CHECKBOX &&
+          element.checkbox?.code === 'left'
+      )
+      expect(checkboxIndex).to.be.greaterThan(-1)
+
+      const position = positionList[checkboxIndex]
+      const layoutElement = draw.getElementList()[checkboxIndex]
+      const pageWrapper = draw.getPageCanvasHost().getPageWrapperList()[
+        position.pageNo
+      ]
+      const pageRect = pageWrapper.getBoundingClientRect()
+      const leftTop = position.coordinate.leftTop
+      const metrics = layoutElement.metrics
+      const clientX = pageRect.left + leftTop[0] + metrics.width / 2
+      const clientY = pageRect.top + leftTop[1] + position.lineHeight / 2
+
+      cy.get('@canvas').trigger('mousedown', {
+        button: 0,
+        clientX,
+        clientY,
+        force: true
+      })
+    })
+
+    cy.getEditor().then((editor: Editor) => {
+      expect(
+        editor.command.getControlValue({ conceptId: 'horizontalCheckbox' })[0]
+      ).to.include({
+        value: 'left',
+        innerText: '左侧'
+      })
+    })
+  })
+
+  it('issue #1023 preserves nested table rules after setting control properties', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'nestedTableControl',
+              type: ControlType.TEXT,
+              value: [
+                {
+                  id: 'control-nested-table',
+                  type: ElementType.TABLE,
+                  value: '',
+                  tableToolDisabled: true,
+                  colgroup: [{ width: 120 }],
+                  trList: [
+                    {
+                      height: 40,
+                      tdList: [
+                        {
+                          colspan: 1,
+                          rowspan: 1,
+                          disabled: true,
+                          deletable: false,
+                          value: [{ value: 'cell value' }]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              placeholder: 'nested table'
+            }
+          }
+        ]
+      })
+
+      editor.command.executeSetControlProperties({
+        conceptId: 'nestedTableControl',
+        properties: {
+          disabled: true,
+          deletable: false
+        }
+      })
+
+      const value = editor.command.getValue().data.main[0] as any
+      const table = value.control.value.find(
+        (element: any) => element.type === ElementType.TABLE
+      )
+      expect(
+        editor.command.getControlValue({ conceptId: 'nestedTableControl' })[0]
+      ).to.include({
+        disabled: true,
+        deletable: false
+      })
+      expect(table).to.include({
+        type: ElementType.TABLE,
+        tableToolDisabled: true
+      })
+      expect(table.trList?.[0].tdList[0]).to.include({
+        disabled: true,
+        deletable: false
+      })
+    })
+  })
+
+  it('issue #691 restores empty control placeholders with the configured control size', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'sizedPlaceholderControl',
+              type: ControlType.TEXT,
+              value: [{ value: '初始值' }],
+              placeholder: '请输入',
+              size: 24
+            }
+          }
+        ]
+      })
+
+      editor.command.executeSetControlValue({
+        conceptId: 'sizedPlaceholderControl',
+        value: '输入值'
+      })
+      editor.command.executeSetControlValue({
+        conceptId: 'sizedPlaceholderControl',
+        value: null
+      })
+
+      const draw = (editor as any).draw
+      const placeholder = draw
+        .getOriginalMainElementList()
+        .find(
+          (element: any) =>
+            element.control?.conceptId === 'sizedPlaceholderControl' &&
+            element.controlComponent === ControlComponent.PLACEHOLDER
+        )
+
+      expect(
+        editor.command.getControlValue({
+          conceptId: 'sizedPlaceholderControl'
+        })[0]
+      ).to.include({
+        value: null,
+        innerText: null
+      })
+      expect(placeholder).to.not.eq(undefined)
+      expect(draw.getElementFont(placeholder)).to.contain('24px')
+    })
+  })
+
+  it('issue #1101 keeps committed IME text inside an active text control', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            controlId: 'ime-text-control',
+            control: {
+              conceptId: 'imeTextControl',
+              type: ControlType.TEXT,
+              value: [{ value: 'A' }, { value: 'B' }],
+              placeholder: 'ime'
+            }
+          }
+        ]
+      })
+
+      editor.command.executeLocationControl('ime-text-control', {
+        position: LocationPosition.AFTER
+      })
+      ;(editor as any).draw.getControl().initControl()
+    })
+
+    cy.get('.ce-inputarea').then($input => {
+      const input = $input[0] as HTMLTextAreaElement
+      input.dispatchEvent(
+        new CompositionEvent('compositionstart', {
+          bubbles: true
+        })
+      )
+      ;['d', 'de', '的'].forEach(data => {
+        input.value = data
+        input.dispatchEvent(
+          new InputEvent('input', {
+            data,
+            inputType: 'insertCompositionText',
+            bubbles: true
+          })
+        )
+      })
+      input.dispatchEvent(
+        new CompositionEvent('compositionend', {
+          data: '的',
+          bubbles: true
+        })
+      )
+      input.value = '的'
+      input.dispatchEvent(
+        new InputEvent('input', {
+          data: '的',
+          inputType: 'insertCompositionText',
+          bubbles: true
+        })
+      )
+    })
+
+    cy.getEditor().then((editor: Editor) => {
+      const control = editor.command.getControlValue({
+        conceptId: 'imeTextControl'
+      })[0]
+      expect(control).to.include({
+        value: 'AB的',
+        innerText: 'AB的'
+      })
+      expect(control.elementList?.map(element => element.value).join('')).to.eq(
+        'AB的'
+      )
+    })
+  })
+
+  it('issue #996 deletes one adjacent text control without throwing when control content is observed', () => {
+    cy.getEditor().then((editor: Editor) => {
+      const payloads: any[] = []
+      editor.eventBus.on('controlContentChange', payload => {
+        payloads.push(payload)
+      })
+      editor.command.executeSetValue({
+        main: [
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            controlId: 'adjacent-control-left',
+            control: {
+              conceptId: 'adjacentLeft',
+              type: ControlType.TEXT,
+              value: [{ value: '左' }],
+              placeholder: 'left',
+              prefix: '\u200C',
+              postfix: '\u200C'
+            }
+          },
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            controlId: 'adjacent-control-right',
+            control: {
+              conceptId: 'adjacentRight',
+              type: ControlType.TEXT,
+              value: [{ value: '右' }],
+              placeholder: 'right',
+              prefix: '\u200C',
+              postfix: '\u200C'
+            }
+          }
+        ]
+      })
+      editor.command.executeLocationControl('adjacent-control-left', {
+        position: LocationPosition.OUTER_AFTER
+      })
+      cy.wrap({ payloads }).as('adjacentControlObserver')
+    })
+
+    cy.get('.ce-inputarea').type('{backspace}', { force: true })
+
+    cy.get('@adjacentControlObserver').then(() => {
+      cy.getEditor().then((editor: Editor) => {
+        const controlIds = [
+          ...new Set(
+            editor.command.getControlList().map(element => element.controlId)
+          )
+        ]
+        expect(controlIds).to.not.include('adjacent-control-left')
+        expect(controlIds).to.include('adjacent-control-right')
+        expect(editor.command.getText().main).to.eq('右')
       })
     })
   })

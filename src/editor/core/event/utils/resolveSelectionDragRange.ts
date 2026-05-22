@@ -3,6 +3,7 @@ import { ICurrentPosition, IPositionContext } from '../../../interface/Position'
 import { IRange } from '../../../interface/Range'
 import { Draw } from '../../draw/Draw'
 import { ITableLayoutCellSlice } from '../../table/layout/TableLayoutSnapshotTypes'
+import { createTablePositionContext } from '../../table/navigation/TableNavigationAlgorithms'
 
 export interface IResolvedSelectionDragRange {
   range: IRange
@@ -41,36 +42,6 @@ interface ITableTextHit extends IBaseTextHit {
 }
 
 type TPointerHit = ITextHit | ITableTextHit
-
-function createTablePositionContext(payload: {
-  slice?: ITableLayoutCellSlice | null
-  logicalTableIndex?: number
-  logicalTrIndex?: number
-  logicalTdIndex?: number
-  fragmentTableId?: string
-  fragmentTrId?: string
-  fragmentTdId?: string
-}): IPositionContext {
-  const {
-    slice,
-    logicalTableIndex,
-    logicalTrIndex,
-    logicalTdIndex,
-    fragmentTableId,
-    fragmentTrId,
-    fragmentTdId
-  } = payload
-
-  return {
-    isTable: true,
-    index: slice?.logicalTableIndex ?? logicalTableIndex,
-    trIndex: slice?.logicalTrIndex ?? logicalTrIndex,
-    tdIndex: slice?.logicalTdIndex ?? logicalTdIndex,
-    tableId: fragmentTableId ?? slice?.fragmentTableId ?? slice?.logicalTableId,
-    trId: fragmentTrId ?? slice?.fragmentTrId ?? slice?.logicalTrId,
-    tdId: fragmentTdId ?? slice?.fragmentTdId ?? slice?.logicalTdId
-  }
-}
 
 function isTableTextHit(hit: TPointerHit): hit is ITableTextHit {
   return hit.object === 'table-text'

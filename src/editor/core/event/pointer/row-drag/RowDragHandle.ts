@@ -5,6 +5,7 @@ import { IDrawRowPayload } from '../../../../interface/Draw'
 import { IElement, IElementPosition } from '../../../../interface/Element'
 import { IRow } from '../../../../interface/Row'
 import type { Draw } from '../../../draw/Draw'
+import { isEditorDisabled } from '../../../utils/editorState'
 
 export interface IRowDragHandleBounds {
   x: number
@@ -105,7 +106,7 @@ function shouldEnableRowDragHandle(payload: {
 }) {
   const { draw, row, rowPositionList, tableCellContext } = payload
   if (tableCellContext) return false
-  if (draw.isReadonly() || draw.isDisabled()) return false
+  if (isEditorDisabled(draw)) return false
   const mode = draw.getMode()
   if (mode === EditorMode.CLEAN || mode === EditorMode.PRINT) return false
   if (!row.elementList.length || !rowPositionList.length) return false

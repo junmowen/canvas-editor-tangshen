@@ -1,6 +1,7 @@
 import { ImageDisplay } from '../../../../../dataset/enum/Common'
 import { ElementType } from '../../../../../dataset/enum/Element'
 import { IElement } from '../../../../../interface/Element'
+import { isEditorDisabled } from '../../../../utils/editorState'
 import { CanvasEvent } from '../../../CanvasEvent'
 import { IPointerCoordinatePayload } from '../../coordinates/PointerCoordinateTypes'
 import { isAllowedControlDrag } from '../../policies/ControlDragPolicy'
@@ -56,7 +57,7 @@ export function runDragCommitIntent(payload: {
   const session = host.getPointerSession()
   const components = draw.getComponents()
   if (!session.isAllowDrop) return false
-  if (draw.isReadonly() || draw.isDisabled()) {
+  if (isEditorDisabled(draw)) {
     host.mousedown(evt)
     return true
   }

@@ -16,6 +16,19 @@ function getContentRows(editor: Editor) {
     )
 }
 
+function getRowStartTop(editor: Editor, rowNo: number) {
+  const draw = (editor as any).draw
+  draw.flushScheduledFrameRender()
+  const position = draw
+    .getPosition()
+    .getOriginalPositionList()
+    .find((item: any) => item.rowNo === rowNo && item.value !== '\u200B')
+  if (!position) {
+    throw new Error(`row ${rowNo} position not found`)
+  }
+  return position.coordinate.leftTop[1]
+}
+
 describe('colon input layout', () => {
   beforeEach(() => {
     visitEditor()
@@ -43,9 +56,9 @@ describe('colon input layout', () => {
       const rows = getContentRows(editor)
 
       expect(valueText).to.eq('门诊诊断：')
-      expect(rows[0].elementList.map((element: any) => element.value).join('')).to.eq(
-        '\u200B门诊诊断：'
-      )
+      expect(
+        rows[0].elementList.map((element: any) => element.value).join('')
+      ).to.eq('\u200B门诊诊断：')
     })
   })
 
@@ -85,9 +98,9 @@ describe('colon input layout', () => {
       const rows = getContentRows(editor)
       const cursorPosition = draw.getPosition().getCursorPosition()
 
-      expect(rows[0].elementList.map((element: any) => element.value).join('')).to.eq(
-        '\u200B你好：'
-      )
+      expect(
+        rows[0].elementList.map((element: any) => element.value).join('')
+      ).to.eq('\u200B你好：')
       expect(cursorPosition?.rowNo).to.eq(0)
     })
   })
@@ -259,6 +272,77 @@ describe('colon input layout', () => {
       expect(range.startIndex).to.eq(4)
       expect(range.endIndex).to.eq(4)
       expect(cursorPosition?.index).to.eq(4)
+    })
+  })
+
+  it('issue #1162 keeps a committed medical-record full-width colon', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            value: '门诊诊断'
+          }
+        ]
+      })
+      editor.command.executeSetRange(4, 4)
+    })
+
+    cy.get('.ce-inputarea').type('：', { force: true })
+
+    cy.getEditor().then((editor: Editor) => {
+      const valueText = editor.command
+        .getValue()
+        .data.main.map((element: any) => element.value)
+        .join('')
+      const rows = getContentRows(editor)
+
+      expect(valueText).to.eq('门诊诊断：')
+      expect(
+        rows[0].elementList.map((element: any) => element.value).join('')
+      ).to.eq('\u200B门诊诊断：')
+    })
+  })
+
+  it('issue #1323 keeps the next row stable when typing a leading j', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          {
+            value: 'alpha'
+          },
+          {
+            value: '\n'
+          },
+          {
+            value: 'beta'
+          }
+        ]
+      })
+      editor.command.executeSetRange(0, 0)
+    })
+
+    cy.getEditor().then((editor: Editor) => {
+      const beforeTop = getRowStartTop(editor, 1)
+      cy.wrap({ beforeTop }).as('jInputState')
+    })
+
+    cy.get('.ce-inputarea').type('j', { force: true })
+
+    cy.get('@jInputState').then(payload => {
+      const { beforeTop } = payload as { beforeTop: number }
+      cy.getEditor().then((editor: Editor) => {
+        const draw = (editor as any).draw
+        const afterTop = getRowStartTop(editor, 1)
+
+        expect(editor.command.getText().main.startsWith('jalpha')).to.eq(true)
+        expect(
+          afterTop,
+          'second row top should stay stable after typing j'
+        ).to.be.closeTo(beforeTop, 1)
+
+        const cursorPosition = draw.getPosition().getCursorPosition()
+        expect(cursorPosition?.rowNo).to.eq(0)
+      })
     })
   })
 })

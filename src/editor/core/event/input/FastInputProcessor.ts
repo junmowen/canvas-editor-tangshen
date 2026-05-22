@@ -9,6 +9,7 @@ import { IRangeElementStyle } from '../../../interface/Range'
 import { splitText } from '../../../utils'
 import { formatElementContext } from '../../../utils/element'
 import { Draw } from '../../draw/Draw'
+import { isEditorDisabled } from '../../utils/editorState'
 import { InputBuffer, IInputAction } from './InputBuffer'
 import { IncrementalRenderScheduler } from './IncrementalRenderScheduler'
 
@@ -42,7 +43,7 @@ export class FastInputProcessor {
   }
 
   public processInput(data: string): void {
-    if (this.draw.isReadonly() || this.draw.isDisabled()) return
+    if (isEditorDisabled(this.draw)) return
     if (!data) return
 
     if (!this.isComposing && this.lastCompositionCommit) {

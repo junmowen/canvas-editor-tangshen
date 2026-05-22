@@ -234,3 +234,61 @@ interface ITrackChange {
 - `insert`：表示该元素是新增内容。接受修订时会移除 `trackChange` 标记，拒绝修订时会移除该元素。
 - `delete`：表示该元素是被删除内容。接受修订时会移除该元素，拒绝修订时会移除 `trackChange` 标记并保留原文。
 - 同一次插入或删除产生的多个元素会使用相同的 `id`，便于按批次接受或拒绝。
+
+保存时留痕数据不会单独生成顶层数组，而是保存在具体元素上。`command.getValue()`、`command.getValueAsync()` 和 `Ctrl + S` 触发的保存结果都会在 `data.header`、`data.main`、`data.footer` 中携带该字段；表格单元格内的内容保存在 `trList[].tdList[].value[]` 中，同样可以携带 `trackChange`。
+
+```typescript
+const saveData: IEditorData = {
+  header: [],
+  main: [
+    {
+      value: '新增内容',
+      trackChange: {
+        id: 'change-insert-001', // 同一次修订操作的唯一标识，多个元素可共用同一个 id
+        type: 'insert', // 插入留痕：该元素为新增内容
+        author: '张三', // 修订作者
+        timestamp: 1716172800000, // 修订发生时间戳，单位毫秒
+        color: '#047857' // 留痕显示颜色
+      }
+    },
+    {
+      value: '',
+      type: 'table',
+      trList: [
+        {
+          height: 42,
+          tdList: [
+            {
+              colspan: 1,
+              rowspan: 1,
+              value: [
+                {
+                  value: '表格内新增',
+                  trackChange: {
+                    id: 'change-table-001', // 表格单元格内元素同样保存留痕信息
+                    type: 'insert', // 插入留痕
+                    author: '张三', // 修订作者
+                    timestamp: 1716172800000, // 修订发生时间戳，单位毫秒
+                    color: '#047857' // 留痕显示颜色
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      value: '删除内容',
+      trackChange: {
+        id: 'change-delete-001', // 同一次删除操作的唯一标识
+        type: 'delete', // 删除留痕：该元素仍保留在数据中，接受修订后才会移除
+        author: '李四', // 修订作者
+        timestamp: 1716172900000, // 修订发生时间戳，单位毫秒
+        color: '#DC2626' // 留痕显示颜色
+      }
+    }
+  ],
+  footer: []
+}
+```
