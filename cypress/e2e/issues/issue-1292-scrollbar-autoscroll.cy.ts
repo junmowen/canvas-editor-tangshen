@@ -53,10 +53,7 @@ describe('issue #1292 scrollbar autoscroll', () => {
     cy.get('.ce-inputarea').type('{enter}', { force: true, delay: 0 })
     cy.wait(80)
 
-      cy.get('@scrollState').then(payload => {
-      const {} = payload as {
-        beforeCursorRect: { top: number; bottom: number }
-      }
+    cy.get('@scrollState').then(() => {
       cy.getEditor().then((editor: Editor) => {
         const cursorRect = (editor as any).draw
           .getCursor()

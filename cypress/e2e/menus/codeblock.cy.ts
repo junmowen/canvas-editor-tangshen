@@ -50,10 +50,11 @@ describe('菜单-代码块', () => {
         .eq(1)
         .click()
         .then(() => {
-          ;(editor as any).draw.flushAsyncInsertTransaction('codeblock-regression')
+          const draw = (editor as any).draw
+          draw.flushAsyncInsertTransaction('codeblock-regression')
           editor.command.executeForceUpdate()
-          ;(editor as any).draw.flushScheduledFrameRender()
-          const rowTexts = (editor as any).draw
+          draw.flushScheduledFrameRender()
+          const rowTexts = draw
             .getOriginalRowList()
             .map((row: any) =>
               row.elementList
