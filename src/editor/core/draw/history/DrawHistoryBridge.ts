@@ -61,16 +61,13 @@ export class DrawHistoryBridge {
   private commitHistory(curIndex: number | undefined) {
     if (this.draw.getHistoryManager().isDisabledHistory()) return
     const components = this.draw.getComponents()
-    const positionContext = components.position.getPositionContext()
-    const oldElementList = getSlimCloneElementList(
-      this.draw.getOriginalMainElementList()
-    )
-    const oldHeaderElementList = getSlimCloneElementList(
-      components.header.getElementList()
-    )
-    const oldFooterElementList = getSlimCloneElementList(
-      components.footer.getElementList()
-    )
+    const positionContext = this.draw.getCoordinate().getPositionContext()
+    const { header, main, footer } = this.draw
+      .getObjectResolver()
+      .getOriginalEditorData()
+    const oldElementList = getSlimCloneElementList(main)
+    const oldHeaderElementList = getSlimCloneElementList(header)
+    const oldFooterElementList = getSlimCloneElementList(footer)
     const oldRange = deepClone(components.range.getEditBoundaryRange())
     const pageNo = this.draw.getPageNo()
     const oldPositionContext = deepClone(positionContext)
@@ -79,7 +76,7 @@ export class DrawHistoryBridge {
     components.historyManager.execute(() => {
       components.zone.setZone(zone)
       this.draw.setPageNo(pageNo)
-      components.position.setPositionContext(deepClone(oldPositionContext))
+      this.draw.getCoordinate().setPositionContext(deepClone(oldPositionContext))
       components.header.setElementList(deepClone(oldHeaderElementList))
       components.footer.setElementList(deepClone(oldFooterElementList))
       this.draw.replaceMainElementList(deepClone(oldElementList))

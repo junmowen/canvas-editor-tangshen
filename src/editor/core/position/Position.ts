@@ -29,6 +29,7 @@ import {
   createCollapsedLeftCursorPosition,
   resolvePointerBoundaryAtPosition
 } from './utils/resolvePointerBoundaryAtPosition'
+import { forEachTableCell } from '../table/utils/TableCellTraversal'
 
 // 页内行带索引。用于把“按整页扫描位置列表”的命中过程
 // 缩到“先定位行带，再在局部范围内继续判断”。
@@ -110,13 +111,18 @@ export class Position {
     // 当前 positionContext 落在表格内时，优先尝试拿到“当前逻辑 cell 的连续位置列表”。
     // paged / fragment / pagingOriginId 等差异都在这里统一收口。
     const { index, trIndex, tdIndex, tableId, tdId } = this.positionContext
-    const table = index !== undefined ? sourceElementList[index] : null
-    const tr =
-      table && trIndex !== undefined ? table.trList?.[trIndex] : null
-    const td =
-      tr && tdIndex !== undefined
-        ? tr.tdList?.[tdIndex]
+    const tableCell =
+      index !== undefined && trIndex !== undefined && tdIndex !== undefined
+        ? this.draw.getTargetResolver().resolveTableTdByIndex({
+            elementList: sourceElementList,
+            tableIndex: index,
+            trIndex,
+            tdIndex
+          })
         : null
+    const table = tableCell?.table || null
+    const tr = tableCell?.tr || null
+    const td = tableCell?.td || null
 
     const directPositionList = td?.positionList || []
     if (directPositionList.length && !table?.pagingId) {
@@ -140,8 +146,10 @@ export class Position {
         (!!table?.pagingId && element.pagingId === table.pagingId)
       if (!tableIdMatched) return
 
-      element.trList?.forEach(tr => {
-        tr.tdList.forEach(fragmentTd => {
+      forEachTableCell({
+        tableElement: element,
+        tableIndex: -1,
+        visitor: ({ td: fragmentTd }) => {
           const tdIdMatched =
             !expectedTdIds.size ||
             expectedTdIds.has(fragmentTd.id) ||
@@ -150,7 +158,7 @@ export class Position {
           if (fragmentTd.positionList?.length) {
             matchedPositionList.push(...fragmentTd.positionList)
           }
-        })
+        }
       })
     })
 
@@ -161,7 +169,7 @@ export class Position {
     const pageRowFragmentPositionList: IElementPosition[] = []
     if (table?.id && tr?.id && td?.id) {
       const sliceList = this.draw
-        .getTableLayoutSnapshotAccessor()
+        .getTargetResolver()
         .getCellSlicesByLogicalCell({
           tableId: table.id,
           trId: tr.id,
@@ -217,15 +225,17 @@ export class Position {
         if (element.type !== ElementType.TABLE || element.pagingId !== table.pagingId) {
           return
         }
-        element.trList?.forEach(tr => {
-          tr.tdList.forEach(fragmentTd => {
+        forEachTableCell({
+          tableElement: element,
+          tableIndex: -1,
+          visitor: ({ td: fragmentTd }) => {
             if (
               fragmentTd.id === originTdId ||
               fragmentTd.pagingOriginId === originTdId
             ) {
               positionList.push(...(fragmentTd.positionList || []))
             }
-          })
+          }
         })
       })
       return this.normalizeTablePositionList(positionList)
@@ -239,12 +249,12 @@ export class Position {
       return this.getOriginalPositionList()
     }
     const originalPositionList = this.getTablePositionList(
-      this.draw.getOriginalElementList()
+      this.draw.getObjectResolver().getOriginalElementList()
     )
     if (originalPositionList.length) {
       return originalPositionList
     }
-    return this.getTablePositionList(this.draw.getLayoutMainElementList())
+    return this.getTablePositionList(this.draw.getObjectResolver().getLayoutMainElementList())
   }
 
   /**
@@ -685,7 +695,7 @@ export class Position {
     if (!this.cursorPosition) {
       return
     }
-    const element = this.draw.getElementList()[index]
+    const element = this.draw.getObjectResolver().getElement(index)
     // 位置坐标会在 chunk patch 后刷新；这里仅修正索引和值，保证同步编辑语义正确。
     this.cursorPosition = {
       ...this.cursorPosition,
@@ -801,8 +811,8 @@ export class Position {
     }
     if (!elementList) {
       elementList = isMainActive
-        ? this.draw.getLayoutMainElementList()
-        : this.draw.getOriginalElementList()
+        ? this.draw.getObjectResolver().getLayoutMainElementList()
+        : this.draw.getObjectResolver().getOriginalElementList()
     }
     if (!positionList) {
       positionList = isMainActive

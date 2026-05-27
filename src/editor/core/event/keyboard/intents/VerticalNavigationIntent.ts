@@ -62,19 +62,19 @@ export function runVerticalNavigationIntent(evt: KeyboardEvent, host: CanvasEven
   const draw = host.getDraw()
   const components = draw.getComponents()
   if (draw.isReadonly()) return
-  const position = components.position
-  const cursorPosition = position.getCursorPosition()
+  const coordinate = draw.getCoordinate()
+  const cursorPosition = coordinate.getCursorPosition()
   if (!cursorPosition) return
   const rangeManager = components.range
   const { startIndex, endIndex } = rangeManager.getEditBoundaryRange()
   const activeBoundaryIndex =
     startIndex === endIndex ? endIndex : cursorPosition.index
-  let positionList = position.getPositionList()
+  let positionList = coordinate.getPositionList()
   const isUp = evt.key === KeyMap.Up
   const tableNavigationService = components.tableNavigationService
   let anchorStartIndex = -1
   let anchorEndIndex = -1
-  const positionContext = position.getPositionContext()
+  const positionContext = coordinate.getPositionContext()
 
   if (!evt.shiftKey && positionContext.isTable) {
     const navigationResult = tableNavigationService.resolveVerticalNavigation({
@@ -84,8 +84,8 @@ export function runVerticalNavigationIntent(evt: KeyboardEvent, host: CanvasEven
     })
     if (!navigationResult) return
     if (navigationResult.nextPositionContext) {
-      position.setPositionContext(navigationResult.nextPositionContext)
-      positionList = position.getPositionList()
+      coordinate.setPositionContext(navigationResult.nextPositionContext)
+      positionList = coordinate.getPositionList()
     }
     anchorStartIndex = navigationResult.nextIndex
     anchorEndIndex = anchorStartIndex
@@ -106,7 +106,8 @@ export function runVerticalNavigationIntent(evt: KeyboardEvent, host: CanvasEven
         rightTop: [curRightX]
       }
     } = anchorPosition
-    if ((isUp && rowIndex === 0) || (!isUp && rowIndex === draw.getRowCount() - 1)) {
+    const rowCount = draw.getObjectResolver().getRowList().length
+    if ((isUp && rowIndex === 0) || (!isUp && rowIndex === rowCount - 1)) {
       return
     }
     const nextIndex = getNextPositionIndex({
@@ -152,7 +153,7 @@ export function runVerticalNavigationIntent(evt: KeyboardEvent, host: CanvasEven
         anchorStartIndex = startIndex
       }
     }
-    const elementList = draw.getElementList()
+    const elementList = draw.getObjectResolver().getElementList()
     const nextElement = elementList[nextIndex]
     if (nextElement.type === ElementType.TABLE) {
       const navigationResult = tableNavigationService.resolveVerticalEntryNavigation({
@@ -161,10 +162,10 @@ export function runVerticalNavigationIntent(evt: KeyboardEvent, host: CanvasEven
         direction: isUp ? 'up' : 'down'
       })
       if (navigationResult) {
-        position.setPositionContext(navigationResult.nextPositionContext)
+        coordinate.setPositionContext(navigationResult.nextPositionContext)
         anchorStartIndex = navigationResult.nextIndex
         anchorEndIndex = anchorStartIndex
-        positionList = position.getPositionList()
+        positionList = coordinate.getPositionList()
         applyTableToolState(draw, false)
       }
     }

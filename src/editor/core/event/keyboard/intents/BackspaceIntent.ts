@@ -41,14 +41,14 @@ export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
       !!(control.getActiveControl() && control.getIsRangeCanCaptureEvent())
     )
     if (curIndex === null) {
-      const cursorPosition = components.position.getCursorPosition()
+      const cursorPosition = draw.getCoordinate().getCursorPosition()
       if (!cursorPosition) return
       const { index } = cursorPosition
       const isCollapsed = rangeManager.getIsCollapsed()
-      const elementList = draw.getElementList()
+      const elementList = draw.getObjectResolver().getElementList()
       if (isCollapsed && index === 0) {
         const firstElement = elementList[index]
-        const positionContext = components.position.getPositionContext()
+        const positionContext = draw.getCoordinate().getPositionContext()
         if (positionContext.isTable && firstElement.tableId) {
           const navigationResult = tableNavigationService.resolveBackspaceNavigation({
             positionContext
@@ -57,7 +57,7 @@ export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
             if (firstElement.value !== ZERO) {
               draw.spliceElementList(elementList, 0, 1)
             }
-            components.position.setPositionContext(
+            draw.getCoordinate().setPositionContext(
               navigationResult.nextPositionContext
             )
             finalizeCollapsedCursorMove({

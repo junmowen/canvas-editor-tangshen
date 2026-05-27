@@ -21,7 +21,7 @@ export class ChunkPatchGuard {
     curIndex: number | undefined,
     insertedCount = 0
   ): { context: IChunkLayoutPatchContext | null; result: IChunkLayoutPatchResult } {
-    const positionContext = this.draw.getPosition().getPositionContext()
+    const positionContext = this.draw.getCoordinate().getPositionContext()
     if (positionContext.isTable) {
       // 表格单元格使用 td 内部局部索引，不能复用主文档 page chunk 的行和元素写回。
       return this.fail('table-context-main-page-chunk-disabled')
@@ -57,7 +57,7 @@ export class ChunkPatchGuard {
     if (oldPageRowStart < 0) {
       return this.fail('chunk-page-row-miss')
     }
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const oldEndIndex = chunk.endIndex
     // 输入发生在旧 chunk 内部时，chunk 元数据仍是旧边界：
     // 正增量向后扩展，负增量向前收缩，后续 chunk 只做整体索引平移。
@@ -73,7 +73,7 @@ export class ChunkPatchGuard {
       return this.fail('complex-element')
     }
     const chunkStartPosition =
-      this.draw.getPosition().getPositionList()[chunk.startIndex]
+      this.draw.getCoordinate().getPositionList()[chunk.startIndex]
     if (!chunkStartPosition) {
       return this.fail('position-miss')
     }

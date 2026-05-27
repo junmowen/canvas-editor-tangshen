@@ -231,7 +231,7 @@ export class RowLayoutEngine {
       rowElementRect.width = metrics.width
       rowElementRect.height = height
 
-      const surroundPosition = this.draw.getPosition().setSurroundPosition({
+      const surroundPosition = this.draw.getCoordinate().setSurroundPosition({
         pageNo,
         rowElement,
         row: curRow,
@@ -296,7 +296,7 @@ export class RowLayoutEngine {
               el.controlComponent !== ControlComponent.PREFIX
           )
           if (~preStartIndex) {
-            const preRowPositionList = this.draw.getPosition().computeRowPosition({
+            const preRowPositionList = this.draw.getCoordinate().computeRowPosition({
               row: curRow,
               innerWidth: this.draw.getInnerWidth()
             })
@@ -383,7 +383,7 @@ export class RowLayoutEngine {
           innerWidth,
           nextRow
         )
-        const surroundPosition = this.draw.getPosition().setSurroundPosition({
+        const surroundPosition = this.draw.getCoordinate().setSurroundPosition({
           pageNo,
           rowElement,
           row: nextRow,
@@ -539,7 +539,7 @@ export class RowLayoutEngine {
     if (!firstElement?.listId) {
       return { listIndexMap }
     }
-    const sourceElementList = this.draw.getOriginalMainElementList()
+    const sourceElementList = this.draw.getObjectResolver().getOriginalMainElementList()
     const listId = firstElement.listId
     let listStartIndex = payload.sourceStartIndex
     while (listStartIndex > 0) {

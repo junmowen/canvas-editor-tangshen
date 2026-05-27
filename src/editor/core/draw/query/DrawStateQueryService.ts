@@ -25,8 +25,8 @@ export class DrawStateQueryService {
     if (this.draw.getMode() === EditorMode.DESIGN) return false
     const { startIndex, endIndex } =
       this.draw.getComponents().range.getEditBoundaryRange()
-    const elementList = this.draw.getElementList()
-    if (this.draw.getTd()?.disabled) return true
+    const elementList = this.draw.getObjectResolver().getElementList()
+    if (this.draw.getObjectResolver().getTd()?.disabled) return true
     if (startIndex === endIndex) {
       const startElement = elementList[startIndex]
       const nextElement = elementList[startIndex + 1]

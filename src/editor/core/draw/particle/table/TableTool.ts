@@ -1,12 +1,13 @@
-import { ElementType, IElement } from '../../../..'
+import { IElement } from '../../../..'
 import { EDITOR_PREFIX } from '../../../../dataset/constant/Editor'
 import { TableOrder } from '../../../../dataset/enum/table/TableTool'
 import { DeepRequired } from '../../../../interface/Common'
 import { IEditorOption } from '../../../../interface/Editor'
-import { Position } from '../../../position/Position'
 import { RangeManager } from '../../../range/RangeManager'
 import { RenderLayer } from '../../../render-backend'
 import { Draw } from '../../Draw'
+import type { DrawCoordinateService } from '../../coordinate/DrawCoordinateService'
+import { resolveTableCellByIndex } from '../../../table/utils/TableCellTraversal'
 
 interface IAnchorMouseDown {
   /** 原始鼠标事件。 */
@@ -42,8 +43,8 @@ export class TableTool {
   private canvas: HTMLCanvasElement | null
   /** 编辑器配置快照，提供缩放、表格默认值和工具样式配置。 */
   private options: DeepRequired<IEditorOption>
-  /** 光标位置管理器，用于判断当前是否处于表格上下文。 */
-  private position: Position
+  /** 坐标服务，用于判断当前是否处于表格上下文。 */
+  private coordinate: DrawCoordinateService
   /** 选区管理器，用于表格工具交互后同步编辑选区。 */
   private range: RangeManager
   /** 编辑器主容器，作为工具 DOM 的兜底挂载点。 */
@@ -66,7 +67,7 @@ export class TableTool {
     this.draw = draw
     this.canvas = null
     this.options = draw.getOptions()
-    this.position = draw.getPosition()
+    this.coordinate = draw.getCoordinate()
     this.range = draw.getRange()
     this.container = draw.getPageCanvasHost().getContainer()
     this.overlayHost = null
@@ -117,48 +118,40 @@ export class TableTool {
   }
 
   public render() {
-    const { isTable, trIndex, tdIndex } = this.position.getPositionContext()
+    const { isTable, trIndex, tdIndex } = this.draw
+      .getCoordinate()
+      .getPositionContext()
     if (!isTable) return
     // 销毁之前工具
     this.dispose()
-    const elementList = this.draw.getOriginalElementList()
-    const positionContext = this.position.getPositionContext()
-    let index = positionContext.index
-    let element = index !== undefined ? elementList[index] : undefined
-    if (element?.type !== ElementType.TABLE || !element.trList?.length) {
-      const tableId = positionContext.tableId
-      index = tableId
-        ? elementList.findIndex(item => {
-            if (item.type !== ElementType.TABLE || !item.id) return false
-            return (
-              item.id === tableId ||
-              this.draw
-                .getTableLayoutSnapshotAccessor()
-                .isSameLogicalTable(item.id, tableId)
-            )
-          })
-        : -1
-      element = ~index ? elementList[index] : undefined
-    }
-    if (!element?.trList?.length) return
-    const tableElement = element
+    const positionContext = this.draw.getCoordinate().getPositionContext()
+    const tableContext = this.draw.getTargetResolver().resolveContextTable({
+      positionContext
+    })
+    if (!tableContext) return
+    const index = tableContext.index
+    const tableElement = tableContext.element
     // 表格工具配置禁用又非设计模式时不渲染
     if (tableElement.tableToolDisabled && !this.draw.isDesignMode()) return
     // 渲染所需数据
     const { scale } = this.options
     const activeSlice = this.draw
-      .getTableLayoutSnapshotAccessor()
-      .resolveSliceByPositionContext(positionContext)
+      .getTargetResolver()
+      .resolveTableSliceByPositionContext(positionContext)
     let renderTrList = tableElement.trList || []
     let renderColgroup = tableElement.colgroup || []
-    let renderTd =
-      tableElement.trList?.[trIndex!]?.tdList?.[tdIndex!] || null
+    let renderTd = resolveTableCellByIndex({
+      tableElement,
+      tableIndex: index,
+      trIndex: trIndex!,
+      tdIndex: tdIndex!
+    })?.td || null
     let tableX = 0
     let tableY = 0
     let toolPageNo = this.draw.getPageNo()
     if (activeSlice) {
       const fragmentPosition = this.draw
-        .getTableLayoutSnapshotAccessor()
+        .getTargetResolver()
         .getPageFragmentPositions(activeSlice.pageNo)
         .find(position => {
           const fragmentTable = position.tableFragment
@@ -187,7 +180,7 @@ export class TableTool {
       return
     }
     if (tableX === 0 && tableY === 0) {
-      const position = this.position.getOriginalPositionList()[index!]
+      const position = this.coordinate.getOriginalPositionList()[index!]
       if (!position) {
         return
       }
@@ -275,7 +268,7 @@ export class TableTool {
           .getTdListByRowIndex(tableElement.trList!, targetLogicalRowIndex)
         const firstTd = tdList[0]
         const lastTd = tdList[tdList.length - 1]
-        this.position.setPositionContext({
+        this.draw.getCoordinate().setPositionContext({
           index,
           isTable: true,
           trIndex: targetLogicalRowIndex,
@@ -336,14 +329,21 @@ export class TableTool {
       evt.preventDefault()
       evt.stopPropagation()
       const targetTrIndex = tableElement.trList!.length - 1
-      const targetTd = tableElement.trList![targetTrIndex].tdList[0]
-      this.position.setPositionContext({
+      const targetCell = resolveTableCellByIndex({
+        tableElement,
+        tableIndex: index,
+        trIndex: targetTrIndex,
+        tdIndex: 0
+      })
+      const targetTd = targetCell?.td
+      if (!targetTd) return
+      this.draw.getCoordinate().setPositionContext({
         index,
         isTable: true,
         trIndex: targetTrIndex,
         tdIndex: targetTd.tdIndex ?? 0,
         tdId: targetTd.id,
-        trId: tableElement.trList![targetTrIndex].id,
+        trId: targetCell.tr.id,
         tableId: tableElement.id
       })
       tableOperate.insertTableBottomRow()
@@ -372,7 +372,7 @@ export class TableTool {
           .getTdListByColIndex(tableElement.trList!, c)
         const firstTd = tdList[0]
         const lastTd = tdList[tdList.length - 1]
-        this.position.setPositionContext({
+        this.draw.getCoordinate().setPositionContext({
           index,
           isTable: true,
           trIndex: firstTd.trIndex,
@@ -433,18 +433,26 @@ export class TableTool {
       evt.preventDefault()
       evt.stopPropagation()
       const lastColIndex = tableElement.colgroup!.length - 1
-      const targetTd = this.draw
+      const matchedTd = this.draw
         .getTableParticle()
         .getTdListByColIndex(tableElement.trList!, lastColIndex)
-        .find(td => td.rowIndex === 0) ||
-        tableElement.trList![0].tdList[tableElement.trList![0].tdList.length - 1]
-      this.position.setPositionContext({
+        .find(td => td.rowIndex === 0)
+      const fallbackTdIndex = (tableElement.trList?.[0]?.tdList?.length || 1) - 1
+      const targetCell = resolveTableCellByIndex({
+        tableElement,
+        tableIndex: index,
+        trIndex: matchedTd?.trIndex ?? 0,
+        tdIndex: matchedTd?.tdIndex ?? fallbackTdIndex
+      })
+      const targetTd = targetCell?.td
+      if (!targetTd) return
+      this.draw.getCoordinate().setPositionContext({
         index,
         isTable: true,
         trIndex: targetTd.trIndex ?? 0,
-        tdIndex: targetTd.tdIndex ?? tableElement.trList![0].tdList.length - 1,
+        tdIndex: targetTd.tdIndex ?? fallbackTdIndex,
         tdId: targetTd.id,
-        trId: tableElement.trList![targetTd.trIndex ?? 0].id,
+        trId: targetCell.tr.id,
         tableId: tableElement.id
       })
       tableOperate.insertTableRightCol()

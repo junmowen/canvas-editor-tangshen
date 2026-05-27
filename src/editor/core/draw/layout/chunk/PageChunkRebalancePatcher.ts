@@ -100,8 +100,8 @@ export class PageChunkRebalancePatcher {
           endIndex: chunk.endIndex
         })),
         pageCount: this.draw.getPageRowList().length,
-        positionCount: this.draw.getPosition().getLayoutMainPositionList().length,
-        layoutElementCount: this.draw.getLayoutMainElementList().length,
+        positionCount: this.draw.getCoordinate().getLayoutMainPositionList().length,
+        layoutElementCount: this.draw.getObjectResolver().getLayoutMainElementList().length,
         tableSnapshotVersion: this.draw.getTableLayoutSnapshotVersion()
       })
     }
@@ -244,7 +244,7 @@ export class PageChunkRebalancePatcher {
     context: IChunkLayoutPatchContext,
     windowChunkList: IChunkLayoutPatchContext['chunk'][]
   ): IPageChunkRebalanceResult | null {
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const firstChunk = windowChunkList[0]
     const startIndex = firstChunk.startIndex
     const oldWindowPageCount = this.windowPlanner.resolveMeasuredWindowPageCount({
@@ -388,6 +388,7 @@ export class PageChunkRebalancePatcher {
         oldChunkRows: pageRows,
         oldPageRowStart: 0,
         chunkElementList: this.draw
+          .getObjectResolver()
           .getElementList()
           .slice(chunk.startIndex, chunk.endIndex + 1),
         endIndex: chunk.endIndex,
@@ -436,7 +437,7 @@ export class PageChunkRebalancePatcher {
       if (!rowList.length) {
         continue
       }
-      this.draw.getPosition().computePageRowPosition({
+      this.draw.getCoordinate().computePageRowPosition({
         positionList,
         rowList,
         pageNo: payload.startPageNo + pageOffset,

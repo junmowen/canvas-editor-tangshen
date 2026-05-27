@@ -16,21 +16,22 @@ import { EditorZone } from '../../../dataset/enum/Editor'
 import { LocationPosition } from '../../../dataset/enum/Common'
 import { RangeManager } from '../../range/RangeManager'
 import { Zone } from '../../zone/Zone'
-import { Position } from '../../position/Position'
 import { formatElementList, zipElementList } from '../../../utils/element'
 import { AreaMode } from '../../../dataset/enum/Area'
 import { IRange } from '../../../interface/Range'
-import { IElement, IElementPosition } from '../../../interface/Element'
+import { IElementPosition } from '../../../interface/Element'
 import { Placeholder } from '../frame/Placeholder'
 import { defaultPlaceholderOption } from '../../../dataset/constant/Placeholder'
 import { DeepRequired } from '../../../interface/Common'
 import { IEditorOption } from '../../../interface/Editor'
+import type { DrawCoordinateService } from '../coordinate/DrawCoordinateService'
+import { walkElementTree } from '../../utils/ElementTreeTraversal'
 
 export class Area {
   private draw: Draw
   private zone: Zone
   private range: RangeManager
-  private position: Position
+  private coordinate: DrawCoordinateService
   private options: DeepRequired<IEditorOption>
   private areaInfoMap = new Map<string, IAreaInfo>()
 
@@ -39,7 +40,7 @@ export class Area {
     this.options = draw.getOptions()
     this.zone = draw.getZone()
     this.range = draw.getRange()
-    this.position = draw.getPosition()
+    this.coordinate = draw.getCoordinate()
   }
 
   public getAreaInfo(): Map<string, IAreaInfo> {
@@ -49,7 +50,7 @@ export class Area {
   public getActiveAreaId(): string | null {
     if (!this.areaInfoMap.size) return null
     const { startIndex } = this.range.getEditBoundaryRange()
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const element = elementList[startIndex]
     return element?.areaId || null
   }
@@ -82,15 +83,18 @@ export class Area {
       this.zone.setZone(EditorZone.MAIN)
     }
     // 跳出表格
-    this.draw.getPosition().setPositionContext({
+    this.draw.getCoordinate().setPositionContext({
       isTable: false
     })
     // 通过光标插入area && 不能在area内再次插入area
     if (range && !this.getActiveAreaId()) {
       const { startIndex, endIndex } = range
       // 校验位置合法性
-      const elementList = this.draw.getOriginalMainElementList()
-      if (!elementList[startIndex] || !elementList[endIndex]) {
+      if (
+        !this.draw
+          .getObjectResolver()
+          .getIsOriginalMainRangeAvailable(startIndex, endIndex)
+      ) {
         return null
       }
       this.range.setRange(range.startIndex, range.endIndex)
@@ -99,8 +103,9 @@ export class Area {
       if (position === LocationPosition.BEFORE) {
         this.range.setRange(0, 0)
       } else {
-        const elementList = this.draw.getOriginalMainElementList()
-        const lastIndex = elementList.length - 1
+        const lastIndex = this.draw
+          .getObjectResolver()
+          .getOriginalMainLastIndex()
         this.range.setRange(lastIndex, lastIndex)
       }
     }
@@ -167,8 +172,8 @@ export class Area {
 
   public compute() {
     this.areaInfoMap.clear()
-    const elementList = this.draw.getOriginalMainElementList()
-    const positionList = this.position.getLayoutMainPositionList()
+    const elementList = this.draw.getObjectResolver().getOriginalMainElementList()
+    const positionList = this.coordinate.getLayoutMainPositionList()
     for (let e = 0; e < elementList.length; e++) {
       const element = elementList[e]
       const areaId = element.areaId
@@ -240,7 +245,7 @@ export class Area {
     areaId: string,
     options?: ILocationAreaOption
   ): { range: IRange; elementPosition: IElementPosition } | null {
-    const elementList = this.draw.getOriginalMainElementList()
+    const elementList = this.draw.getObjectResolver().getOriginalMainElementList()
     for (let e = 0; e < elementList.length; e++) {
       const element = elementList[e]
       if (options?.position === LocationPosition.OUTER_BEFORE) {
@@ -264,7 +269,7 @@ export class Area {
         // 区域内部最前
         if (element.areaId !== areaId) continue
       }
-      const positionList = this.position.getLayoutMainPositionList()
+      const positionList = this.coordinate.getLayoutMainPositionList()
       return {
         range: {
           startIndex: e,
@@ -301,19 +306,14 @@ export class Area {
         isCompute = true
       }
     })
-    const syncElementList = (elementList: IElement[]) => {
-      elementList.forEach(element => {
+    walkElementTree({
+      elementList: this.draw.getObjectResolver().getOriginalMainElementList(),
+      visitor: ({ element }) => {
         if (element.areaId === areaId) {
           element.area = area
         }
-        element.trList?.forEach(tr => {
-          tr.tdList.forEach(td => {
-            syncElementList(td.value)
-          })
-        })
-      })
-    }
-    syncElementList(this.draw.getOriginalMainElementList())
+      }
+    })
     this.draw.render({
       isCompute,
       isSetCursor: false,
@@ -332,7 +332,7 @@ export class Area {
     if (!areaInfo || areaInfo.area?.deletable === false) return false
 
     const { positionList } = areaInfo
-    const elementList = this.draw.getOriginalMainElementList()
+    const elementList = this.draw.getObjectResolver().getOriginalMainElementList()
     this.draw.spliceElementList(
       elementList,
       positionList[0].index,
@@ -360,7 +360,7 @@ export class Area {
     if (!areaInfo) return
     // 删除旧数据并替换新的格式化数据
     const { positionList } = areaInfo
-    const elementList = this.draw.getOriginalMainElementList()
+    const elementList = this.draw.getObjectResolver().getOriginalMainElementList()
     const valueList = payload.value
     formatElementList(
       [

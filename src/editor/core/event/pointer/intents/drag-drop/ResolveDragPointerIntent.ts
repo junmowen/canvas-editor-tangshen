@@ -8,9 +8,9 @@ export function resolveDragPointerIntent(payload: {
   const { host, evt } = payload
   const draw = host.getDraw()
   const components = draw.getComponents()
-  const position = components.position
+  const coordinate = draw.getCoordinate()
   const session = host.getPointerSession()
-  const coordinates = draw.getPointerCoordinates(evt, session.lastPointerCoordinates)
+  const coordinates = draw.getCoordinate().getPointerCoordinates(evt, session.lastPointerCoordinates)
   const pagePoint = coordinates.page
   if (!pagePoint) return null
   draw.setPageNo(pagePoint.pageNo)
@@ -22,7 +22,7 @@ export function resolveDragPointerIntent(payload: {
     startPosition: null
   }).positionResult
   if (!positionResult) return null
-  applyPointerPositionContext(position, positionResult)
+  applyPointerPositionContext(coordinate, positionResult)
   return {
     positionResult,
     coordinates

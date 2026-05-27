@@ -26,8 +26,9 @@ export class DrawCursorService {
   public setCursor(curIndex: number | undefined) {
     // 获取组件、位置上下文和位置列表
     const components = this.draw.getComponents()
-    const positionContext = components.position.getPositionContext()
-    const positionList = components.position.getPositionList()
+    const coordinate = this.draw.getCoordinate()
+    const positionContext = coordinate.getPositionContext()
+    const positionList = coordinate.getPositionList()
 
     // 根据上下文设置光标位置
     if (positionContext.isTable) {
@@ -36,10 +37,10 @@ export class DrawCursorService {
         curIndex = positionList.length - 1
       }
       const tablePosition = positionList[curIndex!]
-      components.position.setCursorPosition(tablePosition || null)
+      coordinate.setCursorPosition(tablePosition || null)
     } else {
       // 普通上下文：直接使用索引定位
-      components.position.setCursorPosition(
+      coordinate.setCursorPosition(
         curIndex !== undefined ? positionList[curIndex] : null
       )
     }
@@ -51,11 +52,11 @@ export class DrawCursorService {
       positionContext.isImage &&
       positionContext.isDirectHit
     ) {
-      const elementList = this.draw.getElementList()
+      const elementList = this.draw.getObjectResolver().getElementList()
       const element = elementList[curIndex]
       if (IMAGE_ELEMENT_TYPE.includes(element.type!)) {
         isShowCursor = false
-        const position = components.position.getCursorPosition()
+        const position = coordinate.getCursorPosition()
         components.previewer.updateResizer(element, position)
       }
     }
@@ -64,7 +65,7 @@ export class DrawCursorService {
     components.cursor.drawCursor({
       isShow: isShowCursor
     })
-    const cursorPosition = components.position.getCursorPosition()
+    const cursorPosition = coordinate.getCursorPosition()
     if (cursorPosition && isShowCursor) {
       this.draw.getCursor().moveCursorToVisible({
         cursorPosition,

@@ -1,5 +1,4 @@
 import { EditorMode, EditorZone } from '../../../dataset/enum/Editor'
-import { ElementType } from '../../../dataset/enum/Element'
 import { DeepRequired } from '../../../interface/Common'
 import { IEditorOption } from '../../../interface/Editor'
 import { IElement, IElementFillRect } from '../../../interface/Element'
@@ -8,6 +7,10 @@ import { IRange } from '../../../interface/Range'
 import { getUUID } from '../../../utils'
 import { RangeManager } from '../../range/RangeManager'
 import { Draw } from '../Draw'
+import {
+  findElementTree,
+  walkElementTree
+} from '../../utils/ElementTreeTraversal'
 
 export class Group {
   private draw: Draw
@@ -53,18 +56,20 @@ export class Group {
     if (startIndex === endIndex || !~startIndex || !~endIndex) return null
     const start = Math.min(startIndex, endIndex) + 1
     const end = Math.max(startIndex, endIndex)
-    const positionContext = this.draw.getPosition().getPositionContext()
+    const positionContext = this.draw.getCoordinate().getPositionContext()
     if (positionContext.isTable) {
-      const { index, trIndex, tdIndex } = positionContext
-      const tableElement = this.draw.getOriginalMainElementList()[index!]
+      const tableTd = this.draw.getTargetResolver().resolveActiveLogicalTableTd({
+        positionContext
+      })
       return (
-        tableElement?.trList?.[trIndex!]?.tdList?.[tdIndex!]?.value
+        tableTd?.td.value
           .slice(start, end + 1)
           .filter(element => !element.control?.disabled) || null
       )
     }
     if (this.draw.getMode() !== EditorMode.FORM) return null
     return this.draw
+      .getObjectResolver()
       .getOriginalMainElementList()
       .slice(start, end + 1)
       .filter(element => !element.control?.disabled)
@@ -75,38 +80,24 @@ export class Group {
     groupId: string
   ): IElement[] {
     const groupElementList: IElement[] = []
-    for (let e = 0; e < elementList.length; e++) {
-      const element = elementList[e]
-      if (element.type === ElementType.TABLE) {
-        const trList = element.trList!
-        for (let r = 0; r < trList.length; r++) {
-          const tr = trList[r]
-          for (let d = 0; d < tr.tdList.length; d++) {
-            const td = tr.tdList[d]
-            const tdGroupElementList = this.getElementListByGroupId(
-              td.value,
-              groupId
-            )
-            if (tdGroupElementList.length) {
-              groupElementList.push(...tdGroupElementList)
-              return groupElementList
-            }
-          }
+    walkElementTree({
+      elementList,
+      visitor: ({ element, elementList, index }) => {
+        if (element?.groupIds?.includes(groupId)) {
+          groupElementList.push(element)
+          const nextElement = elementList[index + 1]
+          if (!nextElement?.groupIds?.includes(groupId)) return false
         }
+        return undefined
       }
-      if (element?.groupIds?.includes(groupId)) {
-        groupElementList.push(element)
-        const nextElement = elementList[e + 1]
-        if (!nextElement?.groupIds?.includes(groupId)) break
-      }
-    }
+    })
     return groupElementList
   }
 
   public deleteGroup(groupId: string) {
     if (this.draw.isReadonly()) return
     // 仅主体内容可以成组
-    const elementList = this.draw.getOriginalMainElementList()
+    const elementList = this.draw.getObjectResolver().getOriginalMainElementList()
     const groupElementList = this.getElementListByGroupId(elementList, groupId)
     if (!groupElementList.length) return
     for (let e = 0; e < groupElementList.length; e++) {
@@ -127,46 +118,38 @@ export class Group {
   }
 
   public getContextByGroupId(
-    elementList: IElement[],
-    groupId: string
+    groupId: string,
+    elementList = this.draw.getObjectResolver().getOriginalMainElementList()
   ): (IRange & IPositionContext) | null {
-    for (let e = 0; e < elementList.length; e++) {
-      const element = elementList[e]
-      if (element.type === ElementType.TABLE) {
-        const trList = element.trList!
-        for (let r = 0; r < trList.length; r++) {
-          const tr = trList[r]
-          for (let d = 0; d < tr.tdList.length; d++) {
-            const td = tr.tdList[d]
-            const range = this.getContextByGroupId(td.value, groupId)
-            if (range) {
-              return {
-                ...range,
-                isTable: true,
-                index: e,
-                trIndex: r,
-                tdIndex: d,
-                tdId: td.id,
-                trId: tr.id,
-                tableId: element.tableId
-              }
-            }
+    return findElementTree<IRange & IPositionContext>({
+      elementList,
+      visitor: ({ element, elementList, index, tableContext }) => {
+        const nextElement = elementList[index + 1]
+        if (
+          element.groupIds?.includes(groupId) &&
+          !nextElement?.groupIds?.includes(groupId)
+        ) {
+          return {
+            ...(tableContext
+              ? {
+                  isTable: true,
+                  index: tableContext.tableIndex,
+                  trIndex: tableContext.trIndex,
+                  tdIndex: tableContext.tdIndex,
+                  tdId: tableContext.tdId,
+                  trId: tableContext.trId,
+                  tableId: tableContext.tableId
+                }
+              : {
+                  isTable: false
+                }),
+            startIndex: index,
+            endIndex: index
           }
         }
+        return null
       }
-      const nextElement = elementList[e + 1]
-      if (
-        element.groupIds?.includes(groupId) &&
-        !nextElement?.groupIds?.includes(groupId)
-      ) {
-        return {
-          isTable: false,
-          startIndex: e,
-          endIndex: e
-        }
-      }
-    }
-    return null
+    })
   }
 
   public clearFillInfo() {
@@ -201,7 +184,7 @@ export class Group {
     if (!this.fillRectMap.size) return
     // 当前激活组信息
     const range = this.range.getEditBoundaryRange()
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const anchorGroupIds = elementList[range.endIndex]?.groupIds
     const {
       group: { backgroundColor, opacity, activeOpacity, activeBackgroundColor }

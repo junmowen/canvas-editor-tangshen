@@ -1,29 +1,19 @@
 import { IElement } from '../../../interface/Element'
-
-enum ElementType {
-  TABLE = 'table'
-}
+import { walkElementTree } from '../../utils/ElementTreeTraversal'
 
 function getGroupIds(elementList: IElement[]): string[] {
   const groupIds: string[] = []
-  for (const element of elementList) {
-    if (element.type === ElementType.TABLE) {
-      const trList = element.trList!
-      for (let r = 0; r < trList.length; r++) {
-        const tr = trList[r]
-        for (let d = 0; d < tr.tdList.length; d++) {
-          const td = tr.tdList[d]
-          groupIds.push(...getGroupIds(td.value))
+  walkElementTree({
+    elementList,
+    visitor: ({ element }) => {
+      if (!element.groupIds) return
+      for (const groupId of element.groupIds) {
+        if (!groupIds.includes(groupId)) {
+          groupIds.push(groupId)
         }
       }
     }
-    if (!element.groupIds) continue
-    for (const groupId of element.groupIds) {
-      if (!groupIds.includes(groupId)) {
-        groupIds.push(groupId)
-      }
-    }
-  }
+  })
   return groupIds
 }
 

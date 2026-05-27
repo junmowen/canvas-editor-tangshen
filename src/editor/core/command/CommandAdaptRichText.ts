@@ -58,8 +58,8 @@ export class CommandAdaptRichText extends CommandAdaptCore {
       renderOption = { isSetCursor: false }
     } else {
       const { endIndex } = this.getRange()
-      const elementList = this.draw.getElementList()
-      const enterElement = elementList[endIndex]
+      const elementList = this.draw.getObjectResolver().getElementList()
+      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
       if (enterElement?.value === ZERO) {
         changeElementList.push(enterElement)
         renderOption = { curIndex: endIndex }
@@ -86,8 +86,8 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     } else {
       let isSubmitHistory = true
       const { endIndex } = this.getRange()
-      const elementList = this.draw.getElementList()
-      const enterElement = elementList[endIndex]
+      const elementList = this.draw.getObjectResolver().getElementList()
+      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
       this.range.setDefaultStyle({
         font: payload
       })
@@ -119,8 +119,8 @@ export class CommandAdaptRichText extends CommandAdaptCore {
       renderOption = { isSetCursor: false }
     } else {
       const { endIndex } = this.getRange()
-      const elementList = this.draw.getElementList()
-      const enterElement = elementList[endIndex]
+      const elementList = this.draw.getObjectResolver().getElementList()
+      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
       this.range.setDefaultStyle({
         size: payload
       })
@@ -166,8 +166,8 @@ export class CommandAdaptRichText extends CommandAdaptCore {
       renderOption = { isSetCursor: false }
     } else {
       const { endIndex } = this.getRange()
-      const elementList = this.draw.getElementList()
-      const enterElement = elementList[endIndex]
+      const elementList = this.draw.getObjectResolver().getElementList()
+      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
       // 设置默认样式
       const style = this.range.getDefaultStyle()
       const anchorSize = style?.size || enterElement.size || defaultSize
@@ -218,8 +218,8 @@ export class CommandAdaptRichText extends CommandAdaptCore {
       renderOption = { isSetCursor: false }
     } else {
       const { endIndex } = this.getRange()
-      const elementList = this.draw.getElementList()
-      const enterElement = elementList[endIndex]
+      const elementList = this.draw.getObjectResolver().getElementList()
+      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
       const style = this.range.getDefaultStyle()
       const anchorSize = style?.size || enterElement.size || defaultSize
       this.range.setDefaultStyle({
@@ -269,8 +269,8 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     } else {
       let isSubmitHistory = true
       const { endIndex } = this.getRange()
-      const elementList = this.draw.getElementList()
-      const enterElement = elementList[endIndex]
+      const elementList = this.draw.getObjectResolver().getElementList()
+      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
       this.range.setDefaultStyle({
         bold: enterElement.bold ? false : !this.range.getDefaultStyle()?.bold
       })
@@ -301,8 +301,8 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     } else {
       let isSubmitHistory = true
       const { endIndex } = this.getRange()
-      const elementList = this.draw.getElementList()
-      const enterElement = elementList[endIndex]
+      const elementList = this.draw.getObjectResolver().getElementList()
+      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
       this.range.setDefaultStyle({
         italic: enterElement.italic
           ? false
@@ -356,8 +356,8 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     } else {
       let isSubmitHistory = true
       const { endIndex } = this.getRange()
-      const elementList = this.draw.getElementList()
-      const enterElement = elementList[endIndex]
+      const elementList = this.draw.getObjectResolver().getElementList()
+      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
       this.range.setDefaultStyle({
         underline: enterElement?.underline
           ? false
@@ -394,8 +394,8 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     } else {
       let isSubmitHistory = true
       const { endIndex } = this.getRange()
-      const elementList = this.draw.getElementList()
-      const enterElement = elementList[endIndex]
+      const elementList = this.draw.getObjectResolver().getElementList()
+      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
       this.range.setDefaultStyle({
         strikeout: enterElement.strikeout
           ? false
@@ -493,8 +493,8 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     } else {
       let isSubmitHistory = true
       const { endIndex } = this.getRange()
-      const elementList = this.draw.getElementList()
-      const enterElement = elementList[endIndex]
+      const elementList = this.draw.getObjectResolver().getElementList()
+      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
       this.range.setDefaultStyle({
         color: payload || undefined
       })
@@ -536,8 +536,8 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     } else {
       let isSubmitHistory = true
       const { endIndex } = this.getRange()
-      const elementList = this.draw.getElementList()
-      const enterElement = elementList[endIndex]
+      const elementList = this.draw.getObjectResolver().getElementList()
+      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
       this.range.setDefaultStyle({
         highlight: payload || undefined
       })

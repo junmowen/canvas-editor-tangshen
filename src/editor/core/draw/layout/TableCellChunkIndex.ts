@@ -1,6 +1,7 @@
 import { ITd } from '../../../interface/table/Td'
 import { getTableLayoutLogicalCellKey } from '../../table/layout/TableLayoutSnapshotTypes'
 import type { Draw } from '../Draw'
+import { forEachTableCell } from '../../table/utils/TableCellTraversal'
 import {
   ITableCellChunk,
   ITableCellChunkIndexStats
@@ -32,26 +33,24 @@ export class TableCellChunkIndex {
       })
       return
     }
-    const elementList = this.draw.getOriginalMainElementList()
+    const elementList = this.draw.getObjectResolver().getOriginalMainElementList()
     for (let tableIndex = 0; tableIndex < elementList.length; tableIndex++) {
       const table = elementList[tableIndex]
       if (!table?.id || !table.trList?.length) {
         continue
       }
-      for (let trIndex = 0; trIndex < table.trList.length; trIndex++) {
-        const tr = table.trList[trIndex]
-        if (!tr?.id || !tr.tdList?.length) {
-          continue
-        }
-        for (let tdIndex = 0; tdIndex < tr.tdList.length; tdIndex++) {
-          const td = tr.tdList[tdIndex]
-          if (!td?.id) {
-            continue
+      const tableId = table.id
+      forEachTableCell({
+        tableElement: table,
+        tableIndex,
+        visitor: ({ tr, td, trIndex, tdIndex }) => {
+          if (!tr?.id || !td?.id) {
+            return
           }
           this.chunkListByCellKey.set(
-            getTableLayoutLogicalCellKey(table.id, tr.id, td.id),
+            getTableLayoutLogicalCellKey(tableId, tr.id, td.id),
             this.builder.createCellChunkList({
-              tableId: table.id,
+              tableId,
               tableIndex,
               trId: tr.id,
               tdId: td.id,
@@ -61,7 +60,7 @@ export class TableCellChunkIndex {
             })
           )
         }
-      }
+      })
     }
     this.stats.finishRebuild({
       reason,
@@ -196,7 +195,7 @@ export class TableCellChunkIndex {
     cellKey: string
     td: ITd
   } | null {
-    const positionContext = this.draw.getPosition().getPositionContext()
+    const positionContext = this.draw.getCoordinate().getPositionContext()
     if (
       !positionContext.isTable ||
       positionContext.index === undefined ||
@@ -205,9 +204,12 @@ export class TableCellChunkIndex {
     ) {
       return null
     }
-    const table = this.draw.getOriginalMainElementList()[positionContext.index]
-    const tr = table?.trList?.[positionContext.trIndex]
-    const td = tr?.tdList?.[positionContext.tdIndex]
+    const tableCell = this.draw.getTargetResolver().resolveActiveLogicalTableTd({
+      positionContext
+    })
+    const table = tableCell?.table
+    const tr = tableCell?.tr
+    const td = tableCell?.td
     if (!table?.id || !tr?.id || !td?.id) {
       return null
     }

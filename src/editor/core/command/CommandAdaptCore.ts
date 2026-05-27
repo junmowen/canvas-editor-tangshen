@@ -44,13 +44,16 @@ export class CommandAdaptCore extends CommandAdaptBase {
   /** 执行退格删除，并对连续程序化删除做渲染合并。 */
   public backspace() {
     if (this.isCommandDisabled()) return
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
+    const startElement = this.draw.getTargetResolver().resolveRangeElement({
+      elementList
+    })
     const { startIndex, endIndex } = this.range.getEditBoundaryRange()
     const isCollapsed = startIndex === endIndex
     // 首字符禁止删除
     if (
       isCollapsed &&
-      elementList[startIndex].value === ZERO &&
+      startElement?.value === ZERO &&
       startIndex === 0
     ) {
       return
@@ -75,7 +78,7 @@ export class CommandAdaptCore extends CommandAdaptBase {
       isImmediateTypingCompute = true
     }
     this.range.setRange(curIndex, curIndex)
-    this.position.setCursorLogicalIndex(curIndex)
+    this.coordinate.setCursorLogicalIndex(curIndex)
     if (!isCollapsed || isImmediateTypingCompute) {
       // 选区删除会重建较大结构，立即完整 render，保证清空后马上输入的基础语义。
       this.draw.render({ curIndex })
@@ -109,7 +112,7 @@ export class CommandAdaptCore extends CommandAdaptBase {
     typingEditIndex: number
     deletedCount: number
   }) {
-    if (this.position.getPositionContext().isTable) {
+    if (this.coordinate.getPositionContext().isTable) {
       // 表格退格属于 td 局部索引空间，不能用主文档 DocumentChunkIndex 合并批次。
       this.draw.render({
         curIndex: payload.curIndex,
@@ -188,10 +191,10 @@ export class CommandAdaptCore extends CommandAdaptBase {
     if (startIndex < 0 || endIndex < 0 || endIndex < startIndex) return
     let nextStartIndex = startIndex
     let nextEndIndex = endIndex
-    const editableElementList = this.draw.getElementList()
+    const editableElementList = this.draw.getObjectResolver().getElementList()
     if (!editableElementList.length) return
     const maxEditableIndex = editableElementList.length - 1
-    const positionContext = this.position.getPositionContext()
+    const positionContext = this.coordinate.getPositionContext()
     const targetTableId = tableId || positionContext.tableId
     const targetStartTrIndex =
       startTrIndex ?? positionContext.trIndex
@@ -207,17 +210,16 @@ export class CommandAdaptCore extends CommandAdaptBase {
       targetStartTrIndex !== undefined &&
       targetStartTdIndex !== undefined
     ) {
-      const tableElementIndex =
-        this.draw
-          .getTableLayoutSnapshotAccessor()
-          .resolveLogicalTableIndex(targetTableId) ??
-        this.draw.getOriginalElementList().findIndex(el => el.id === targetTableId)
-      const tableElement =
-        tableElementIndex >= 0
-          ? this.draw.getOriginalElementList()[tableElementIndex]
-          : null
-      const td =
-        tableElement?.trList?.[targetStartTrIndex]?.tdList?.[targetStartTdIndex]
+      const tableContext = this.draw
+        .getTargetResolver()
+        .resolveOriginalTableById(targetTableId)
+      const td = tableContext
+        ? this.draw.getTargetResolver().resolveOriginalTableTdByIndex({
+            tableIndex: tableContext.index,
+            trIndex: targetStartTrIndex,
+            tdIndex: targetStartTdIndex
+          })?.td
+        : null
       const leadingOffset =
         td?.value?.[0]?.value === ZERO && td.value[1] ? 1 : 0
       if (nextStartIndex === nextEndIndex) {
@@ -255,20 +257,20 @@ export class CommandAdaptCore extends CommandAdaptBase {
         endTrIndex: targetEndTrIndex
       })
     } else if (!targetTableId) {
-      this.position.setPositionContext({
+      this.coordinate.setPositionContext({
         isTable: false
       })
     }
     const isCollapsed = nextStartIndex === nextEndIndex
     let hasResolvedTableCursor = false
     if (isCollapsed && targetTableId) {
-      const tablePositionList = this.position.getPositionList()
+      const tablePositionList = this.coordinate.getPositionList()
       const tableCursorPosition =
         tablePositionList[nextEndIndex] ||
         tablePositionList[tablePositionList.length - 1] ||
         null
       if (tableCursorPosition) {
-        this.position.setCursorPosition(tableCursorPosition)
+        this.coordinate.setCursorPosition(tableCursorPosition)
         hasResolvedTableCursor = true
       }
     }
@@ -280,7 +282,7 @@ export class CommandAdaptCore extends CommandAdaptBase {
       pageRenderScope: 'visible'
     })
     if (isCollapsed) {
-      const cursorPosition = this.draw.getPosition().getCursorPosition()
+      const cursorPosition = this.draw.getCoordinate().getCursorPosition()
       if (cursorPosition) {
         this.draw.getCursor().moveCursorToVisible({
           cursorPosition,
@@ -306,34 +308,39 @@ export class CommandAdaptCore extends CommandAdaptBase {
   /** 根据选区刷新位置上下文，尤其是表格单元格上下文。 */
   public setPositionContext(range: IRange) {
     const { tableId, startTrIndex, startTdIndex, startIndex } = range
-    const elementList = this.draw.getOriginalElementList()
     if (
       tableId &&
       startTrIndex !== undefined &&
       startTdIndex !== undefined
     ) {
-      const tableElementIndex =
-        this.draw.getTableLayoutSnapshotAccessor().resolveLogicalTableIndex(tableId) ??
-        elementList.findIndex(element => element.id === tableId)
-      if (!~tableElementIndex) return
-      const tableElement = elementList[tableElementIndex]
-      const tr = tableElement.trList?.[startTrIndex]
-      const td = tr?.tdList?.[startTdIndex]
+      const tableContext = this.draw.getTargetResolver().resolveOriginalTableById(
+        tableId
+      )
+      if (!tableContext) return
+      const tableElementIndex = tableContext.index
+      const tableElement = tableContext.element
+      const tableCell = this.draw.getTargetResolver().resolveOriginalTableTdByIndex({
+        tableIndex: tableElementIndex,
+        trIndex: startTrIndex,
+        tdIndex: startTdIndex
+      })
+      const tr = tableCell?.tr
+      const td = tableCell?.td
       if (!tableElement.id || !tr?.id || !td?.id) return
       const targetSlice =
-      this.draw.getTableLayoutSnapshotAccessor().resolveCellSliceByAbsoluteIndex({
+      this.draw.getTargetResolver().resolveCellSliceByAbsoluteIndex({
           tableId: tableElement.id,
           trId: tr.id,
           tdId: td.id,
           absoluteIndex: startIndex
         }) ||
-      this.draw.getTableLayoutSnapshotAccessor().getCellSlicesByLogicalCell({
+      this.draw.getTargetResolver().getCellSlicesByLogicalCell({
           tableId: tableElement.id,
           trId: tr.id,
           tdId: td.id
         }).slice(-1)[0] ||
         null
-      this.position.setPositionContext({
+      this.coordinate.setPositionContext({
         isTable: true,
         index: tableElementIndex,
         trIndex: startTrIndex,
@@ -343,7 +350,7 @@ export class CommandAdaptCore extends CommandAdaptBase {
         tableId: targetSlice?.fragmentTableId || tableElement.id
       })
     } else {
-      this.position.setPositionContext({
+      this.coordinate.setPositionContext({
         isTable: false
       })
     }
@@ -409,7 +416,7 @@ export class CommandAdaptCore extends CommandAdaptBase {
       return null
     }
 
-    const positionList = this.position.getPositionList()
+    const positionList = this.coordinate.getPositionList()
     const directPosition = positionList[endIndex] || null
     if (directPosition) {
       return directPosition
@@ -421,15 +428,15 @@ export class CommandAdaptCore extends CommandAdaptBase {
       startTrIndex !== undefined &&
       startTdIndex !== undefined
     ) {
-      const originalElementList = this.draw.getOriginalElementList()
-      const tableIndex =
-        this.draw.getTableLayoutSnapshotAccessor().resolveLogicalTableIndex(tableId) ??
-        originalElementList.findIndex(el => el.id === tableId)
-      if (~tableIndex) {
-        const td =
-          originalElementList[tableIndex]?.trList?.[startTrIndex]?.tdList?.[
-            startTdIndex
-          ]
+      const tableContext = this.draw.getTargetResolver().resolveOriginalTableById(
+        tableId
+      )
+      if (tableContext) {
+        const td = this.draw.getTargetResolver().resolveOriginalTableTdByIndex({
+          tableIndex: tableContext.index,
+          trIndex: startTrIndex,
+          tdIndex: startTdIndex
+        })?.td
         const tablePositionList = td?.positionList || []
         return tablePositionList[endIndex] || tablePositionList[tablePositionList.length - 1] || null
       }
@@ -459,7 +466,7 @@ export class CommandAdaptCore extends CommandAdaptBase {
     const cloneElementList = payload.map(element => ({ ...element }))
     // 格式化上下文信息
     const { startIndex } = this.getRange()
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     formatElementContext(elementList, cloneElementList, startIndex, {
       isBreakWhenWrap: true,
       editorOptions: this.options

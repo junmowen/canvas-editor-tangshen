@@ -28,7 +28,7 @@ export class DateParticle {
     const range = this.getDateElementRange()
     if (!range) return
     const [leftIndex, rightIndex] = range
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const startElement = elementList[leftIndex + 1]
     // 删除旧时间
     this.draw.spliceElementList(
@@ -59,7 +59,7 @@ export class DateParticle {
     let rightIndex = -1
     const { startIndex, endIndex } = this.range.getEditBoundaryRange()
     if (!~startIndex && !~endIndex) return null
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const startElement = elementList[startIndex]
     if (startElement.type !== ElementType.DATE) return null
     // 向左查找
@@ -95,7 +95,7 @@ export class DateParticle {
   }
 
   public renderDatePicker(element: IElement, position: IElementPosition) {
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const range = this.getDateElementRange()
     const value = range
       ? elementList

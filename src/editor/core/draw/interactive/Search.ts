@@ -12,8 +12,10 @@ import {
   ISearchResultRestArgs
 } from '../../../interface/Search'
 import { getUUID, isNumber } from '../../../utils'
-import { Position } from '../../position/Position'
 import { Draw } from '../Draw'
+import type { DrawCoordinateService } from '../coordinate/DrawCoordinateService'
+import type { IDrawResolvedTableTd } from '../data/DrawTargetResolverTypes'
+import { forEachTableCell } from '../../table/utils/TableCellTraversal'
 
 export interface INavigateInfo {
   index: number
@@ -26,10 +28,40 @@ interface ISearchRenderMatch {
   position: IElementPosition
 }
 
+interface ISearchElementListGroup {
+  type: EditorContext
+  elementList: IElement[]
+  index: number
+}
+
+interface ISearchElementMatchPayload {
+  keyword: string
+  reg: RegExp | null
+  type: EditorContext
+  elementList: IElement[]
+  options: ISearchOption
+  restArgs?: ISearchResultRestArgs
+}
+
+interface ISearchReplaceApplyPayload {
+  elementList: IElement[]
+  element: IElement | undefined
+  index: number
+  replacement: string
+  match: ISearchResult
+  currentGroupId: string
+}
+
+interface ISearchReplaceApplyResult {
+  diffCount: number
+  isFirstMatch: boolean
+  isUpdateGroupId: boolean
+}
+
 export class Search {
   private draw: Draw
   private options: Required<IEditorOption>
-  private position: Position
+  private coordinate: DrawCoordinateService
   private searchKeyword: string | null
   private searchNavigateIndex: number | null
   private searchMatchList: ISearchResult[]
@@ -40,7 +72,7 @@ export class Search {
   constructor(draw: Draw) {
     this.draw = draw
     this.options = draw.getOptions()
-    this.position = draw.getPosition()
+    this.coordinate = draw.getCoordinate()
     this.searchNavigateIndex = null
     this.searchKeyword = null
     this.searchMatchList = []
@@ -194,15 +226,146 @@ export class Search {
     const reg = options.isRegEnable
       ? new RegExp(payload, options.isIgnoreCase === false ? 'g' : 'gi')
       : null
-    // 分组
-    const elementListGroup: {
-      type: EditorContext
-      elementList: IElement[]
-      index: number
-    }[] = []
+    const elementListGroup = this.createSearchElementListGroup(originalElementList)
+    for (let e = 0; e < elementListGroup.length; e++) {
+      const group = elementListGroup[e]
+      searchMatchList.push(
+        ...this.collectSearchElementListGroupMatchList({
+          keyword,
+          reg,
+          group,
+          options
+        })
+      )
+    }
+    return searchMatchList
+  }
+
+  private collectSearchElementListGroupMatchList(payload: {
+    keyword: string
+    reg: RegExp | null
+    group: ISearchElementListGroup
+    options: ISearchOption
+  }): ISearchResult[] {
+    const { keyword, reg, group, options } = payload
+    if (group.type === EditorContext.TABLE) {
+      return this.collectSearchTableMatchList({
+        keyword,
+        reg,
+        group,
+        options
+      })
+    }
+    return this.collectSearchElementMatchList({
+      keyword,
+      reg,
+      type: group.type,
+      elementList: group.elementList,
+      options,
+      restArgs: {
+        startIndex: group.index
+      }
+    })
+  }
+
+  private collectSearchTableMatchList(payload: {
+    keyword: string
+    reg: RegExp | null
+    group: ISearchElementListGroup
+    options: ISearchOption
+  }): ISearchResult[] {
+    const { keyword, reg, group, options } = payload
+    const tableElement = group.elementList[0]
+    const searchMatchList: ISearchResult[] = []
+    forEachTableCell({
+      tableElement,
+      tableIndex: group.index,
+      visitor: ({ td, trIndex, tdIndex }) => {
+        const restArgs: ISearchResultRestArgs = {
+          tableId: tableElement.id,
+          tableIndex: group.index,
+          trIndex,
+          tdIndex,
+          tdId: td.id
+        }
+        searchMatchList.push(
+          ...this.collectSearchElementMatchList({
+            keyword,
+            reg,
+            type: group.type,
+            elementList: td.value,
+            options,
+            restArgs
+          })
+        )
+      }
+    })
+    return searchMatchList
+  }
+
+  private collectSearchElementMatchList(
+    payload: ISearchElementMatchPayload
+  ): ISearchResult[] {
+    const { keyword, reg, type, elementList, options, restArgs } = payload
+    const searchMatchList: ISearchResult[] = []
+    if (!keyword) return searchMatchList
+    const rawText = elementList
+      .map(e =>
+        !e.type ||
+        (TEXTLIKE_ELEMENT_TYPE.includes(e.type) &&
+          e.controlComponent !== ControlComponent.CHECKBOX &&
+          !e.hide &&
+          !e.control?.hide &&
+          !e.area?.hide)
+          ? e.value
+          : ZERO
+      )
+      .filter(Boolean)
+      .join('')
+    const text =
+      options.isIgnoreCase === false ? rawText : rawText.toLocaleLowerCase()
+    const matchStartIndexList = []
+    if (reg) {
+      for (const match of text.matchAll(reg)) {
+        if (match.index === undefined) continue
+        matchStartIndexList.push({
+          index: match.index,
+          length: match[0].length
+        })
+      }
+    } else {
+      let index = text.indexOf(keyword)
+      while (index !== -1) {
+        matchStartIndexList.push({
+          index,
+          length: keyword.length
+        })
+        index = text.indexOf(keyword, index + keyword.length)
+      }
+    }
+    for (let m = 0; m < matchStartIndexList.length; m++) {
+      const matchStart = matchStartIndexList[m]
+      const groupId = getUUID()
+      for (let i = 0; i < matchStart.length; i++) {
+        const index = matchStart.index + i + (restArgs?.startIndex || 0)
+        searchMatchList.push({
+          type,
+          index,
+          groupId,
+          ...restArgs
+        })
+      }
+    }
+    return searchMatchList
+  }
+
+  private createSearchElementListGroup(
+    originalElementList: IElement[]
+  ): ISearchElementListGroup[] {
+    const elementListGroup: ISearchElementListGroup[] = []
     const originalElementListLength = originalElementList.length
     // 查找表格所在位置
-    const tableIndexList = []
+    const tableIndexList: number[] = []
     for (let e = 0; e < originalElementListLength; e++) {
       const element = originalElementList[e]
       if (element.type === ElementType.TABLE) {
@@ -234,93 +397,13 @@ export class Search {
       elementIndex = endIndex + 1
       i++
     }
-    // 搜索文本
-    function searchClosure(
-      payload: string | null,
-      type: EditorContext,
-      elementList: IElement[],
-      restArgs?: ISearchResultRestArgs
-    ) {
-      if (!payload) return
-      const rawText = elementList
-        .map(e =>
-          !e.type ||
-          (TEXTLIKE_ELEMENT_TYPE.includes(e.type) &&
-            e.controlComponent !== ControlComponent.CHECKBOX &&
-            !e.hide &&
-            !e.control?.hide &&
-            !e.area?.hide)
-            ? e.value
-            : ZERO
-        )
-        .filter(Boolean)
-        .join('')
-      const text =
-        options.isIgnoreCase === false ? rawText : rawText.toLocaleLowerCase()
-      const matchStartIndexList = []
-      if (reg) {
-        for (const match of text.matchAll(reg)) {
-          if (match.index === undefined) continue
-          matchStartIndexList.push({
-            index: match.index,
-            length: match[0].length
-          })
-        }
-      } else {
-        let index = text.indexOf(payload)
-        while (index !== -1) {
-          matchStartIndexList.push({
-            index,
-            length: payload.length
-          })
-          index = text.indexOf(payload, index + payload.length)
-        }
-      }
-      for (let m = 0; m < matchStartIndexList.length; m++) {
-        const matchStart = matchStartIndexList[m]
-        const groupId = getUUID()
-        for (let i = 0; i < matchStart.length; i++) {
-          const index = matchStart.index + i + (restArgs?.startIndex || 0)
-          searchMatchList.push({
-            type,
-            index,
-            groupId,
-            ...restArgs
-          })
-        }
-      }
-    }
-    for (let e = 0; e < elementListGroup.length; e++) {
-      const group = elementListGroup[e]
-      if (group.type === EditorContext.TABLE) {
-        const tableElement = group.elementList[0]
-        for (let t = 0; t < tableElement.trList!.length; t++) {
-          const tr = tableElement.trList![t]
-          for (let d = 0; d < tr.tdList.length; d++) {
-            const td = tr.tdList[d]
-            const restArgs: ISearchResultRestArgs = {
-              tableId: tableElement.id,
-              tableIndex: group.index,
-              trIndex: t,
-              tdIndex: d,
-              tdId: td.id
-            }
-            searchClosure(keyword, group.type, td.value, restArgs)
-          }
-        }
-      } else {
-        searchClosure(keyword, group.type, group.elementList, {
-          startIndex: group.index
-        })
-      }
-    }
-    return searchMatchList
+    return elementListGroup
   }
 
   public compute(payload: string, options: ISearchOption = {}) {
     const matchList = this.getMatchList(
       payload,
-      this.draw.getOriginalElementList(),
+      this.draw.getObjectResolver().getOriginalElementList(),
       options
     )
     this.searchMatchList = this.filterMatchListBySelection(matchList, options)
@@ -394,15 +477,11 @@ export class Search {
 
   private _getPositionBySearchMatch(
     searchMatch: ISearchResult,
-    elementList: IElement[],
     positionList: IElementPosition[]
   ): IElementPosition | null {
     if (searchMatch.type === EditorContext.TABLE) {
-      const { tableIndex, trIndex, tdIndex, index } = searchMatch
-      return (
-        elementList[tableIndex!]?.trList?.[trIndex!].tdList?.[tdIndex!]
-          ?.positionList?.[index] || null
-      )
+      const tableTd = this.resolveSearchMatchTableTd(searchMatch)
+      return tableTd?.td.positionList?.[searchMatch.index] || null
     }
     return positionList[searchMatch.index] || null
   }
@@ -430,13 +509,11 @@ export class Search {
   private _rebuildSearchMatchPageMap() {
     this.searchMatchPageMap.clear()
     this.searchMatchPageNoList = new Array(this.searchMatchList.length).fill(null)
-    const positionList = this.position.getOriginalPositionList()
-    const elementList = this.draw.getOriginalElementList()
+    const positionList = this.coordinate.getOriginalPositionList()
     for (let i = 0; i < this.searchMatchList.length; i++) {
       const searchMatch = this.searchMatchList[i]
       const position = this._getPositionBySearchMatch(
         searchMatch,
-        elementList,
         positionList
       )
       if (!position) {
@@ -453,25 +530,161 @@ export class Search {
     }
   }
 
+  private groupSearchMatchListByGroupId(
+    matchList: ISearchResult[]
+  ): ISearchResult[][] {
+    const matchGroup: ISearchResult[][] = []
+    matchList.forEach(match => {
+      const last = matchGroup[matchGroup.length - 1]
+      if (!last || last[0].groupId !== match.groupId) {
+        matchGroup.push([match])
+      } else {
+        last.push(match)
+      }
+    })
+    return matchGroup
+  }
+
+  private resolveReplaceMatchList(option?: IReplaceOption): ISearchResult[] {
+    const matchList = this.getSearchMatchList()
+    const replaceIndex = option?.index
+    if (!isNumber(replaceIndex)) return matchList
+    return this.groupSearchMatchListByGroupId(matchList)[replaceIndex] || []
+  }
+
+  private resolveSearchTableElementList(
+    match: ISearchResult,
+    tableIndexOffset: number
+  ): IElement[] {
+    const tableTd = this.resolveSearchMatchTableTd(match, tableIndexOffset)
+    return tableTd?.td.value || []
+  }
+
+  private setSearchReplacePosition(
+    firstMatch: ISearchResult,
+    firstIndex: number
+  ) {
+    if (firstMatch.type === EditorContext.TABLE) {
+      const tableTd = this.resolveSearchMatchTableTd(firstMatch)
+      this.draw.getCoordinate().setPositionContext({
+        isTable: true,
+        index: firstMatch.tableIndex,
+        trIndex: firstMatch.trIndex,
+        tdIndex: firstMatch.tdIndex,
+        tdId: tableTd?.td.id,
+        trId: tableTd?.tr.id,
+        tableId: tableTd?.table.id
+      })
+    } else {
+      this.draw.getCoordinate().setPositionContext({
+        isTable: false
+      })
+    }
+    this.draw.getRange().setRange(firstIndex, firstIndex)
+    // 重新渲染
+    this.draw.render({
+      curIndex: firstIndex
+    })
+  }
+
+  private resolveSearchMatchTableTd(
+    match: ISearchResult,
+    tableIndexOffset = 0
+  ): IDrawResolvedTableTd | null {
+    const { tableIndex, trIndex, tdIndex } = match
+    if (
+      tableIndex === undefined ||
+      trIndex === undefined ||
+      tdIndex === undefined
+    ) {
+      return null
+    }
+    return this.draw.getTargetResolver().resolveOriginalTableTdByIndex({
+      tableIndex: tableIndex + tableIndexOffset,
+      trIndex,
+      tdIndex
+    })
+  }
+
+  private getIsSearchReplaceElementDisabled(
+    element: IElement | undefined,
+    isDesignMode: boolean
+  ): boolean {
+    return (
+      !isDesignMode &&
+      !!(element?.control?.deletable === false ||
+        element?.control?.disabled ||
+        element?.title?.deletable === false ||
+        element?.title?.disabled)
+    )
+  }
+
+  private getIsSearchReplacePageElementDisabled(
+    element: IElement | undefined,
+    isDesignMode: boolean
+  ): boolean {
+    return (
+      this.getIsSearchReplaceElementDisabled(element, isDesignMode) ||
+      (element?.type === ElementType.CONTROL &&
+        element.controlComponent !== ControlComponent.VALUE)
+    )
+  }
+
+  private applySearchReplaceToElementList(
+    payload: ISearchReplaceApplyPayload
+  ): ISearchReplaceApplyResult | null {
+    const {
+      elementList,
+      element,
+      index,
+      replacement,
+      match,
+      currentGroupId
+    } = payload
+    if (replacement === '') {
+      this.draw.spliceElementList(elementList, index, 1)
+      return {
+        diffCount: -1,
+        isFirstMatch: true,
+        isUpdateGroupId: false
+      }
+    }
+    if (currentGroupId === match.groupId) {
+      this.draw.spliceElementList(elementList, index, 1)
+      return {
+        diffCount: -1,
+        isFirstMatch: false,
+        isUpdateGroupId: false
+      }
+    }
+    if (!element) return null
+    let diffCount = 0
+    for (let p = 0; p < replacement.length; p++) {
+      const value = replacement[p]
+      if (p === 0) {
+        element.value = value
+      } else {
+        this.draw.spliceElementList(elementList, index + p, 0, [
+          {
+            ...element,
+            value
+          }
+        ])
+        diffCount++
+      }
+    }
+    return {
+      diffCount,
+      isFirstMatch: true,
+      isUpdateGroupId: true
+    }
+  }
+
   public replace(payload: string, option?: IReplaceOption) {
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
     if (payload === undefined || payload === null) return
-    let matchList = this.getSearchMatchList()
-    // 替换搜索项
-    const replaceIndex = option?.index
-    if (isNumber(replaceIndex)) {
-      const matchGroup: ISearchResult[][] = []
-      matchList.forEach(match => {
-        const last = matchGroup[matchGroup.length - 1]
-        if (!last || last[0].groupId !== match.groupId) {
-          matchGroup.push([match])
-        } else {
-          last.push(match)
-        }
-      })
-      matchList = matchGroup[replaceIndex]
-    }
+    const matchList = this.resolveReplaceMatchList(option)
     if (!matchList?.length) return
     const isDesignMode = this.draw.isDesignMode()
     // 匹配index变化的差值
@@ -483,106 +696,63 @@ export class Search {
     let curTdId = ''
     // 搜索值 > 替换值：增加元素；搜索值 < 替换值：减少元素
     let firstMatchIndex = -1
-    const elementList = this.draw.getOriginalElementList()
+    const elementList = this.draw.getObjectResolver().getOriginalElementList()
     for (let m = 0; m < matchList.length; m++) {
       const match = matchList[m]
       if (match.type === EditorContext.TABLE) {
-        const { tableIndex, trIndex, tdIndex, index, tdId } = match
+        const { index, tdId } = match
         if (curTdId && tdId !== curTdId) {
           tableDiffCount = 0
         }
         curTdId = tdId!
-        const curTableIndex = tableIndex! + pageDiffCount
-        const tableElementList =
-          elementList[curTableIndex].trList![trIndex!].tdList[tdIndex!].value
+        const tableElementList = this.resolveSearchTableElementList(
+          match,
+          pageDiffCount
+        )
         // 表格内元素
         const curIndex = index + tableDiffCount
         const tableElement = tableElementList[curIndex]
         // 非设计模式下设置元素不可删除 || 控件结构元素 => 禁止替换
-        if (
-          !isDesignMode &&
-          (tableElement?.control?.deletable === false ||
-            tableElement?.control?.disabled ||
-            tableElement?.title?.deletable === false ||
-            tableElement?.title?.disabled)
-        ) {
+        if (this.getIsSearchReplaceElementDisabled(tableElement, isDesignMode)) {
           continue
         }
-        if (payload === '') {
-          this.draw.spliceElementList(tableElementList, curIndex, 1)
-          tableDiffCount--
-          if (!~firstMatchIndex) {
-            firstMatchIndex = m
-          }
-          continue
-        }
-        if (curGroupId === match.groupId) {
-          this.draw.spliceElementList(tableElementList, curIndex, 1)
-          tableDiffCount--
-          continue
-        }
-        if (!~firstMatchIndex) {
+        const replaceResult = this.applySearchReplaceToElementList({
+          elementList: tableElementList,
+          element: tableElement,
+          index: curIndex,
+          replacement: payload,
+          match,
+          currentGroupId: curGroupId
+        })
+        if (!replaceResult) continue
+        tableDiffCount += replaceResult.diffCount
+        if (replaceResult.isFirstMatch && !~firstMatchIndex) {
           firstMatchIndex = m
         }
-        for (let p = 0; p < payload.length; p++) {
-          const value = payload[p]
-          if (p === 0) {
-            tableElement.value = value
-          } else {
-            this.draw.spliceElementList(tableElementList, curIndex + p, 0, [
-              {
-                ...tableElement,
-                value
-              }
-            ])
-            tableDiffCount++
-          }
-        }
+        if (!replaceResult.isUpdateGroupId) continue
       } else {
         const curIndex = match.index + pageDiffCount
         const element = elementList[curIndex]
         // 非设计模式下设置元素不可删除 || 控件结构元素 => 禁止替换
         if (
-          (!isDesignMode &&
-            (element?.control?.deletable === false ||
-              element?.control?.disabled ||
-              element?.title?.deletable === false ||
-              element?.title?.disabled)) ||
-          (element.type === ElementType.CONTROL &&
-            element.controlComponent !== ControlComponent.VALUE)
+          this.getIsSearchReplacePageElementDisabled(element, isDesignMode)
         ) {
           continue
         }
-        if (payload === '') {
-          this.draw.spliceElementList(elementList, curIndex, 1)
-          pageDiffCount--
-          if (!~firstMatchIndex) {
-            firstMatchIndex = m
-          }
-          continue
-        }
-        if (!~firstMatchIndex) {
+        const replaceResult = this.applySearchReplaceToElementList({
+          elementList,
+          element,
+          index: curIndex,
+          replacement: payload,
+          match,
+          currentGroupId: curGroupId
+        })
+        if (!replaceResult) continue
+        pageDiffCount += replaceResult.diffCount
+        if (replaceResult.isFirstMatch && !~firstMatchIndex) {
           firstMatchIndex = m
         }
-        if (curGroupId === match.groupId) {
-          this.draw.spliceElementList(elementList, curIndex, 1)
-          pageDiffCount--
-          continue
-        }
-        for (let p = 0; p < payload.length; p++) {
-          const value = payload[p]
-          if (p === 0) {
-            element.value = value
-          } else {
-            this.draw.spliceElementList(elementList, curIndex + p, 0, [
-              {
-                ...element,
-                value
-              }
-            ])
-            pageDiffCount++
-          }
-        }
+        if (!replaceResult.isUpdateGroupId) continue
       }
       curGroupId = match.groupId
     }
@@ -590,28 +760,6 @@ export class Search {
     // 定位-首个被匹配关键词后
     const firstMatch = matchList[firstMatchIndex]
     const firstIndex = firstMatch.index + (payload.length - 1)
-    if (firstMatch.type === EditorContext.TABLE) {
-      const { tableIndex, trIndex, tdIndex, index } = firstMatch
-      const element =
-        elementList[tableIndex!].trList![trIndex!].tdList[tdIndex!].value[index]
-      this.position.setPositionContext({
-        isTable: true,
-        index: tableIndex,
-        trIndex,
-        tdIndex,
-        tdId: element.tdId,
-        trId: element.trId,
-        tableId: element.tableId
-      })
-    } else {
-      this.position.setPositionContext({
-        isTable: false
-      })
-    }
-    this.draw.getRange().setRange(firstIndex, firstIndex)
-    // 重新渲染
-    this.draw.render({
-      curIndex: firstIndex
-    })
+    this.setSearchReplacePosition(firstMatch, firstIndex)
   }
 }

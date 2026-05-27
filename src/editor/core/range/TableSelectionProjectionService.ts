@@ -33,8 +33,9 @@ export class TableSelectionProjectionService {
   public getPublicCursorPosition(): IElementPosition | null {
     // 表格闭合光标对外暴露时，需要扣掉 leading offset 与 fragment offset，
     // 保证对外 cursor 语义稳定落在逻辑单元格索引上。
-    const positionContext = this.draw.getPosition().getPositionContext()
-    const cursorPosition = this.draw.getPosition().getCursorPosition()
+    const coordinate = this.draw.getCoordinate()
+    const positionContext = coordinate.getPositionContext()
+    const cursorPosition = coordinate.getCursorPosition()
     if (!cursorPosition || !positionContext.isTable) {
       return cursorPosition
     }
@@ -51,7 +52,8 @@ export class TableSelectionProjectionService {
     // 公开 range 与内部编辑边界不同：
     // 内部保留 fragment / leading 偏移，公开输出统一回到逻辑表格语义。
     const range = { ...this.hooks.getRawRange() }
-    const positionContext = this.draw.getPosition().getPositionContext()
+    const coordinate = this.draw.getCoordinate()
+    const positionContext = coordinate.getPositionContext()
     const leadingOffset = positionContext.isTable
       ? this.hooks.resolveActiveTableLeadingOffset()
       : 0
@@ -64,11 +66,11 @@ export class TableSelectionProjectionService {
       : range
 
     if (normalizedRange.startIndex === normalizedRange.endIndex) {
-      const publicCursorPosition = this.draw.getPosition().getCursorPosition()
+      const publicCursorPosition = coordinate.getCursorPosition()
       if (publicCursorPosition && positionContext.isTable) {
         const activeSlice = this.draw
-          .getTableLayoutSnapshotAccessor()
-          .resolveSliceByPositionContext(positionContext)
+          .getTargetResolver()
+          .resolveTableSliceByPositionContext(positionContext)
         if (
           activeSlice &&
           normalizedRange.startIndex < activeSlice.absoluteStart
@@ -94,7 +96,7 @@ export class TableSelectionProjectionService {
 
       const fragmentOffset = this.hooks.resolveActiveTableFragmentOffset(
         leadingOffset,
-        this.draw.getPosition().getCursorPosition()
+        coordinate.getCursorPosition()
       )
       if (!fragmentOffset) {
         return normalizedRange
@@ -132,20 +134,21 @@ export class TableSelectionProjectionService {
     if (!contentRange) return null
 
     const { elementList, tableCellContext } = payload
-    const positionContext = this.draw.getPosition().getPositionContext()
-    const snapshotAccessor = this.draw.getTableLayoutSnapshotAccessor()
+    const positionContext = this.draw.getCoordinate().getPositionContext()
+    const targetResolver = this.draw.getTargetResolver()
     const activeFragmentCellKey =
-      snapshotAccessor.resolveSliceByPositionContext(positionContext)?.cellKey || null
+      targetResolver.resolveTableSliceByPositionContext(positionContext)?.cellKey ||
+      null
 
     if (tableCellContext) {
       if (!positionContext.isTable && !rawRange.tableId) {
         return null
       }
       const currentSlice =
-        snapshotAccessor.resolveSliceByFragmentContext(tableCellContext)
+        targetResolver.resolveTableSliceByFragmentContext(tableCellContext)
       const currentFragmentCellKey = currentSlice?.cellKey || null
       const currentCellSlices =
-        snapshotAccessor.getCellSlicesByCellKey(currentFragmentCellKey)
+        targetResolver.getCellSlicesByCellKey(currentFragmentCellKey)
       if (
         activeFragmentCellKey &&
         currentFragmentCellKey &&
@@ -153,7 +156,7 @@ export class TableSelectionProjectionService {
       ) {
         return null
       }
-      const fragmentRange = snapshotAccessor.resolveCellLocalRange(
+      const fragmentRange = targetResolver.resolveCellLocalRange(
         tableCellContext,
         startIndex,
         endIndex
@@ -174,7 +177,7 @@ export class TableSelectionProjectionService {
     }
 
     if (elementList?.length) {
-      const fragmentRange = snapshotAccessor.getSelectionRangeForElementList(
+      const fragmentRange = targetResolver.getSelectionRangeForElementList(
         elementList,
         startIndex,
         endIndex,

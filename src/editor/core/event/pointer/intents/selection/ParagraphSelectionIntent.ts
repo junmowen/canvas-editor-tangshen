@@ -3,11 +3,10 @@ import { CanvasEvent } from '../../../CanvasEvent'
 
 export function resolveParagraphSelectionIntent(host: CanvasEvent) {
   const draw = host.getDraw()
-  const components = draw.getComponents()
-  const cursorPosition = components.position.getCursorPosition()
+  const cursorPosition = draw.getCoordinate().getCursorPosition()
   if (!cursorPosition) return null
   const { index } = cursorPosition
-  const elementList = draw.getElementList()
+  const elementList = draw.getObjectResolver().getElementList()
   let upCount = 0
   let downCount = 0
   let upStartIndex = index - 1

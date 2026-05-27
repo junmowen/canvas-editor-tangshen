@@ -34,7 +34,7 @@ export function repaintDraggedImageResizer(payload: {
   ) {
     draw.getComponents().previewer.drawResizer(element)
   } else {
-    const dragPositionList = draw.getComponents().position.getPositionList()
+    const dragPositionList = draw.getCoordinate().getPositionList()
     const dragPosition = dragPositionList[rangeEndIndex]
     draw.getComponents().previewer.drawResizer(element, dragPosition)
   }

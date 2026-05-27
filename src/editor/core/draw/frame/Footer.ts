@@ -4,13 +4,13 @@ import { DeepRequired } from '../../../interface/Common'
 import { IEditorOption } from '../../../interface/Editor'
 import { IElement, IElementPosition } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
-import { Position } from '../../position/Position'
 import { Zone } from '../../zone/Zone'
 import { Draw } from '../Draw'
+import type { DrawCoordinateService } from '../coordinate/DrawCoordinateService'
 
 export class Footer {
   private draw: Draw
-  private position: Position
+  private coordinate: DrawCoordinateService
   private zone: Zone
   private options: DeepRequired<IEditorOption>
 
@@ -20,7 +20,7 @@ export class Footer {
 
   constructor(draw: Draw, data?: IElement[]) {
     this.draw = draw
-    this.position = draw.getPosition()
+    this.coordinate = draw.getCoordinate()
     this.zone = draw.getZone()
     this.options = draw.getOptions()
     // 初始化列表
@@ -131,7 +131,7 @@ export class Footer {
     const footerHeight = this.getHeight()
     const startY = pageHeight - footerBottom - footerHeight
     // 计算位置列表
-    this.position.computePageRowPosition({
+    this.coordinate.computePageRowPosition({
       positionList,
       rowList: this.rowList,
       pageNo,

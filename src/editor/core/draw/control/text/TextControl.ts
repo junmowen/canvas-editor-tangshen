@@ -1,10 +1,4 @@
-import {
-  CONTROL_STYLE_ATTR,
-  EDITOR_ROW_ATTR,
-  TEXTLIKE_ELEMENT_TYPE
-} from '../../../../dataset/constant/Element'
 import { ControlComponent } from '../../../../dataset/enum/Control'
-import { EditorMode } from '../../../../dataset/enum/Editor'
 import { ElementType } from '../../../../dataset/enum/Element'
 import { KeyMap } from '../../../../dataset/enum/KeyMap'
 import { DeepRequired } from '../../../../interface/Common'
@@ -15,13 +9,15 @@ import {
 } from '../../../../interface/Control'
 import { IEditorOption } from '../../../../interface/Editor'
 import { IElement } from '../../../../interface/Element'
-import { omitObject, pickObject } from '../../../../utils'
-import {
-  formatElementContext,
-  formatElementList
-} from '../../../../utils/element'
 import { Control } from '../Control'
-import { collectControlValueElementList } from '../controlValue'
+import { resolveControlAnchorElement } from '../controlAnchor'
+import { createNestedControlValueElementList } from '../controlNested'
+import {
+  collectControlValueElementList,
+  isBackspaceRemoveControlStructure,
+  isDeleteRemoveControlStructure,
+  resolveStartPlaceholderOnlyControlRange
+} from '../controlValue'
 
 /**
  * 文本控件。
@@ -101,34 +97,28 @@ export class TextControl implements IControlInstance {
     this.control.shrinkBoundary(context)
     const { startIndex, endIndex } = range
     const draw = this.control.getDraw()
-    const startElement = elementList[startIndex]
+    const targetResolver = draw.getTargetResolver()
+    const { startElement } = targetResolver.resolveRangeBoundaryElements({
+      range,
+      elementList
+    })
+    if (!startElement) return -1
     const insertData = data.flatMap(item =>
       item.type === ElementType.CONTROL && item.control
         ? this.convertNestedControlToValueElementList(item, startElement)
         : item
     )
-    const isStartPlaceholderOnlyControl =
-      startElement.controlComponent === ControlComponent.PLACEHOLDER &&
-      !elementList[startIndex - 1]?.controlId
+    const placeholderOnlyRange = resolveStartPlaceholderOnlyControlRange({
+      elementList,
+      startIndex
+    })
     // 移除选区元素
     if (startIndex !== endIndex) {
-      let placeholderEndIndex = startIndex
-      if (isStartPlaceholderOnlyControl) {
-        while (
-          placeholderEndIndex + 1 < elementList.length &&
-          elementList[placeholderEndIndex + 1]?.controlId ===
-            startElement.controlId &&
-          elementList[placeholderEndIndex + 1]?.controlComponent ===
-            ControlComponent.PLACEHOLDER
-        ) {
-          placeholderEndIndex++
-        }
-      }
       draw.spliceElementList(
         elementList,
-        isStartPlaceholderOnlyControl ? startIndex : startIndex + 1,
-        isStartPlaceholderOnlyControl
-          ? placeholderEndIndex - startIndex + 1
+        placeholderOnlyRange ? placeholderOnlyRange[0] : startIndex + 1,
+        placeholderOnlyRange
+          ? placeholderOnlyRange[1] - placeholderOnlyRange[0] + 1
           : endIndex - startIndex,
         [],
         {
@@ -140,33 +130,17 @@ export class TextControl implements IControlInstance {
       this.control.removePlaceholder(startIndex, context)
     }
     // 非文本类元素或前缀过渡掉样式属性
-    const anchorElement =
-      (startElement.type &&
-        !TEXTLIKE_ELEMENT_TYPE.includes(startElement.type)) ||
-      startElement.controlComponent === ControlComponent.PREFIX ||
-      startElement.controlComponent === ControlComponent.PRE_TEXT
-        ? pickObject(startElement, [
-            'control',
-            'controlId',
-            ...CONTROL_STYLE_ATTR
-          ])
-        : omitObject(startElement, ['type'])
-    // 插入起始位置
-    const start =
-      isStartPlaceholderOnlyControl ? range.startIndex : range.startIndex + 1
-    for (let i = 0; i < insertData.length; i++) {
-      const newElement: IElement = {
-        ...anchorElement,
-        ...insertData[i],
-        controlComponent: insertData[i].controlComponent || ControlComponent.VALUE
-      }
-      formatElementContext(elementList, [newElement], startIndex, {
-        editorOptions: this.options
-      })
-      draw.spliceElementList(elementList, start + i, 0, [newElement])
-    }
+    const anchorElement = resolveControlAnchorElement(startElement)
+    const newIndex = this.control.insertControlValueElementList({
+      elementList,
+      startIndex,
+      insertIndex: placeholderOnlyRange ? range.startIndex : range.startIndex + 1,
+      data: insertData,
+      anchorElement,
+      isPreserveControlComponent: true
+    })
     this.syncParentAffix(elementList, startElement.controlId)
-    return start + insertData.length - 1
+    return newIndex
   }
 
   private syncParentAffix(elementList: IElement[], controlId?: string) {
@@ -216,25 +190,11 @@ export class TextControl implements IControlInstance {
     element: IElement,
     startElement: IElement
   ): IElement[] {
-    const nestedElementList: IElement[] = [
-      {
-        ...pickObject(element, EDITOR_ROW_ATTR),
-        ...pickObject(element.control!, CONTROL_STYLE_ATTR),
-        ...element,
-        control: {
-          ...element.control!,
-          value: element.control!.value ? [...element.control!.value] : null
-        }
-      } as IElement
-    ]
-    formatElementList(nestedElementList, {
-      isHandleFirstElement: false,
-      isForceCompensation: false,
-      isFromControlValue: true,
-      parentControlId: startElement.controlId,
+    return createNestedControlValueElementList({
+      element,
+      startElement,
       editorOptions: this.options
     })
-    return nestedElementList
   }
 
   /**
@@ -258,22 +218,16 @@ export class TextControl implements IControlInstance {
     const elementList = context.elementList || this.control.getElementList()
     const range = context.range || this.control.getEditBoundaryRange()
     const { startIndex, endIndex } = range
-    this.control
-      .getDraw()
-      .spliceElementList(
-        elementList,
-        startIndex + 1,
-        endIndex - startIndex,
-        [],
-        {
-          isIgnoreDeletedRule: options.isIgnoreDeletedRule
-        }
-      )
-    const value = this.getValue(context)
-    if (!value.length) {
-      this.control.addPlaceholder(startIndex, context)
-    }
-    return startIndex
+    return this.control.removeControlValueSegment({
+      deleteIndex: startIndex + 1,
+      deleteCount: endIndex - startIndex,
+      placeholderIndex: startIndex,
+      context: {
+        ...context,
+        elementList
+      },
+      options
+    })
   }
 
   /**
@@ -293,111 +247,84 @@ export class TextControl implements IControlInstance {
     // 收缩边界到Value内
     this.control.shrinkBoundary()
     const { startIndex, endIndex } = range
-    const startElement = elementList[startIndex]
-    const endElement = elementList[endIndex]
     const draw = this.control.getDraw()
+    const targetResolver = draw.getTargetResolver()
+    const { startElement, endElement } = targetResolver.resolveRangeBoundaryElements({
+      range,
+      elementList
+    })
+    if (!startElement || !endElement) return null
     // backspace
     if (evt.key === KeyMap.Backspace) {
       // 移除选区元素
       if (startIndex !== endIndex) {
-        if (this.getIsDeleteControlStructure(startIndex, endIndex, elementList)) {
+        if (
+          this.control.getIsRangeControlDeletionDisabled({
+            range,
+            elementList
+          })
+        ) {
           return startIndex
         }
-        draw.spliceElementList(
-          elementList,
-          startIndex + 1,
-          endIndex - startIndex
-        )
-        const value = this.getValue()
-        if (!value.length) {
-          this.control.addPlaceholder(startIndex)
-        }
-        return startIndex
+        return this.control.removeControlValueSegment({
+          deleteIndex: startIndex + 1,
+          deleteCount: endIndex - startIndex,
+          placeholderIndex: startIndex,
+          context: { elementList }
+        })
       } else {
-        if (
-          startElement.controlComponent === ControlComponent.PREFIX ||
-          startElement.controlComponent === ControlComponent.PRE_TEXT ||
-          endElement.controlComponent === ControlComponent.POSTFIX ||
-          endElement.controlComponent === ControlComponent.POST_TEXT ||
-          startElement.controlComponent === ControlComponent.PLACEHOLDER
-        ) {
+        if (isBackspaceRemoveControlStructure({ startElement, endElement })) {
           // 前缀、后缀、占位符
           return this.control.removeControl(startIndex)
         } else {
           // 文本
-          draw.spliceElementList(elementList, startIndex, 1)
-          const value = this.getValue()
-          if (!value.length) {
-            this.control.addPlaceholder(startIndex - 1)
-          }
-          return startIndex - 1
+          return this.control.removeControlValueSegment({
+            deleteIndex: startIndex,
+            deleteCount: 1,
+            placeholderIndex: startIndex - 1,
+            context: { elementList }
+          })
         }
       }
     } else if (evt.key === KeyMap.Delete) {
       // 移除选区元素
       if (startIndex !== endIndex) {
-        if (this.getIsDeleteControlStructure(startIndex, endIndex, elementList)) {
+        if (
+          this.control.getIsRangeControlDeletionDisabled({
+            range,
+            elementList
+          })
+        ) {
           return startIndex
         }
-        draw.spliceElementList(
-          elementList,
-          startIndex + 1,
-          endIndex - startIndex
-        )
-        const value = this.getValue()
-        if (!value.length) {
-          this.control.addPlaceholder(startIndex)
-        }
-        return startIndex
+        return this.control.removeControlValueSegment({
+          deleteIndex: startIndex + 1,
+          deleteCount: endIndex - startIndex,
+          placeholderIndex: startIndex,
+          context: { elementList }
+        })
       } else {
-        const endNextElement = elementList[endIndex + 1]
-        if (
-          ((startElement.controlComponent === ControlComponent.PREFIX ||
-            startElement.controlComponent === ControlComponent.PRE_TEXT) &&
-            endNextElement.controlComponent === ControlComponent.PLACEHOLDER) ||
-          endNextElement.controlComponent === ControlComponent.POSTFIX ||
-          endNextElement.controlComponent === ControlComponent.POST_TEXT ||
-          startElement.controlComponent === ControlComponent.PLACEHOLDER
-        ) {
+        const endNextElement = targetResolver.resolveRangeElement({
+          range,
+          elementList,
+          anchor: 'end',
+          offset: 1
+        })
+        if (isDeleteRemoveControlStructure({ startElement, endNextElement })) {
           // 前缀、后缀、占位符
           return this.control.removeControl(startIndex)
         } else {
           // 文本
-          draw.spliceElementList(elementList, startIndex + 1, 1)
-          const value = this.getValue()
-          if (!value.length) {
-            this.control.addPlaceholder(startIndex)
-          }
-          return startIndex
+          return this.control.removeControlValueSegment({
+            deleteIndex: startIndex + 1,
+            deleteCount: 1,
+            placeholderIndex: startIndex,
+            context: { elementList }
+          })
         }
       }
     }
     return endIndex
-  }
-
-  private getIsDeleteControlStructure(
-    startIndex: number,
-    endIndex: number,
-    elementList: IElement[]
-  ): boolean {
-    const draw = this.control.getDraw()
-    const options = draw.getOptions()
-    if (
-      draw.getMode() !== EditorMode.FORM ||
-      !options.modeRule[EditorMode.FORM].controlDeletableDisabled
-    ) {
-      return false
-    }
-    for (let i = startIndex + 1; i <= endIndex; i++) {
-      const element = elementList[i]
-      if (
-        element?.controlId &&
-        element.controlComponent !== ControlComponent.VALUE
-      ) {
-        return true
-      }
-    }
-    return false
   }
 
   /**
@@ -414,13 +341,12 @@ export class TextControl implements IControlInstance {
     if (startIndex === endIndex) {
       return startIndex
     }
-    const draw = this.control.getDraw()
     const elementList = this.control.getElementList()
-    draw.spliceElementList(elementList, startIndex + 1, endIndex - startIndex)
-    const value = this.getValue()
-    if (!value.length) {
-      this.control.addPlaceholder(startIndex)
-    }
-    return startIndex
+    return this.control.removeControlValueSegment({
+      deleteIndex: startIndex + 1,
+      deleteCount: endIndex - startIndex,
+      placeholderIndex: startIndex,
+      context: { elementList }
+    })
   }
 }

@@ -9,6 +9,7 @@ import {
 import { IRegisterContextMenu } from '../../../interface/contextmenu/ContextMenu'
 import { Dialog } from '../../../../components/dialog/Dialog'
 import { Command } from '../../command/Command'
+import { resolveTableCellByIndex } from '../../table/utils/TableCellTraversal'
 
 type TableContextMenuContext = Parameters<
   NonNullable<IRegisterContextMenu['callback']>
@@ -55,7 +56,12 @@ const {
 const getFirstSelectedTd = (context: TableContextMenuContext) => {
   const { tableElement, trIndex, tdIndex } = context
   if (trIndex === null || tdIndex === null) return null
-  return tableElement?.trList?.[trIndex]?.tdList?.[tdIndex] || null
+  return resolveTableCellByIndex({
+    tableElement,
+    tableIndex: -1,
+    trIndex,
+    tdIndex
+  })?.td || null
 }
 
 const restoreTableContext = (command: Command, context: TableContextMenuContext) => {

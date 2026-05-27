@@ -2,12 +2,6 @@ import { IElementPosition } from '../../../interface/Element'
 import { IPositionContext } from '../../../interface/Position'
 import { ITableLayoutCellSlice } from '../layout/TableLayoutSnapshotTypes'
 
-export interface IResolvedLogicalCell {
-  tableIndex: number
-  trIndex: number
-  tdIndex: number
-}
-
 export function createTablePositionContext(payload: {
   slice?: ITableLayoutCellSlice | null
   logicalTableIndex?: number
@@ -35,49 +29,6 @@ export function createTablePositionContext(payload: {
     tableId: fragmentTableId ?? slice?.fragmentTableId ?? slice?.logicalTableId,
     trId: fragmentTrId ?? slice?.fragmentTrId ?? slice?.logicalTrId,
     tdId: fragmentTdId ?? slice?.fragmentTdId ?? slice?.logicalTdId
-  }
-}
-
-export function resolveLogicalCellFromContext(payload: {
-  positionContext: IPositionContext
-  resolveSliceByPositionContext: (
-    positionContext: IPositionContext
-  ) => ITableLayoutCellSlice | null
-  getOriginalElementList: () => Array<{
-    id?: string
-    trList?: Array<{
-      id?: string
-      tdList: Array<{ id?: string }>
-    }>
-  }>
-}): IResolvedLogicalCell | null {
-  const { positionContext, resolveSliceByPositionContext, getOriginalElementList } =
-    payload
-  const activeSlice = resolveSliceByPositionContext(positionContext)
-  if (activeSlice) {
-    return {
-      tableIndex: activeSlice.logicalTableIndex,
-      trIndex: activeSlice.logicalTrIndex,
-      tdIndex: activeSlice.logicalTdIndex
-    }
-  }
-
-  const { index, trIndex, tdIndex } = positionContext
-  if (index === undefined || trIndex === undefined || tdIndex === undefined) {
-    return null
-  }
-
-  const table = getOriginalElementList()[index]
-  const tr = table?.trList?.[trIndex]
-  const td = tr?.tdList?.[tdIndex]
-  if (!table?.id || !tr?.id || !td?.id) {
-    return null
-  }
-
-  return {
-    tableIndex: index,
-    trIndex,
-    tdIndex
   }
 }
 

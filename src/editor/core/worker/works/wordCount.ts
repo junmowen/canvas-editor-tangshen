@@ -1,10 +1,9 @@
 import { IElement } from '../../../interface/Element'
+import { walkElementTree } from '../../utils/ElementTreeTraversal'
 
 enum ElementType {
   TEXT = 'text',
-  TABLE = 'table',
-  HYPERLINK = 'hyperlink',
-  CONTROL = 'control'
+  HYPERLINK = 'hyperlink'
 }
 
 enum ControlComponent {
@@ -16,60 +15,55 @@ const WRAP = '\n'
 
 function pickText(elementList: IElement[]): string {
   let text = ''
-  let e = 0
-  while (e < elementList.length) {
-    const element = elementList[e]
-    // 表格、超链接递归处理
-    if (element.type === ElementType.TABLE) {
-      if (element.trList) {
-        for (let t = 0; t < element.trList.length; t++) {
-          const tr = element.trList[t]
-          for (let d = 0; d < tr.tdList.length; d++) {
-            const td = tr.tdList[d]
-            text += pickText(td.value)
-          }
-        }
-      }
-    } else if (element.type === ElementType.HYPERLINK) {
-      const hyperlinkId = element.hyperlinkId
-      const valueList: IElement[] = []
-      while (e < elementList.length) {
-        const hyperlinkE = elementList[e]
-        if (hyperlinkId !== hyperlinkE.hyperlinkId) {
-          e--
-          break
-        }
-        delete hyperlinkE.type
-        valueList.push(hyperlinkE)
-        e++
-      }
-      text += pickText(valueList)
-    } else if (element.controlId) {
-      if (!element.control?.hide) {
-        const controlId = element.controlId
+  walkElementTree({
+    elementList,
+    visitor: ({ element, elementList, index }): number | void => {
+      if (element.type === ElementType.HYPERLINK) {
+        const hyperlinkId = element.hyperlinkId
         const valueList: IElement[] = []
-        while (e < elementList.length) {
-          const controlE = elementList[e]
-          if (controlId !== controlE.controlId) {
-            e--
+        let nextIndex = index
+        while (nextIndex < elementList.length) {
+          const hyperlinkE = elementList[nextIndex]
+          if (hyperlinkId !== hyperlinkE.hyperlinkId) {
             break
           }
-          if (controlE.controlComponent === ControlComponent.VALUE) {
-            delete controlE.controlId
-            valueList.push(controlE)
-          }
-          e++
+          delete hyperlinkE.type
+          valueList.push(hyperlinkE)
+          nextIndex++
         }
         text += pickText(valueList)
+        return nextIndex
       }
-    } else if (
-      (!element.type || element.type === ElementType.TEXT) &&
-      !element.area?.hide
-    ) {
-      text += element.value
+      if (element.controlId) {
+        if (!element.control?.hide) {
+          const controlId = element.controlId
+          const valueList: IElement[] = []
+          let nextIndex = index
+          while (nextIndex < elementList.length) {
+            const controlE = elementList[nextIndex]
+            if (controlId !== controlE.controlId) {
+              break
+            }
+            if (controlE.controlComponent === ControlComponent.VALUE) {
+              delete controlE.controlId
+              valueList.push(controlE)
+            }
+            nextIndex++
+          }
+          text += pickText(valueList)
+          return nextIndex
+        }
+        return undefined
+      }
+      if (
+        (!element.type || element.type === ElementType.TEXT) &&
+        !element.area?.hide
+      ) {
+        text += element.value
+      }
+      return undefined
     }
-    e++
-  }
+  })
   return text
 }
 

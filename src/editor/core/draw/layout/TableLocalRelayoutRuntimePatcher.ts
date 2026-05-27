@@ -62,11 +62,11 @@ export class TableLocalRelayoutRuntimePatcher {
     pageRowList: IRow[][]
   }) {
     const positionPrefix = this.draw
-      .getPosition()
+      .getCoordinate()
       .getLayoutMainPositionList()
       .filter(position => position.pageNo < payload.pageStart)
     const positionList = this.computeWindowPositionList(payload)
-    this.draw.getPosition().setPositionList([...positionPrefix, ...positionList])
+    this.draw.getCoordinate().setPositionList([...positionPrefix, ...positionList])
   }
 
   /** 使用原位置计算器重新生成表格 fragment 位置。 */
@@ -84,7 +84,7 @@ export class TableLocalRelayoutRuntimePatcher {
       if (!rowList.length) {
         continue
       }
-      this.draw.getPosition().computePageRowPosition({
+      this.draw.getCoordinate().computePageRowPosition({
         positionList,
         rowList,
         pageNo: payload.pageStart + pageOffset,

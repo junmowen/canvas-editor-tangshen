@@ -57,8 +57,8 @@ export class TypingPatchCoordinator {
       requiresSurfaceClear: finalPatchResult.requiresSurfaceClear,
       patchReason: finalPatchResult.reason,
       pageCount: this.draw.getPageRowList().length,
-      positionCount: this.draw.getPosition().getLayoutMainPositionList().length,
-      layoutElementCount: this.draw.getLayoutMainElementList().length
+      positionCount: this.draw.getCoordinate().getLayoutMainPositionList().length,
+      layoutElementCount: this.draw.getObjectResolver().getLayoutMainElementList().length
     })
   }
 }

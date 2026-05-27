@@ -27,11 +27,7 @@ export class DrawExportService {
    */
   public setPrintData() {
     // 构建打印模式数据，包含页眉、正文和页脚元素
-    const printModeData: Required<IEditorData> = {
-      header: this.draw.getComponents().header.getElementList(),
-      main: this.draw.getOriginalMainElementList(),
-      footer: this.draw.getComponents().footer.getElementList()
-    }
+    const printModeData = this.draw.getObjectResolver().getOriginalEditorData()
     // 备份打印模式数据到运行时，用于后续恢复
     this.draw.replacePrintModeData(printModeData)
     // 深度克隆打印模式数据
@@ -110,8 +106,8 @@ export class DrawExportService {
         await this.draw.getBackground().preloadImage()
       }
 
-      const positionList = this.draw.getPosition().getLayoutMainPositionList()
-      const elementList = this.draw.getLayoutMainElementList()
+      const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
+      const elementList = this.draw.getObjectResolver().getLayoutMainElementList()
       const pageRowList = this.draw.getPageRowList()
       const pageMode = this.draw.getRuntime().getOptions().pageMode
       const pageHeight =
@@ -186,11 +182,7 @@ export class DrawExportService {
    */
   private getExportData(mode: EditorMode): Required<IEditorData> {
     // 深度克隆当前的页眉、正文和页脚数据
-    const data: Required<IEditorData> = {
-      header: deepClone(this.draw.getHeaderElementList()),
-      main: deepClone(this.draw.getOriginalMainElementList()),
-      footer: deepClone(this.draw.getFooterElementList())
-    }
+    const data = deepClone(this.draw.getObjectResolver().getOriginalEditorData())
     // 非打印模式直接返回原始数据
     if (mode !== EditorMode.PRINT) {
       return data

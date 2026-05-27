@@ -28,7 +28,7 @@ export function resolveTableSelectionStartState(
     hitTargetIndex
   } = payload
 
-  const positionList = draw.getPosition().getPositionList()
+  const positionList = draw.getCoordinate().getPositionList()
   const currentPosition =
     positionList[currentLocalIndex] || positionList[positionList.length - 1] || null
   const hitTargetPosition =

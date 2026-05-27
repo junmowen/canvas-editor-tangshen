@@ -19,8 +19,8 @@ export class RangeManagerQuery extends RangeManagerState {
     if (!activeRange) return null
     const { startIndex, endIndex } = activeRange
     if (!~startIndex && !~endIndex) return null
-    const positionList = this.position.getPositionList()
-    const elementList = this.draw.getElementList()
+    const positionList = this.coordinate.getPositionList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     if (!this.isValidPositionElementRange(activeRange, positionList, elementList)) {
       return null
     }
@@ -45,8 +45,8 @@ export class RangeManagerQuery extends RangeManagerState {
     if (!activeRange) return null
     const { startIndex, endIndex } = activeRange
     if (startIndex < 0 || endIndex < 0) return null
-    const positionList = this.position.getPositionList()
-    const elementList = this.draw.getElementList()
+    const positionList = this.coordinate.getPositionList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     if (!this.isValidPositionElementRange(activeRange, positionList, elementList)) {
       return null
     }
@@ -100,7 +100,10 @@ export class RangeManagerQuery extends RangeManagerState {
     }
 
     let end = endIndex
-    if (isCollapsed && elementList[startIndex].value === ZERO) {
+    const startElement = this.draw.getTargetResolver().resolveRangeElement({
+      elementList
+    })
+    if (isCollapsed && startElement?.value === ZERO) {
       end += 1
     }
     while (end < positionList.length && end < elementList.length) {
@@ -145,8 +148,8 @@ export class RangeManagerQuery extends RangeManagerState {
     // 选区行信息
     const rangeRow = this.getRangeRow()
     if (!rangeRow) return null
-    const positionList = this.position.getPositionList()
-    const elementList = this.draw.getElementList()
+    const positionList = this.coordinate.getPositionList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     // 当前选区所在行
     const rowElementList: IElement[] = []
     for (let p = 0; p < positionList.length; p++) {
@@ -175,8 +178,8 @@ export class RangeManagerQuery extends RangeManagerState {
     // 选区行信息
     const rangeRow = this.getRangeParagraph()
     if (!rangeRow) return null
-    const elementList = this.draw.getElementList()
-    const positionList = this.position.getPositionList()
+    const elementList = this.draw.getObjectResolver().getElementList()
+    const positionList = this.coordinate.getPositionList()
     for (let p = 0; p < positionList.length; p++) {
       const position = positionList[p]
       const rowArray = rangeRow.get(position.pageNo)
@@ -232,20 +235,22 @@ export class RangeManagerQuery extends RangeManagerState {
 
   /** 获取当前表格选区对应的表格元素。 */
   public getRangeTableElement(): IElement | null {
-    const positionContext = this.position.getPositionContext()
-    if (!positionContext.isTable) return null
-    const originalElementList = this.draw.getOriginalElementList()
-    return originalElementList[positionContext.index!]
+    return (
+      this.draw.getTargetResolver().resolveContextTable({
+        positionContext: this.coordinate.getPositionContext(),
+        range: this.range
+      })?.element || null
+    )
   }
 
   /** 判断当前选区是否选中了整个非表格编辑区域。 */
   public getIsSelectAll() {
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const { startIndex, endIndex } = this.range
     return (
       startIndex === 0 &&
       elementList.length - 1 === endIndex &&
-      !this.position.getPositionContext().isTable
+      !this.coordinate.getPositionContext().isTable
     )
   }
 
@@ -254,7 +259,7 @@ export class RangeManagerQuery extends RangeManagerState {
     const activeRange = this.getProjectedActiveRange()
     if (!activeRange) return false
     const { startIndex, endIndex } = activeRange
-    const positionList = this.position.getPositionList()
+    const positionList = this.coordinate.getPositionList()
     for (let p = startIndex; p <= endIndex; p++) {
       const position = positionList[p]
       if (!position) break
@@ -277,7 +282,7 @@ export class RangeManagerQuery extends RangeManagerState {
   public getKeywordRangeList(payload: string): IRange[] {
     const searchMatchList = this.draw
       .getSearch()
-      .getMatchList(payload, this.draw.getOriginalElementList())
+      .getMatchList(payload, this.draw.getObjectResolver().getOriginalElementList())
     const searchRangeMap: Map<string, IRange> = new Map()
     for (const searchMatch of searchMatchList) {
       const searchRange = searchRangeMap.get(searchMatch.groupId)

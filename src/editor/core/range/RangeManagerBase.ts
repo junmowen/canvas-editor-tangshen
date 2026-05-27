@@ -7,7 +7,7 @@ import { Draw } from '../draw/Draw'
 import { EventBus } from '../event/eventbus/EventBus'
 import { HistoryManager } from '../history/HistoryManager'
 import { Listener } from '../listener/Listener'
-import { Position } from '../position/Position'
+import type { DrawCoordinateService } from '../draw/coordinate/DrawCoordinateService'
 
 /**
  * RangeManager 基础上下文，集中缓存范围管理依赖的编辑器组件。
@@ -23,8 +23,8 @@ export abstract class RangeManagerBase {
   protected listener: Listener
   /** 编辑器事件总线。 */
   protected eventBus: EventBus<EventBusMap>
-  /** 位置管理器，提供光标、元素和表格上下文。 */
-  protected position: Position
+  /** 坐标服务，提供光标、元素位置和表格上下文。 */
+  protected coordinate: DrawCoordinateService
   /** 历史管理器，提供撤销重做状态。 */
   protected historyManager: HistoryManager
   /** 当前输入默认样式。 */
@@ -38,7 +38,7 @@ export abstract class RangeManagerBase {
     this.options = draw.getOptions()
     this.listener = draw.getListener()
     this.eventBus = draw.getEventBus()
-    this.position = draw.getPosition()
+    this.coordinate = draw.getCoordinate()
     this.historyManager = draw.getHistoryManager()
     this.range = {
       startIndex: -1,

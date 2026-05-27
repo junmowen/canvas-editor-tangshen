@@ -65,7 +65,7 @@ export class DrawDataAccess {
       return this.getFooterElementList()
     }
     // 否则返回正文区域的原始元素列表
-    return this.draw.getOriginalMainElementList()
+    return this.draw.getObjectResolver().getOriginalMainElementList()
   }
 
   /**
@@ -76,7 +76,7 @@ export class DrawDataAccess {
    * @returns 元素数组
    */
   public getElementList(): IElement[] {
-    const positionContext = this.draw.getPosition().getPositionContext()
+    const positionContext = this.draw.getCoordinate().getPositionContext()
     const elementList = this.getOriginalElementList()
     // 如果当前位置在表格中，返回表格单元格元素列表；否则返回普通元素列表
     return positionContext.isTable
@@ -92,8 +92,8 @@ export class DrawDataAccess {
    * @returns 正文元素数组
    */
   public getMainElementList(): IElement[] {
-    const positionContext = this.draw.getComponents().position.getPositionContext()
-    const mainElementList = this.draw.getOriginalMainElementList()
+    const positionContext = this.draw.getCoordinate().getPositionContext()
+    const mainElementList = this.draw.getObjectResolver().getOriginalMainElementList()
     // 如果当前位置在表格中，返回表格单元格元素列表；否则返回正文元素列表
     return positionContext.isTable
       ? this.getTableElementList(mainElementList)
@@ -123,16 +123,22 @@ export class DrawDataAccess {
 
   private getTableTd(sourceElementList: IElement[]): ITd | null {
     const positionContext = this.draw
-      .getComponents()
-      .position.getPositionContext()
+      .getCoordinate()
+      .getPositionContext()
     const { index, trIndex, tdIndex, isTable } = positionContext
     if (!isTable) return null
 
+    if (index === undefined || trIndex === undefined || tdIndex === undefined) {
+      return null
+    }
     return (
-      index !== undefined && trIndex !== undefined && tdIndex !== undefined
-        ? sourceElementList[index]?.trList?.[trIndex]?.tdList?.[tdIndex]
-        : null
-    ) || null
+      this.draw.getTargetResolver().resolveTableTdByIndex({
+        elementList: sourceElementList,
+        tableIndex: index,
+        trIndex,
+        tdIndex
+      })?.td || null
+    )
   }
 
   /**
@@ -164,7 +170,7 @@ export class DrawDataAccess {
    * @returns 行数组
    */
   public getRowList(): IRow[] {
-    const positionContext = this.draw.getComponents().position.getPositionContext()
+    const positionContext = this.draw.getCoordinate().getPositionContext()
     // 如果当前位置在表格中，返回表格单元格行列表；否则返回原始行列表
     return positionContext.isTable
       ? this.getTableRowList(this.getOriginalElementList())

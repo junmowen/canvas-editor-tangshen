@@ -6,7 +6,7 @@ import {
   TITLE_CONTEXT_ATTR,
   TABLE_CONTEXT_ATTR
 } from '../../dataset/constant/Element'
-import { PageMode, PaperDirection } from '../../dataset/enum/Editor'
+import { EditorZone, PageMode, PaperDirection } from '../../dataset/enum/Editor'
 import { ElementType } from '../../dataset/enum/Element'
 import { ICatalog } from '../../interface/Catalog'
 import { IRemoveControlOption } from '../../interface/Control'
@@ -29,6 +29,10 @@ import {
   getElementListByHTML
 } from '../../utils/element'
 import { IAreaBadge, IBadge } from '../../interface/Badge'
+import {
+  findCommandElementList,
+  walkCommandElementList
+} from './CommandElementTraversal'
 
 /**
  * 页面与元素命令适配模块，负责页面设置、元素 CRUD、目录和文档工具类命令。
@@ -131,41 +135,30 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
       index: number
     }[] = []
     function getElementInfoById(elementList: IElement[]) {
-      let i = 0
-      while (i < elementList.length) {
-        const element = elementList[i]
-        i++
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList!
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              getElementInfoById(td.value)
-            }
+      walkCommandElementList({
+        elementList,
+        isIncludeValueList: true,
+        visitor: ({ element, elementList, index }): number | void => {
+          if (
+            (id && element.id === id) ||
+            (conceptId && element.conceptId === conceptId)
+          ) {
+            updateElementInfoList.push({
+              elementList,
+              index
+            })
           }
         }
-        if (element.valueList?.length) {
-          getElementInfoById(element.valueList)
-        }
-        if (
-          (id && element.id === id) ||
-          (conceptId && element.conceptId === conceptId)
-        ) {
-          updateElementInfoList.push({
-            elementList,
-            index: i - 1
-          })
-        }
-      }
+      })
     }
     // 优先正文再页眉页脚
-    const data = [
-      this.draw.getOriginalMainElementList(),
-      this.draw.getHeaderElementList(),
-      this.draw.getFooterElementList()
-    ]
-    for (const elementList of data) {
+    for (const { elementList } of this.draw
+      .getObjectResolver()
+      .getOriginalZoneElementList([
+        EditorZone.MAIN,
+        EditorZone.HEADER,
+        EditorZone.FOOTER
+      ])) {
       getElementInfoById(elementList)
     }
     // 更新内容
@@ -192,6 +185,7 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
       const { elementList, startIndex, endIndex } = updateRangeInfoList[i]
       // 重新格式化元素
       const oldElement = elementList[startIndex]
+      if (!oldElement) continue
       const newElement = [
         pickElementAttr(
           {
@@ -228,37 +222,28 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
     if (!id && !conceptId) return
     let isExistDelete = false
     function deleteElement(elementList: IElement[]) {
-      let i = 0
-      while (i < elementList.length) {
-        const element = elementList[i]
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList!
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              deleteElement(td.value)
-            }
+      walkCommandElementList({
+        elementList,
+        visitor: ({ element, elementList, index }): number | void => {
+          if (
+            (id && element.id === id) ||
+            (conceptId && element.conceptId === conceptId)
+          ) {
+            isExistDelete = true
+            elementList.splice(index, 1)
+            return index
           }
         }
-        if (
-          (id && element.id === id) ||
-          (conceptId && element.conceptId === conceptId)
-        ) {
-          isExistDelete = true
-          elementList.splice(i, 1)
-          i--
-        }
-        i++
-      }
+      })
     }
     // 优先正文再页眉页脚
-    const data = [
-      this.draw.getOriginalMainElementList(),
-      this.draw.getHeaderElementList(),
-      this.draw.getFooterElementList()
-    ]
-    for (const elementList of data) {
+    for (const { elementList } of this.draw
+      .getObjectResolver()
+      .getOriginalZoneElementList([
+        EditorZone.MAIN,
+        EditorZone.HEADER,
+        EditorZone.FOOTER
+      ])) {
       deleteElement(elementList)
     }
     if (!isExistDelete) return
@@ -273,49 +258,34 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
     const result: IElement[] = []
     if (!id && !conceptId) return result
     const getElement = (elementList: IElement[]) => {
-      let i = 0
-      while (i < elementList.length) {
-        const element = elementList[i]
-        i++
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList!
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              getElement(td.value)
-            }
+      walkCommandElementList({
+        elementList,
+        isIncludeValueList: true,
+        visitor: ({ element }) => {
+          if (
+            (id && element.id !== id) ||
+            (conceptId && element.conceptId !== conceptId)
+          ) {
+            return
           }
+          const matchedElement = deepClone(element)
+          if (id && matchedElement.type !== ElementType.LIST) {
+            LIST_CONTEXT_ATTR.forEach(attr => {
+              delete matchedElement[attr]
+            })
+          }
+          if (id && matchedElement.type !== ElementType.TITLE) {
+            TITLE_CONTEXT_ATTR.forEach(attr => {
+              delete matchedElement[attr]
+            })
+          }
+          result.push(matchedElement)
         }
-        if (element.valueList?.length) {
-          getElement(element.valueList)
-        }
-        if (
-          (id && element.id !== id) ||
-          (conceptId && element.conceptId !== conceptId)
-        ) {
-          continue
-        }
-        const matchedElement = deepClone(element)
-        if (id && matchedElement.type !== ElementType.LIST) {
-          LIST_CONTEXT_ATTR.forEach(attr => {
-            delete matchedElement[attr]
-          })
-        }
-        if (id && matchedElement.type !== ElementType.TITLE) {
-          TITLE_CONTEXT_ATTR.forEach(attr => {
-            delete matchedElement[attr]
-          })
-        }
-        result.push(matchedElement)
-      }
+      })
     }
-    const data = [
-      this.draw.getHeaderElementList(),
-      this.draw.getOriginalMainElementList(),
-      this.draw.getFooterElementList()
-    ]
-    for (const elementList of data) {
+    for (const { elementList } of this.draw
+      .getObjectResolver()
+      .getOriginalZoneElementList()) {
       getElement(elementList)
     }
     return result.map(element =>
@@ -331,37 +301,25 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
       const { id, conceptId } = payload
       let isExistRemove = false
       const remove = (elementList: IElement[]) => {
-        let i = elementList.length - 1
-        while (i >= 0) {
-          const element = elementList[i]
-          if (element.type === ElementType.TABLE) {
-            const trList = element.trList!
-            for (let r = 0; r < trList.length; r++) {
-              const tr = trList[r]
-              for (let d = 0; d < tr.tdList.length; d++) {
-                const td = tr.tdList[d]
-                remove(td.value)
-              }
+        walkCommandElementList({
+          elementList,
+          visitor: ({ element, elementList, index }): number | void => {
+            if (
+              !element.control ||
+              (id && element.controlId !== id) ||
+              (conceptId && element.control.conceptId !== conceptId)
+            ) {
+              return
             }
+            isExistRemove = true
+            elementList.splice(index, 1)
+            return index
           }
-          i--
-          if (
-            !element.control ||
-            (id && element.controlId !== id) ||
-            (conceptId && element.control.conceptId !== conceptId)
-          ) {
-            continue
-          }
-          isExistRemove = true
-          elementList.splice(i + 1, 1)
-        }
+        })
       }
-      const data = [
-        this.draw.getHeaderElementList(),
-        this.draw.getOriginalMainElementList(),
-        this.draw.getFooterElementList()
-      ]
-      for (const elementList of data) {
+      for (const { elementList } of this.draw
+        .getObjectResolver()
+        .getOriginalZoneElementList()) {
         remove(elementList)
       }
       if (isExistRemove) {
@@ -370,11 +328,10 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
         })
       }
     } else {
-    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
+      const { startIndex, endIndex } = this.range.getEditBoundaryRange()
       if (startIndex !== endIndex) return
-      const elementList = this.draw.getElementList()
-      const element = elementList[startIndex]
-      if (!element.controlId) return
+      const element = this.draw.getTargetResolver().resolveRangeElement()
+      if (!element?.controlId) return
       // 删除控件
       const control = this.draw.getControl()
       const newIndex = control.removeControl(startIndex)
@@ -409,43 +366,18 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
 
   /** 定位到指定目录项对应的位置。 */
   public locationCatalog(titleId: string) {
-    const elementList = this.draw.getOriginalElementList()
+    const elementList = this.draw.getObjectResolver().getOriginalElementList()
 
-    function getPosition(
-      elementList: IElement[],
-      titleId: string
-    ): (IRange & IPositionContext) | null {
-      for (let e = 0; e < elementList.length; e++) {
-        const element = elementList[e]
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList!
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              const range = getPosition(td.value, titleId)
-              if (range) {
-                return {
-                  ...range,
-                  isTable: true,
-                  index: e,
-                  trIndex: r,
-                  tdIndex: d,
-                  tdId: td.id,
-                  trId: tr.id,
-                  tableId: element.id
-                }
-              }
-            }
-          }
-        }
+    const context = findCommandElementList<IRange & IPositionContext>({
+      elementList,
+      visitor: ({ element, elementList, index, tableContext }) => {
         // 找到标题末尾
         if (element.titleId === titleId) {
-          let newIndex = e
+          let newIndex = index
           while (newIndex < elementList.length) {
             if (elementList[newIndex + 1]?.titleId !== titleId) {
               return {
-                isTable: false,
+                ...(tableContext || { isTable: false }),
                 startIndex: newIndex,
                 endIndex: newIndex
               }
@@ -453,11 +385,9 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
             newIndex++
           }
         }
+        return null
       }
-      return null
-    }
-
-    const context = getPosition(elementList, titleId)
+    })
     if (!context) return
     const {
       isTable,
@@ -473,7 +403,7 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
       tableId,
       endIndex
     } = context
-    this.position.setPositionContext({
+    this.coordinate.setPositionContext({
       isTable,
       index,
       trIndex,
@@ -501,7 +431,7 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
 
   /** 执行文档工具类统计和分析。 */
   public wordTool() {
-    const elementList = this.draw.getMainElementList()
+    const elementList = this.draw.getObjectResolver().getMainElementList()
     let isApply = false
     for (let i = 0; i < elementList.length; i++) {
       const element = elementList[i]

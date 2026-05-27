@@ -22,7 +22,6 @@ interface ITableRangePaintPayload {
   isPrintMode: boolean
   isCrossRowCol: boolean
   tableId?: string
-  snapshotAccessor: ReturnType<Draw['getTableLayoutSnapshotAccessor']>
 }
 
 /** RowRenderer 的表格特例绘制 helper。 */
@@ -146,7 +145,7 @@ export class RowTableRenderHelper {
       return true
     }
     const rangeManager = this.draw.getRange()
-    const snapshotAccessor = this.draw.getTableLayoutSnapshotAccessor()
+    const targetResolver = this.draw.getTargetResolver()
     const {
       startTdIndex,
       endTdIndex,
@@ -154,7 +153,7 @@ export class RowTableRenderHelper {
       endTrIndex,
       tableId: rangeTableId
     } = rangeManager.getEditBoundaryRange()
-    const activeSlice = snapshotAccessor.resolveSliceByFragmentContext(
+    const activeSlice = targetResolver.resolveTableSliceByFragmentContext(
       tableCellContext
     )
     const currentTableId = activeSlice?.logicalTableId || tableCellContext.tableId
@@ -162,7 +161,7 @@ export class RowTableRenderHelper {
       rangeTableId &&
       currentTableId &&
       currentTableId !== rangeTableId &&
-      !snapshotAccessor.isSameLogicalTable(currentTableId, rangeTableId)
+      !targetResolver.isSameLogicalTable(currentTableId, rangeTableId)
     ) {
       return true
     }
@@ -230,14 +229,14 @@ export class RowTableRenderHelper {
     if (!payload.tableCellContext || rowPositionList[0]?.rowNo !== 0) {
       return
     }
-    const snapshotAccessor = this.draw.getTableLayoutSnapshotAccessor()
-    const activeSlice = snapshotAccessor.resolveSliceByFragmentContext(
+    const targetResolver = this.draw.getTargetResolver()
+    const activeSlice = targetResolver.resolveTableSliceByFragmentContext(
       payload.tableCellContext
     )
     if (!activeSlice) {
       return
     }
-    const cellBounds = snapshotAccessor
+    const cellBounds = targetResolver
       .getFragmentCellBounds(activeSlice.fragmentTableId)
       .find(
         bounds =>
@@ -247,7 +246,7 @@ export class RowTableRenderHelper {
     if (!cellBounds) {
       return
     }
-    const originalElementList = this.draw.getOriginalElementList()
+    const originalElementList = this.draw.getObjectResolver().getOriginalElementList()
     const tableElement = originalElementList[activeSlice.logicalTableIndex]
     const isLaterFragment =
       activeSlice.fragmentTableId !== activeSlice.logicalTableId
@@ -288,8 +287,7 @@ export class RowTableRenderHelper {
       rowPositionList,
       isPrintMode,
       isCrossRowCol,
-      tableId,
-      snapshotAccessor
+      tableId
     } = payload
     if (isPrintMode || !isCrossRowCol || !tableRangeElement) {
       return
@@ -300,7 +298,7 @@ export class RowTableRenderHelper {
       !!tableId &&
       !!currentTableId &&
       (currentTableId === tableId ||
-        snapshotAccessor.isSameLogicalTable(currentTableId, tableId))
+        this.draw.getTargetResolver().isSameLogicalTable(currentTableId, tableId))
     if (!isSameTableRange) {
       return
     }
@@ -315,7 +313,9 @@ export class RowTableRenderHelper {
         positionTableId &&
         currentTableId &&
         (positionTableId === currentTableId ||
-          snapshotAccessor.isSameLogicalTable(positionTableId, currentTableId))
+          this.draw
+            .getTargetResolver()
+            .isSameLogicalTable(positionTableId, currentTableId))
       )
     })
     if (!tableRangePosition) {
@@ -338,8 +338,8 @@ export class RowTableRenderHelper {
     if (!payload.tableCellContext) {
       return null
     }
-    const snapshotAccessor = this.draw.getTableLayoutSnapshotAccessor()
-    const activeSlice = snapshotAccessor.resolveSliceByFragmentContext(
+    const targetResolver = this.draw.getTargetResolver()
+    const activeSlice = targetResolver.resolveTableSliceByFragmentContext(
       payload.tableCellContext
     )
     const fragmentTableId =
@@ -349,7 +349,7 @@ export class RowTableRenderHelper {
     const fragmentTdId =
       activeSlice?.fragmentTdId || payload.tableCellContext.tdId
     const bounds =
-      snapshotAccessor
+      targetResolver
         .getFragmentCellBounds(fragmentTableId)
         .find(
           bounds =>
@@ -417,8 +417,8 @@ export class RowTableRenderHelper {
       logicalTdIndex,
       pageNo
     } = payload
-    const snapshotAccessor = this.draw.getTableLayoutSnapshotAccessor()
-    const directBounds = snapshotAccessor
+    const targetResolver = this.draw.getTargetResolver()
+    const directBounds = targetResolver
       .getFragmentCellBounds(fragmentTableId)
       .find(
         bounds =>
@@ -435,7 +435,7 @@ export class RowTableRenderHelper {
       return directBounds
     }
 
-    const pageFragmentPositions = snapshotAccessor.getPageFragmentPositions(pageNo)
+    const pageFragmentPositions = targetResolver.getPageFragmentPositions(pageNo)
     for (let i = 0; i < pageFragmentPositions.length; i++) {
       const fragmentTable = pageFragmentPositions[i].tableFragment
       const candidateTableId =
@@ -445,15 +445,15 @@ export class RowTableRenderHelper {
       }
       if (
         logicalTableId &&
-        !snapshotAccessor.isSameLogicalTable(candidateTableId, logicalTableId)
+        !targetResolver.isSameLogicalTable(candidateTableId, logicalTableId)
       ) {
         continue
       }
       const candidateBoundsList =
-        snapshotAccessor.getFragmentCellBounds(candidateTableId)
+        targetResolver.getFragmentCellBounds(candidateTableId)
       for (let j = 0; j < candidateBoundsList.length; j++) {
         const candidateBounds = candidateBoundsList[j]
-        const candidateSlice = snapshotAccessor.resolveSliceByFragmentContext({
+        const candidateSlice = targetResolver.resolveTableSliceByFragmentContext({
           tableId: candidateTableId,
           trId: candidateBounds.fragmentTrId,
           tdId: candidateBounds.fragmentTdId,

@@ -7,7 +7,7 @@ export function resolvePointerHitIntent(payload: {
   const { host, evt } = payload
   const draw = host.getDraw()
   const components = draw.getComponents()
-  const pagePoint = draw.getPointerCoordinates(evt).page
+  const pagePoint = draw.getCoordinate().getPointerCoordinates(evt).page
   if (!pagePoint) return null
   const hitTestResult = components.tableHitTestService.resolve({
     x: pagePoint.x,

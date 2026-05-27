@@ -73,43 +73,20 @@ export class CheckboxControl implements IControlInstance {
   public getValue(): IElement[] {
     const elementList = this.control.getElementList()
     const { startIndex } = this.control.getEditBoundaryRange()
-    const startElement = elementList[startIndex]
+    const controlBoundary = this.control.getDraw().getTargetResolver().resolveControlBoundaryElements({
+      elementList,
+      range: {
+        startIndex,
+        endIndex: startIndex
+      }
+    })
+    if (!controlBoundary) return []
     const data: IElement[] = []
-    // 向前遍历，收集值元素
-    let preIndex = startIndex
-    while (preIndex > 0) {
-      const preElement = elementList[preIndex]
-      // 遇到前缀或前文本时停止
-      if (
-        preElement.controlId !== startElement.controlId ||
-        preElement.controlComponent === ControlComponent.PREFIX ||
-        preElement.controlComponent === ControlComponent.PRE_TEXT
-      ) {
-        break
+    for (let i = controlBoundary.startIndex; i <= controlBoundary.endIndex; i++) {
+      const element = elementList[i]
+      if (element.controlComponent === ControlComponent.VALUE) {
+        data.push(element)
       }
-      // 收集值元素
-      if (preElement.controlComponent === ControlComponent.VALUE) {
-        data.unshift(preElement)
-      }
-      preIndex--
-    }
-    // 向后遍历，收集值元素
-    let nextIndex = startIndex + 1
-    while (nextIndex < elementList.length) {
-      const nextElement = elementList[nextIndex]
-      // 遇到后缀或后文本时停止
-      if (
-        nextElement.controlId !== startElement.controlId ||
-        nextElement.controlComponent === ControlComponent.POSTFIX ||
-        nextElement.controlComponent === ControlComponent.POST_TEXT
-      ) {
-        break
-      }
-      // 收集值元素
-      if (nextElement.controlComponent === ControlComponent.VALUE) {
-        data.push(nextElement)
-      }
-      nextIndex++
     }
     return data
   }
@@ -149,44 +126,18 @@ export class CheckboxControl implements IControlInstance {
     const { control } = this.element
     const elementList = context.elementList || this.control.getElementList()
     const { startIndex } = context.range || this.control.getEditBoundaryRange()
-    const startElement = elementList[startIndex]
-    // 向前遍历，设置复选框值
-    let preIndex = startIndex
-    while (preIndex > 0) {
-      const preElement = elementList[preIndex]
-      // 遇到前缀或前文本时停止
-      if (
-        preElement.controlId !== startElement.controlId ||
-        preElement.controlComponent === ControlComponent.PREFIX ||
-        preElement.controlComponent === ControlComponent.PRE_TEXT
-      ) {
-        break
-      }
-      // 更新复选框值
-      if (preElement.controlComponent === ControlComponent.CHECKBOX) {
-        const checkbox = preElement.checkbox!
+    const targetResolver = this.control.getDraw().getTargetResolver()
+    const controlBoundary = targetResolver.resolveControlBoundaryElements({
+      range: context.range,
+      elementList
+    })
+    if (!controlBoundary) return
+    for (let i = controlBoundary.startIndex; i <= controlBoundary.endIndex; i++) {
+      const element = elementList[i]
+      if (element.controlComponent === ControlComponent.CHECKBOX) {
+        const checkbox = element.checkbox!
         checkbox.value = codes.includes(String(checkbox.code))
       }
-      preIndex--
-    }
-    // 向后遍历，设置复选框值
-    let nextIndex = startIndex + 1
-    while (nextIndex < elementList.length) {
-      const nextElement = elementList[nextIndex]
-      // 遇到后缀或后文本时停止
-      if (
-        nextElement.controlId !== startElement.controlId ||
-        nextElement.controlComponent === ControlComponent.POSTFIX ||
-        nextElement.controlComponent === ControlComponent.POST_TEXT
-      ) {
-        break
-      }
-      // 更新复选框值
-      if (nextElement.controlComponent === ControlComponent.CHECKBOX) {
-        const checkbox = nextElement.checkbox!
-        checkbox.value = codes.includes(String(checkbox.code))
-      }
-      nextIndex++
     }
     // 更新控件代码
     control!.code = codes.join(',')

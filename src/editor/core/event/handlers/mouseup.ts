@@ -15,7 +15,7 @@ export function mouseup(evt: MouseEvent, host: CanvasEvent) {
   try {
     const draw = host.getDraw()
     const session = host.getPointerSession()
-    const coordinates = draw.getPointerCoordinates(evt, session.lastPointerCoordinates)
+    const coordinates = draw.getCoordinate().getPointerCoordinates(evt, session.lastPointerCoordinates)
     session.lastPointerCoordinates = coordinates
     if (runDragCommitIntent({ host, evt, coordinates })) return
     if (session.isAllowDrag) {

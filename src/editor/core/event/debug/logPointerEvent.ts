@@ -36,7 +36,7 @@ function resolvePointerDebugPayload(
   evt: TPointerDebugEvent,
   host: CanvasEvent
 ) {
-  const coordinates = draw.getPointerCoordinates(evt)
+  const coordinates = draw.getCoordinate().getPointerCoordinates(evt)
   const session = host.getPointerSession()
   const pagePoint = coordinates.page
   const pageNo = pagePoint?.pageNo

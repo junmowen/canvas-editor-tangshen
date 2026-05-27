@@ -6,7 +6,6 @@ import {
 } from './TableNavigationTypes'
 import {
   createTablePositionContext,
-  resolveLogicalCellFromContext,
   resolvePreviousPageIndexWithinCurrentCell,
   resolveVerticalIndexWithinCurrentCell,
   resolveVerticalSiblingCell,
@@ -14,9 +13,14 @@ import {
 } from './TableNavigationAlgorithms'
 
 interface IVerticalNavigationDeps {
-  getOriginalElementList: () => any[]
+  getOriginalElement: (index: number) => any
   getPositionList: () => any[]
   getCursorPosition: () => any
+  resolveLogicalCellFromContext: (positionContext: IPositionContext) => {
+    tableIndex: number
+    trIndex: number
+    tdIndex: number
+  } | null
   resolveSliceByPositionContext: (positionContext: IPositionContext) => ITableLayoutCellSlice | null
   getLogicalCellSliceList: (
     tableIndex: number,
@@ -33,16 +37,12 @@ export function resolveVerticalNavigation(
   payload: ITableVerticalNavigationRequest
 ): ITableVerticalNavigationResult | null {
   const { positionContext, cursorIndex, direction } = payload
-  const logicalCell = resolveLogicalCellFromContext({
-    positionContext,
-    resolveSliceByPositionContext: deps.resolveSliceByPositionContext,
-    getOriginalElementList: deps.getOriginalElementList
-  })
+  const logicalCell = deps.resolveLogicalCellFromContext(positionContext)
   if (!logicalCell) {
     return null
   }
 
-  const table = deps.getOriginalElementList()[logicalCell.tableIndex]
+  const table = deps.getOriginalElement(logicalCell.tableIndex)
   if (!table?.trList?.length) {
     return null
   }

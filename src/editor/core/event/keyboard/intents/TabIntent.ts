@@ -19,7 +19,7 @@ export function runTabIntent(evt: KeyboardEvent, host: CanvasEvent) {
     return
   }
   const rangeManager = draw.getRange()
-  const elementList = draw.getElementList()
+  const elementList = draw.getObjectResolver().getElementList()
   const { startIndex, endIndex } = rangeManager.getEditBoundaryRange()
   const paragraphElementList = rangeManager.getRangeParagraphElementList()
   if (paragraphElementList?.some(element => element.listId)) {

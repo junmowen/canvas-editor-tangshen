@@ -64,7 +64,7 @@ export class DrawViewportService {
     )
     this.pendingExtraRenderPageNoSet.forEach(pageNo => renderPageNoSet.add(pageNo))
     this.pendingExtraRenderPageNoSet.clear()
-    const activePositionList = this.draw.getPosition().getPositionList()
+    const activePositionList = this.draw.getCoordinate().getPositionList()
     const { startIndex, endIndex } = this.draw.getRange().getEditBoundaryRange()
     const startPageNo = activePositionList[startIndex]?.pageNo
     const endPageNo = activePositionList[endIndex]?.pageNo
@@ -84,7 +84,7 @@ export class DrawViewportService {
       }
     }
 
-    const cursorPosition = this.draw.getPosition().getCursorPosition()
+    const cursorPosition = this.draw.getCoordinate().getCursorPosition()
     if (cursorPosition) {
       renderPageNoSet.add(cursorPosition.pageNo)
     }

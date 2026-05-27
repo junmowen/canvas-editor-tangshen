@@ -4,8 +4,8 @@ import { IElementPosition } from '../../../interface/Element'
 import { IPlaceholder } from '../../../interface/Placeholder'
 import { IRow } from '../../../interface/Row'
 import { formatElementList } from '../../../utils/element'
-import { Position } from '../../position/Position'
 import { Draw } from '../Draw'
+import type { DrawCoordinateService } from '../coordinate/DrawCoordinateService'
 import { LineBreakParticle } from '../particle/LineBreakParticle'
 
 export interface IPlaceholderRenderOption {
@@ -15,7 +15,7 @@ export interface IPlaceholderRenderOption {
 
 export class Placeholder {
   private draw: Draw
-  private position: Position
+  private coordinate: DrawCoordinateService
   private options: DeepRequired<IEditorOption>
 
   private elementList: IElement[]
@@ -24,7 +24,7 @@ export class Placeholder {
 
   constructor(draw: Draw) {
     this.draw = draw
-    this.position = draw.getPosition()
+    this.coordinate = draw.getCoordinate()
     this.options = <DeepRequired<IEditorOption>>draw.getOptions()
 
     this.elementList = []
@@ -62,7 +62,7 @@ export class Placeholder {
       startX += (LineBreakParticle.WIDTH + LineBreakParticle.GAP) * scale
     }
     const startY = options?.startY || margins[0] + headerExtraHeight
-    this.position.computePageRowPosition({
+    this.coordinate.computePageRowPosition({
       positionList: this.positionList,
       rowList: this.rowList,
       pageNo: 0,

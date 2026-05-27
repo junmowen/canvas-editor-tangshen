@@ -94,7 +94,7 @@ export class ListParticle {
       ?.filter(el => el.listId)
     if (!changeElementList || !changeElementList.length) return
     // 如果列表最后字符不是换行符则需插入换行符
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const endElement = elementList[endIndex]
     if (endElement?.listId) {
       let start = endIndex + 1

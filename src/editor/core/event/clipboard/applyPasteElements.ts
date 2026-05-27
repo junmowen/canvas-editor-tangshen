@@ -16,7 +16,7 @@ export function applyPasteElements(host: CanvasEvent, elementList: IElement[]) {
   }
   const rangeManager = components.range
   const { startIndex } = rangeManager.getEditBoundaryRange()
-  const originalElementList = draw.getElementList()
+  const originalElementList = draw.getObjectResolver().getElementList()
   if (~startIndex && !rangeManager.getIsSelectAll()) {
     const anchorElement = originalElementList[startIndex]
     if (anchorElement?.titleId || anchorElement?.listId) {

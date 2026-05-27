@@ -88,9 +88,9 @@ export class TypingPreviewRenderer {
     editIndex?: number
     insertedCount: number
   }): { rendered: boolean; reason?: string } {
-    const position = this.draw.getPosition()
-    const positionContext = position.getPositionContext()
-    const cursorPosition = position.getCursorPosition()
+    const coordinate = this.draw.getCoordinate()
+    const positionContext = coordinate.getPositionContext()
+    const cursorPosition = coordinate.getCursorPosition()
     if (!cursorPosition || positionContext.isTable) {
       return { rendered: false, reason: 'no-cursor-or-table' }
     }
@@ -116,7 +116,7 @@ export class TypingPreviewRenderer {
     if (!surface) {
       return { rendered: false, reason: 'surface-miss' }
     }
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const startIndex = chunk.startIndex
     const endIndex = Math.min(
       elementList.length - 1,
@@ -134,7 +134,7 @@ export class TypingPreviewRenderer {
     if (!oldChunkRows.length) {
       return { rendered: false, reason: 'chunk-row-miss' }
     }
-    const chunkStartPosition = position.getPositionList()[chunk.startIndex]
+    const chunkStartPosition = coordinate.getPositionList()[chunk.startIndex]
     if (!chunkStartPosition) {
       return { rendered: false, reason: 'chunk-position-miss' }
     }
@@ -168,7 +168,7 @@ export class TypingPreviewRenderer {
         sourceStartIndex: startIndex
       })
       previewPositionList = []
-      position.computePageRowPosition({
+      coordinate.computePageRowPosition({
         positionList: previewPositionList,
         rowList,
         pageNo,
@@ -213,9 +213,9 @@ export class TypingPreviewRenderer {
     curIndex: number
     insertedCount: number
   }): { rendered: boolean; reason?: string } {
-    const position = this.draw.getPosition()
-    const positionContext = position.getPositionContext()
-    const cursorPosition = position.getCursorPosition()
+    const coordinate = this.draw.getCoordinate()
+    const positionContext = coordinate.getPositionContext()
+    const cursorPosition = coordinate.getCursorPosition()
     if (!cursorPosition || positionContext.isTable) {
       return { rendered: false, reason: 'no-cursor-or-table' }
     }
@@ -231,7 +231,7 @@ export class TypingPreviewRenderer {
     if (!this.canPreviewRow(sourceRow.elementList)) {
       return { rendered: false, reason: 'line-complex-element' }
     }
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const startIndex = sourceRow.startIndex
     const endIndex = Math.min(
       elementList.length - 1,
@@ -263,7 +263,7 @@ export class TypingPreviewRenderer {
       return { rendered: false, reason: 'line-expanded' }
     }
     const previewPositionList: IElementPosition[] = []
-    position.computePageRowPosition({
+    coordinate.computePageRowPosition({
       positionList: previewPositionList,
       rowList,
       pageNo,
@@ -364,7 +364,7 @@ export class TypingPreviewRenderer {
   ) {
     const previewCursorPosition = positionList[curIndex - startIndex]
     if (previewCursorPosition) {
-      this.draw.getPosition().setCursorPosition(previewCursorPosition)
+      this.draw.getCoordinate().setCursorPosition(previewCursorPosition)
       this.draw.getComponents().cursor.drawCursor()
     }
   }

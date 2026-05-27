@@ -1,7 +1,9 @@
 import { ElementType } from '../../../dataset/enum/Element'
 import { PageMode } from '../../../dataset/enum/Editor'
 import { MoveDirection } from '../../../dataset/enum/Observer'
+import type { IElement } from '../../../interface/Element'
 import { nextTick } from '../../../utils'
+import { forEachTableCell } from '../../table/utils/TableCellTraversal'
 import type { Draw } from '../Draw'
 
 /** Draw render 流程的通用收尾动作。 */
@@ -52,7 +54,7 @@ export class DrawRenderFinalizeService {
 
   private scrollCursorIntoView(isTyping?: boolean) {
     if (!isTyping) return
-    const cursorPosition = this.draw.getPosition().getCursorPosition()
+    const cursorPosition = this.draw.getCoordinate().getCursorPosition()
     if (!cursorPosition) return
     this.draw.getCursor().moveCursorToVisible({
       cursorPosition,
@@ -110,15 +112,18 @@ export class DrawRenderFinalizeService {
     const pageNo = 0
     const bottomMargin = this.draw.getMargins()[2]
     const rowListHeight = this.draw
+      .getObjectResolver()
       .getRowList()
       .reduce((total, row) => total + row.height + (row.offsetY || 0), 0)
     let maxBottom = this.draw.getMainOuterHeight() + rowListHeight
-    const visitElementList = (elementList: ReturnType<Draw['getLayoutMainElementList']>) => {
+    const visitElementList = (elementList: IElement[]) => {
       for (let i = 0; i < elementList.length; i++) {
         const element = elementList[i]
         if (element.type === ElementType.TABLE) {
-          element.trList?.forEach(tr => {
-            tr.tdList.forEach(td => {
+          forEachTableCell({
+            tableElement: element,
+            tableIndex: i,
+            visitor: ({ td }) => {
               td.positionList?.forEach((position: any) => {
                 maxBottom = Math.max(
                   maxBottom,
@@ -127,20 +132,20 @@ export class DrawRenderFinalizeService {
                 )
               })
               visitElementList(td.value || [])
-            })
+            }
           })
         }
       }
     }
-    this.draw.getPosition().getLayoutMainPositionList().forEach(position => {
+    this.draw.getCoordinate().getLayoutMainPositionList().forEach(position => {
       maxBottom = Math.max(
         maxBottom,
         position.coordinate.leftBottom[1] + bottomMargin,
         position.coordinate.rightBottom[1] + bottomMargin
       )
     })
-    visitElementList(this.draw.getLayoutMainElementList())
-    this.draw.getPosition().getFloatPositionList().forEach(floatPosition => {
+    visitElementList(this.draw.getObjectResolver().getLayoutMainElementList())
+    this.draw.getCoordinate().getFloatPositionList().forEach(floatPosition => {
       const element = floatPosition.element
       if (!element.imgFloatPosition || !element.height) {
         return

@@ -8,6 +8,7 @@ import { applyPointerPositionContext } from '../pointer/utils/applyPointerPositi
 import { resolveRowDragHandleAtPoint } from '../pointer/row-drag/RowDragHandle'
 import { resolveSelectionStartState } from '../utils/resolveSelectionStartState'
 import { runSelectionStartIntent } from '../pointer/intents/selection/SelectionStartIntent'
+import { resolvePositionAtIndex } from '../utils/resolvePositionAtIndex'
 
 /**
  * 处理鼠标按下事件。
@@ -25,9 +26,9 @@ export function mousedown(evt: MouseEvent, host: CanvasEvent) {
     const session = host.getPointerSession()
     const isReadonly = draw.isReadonly()
     const rangeManager = components.range
-    const position = components.position
+    const coordinate = draw.getCoordinate()
     const range = rangeManager.getEditBoundaryRange()
-    const coordinates = draw.getPointerCoordinates(evt, session.lastPointerCoordinates)
+    const coordinates = draw.getCoordinate().getPointerCoordinates(evt, session.lastPointerCoordinates)
     const pagePoint = coordinates.page
     const selectedElementList = rangeManager.getSelectionElementList() || []
     const isPureTextSelection =
@@ -78,13 +79,16 @@ export function mousedown(evt: MouseEvent, host: CanvasEvent) {
       })
       if (rowDragHandle) {
         rangeManager.setRange(rowDragHandle.startIndex, rowDragHandle.endIndex)
-        position.setPositionContext({
+        coordinate.setPositionContext({
           isTable: false,
           index: rowDragHandle.cursorIndex
         })
-        const cursorPosition = position.getPositionList()[rowDragHandle.cursorIndex]
+        const cursorPosition = resolvePositionAtIndex(
+          draw,
+          rowDragHandle.cursorIndex
+        )
         if (cursorPosition) {
-          position.setCursorPosition(cursorPosition)
+          coordinate.setCursorPosition(cursorPosition)
         }
         draw.render({
           curIndex: rowDragHandle.cursorIndex,
@@ -111,7 +115,7 @@ export function mousedown(evt: MouseEvent, host: CanvasEvent) {
     }
 
     session.isAllowSelection = true
-    const oldPositionContext = deepClone(position.getPositionContext())
+    const oldPositionContext = deepClone(coordinate.getPositionContext())
     const selectionStartState = resolveSelectionStartState({
       draw,
       x: pagePoint.x,
@@ -136,7 +140,7 @@ export function mousedown(evt: MouseEvent, host: CanvasEvent) {
     session.mouseDownStartCoordinates = coordinates
     session.lastPointerCoordinates = coordinates
 
-    applyPointerPositionContext(position, positionResult)
+    applyPointerPositionContext(coordinate, positionResult)
     runSelectionStartIntent({
       host,
       evt,

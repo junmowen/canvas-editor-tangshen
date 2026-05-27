@@ -17,7 +17,7 @@ export class DrawPostRenderEffects {
     if (
       payload.isCompute &&
       !this.draw.isReadonly() &&
-      this.draw.getComponents().position.getPositionContext().isTable
+      this.draw.getCoordinate().getPositionContext().isTable
     ) {
       this.draw.getComponents().tableTool.render()
     }

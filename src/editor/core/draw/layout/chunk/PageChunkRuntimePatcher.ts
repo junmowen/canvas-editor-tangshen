@@ -160,7 +160,7 @@ export class PageChunkRuntimePatcher {
       pageDelta: payload.pageDelta,
       oldWindowEndPageNo: payload.oldWindowEndPageNo
     })
-    const layoutElementList = this.draw.getLayoutMainElementList()
+    const layoutElementList = this.draw.getObjectResolver().getLayoutMainElementList()
     patchArraySegment({
       list: layoutElementList,
       startIndex: payload.layoutStartOffset,
@@ -311,7 +311,7 @@ export class PageChunkRuntimePatcher {
     pageDelta: number
     oldWindowEndPageNo: number
   }) {
-    const positionList = this.draw.getPosition().getPositionList()
+    const positionList = this.draw.getCoordinate().getPositionList()
     patchArraySegment({
       list: positionList,
       startIndex: payload.startOffset,
@@ -320,7 +320,7 @@ export class PageChunkRuntimePatcher {
     })
 
     if (!payload.indexDelta && !payload.rowDelta && !payload.pageDelta) {
-      this.draw.getPosition().setPositionList(positionList)
+      this.draw.getCoordinate().setPositionList(positionList)
       return
     }
 
@@ -341,6 +341,6 @@ export class PageChunkRuntimePatcher {
       }
     }
 
-    this.draw.getPosition().setPositionList(positionList)
+    this.draw.getCoordinate().setPositionList(positionList)
   }
 }

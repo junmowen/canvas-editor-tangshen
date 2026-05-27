@@ -8,7 +8,7 @@ export function resolveTableCellDblclickIntent(payload: {
   const { host, positionContext, pageNo } = payload
   const draw = host.getDraw()
   const session = host.getPointerSession()
-  const activeSlice = draw.getTableLayoutSnapshotAccessor().resolveSliceByFragmentContext({
+  const activeSlice = draw.getTargetResolver().resolveTableSliceByFragmentContext({
     tableId: positionContext.tableId!,
     trId: positionContext.trId!,
     tdId: positionContext.tdId!,

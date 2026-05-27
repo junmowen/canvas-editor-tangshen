@@ -70,10 +70,10 @@ export class TableParticle {
 
   public getRangeRowCol(): ITd[][] | null {
     const { isTable, index, trIndex, tdIndex } = this.draw
-      .getPosition()
+      .getCoordinate()
       .getPositionContext()
     if (!isTable) return null
-    const originalElementList = this.draw.getOriginalElementList()
+    const originalElementList = this.draw.getObjectResolver().getOriginalElementList()
     const element = this.resolveRangeTableElement(originalElementList, index)
     const curTrList = element?.trList
     if (!curTrList?.length) return null
@@ -135,10 +135,10 @@ export class TableParticle {
       return directElement
     }
 
-    const positionContext = this.draw.getPosition().getPositionContext()
+    const positionContext = this.draw.getCoordinate().getPositionContext()
     const activeSlice = this.draw
-      .getTableLayoutSnapshotAccessor()
-      .resolveSliceByPositionContext(positionContext)
+      .getTargetResolver()
+      .resolveTableSliceByPositionContext(positionContext)
     const sliceElement =
       activeSlice?.logicalTableIndex !== undefined
         ? originalElementList[activeSlice.logicalTableIndex]
@@ -149,9 +149,9 @@ export class TableParticle {
 
     const tableId = this.range.getEditBoundaryRange().tableId
     if (tableId) {
-      const matchedElement = originalElementList.find(
-        element => element.type === ElementType.TABLE && element.id === tableId
-      )
+      const matchedElement = this.draw.getTargetResolver().resolveOriginalTableById(
+        tableId
+      )?.element
       if (matchedElement?.trList?.length) {
         return matchedElement
       }
@@ -686,17 +686,6 @@ export class TableParticle {
     const minLogicalTrIndex = Math.min(startTrIndex ?? 0, endTrIndex ?? 0)
     const maxLogicalTrIndex = Math.max(startTrIndex ?? 0, endTrIndex ?? 0)
     const isFragmentTable = !!(element as any).logicalTableId
-    let logicalTable = element
-
-    if (isFragmentTable) {
-      const logicalTableIndex = this.draw
-        .getTableLayoutSnapshotAccessor()
-        .resolveLogicalTableIndex((element as any).tableId || element.id)
-      if (logicalTableIndex !== null) {
-        logicalTable =
-          this.draw.getOriginalElementList()[logicalTableIndex] || logicalTable
-      }
-    }
 
     ctx.save()
     for (let t = 0; t < trList.length; t++) {
@@ -710,8 +699,8 @@ export class TableParticle {
 
         if (isFragmentTable) {
           const activeSlice = this.draw
-            .getTableLayoutSnapshotAccessor()
-            .resolveSliceByFragmentContext({
+            .getTargetResolver()
+            .resolveTableSliceByFragmentContext({
               tableId: (element as any).tableId || element.id!,
               trId: tr.id!,
               tdId: td.id!,
@@ -723,10 +712,13 @@ export class TableParticle {
           }
           tdColIndex = activeSlice.logicalTdIndex
           tdRowIndex = activeSlice.logicalTrIndex
-          const logicalTd =
-            logicalTable.trList?.[activeSlice.logicalTrIndex]?.tdList?.[
-              activeSlice.logicalTdIndex
-            ]
+          const logicalTd = this.draw
+            .getTargetResolver()
+            .resolveOriginalTableTdByIndex({
+              tableIndex: activeSlice.logicalTableIndex,
+              trIndex: activeSlice.logicalTrIndex,
+              tdIndex: activeSlice.logicalTdIndex
+            })?.td
           tdColSpan = logicalTd?.colspan || tdColSpan
           tdRowSpan = logicalTd?.rowspan || tdRowSpan
         }

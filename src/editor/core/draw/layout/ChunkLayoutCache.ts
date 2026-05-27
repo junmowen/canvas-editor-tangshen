@@ -139,7 +139,7 @@ export class ChunkLayoutCache {
 
   /** 创建内容签名，覆盖影响普通文本布局的关键属性。 */
   private createContentSignature(startIndex: number, endIndex: number): string {
-    const elementList = this.draw.getOriginalMainElementList()
+    const elementList = this.draw.getObjectResolver().getOriginalMainElementList()
     const partList: string[] = []
     for (let index = startIndex; index <= endIndex; index++) {
       const element = elementList[index]

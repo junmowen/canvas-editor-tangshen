@@ -71,8 +71,8 @@ export class TableOverlayRenderer {
    */
   public renderPageOverlay(
     pageNo: number,
-    positionList = this.draw.getPosition().getLayoutMainPositionList(),
-    elementList = this.draw.getLayoutMainElementList()
+    positionList = this.draw.getCoordinate().getLayoutMainPositionList(),
+    elementList = this.draw.getObjectResolver().getLayoutMainElementList()
   ) {
     const rowList = this.draw.getPageRowList()[pageNo]
     if (!rowList?.length) {
@@ -84,7 +84,7 @@ export class TableOverlayRenderer {
     }
     const pagePositionList =
       pageNo >= 0
-        ? this.draw.getPosition().getLayoutMainPositionListByPage(pageNo)
+        ? this.draw.getCoordinate().getLayoutMainPositionListByPage(pageNo)
         : positionList
     const payload: IDrawRowPayload = {
       elementList,
@@ -107,8 +107,8 @@ export class TableOverlayRenderer {
   public renderVisibleOverlay() {
     // overlay 当前承接的是“可视页上的装饰层”：
     // 选区、搜索高亮、控件高亮都从这里按页分发。
-    const positionList = this.draw.getPosition().getLayoutMainPositionList()
-    const elementList = this.draw.getLayoutMainElementList()
+    const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
+    const elementList = this.draw.getObjectResolver().getLayoutMainElementList()
     const searchRenderPageNoList =
       this.draw.getSearch().consumeSearchRenderPageNoList()
     const pageNoList =

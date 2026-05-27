@@ -9,7 +9,7 @@ export function pasteImageFile(host: CanvasEvent, file: File | Blob) {
   if (isEditorDisabled(draw)) return
   const rangeManager = draw.getComponents().range
   const { startIndex } = rangeManager.getEditBoundaryRange()
-  const elementList = draw.getElementList()
+  const elementList = draw.getObjectResolver().getElementList()
   const fileReader = new FileReader()
   fileReader.readAsDataURL(file)
   fileReader.onload = () => {

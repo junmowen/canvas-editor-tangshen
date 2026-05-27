@@ -1,5 +1,6 @@
 import { writeElementList } from '../../../utils/clipboard'
 import { CanvasEvent } from '../CanvasEvent'
+import { resolvePositionAtIndex } from '../utils/resolvePositionAtIndex'
 
 export function cut(host: CanvasEvent) {
   const draw = host.getDraw()
@@ -9,17 +10,21 @@ export function cut(host: CanvasEvent) {
   if (!~startIndex && !~startIndex) return
   if (draw.isReadonly() || !rangeManager.getIsCanInput()) return
 
-  const elementList = draw.getElementList()
+  const elementList = draw.getObjectResolver().getElementList()
   let start = startIndex
   let end = endIndex
   // 无选区则剪切一行
   if (startIndex === endIndex) {
-    const position = components.position
-    const positionList = position.getPositionList()
-    const startPosition = positionList[startIndex]
+    const coordinate = draw.getCoordinate()
+    const positionList = coordinate.getPositionList()
+    const startPosition = resolvePositionAtIndex(draw, startIndex, {
+      fallbackToLast: true
+    })
+    if (!startPosition) return
     const curRowNo = startPosition.rowNo
     const curPageNo = startPosition.pageNo
     const cutElementIndexList: number[] = []
+    // 剪切整行仍然要回到坐标列表里找出该行覆盖的元素区间。
     for (let p = 0; p < positionList.length; p++) {
       const position = positionList[p]
       if (position.pageNo > curPageNo) break
@@ -46,7 +51,7 @@ export function cut(host: CanvasEvent) {
   const deletedCount = Math.max(1, end - start)
   rangeManager.setRange(curIndex, curIndex)
   // 剪切后 chunk patch 会刷新坐标，先同步逻辑光标索引以支撑连续编辑。
-  components.position.setCursorLogicalIndex(curIndex)
+  draw.getCoordinate().setCursorLogicalIndex(curIndex)
   draw.render({
     curIndex,
     isTyping: true,

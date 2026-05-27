@@ -62,9 +62,9 @@ export class FastInputProcessor {
     }
 
     const components = this.draw.getComponents()
-    const position = components.position
+    const coordinate = this.draw.getCoordinate()
     const rangeManager = components.range
-    const cursorPosition = position.getCursorPosition()
+    const cursorPosition = coordinate.getCursorPosition()
 
     if (!cursorPosition || !rangeManager.getIsCanInput()) return
 
@@ -139,7 +139,7 @@ export class FastInputProcessor {
     }
 
     const text = action.data.replaceAll(`\n`, ZERO)
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const copyElement = rangeManager.getRangeAnchorStyle(
       elementList,
       action.endIndex
@@ -180,7 +180,7 @@ export class FastInputProcessor {
 
     if (~curIndex) {
       rangeManager.setRange(curIndex, curIndex)
-      components.position.setCursorLogicalIndex(curIndex)
+      this.draw.getCoordinate().setCursorLogicalIndex(curIndex)
 
       const shouldUseLayoutPatch =
         !this.isComposing &&
@@ -189,7 +189,7 @@ export class FastInputProcessor {
         this.draw.getIsPagingMode() &&
         action.startIndex === action.endIndex &&
         inputData.length === 1 &&
-        !components.position.getPositionContext().isTable &&
+        !this.draw.getCoordinate().getPositionContext().isTable &&
         cursorPosition.rowIndex !== undefined
 
       this.renderScheduler.schedule({
@@ -286,7 +286,7 @@ export class FastInputProcessor {
     if (!this.compositionInfo) return
 
     const { startIndex, endIndex } = this.compositionInfo
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
 
     if (startIndex >= 0 && endIndex > startIndex && endIndex <= elementList.length) {
       elementList.splice(startIndex + 1, endIndex - startIndex)
@@ -294,7 +294,7 @@ export class FastInputProcessor {
 
     const rangeManager = this.draw.getComponents().range
     rangeManager.setRange(startIndex, startIndex)
-    this.draw.getComponents().position.setCursorLogicalIndex(startIndex)
+    this.draw.getCoordinate().setCursorLogicalIndex(startIndex)
     this.compositionInfo = null
   }
 }

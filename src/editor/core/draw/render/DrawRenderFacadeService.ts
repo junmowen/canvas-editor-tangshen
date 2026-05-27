@@ -58,7 +58,7 @@ export class DrawRenderFacadeService {
     } = payload || {}
     let { curIndex } = payload || {}
     const isTableTyping =
-      isTyping && this.draw.getPosition().getPositionContext().isTable
+      isTyping && this.draw.getCoordinate().getPositionContext().isTable
     const tableTypingEditIndex = isTableTyping
       ? typingEditIndex ?? this.resolveTypingEditIndex(
           curIndex,
@@ -340,7 +340,7 @@ export class DrawRenderFacadeService {
     if (tableLocalRelayoutResult.patched) {
       renderInvalidationManager.markLayoutDirty()
       renderInvalidationManager.markBaseBitmapDirty()
-      this.draw.getComponents().position.setCursorLogicalIndex(curIndex ?? null)
+      this.draw.getCoordinate().setCursorLogicalIndex(curIndex ?? null)
       this.finalizeService.syncContinuousPageHeight()
     } else {
       this.draw.getPageCanvasHost().invalidateAllBitmapCache()

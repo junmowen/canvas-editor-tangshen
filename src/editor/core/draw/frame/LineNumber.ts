@@ -19,7 +19,7 @@ export class LineNumber {
     } = this.options
     const textParticle = this.draw.getTextParticle()
     const margins = this.draw.getMargins()
-    const positionList = this.draw.getPosition().getLayoutMainPositionList()
+    const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
     const pageRowList = this.draw.getPageRowList()
     const rowList = pageRowList[pageNo]
     ctx.save()

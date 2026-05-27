@@ -4,6 +4,7 @@ import { IRange } from '../../../interface/Range'
 import { Draw } from '../../draw/Draw'
 import { ITableLayoutCellSlice } from '../../table/layout/TableLayoutSnapshotTypes'
 import { createTablePositionContext } from '../../table/navigation/TableNavigationAlgorithms'
+import { resolvePositionAtIndex } from './resolvePositionAtIndex'
 
 export interface IResolvedSelectionDragRange {
   range: IRange
@@ -56,7 +57,7 @@ function normalizeRange(startIndex: number, endIndex: number): IRange | null {
 
 function getTableSlice(draw: Draw, position: ICurrentPosition) {
   if (!position.tableId || !position.trId || !position.tdId) return null
-  return draw.getTableLayoutSnapshotAccessor().resolveSliceByFragmentContext({
+  return draw.getTargetResolver().resolveTableSliceByFragmentContext({
     tableId: position.tableId,
     trId: position.trId,
     tdId: position.tdId,
@@ -82,7 +83,7 @@ function toPointerHit(payload: {
       const rightX = hitPosition?.coordinate.rightTop[0]
       return rightX !== undefined ? position.x >= rightX - 1 : false
     }
-    const hitPosition = draw.getPosition().getPositionList()[hitIndex]
+    const hitPosition = resolvePositionAtIndex(draw, hitIndex)
     const rightX = hitPosition?.coordinate.rightTop[0]
     return rightX !== undefined ? position.x >= rightX - 1 : false
   }
@@ -265,7 +266,7 @@ function resolveTableCellSelection(payload: {
 }
 
 function isPlaceholderRange(draw: Draw, range: IRange): boolean {
-  const elementList = draw.getElementList()
+  const elementList = draw.getObjectResolver().getElementList()
   const startElement = elementList[range.startIndex + 1]
   const endElement = elementList[range.endIndex]
   return !!(

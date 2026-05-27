@@ -93,49 +93,10 @@ export class RangeManagerState extends RangeManagerBase {
 
   /** 解析当前活动表格单元格的逻辑位置。 */
   private resolveActiveLogicalTableCell() {
-    const activeSlice = this.draw
-      .getTableLayoutSnapshotAccessor()
-      .resolveSliceByPositionContext(this.position.getPositionContext())
-    if (activeSlice) {
-      return {
-        tableIndex: activeSlice.logicalTableIndex,
-        trIndex: activeSlice.logicalTrIndex,
-        tdIndex: activeSlice.logicalTdIndex
-      }
-    }
-
-    const positionContext = this.position.getPositionContext()
-    if (
-      positionContext.isTable &&
-      positionContext.index !== undefined &&
-      positionContext.trIndex !== undefined &&
-      positionContext.tdIndex !== undefined
-    ) {
-      return {
-        tableIndex: positionContext.index,
-        trIndex: positionContext.trIndex,
-        tdIndex: positionContext.tdIndex
-      }
-    }
-
-    const { tableId, startTrIndex, startTdIndex } = this.range
-    if (
-      tableId &&
-      startTrIndex !== undefined &&
-      startTdIndex !== undefined
-    ) {
-      const tableIndex =
-        this.draw.getTableLayoutSnapshotAccessor().resolveLogicalTableIndex(tableId) ?? -1
-      if (~tableIndex) {
-        return {
-          tableIndex,
-          trIndex: startTrIndex,
-          tdIndex: startTdIndex
-        }
-      }
-    }
-
-    return null
+    return this.draw.getTargetResolver().resolveActiveLogicalTableCell({
+      range: this.range,
+      positionContext: this.coordinate.getPositionContext()
+    })
   }
 
   /** 获取当前表格单元格的前置零宽占位偏移。 */
@@ -144,10 +105,10 @@ export class RangeManagerState extends RangeManagerBase {
     if (!logicalCell) {
       return 0
     }
-    const td =
-      this.draw.getOriginalElementList()[logicalCell.tableIndex]?.trList?.[
-        logicalCell.trIndex
-      ]?.tdList?.[logicalCell.tdIndex]
+    const td = this.draw.getTargetResolver().resolveActiveLogicalTableTd({
+      range: this.range,
+      positionContext: this.coordinate.getPositionContext()
+    })?.td
     return td?.value?.[0]?.value === ZERO && td.value[1] ? 1 : 0
   }
 
@@ -156,25 +117,25 @@ export class RangeManagerState extends RangeManagerBase {
     leadingOffset: number,
     cursorPosition?: IElementPosition | null
   ): number {
-    const snapshotAccessor = this.draw.getTableLayoutSnapshotAccessor()
-    const activeSlice = snapshotAccessor.resolveSliceByPositionContext(
-      this.position.getPositionContext()
+    const targetResolver = this.draw.getTargetResolver()
+    const activeSlice = targetResolver.resolveTableSliceByPositionContext(
+      this.coordinate.getPositionContext()
     )
     const logicalCell = this.resolveActiveLogicalTableCell()
     if (!logicalCell || !cursorPosition) {
       return 0
     }
-    const originalElementList = this.draw.getOriginalElementList()
-    const td =
-      originalElementList[logicalCell.tableIndex]?.trList?.[
-        logicalCell.trIndex
-      ]?.tdList?.[logicalCell.tdIndex]
+    const activeTd = this.draw.getTargetResolver().resolveActiveLogicalTableTd({
+      range: this.range,
+      positionContext: this.coordinate.getPositionContext()
+    })
+    const td = activeTd?.td
     if (!td || td.rowspan > 1 || td.colspan > 1) {
       return 0
     }
-    const table = originalElementList[logicalCell.tableIndex]
-    const tr = table?.trList?.[logicalCell.trIndex]
-    const logicalTd = tr?.tdList?.[logicalCell.tdIndex]
+    const table = activeTd?.table
+    const tr = activeTd?.tr
+    const logicalTd = activeTd?.td
     const logicalCellIdentity =
       table?.id && tr?.id && logicalTd?.id
         ? {
@@ -185,20 +146,20 @@ export class RangeManagerState extends RangeManagerBase {
         : null
     const sliceList =
       logicalCellIdentity
-        ? snapshotAccessor.getCellSlicesByLogicalCell(logicalCellIdentity)
+        ? targetResolver.getCellSlicesByLogicalCell(logicalCellIdentity)
         : []
     if (sliceList.length <= 1) {
       return 0
     }
     const resolvedActiveSlice =
       (logicalCellIdentity
-        ? snapshotAccessor.resolveCellSliceByAbsoluteIndex({
+        ? targetResolver.resolveCellSliceByAbsoluteIndex({
             ...logicalCellIdentity,
             absoluteIndex: cursorPosition.index
           })
         : null) ||
       (logicalCellIdentity
-        ? snapshotAccessor.resolveCellSliceByPageNo({
+        ? targetResolver.resolveCellSliceByPageNo({
             ...logicalCellIdentity,
             pageNo: cursorPosition.pageNo
           })
@@ -235,7 +196,7 @@ export class RangeManagerState extends RangeManagerBase {
   public getSelection(): IElement[] | null {
     const selectionContentRange = this.getSelectionContentRange()
     if (!selectionContentRange) return null
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     return sliceSelectionContent(elementList, selectionContentRange)
   }
 

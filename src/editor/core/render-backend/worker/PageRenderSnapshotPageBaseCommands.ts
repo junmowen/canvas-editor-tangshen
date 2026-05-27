@@ -60,8 +60,7 @@ export abstract class PageRenderSnapshotPageBaseCommands extends PageRenderSnaps
 
   protected buildPlaceholderCommands(): IWorkerPaintCommand[] {
     if (
-      this.draw.getOriginalMainElementList().length > 1 ||
-      this.draw.getOriginalMainElementList()[0]?.listId
+      !this.draw.getObjectResolver().getIsOriginalMainPlaceholderAvailable()
     ) {
       return []
     }
@@ -97,7 +96,7 @@ export abstract class PageRenderSnapshotPageBaseCommands extends PageRenderSnaps
     if (!lineBreak.disabled) {
       startX += (LineBreakParticle.WIDTH + LineBreakParticle.GAP) * scale
     }
-    this.draw.getPosition().computePageRowPosition({
+    this.draw.getCoordinate().computePageRowPosition({
       positionList,
       rowList,
       pageNo: 0,

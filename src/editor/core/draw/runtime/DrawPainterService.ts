@@ -18,9 +18,10 @@ export class DrawPainterService {
   }
 
   public setDefaultRange() {
-    if (!this.draw.getOriginalMainElementList().length) return
+    const objectResolver = this.draw.getObjectResolver()
+    if (objectResolver.getOriginalMainLastIndex() < 0) return
     setTimeout(() => {
-      const curIndex = this.draw.getOriginalMainElementList().length - 1
+      const curIndex = objectResolver.getOriginalMainLastIndex()
       this.draw.getRange().setRange(curIndex, curIndex)
       this.draw.getRange().setRangeStyle()
     })

@@ -48,7 +48,7 @@ export class ZoneTip {
       'mousemove',
       throttle((evt: MouseEvent) => {
         if (this.isDisableMouseMove || !this.draw.getIsPagingMode()) return
-        const pagePoint = this.draw.getPointerCoordinates(evt).page
+        const pagePoint = this.draw.getCoordinate().getPointerCoordinates(evt).page
         if (!pagePoint) {
           this._updateZoneTip(false)
           return

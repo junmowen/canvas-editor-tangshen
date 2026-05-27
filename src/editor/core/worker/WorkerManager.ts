@@ -23,76 +23,81 @@ export class WorkerManager {
   }
 
   public getWordCount(): Promise<number> {
-    return new Promise((resolve, reject) => {
-      this.wordCountWorker.onmessage = evt => {
-        resolve(evt.data)
-      }
-
-      this.wordCountWorker.onerror = evt => {
-        reject(evt)
-      }
-
-      const elementList = this.draw.getOriginalMainElementList()
-      this.wordCountWorker.postMessage(elementList)
-    })
+    return this.requestWorker<IGetOriginalMainElementListPayload, number>(
+      this.wordCountWorker,
+      this.getOriginalMainElementListPayload()
+    )
   }
 
   public getCatalog(): Promise<ICatalog | null> {
-    return new Promise((resolve, reject) => {
-      // 目录生成可能被 contentChange 和外部 API 并发触发；每次请求独立 worker，避免复用实例覆盖回调导致 Promise 悬挂。
-      const catalogWorker = new CatalogWorker()
-      catalogWorker.onmessage = evt => {
-        catalogWorker.terminate()
-        resolve(evt.data)
+    // 目录生成可能被 contentChange 和外部 API 并发触发；每次请求独立 worker，避免复用实例覆盖回调导致 Promise 悬挂。
+    return this.requestWorker(
+      new CatalogWorker(),
+      {
+        elementList: this.getOriginalMainElementListPayload(),
+        positionList: this.draw.getCoordinate().getLayoutMainPositionList()
+      },
+      {
+        isTerminateAfterSettled: true
       }
-
-      catalogWorker.onerror = evt => {
-        catalogWorker.terminate()
-        reject(evt)
-      }
-
-      const elementList = this.draw.getOriginalMainElementList()
-      const positionList = this.draw.getComponents().position.getLayoutMainPositionList()
-      catalogWorker.postMessage({
-        elementList,
-        positionList
-      })
-    })
+    )
   }
 
   public getGroupIds(): Promise<string[]> {
+    return this.requestWorker<IGetOriginalMainElementListPayload, string[]>(
+      this.groupWorker,
+      this.getOriginalMainElementListPayload()
+    )
+  }
+
+  public async getValue(options?: IGetValueOption): Promise<IEditorResult> {
+    const data = await this.requestWorker<
+      {
+        data: ReturnType<Draw['getOriginValue']>
+        options?: IGetValueOption
+      },
+      IEditorResult['data']
+    >(this.valueWorker, {
+      data: this.draw.getOriginValue(options),
+      options
+    })
+    return {
+      version,
+      data,
+      options: deepClone(this.draw.getOptions())
+    }
+  }
+
+  /** 统一 worker 请求生命周期，避免各统计入口重复维护回调和释放逻辑。 */
+  private requestWorker<TPayload, TResult>(
+    worker: Worker,
+    payload: TPayload,
+    options: { isTerminateAfterSettled?: boolean } = {}
+  ): Promise<TResult> {
     return new Promise((resolve, reject) => {
-      this.groupWorker.onmessage = evt => {
+      const settle = () => {
+        if (options.isTerminateAfterSettled) {
+          worker.terminate()
+        }
+      }
+      worker.onmessage = evt => {
+        settle()
         resolve(evt.data)
       }
-
-      this.groupWorker.onerror = evt => {
+      worker.onerror = evt => {
+        settle()
         reject(evt)
       }
-
-      const elementList = this.draw.getOriginalMainElementList()
-      this.groupWorker.postMessage(elementList)
+      worker.postMessage(payload)
     })
   }
 
-  public getValue(options?: IGetValueOption): Promise<IEditorResult> {
-    return new Promise((resolve, reject) => {
-      this.valueWorker.onmessage = evt => {
-        resolve({
-          version,
-          data: evt.data,
-          options: deepClone(this.draw.getOptions())
-        })
-      }
-
-      this.valueWorker.onerror = evt => {
-        reject(evt)
-      }
-
-      this.valueWorker.postMessage({
-        data: this.draw.getOriginValue(options),
-        options
-      })
-    })
+  /** worker 只接收正文原始数据，来源统一收敛到 ObjectResolver。 */
+  private getOriginalMainElementListPayload() {
+    return this.draw.getObjectResolver().getOriginalMainElementList()
   }
 }
+
+type IGetOriginalMainElementListPayload = ReturnType<
+  WorkerManager['getOriginalMainElementListPayload']
+>

@@ -12,16 +12,19 @@ export class DrawExportStateService {
   constructor(private readonly draw: Draw) {}
 
   public captureExportRenderState() {
+    const { header, main, footer } = this.draw
+      .getObjectResolver()
+      .getOriginalEditorData()
     return {
       pagePixelRatio: this.draw.getPagePixelRatio(),
       mode: this.draw.getMode(),
       pageNo: this.draw.getPageNo(),
       zone: this.draw.getComponents().zone.getZone(),
-      positionContext: deepClone(this.draw.getComponents().position.getPositionContext()),
+      positionContext: deepClone(this.draw.getCoordinate().getPositionContext()),
       range: deepClone(this.draw.getComponents().range.getEditBoundaryRange()),
-      headerElementList: deepClone(this.draw.getComponents().header.getElementList()),
-      footerElementList: deepClone(this.draw.getComponents().footer.getElementList()),
-      elementList: deepClone(this.draw.getOriginalMainElementList())
+      headerElementList: deepClone(header),
+      footerElementList: deepClone(footer),
+      elementList: deepClone(main)
     }
   }
 
@@ -32,7 +35,7 @@ export class DrawExportStateService {
     this.draw.getRuntime().replaceMode(state.mode)
     this.draw.setPageNo(state.pageNo)
     this.draw.getComponents().zone.replaceZone(state.zone)
-    this.draw.getComponents().position.setPositionContext(deepClone(state.positionContext))
+    this.draw.getCoordinate().setPositionContext(deepClone(state.positionContext))
     this.draw.getComponents().header.setElementList(deepClone(state.headerElementList))
     this.draw.getComponents().footer.setElementList(deepClone(state.footerElementList))
     this.draw.replaceMainElementList(deepClone(state.elementList))

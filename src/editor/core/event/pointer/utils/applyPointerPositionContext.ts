@@ -1,11 +1,11 @@
 import { ICurrentPosition } from '../../../../interface/Position'
-import { Position } from '../../../position/Position'
+import type { DrawCoordinateService } from '../../../draw/coordinate/DrawCoordinateService'
 
 export function applyPointerPositionContext(
-  position: Position,
+  coordinate: DrawCoordinateService,
   positionResult: ICurrentPosition
 ) {
-  position.setPositionContext({
+  coordinate.setPositionContext({
     isTable: !!positionResult.isTable,
     isCheckbox: positionResult.isCheckbox || false,
     isRadio: positionResult.isRadio || false,

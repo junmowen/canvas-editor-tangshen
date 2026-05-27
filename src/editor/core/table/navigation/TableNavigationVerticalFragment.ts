@@ -1,6 +1,5 @@
 import { IPositionContext } from '../../../interface/Position'
 import { ITableLayoutCellSlice } from '../layout/TableLayoutSnapshotTypes'
-import { resolveLogicalCellFromContext } from './TableNavigationAlgorithms'
 
 export function resolveVerticalFragmentTransition(payload: {
   positionContext: IPositionContext
@@ -8,8 +7,11 @@ export function resolveVerticalFragmentTransition(payload: {
   cursorPageNo: number
   nextPositionPageNo?: number
   isShiftKey: boolean
-  resolveSliceByPositionContext: (positionContext: IPositionContext) => ITableLayoutCellSlice | null
-  getOriginalElementList: () => any[]
+  resolveLogicalCellFromContext: (positionContext: IPositionContext) => {
+    tableIndex: number
+    trIndex: number
+    tdIndex: number
+  } | null
   getLogicalCellSliceList: (
     tableIndex: number,
     trIndex: number,
@@ -25,8 +27,7 @@ export function resolveVerticalFragmentTransition(payload: {
     cursorPageNo,
     nextPositionPageNo,
     isShiftKey,
-    resolveSliceByPositionContext,
-    getOriginalElementList,
+    resolveLogicalCellFromContext,
     getLogicalCellSliceList,
     resolveFragmentTransitionIndex
   } = payload
@@ -40,11 +41,7 @@ export function resolveVerticalFragmentTransition(payload: {
     return null
   }
 
-  const logicalCell = resolveLogicalCellFromContext({
-    positionContext,
-    resolveSliceByPositionContext,
-    getOriginalElementList
-  })
+  const logicalCell = resolveLogicalCellFromContext(positionContext)
   if (logicalCell) {
     const sliceList = getLogicalCellSliceList(
       logicalCell.tableIndex,

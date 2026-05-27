@@ -28,6 +28,7 @@ import {
   disposeTableTool,
   renderTableToolIfNeeded
 } from '../../effects/TableToolEffect'
+import { resolvePositionAtIndex } from '../../../utils/resolvePositionAtIndex'
 
 function resolveDisabledControlCursorIndex(
   elementList: any[],
@@ -72,16 +73,16 @@ export function runSelectionStartIntent(payload: {
   const { host, evt, oldPositionContextTdId, isReadonly, positionResult } = payload
   const draw = host.getDraw()
   const components = draw.getComponents()
-  const position = components.position
+  const coordinate = draw.getCoordinate()
   const rangeManager = components.range
   const { index, isDirectHit, isCheckbox, isRadio, isImage, isTable, tdValueIndex } =
     positionResult
-  const elementList = draw.getElementList()
-  const positionList = position.getPositionList()
+  const elementList = draw.getObjectResolver().getElementList()
   const curIndex = isTable ? tdValueIndex! : index
   const targetElementIndex = isTable
     ? tdValueIndex!
     : (positionResult.hitTargetIndex ?? index)
+  const targetPosition = resolvePositionAtIndex(draw, targetElementIndex)
   const curElement = elementList[targetElementIndex]
   const isDirectHitImage = !!(isDirectHit && isImage)
   const isDirectHitCheckbox = !!(isDirectHit && isCheckbox)
@@ -100,7 +101,7 @@ export function runSelectionStartIntent(payload: {
     if (evt.shiftKey) {
       const { startIndex: oldStartIndex } = rangeManager.getEditBoundaryRange()
       if (~oldStartIndex) {
-        const newPositionContext = position.getPositionContext()
+        const newPositionContext = coordinate.getPositionContext()
         if (newPositionContext.tdId === oldPositionContextTdId) {
           if (curIndex > oldStartIndex) {
             startIndex = oldStartIndex
@@ -116,9 +117,9 @@ export function runSelectionStartIntent(payload: {
     // 但光标必须画在“当前行最前面”的显式位置。
     const nextCursorPosition =
       isDisabledControl
-        ? positionList[resolvedCursorIndex]
-        : positionResult.cursorPosition || positionList[curIndex]
-    position.setCursorPosition(nextCursorPosition)
+        ? resolvePositionAtIndex(draw, resolvedCursorIndex)
+        : positionResult.cursorPosition || resolvePositionAtIndex(draw, curIndex)
+    coordinate.setCursorPosition(nextCursorPosition)
 
     if (isDirectHitCheckbox && (!isReadonly || canToggleFormControl)) {
       if (draw.getMode() === EditorMode.FORM) {
@@ -173,7 +174,7 @@ export function runSelectionStartIntent(payload: {
     showImageResizer({
       draw,
       element: curElement,
-      position: positionList[targetElementIndex],
+      position: targetPosition,
       options: previewerDrawOption
     })
     hideCursorForPreviewer(draw)
@@ -196,14 +197,14 @@ export function runSelectionStartIntent(payload: {
     draw,
     evt,
     element: curElement,
-    position: positionList[targetElementIndex]
+    position: targetPosition!
   })
 
   clearDateEffect(draw)
   applyDateEffect({
     draw,
     element: curElement,
-    position: positionList[targetElementIndex],
+    position: targetPosition!,
     isReadonly
   })
 }

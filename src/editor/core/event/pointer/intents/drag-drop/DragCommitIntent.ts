@@ -61,7 +61,7 @@ export function runDragCommitIntent(payload: {
     host.mousedown(evt)
     return true
   }
-  const positionContext = components.position.getPositionContext()
+  const positionContext = draw.getCoordinate().getPositionContext()
   const rangeManager = components.range
   const cacheRange = session.dragSnapshot.range!
   const cacheElementList = session.dragSnapshot.elementList!
@@ -163,7 +163,7 @@ export function runDragCommitIntent(payload: {
   draw.clearSideEffect()
   let imgElement: IElement | null = null
   if (isCacheRangeCollapsed) {
-    const activeElementList = draw.getElementList()
+    const activeElementList = draw.getObjectResolver().getElementList()
     const dragElement = activeElementList[mutationResult.rangeEndIndex]
     if (
       dragElement.type === ElementType.IMAGE ||

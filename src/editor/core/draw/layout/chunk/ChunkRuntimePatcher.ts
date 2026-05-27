@@ -107,7 +107,7 @@ export class ChunkRuntimePatcher {
     startIndex: number
     deleteCount: number
   }) {
-    const layoutElementList = this.draw.getLayoutMainElementList()
+    const layoutElementList = this.draw.getObjectResolver().getLayoutMainElementList()
     // 布局元素必须以真实 chunk 内容为准，rowList 只作为测量结果，不能反向决定正文内容。
     const nextElementList = payload.elementList
     patchArraySegment<IElement>({
@@ -128,7 +128,7 @@ export class ChunkRuntimePatcher {
     heightDelta: number
     rowDelta: number
   }) {
-    const positionList = this.draw.getPosition().getPositionList()
+    const positionList = this.draw.getCoordinate().getPositionList()
     patchArraySegment<IElementPosition>({
       list: positionList,
       startIndex: payload.startIndex,
@@ -143,7 +143,7 @@ export class ChunkRuntimePatcher {
       heightDelta: payload.heightDelta,
       rowDelta: payload.rowDelta
     })
-    this.draw.getPosition().setPositionList(positionList)
+    this.draw.getCoordinate().setPositionList(positionList)
   }
 
   /** 计算旧运行时中当前 chunk 需要替换的元素数量。 */

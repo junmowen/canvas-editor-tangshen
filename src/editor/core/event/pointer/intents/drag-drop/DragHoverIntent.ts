@@ -13,7 +13,7 @@ export function runDragHoverIntent(payload: {
   const components = draw.getComponents()
   const session = host.getPointerSession()
   if (!session.isAllowDrag) return false
-  const coordinates = draw.getPointerCoordinates(evt, session.lastPointerCoordinates)
+  const coordinates = draw.getCoordinate().getPointerCoordinates(evt, session.lastPointerCoordinates)
   const pagePoint = coordinates.page
   const { startIndex, endIndex } = session.dragSnapshot.range!
   const positionList = session.dragSnapshot.positionList!
@@ -33,11 +33,11 @@ export function runDragHoverIntent(payload: {
           dropTarget.range.startIndex,
           dropTarget.range.endIndex
         )
-        components.position.setPositionContext({
+        draw.getCoordinate().setPositionContext({
           isTable: false,
           index: dropTarget.range.endIndex
         })
-        components.position.setCursorPosition(dropTarget.cursorPosition)
+        draw.getCoordinate().setCursorPosition(dropTarget.cursorPosition)
         const {
           cursor: { dragColor, dragWidth }
         } = draw.getOptions()

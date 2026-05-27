@@ -13,7 +13,9 @@ export abstract class PageRenderSnapshotBase {
     const range = this.draw.getRange().getEditBoundaryRange()
     const activeGroupIds =
       range.endIndex >= 0
-        ? this.draw.getElementList()[range.endIndex]?.groupIds
+        ? this.draw
+            .getTargetResolver()
+            .resolveRangeElement({ range, anchor: 'end' })?.groupIds
         : undefined
     return activeGroupIds || []
   }

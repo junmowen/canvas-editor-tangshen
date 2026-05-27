@@ -19,20 +19,25 @@ export class RangeManagerEdit extends RangeManagerQuery {
   public getIsCanInput(): boolean {
     const { startIndex, endIndex } = this.getEditBoundaryRange()
     if (!~startIndex && !~endIndex) return false
-    const elementList = this.draw.getElementList()
-    const startElement = elementList[startIndex]
+    const targetResolver = this.draw.getTargetResolver()
+    // 这里统一从 TargetResolver 取边界元素，避免 RangeManager 自己解释坐标语义。
+    const { elementList, startElement, endElement } =
+      targetResolver.resolveRangeBoundaryElements()
     if (!startElement) {
       return false
     }
     if (startIndex === endIndex) {
+      const nextElement = targetResolver.resolveRangeElement({
+        elementList,
+        anchor: 'start',
+        offset: 1
+      })
       return (
         (startElement.controlComponent !== ControlComponent.PRE_TEXT ||
-          elementList[startIndex + 1]?.controlComponent !==
-            ControlComponent.PRE_TEXT) &&
+          nextElement?.controlComponent !== ControlComponent.PRE_TEXT) &&
         startElement.controlComponent !== ControlComponent.POST_TEXT
       )
     }
-    const endElement = elementList[endIndex]
     if (!endElement) {
       return false
     }
@@ -92,8 +97,7 @@ export class RangeManagerEdit extends RangeManagerQuery {
     // 激活控件
     const control = this.draw.getControl()
     if (~startIndex && ~endIndex) {
-      const elementList = this.draw.getElementList()
-      const element = elementList[startIndex]
+      const element = this.draw.getTargetResolver().resolveRangeElement()
       if (element?.controlId) {
         control.initControl()
         return
@@ -137,13 +141,15 @@ export class RangeManagerEdit extends RangeManagerQuery {
     let curElement: IElement | null
     if (isCrossRowCol) {
       // 单元格选择以当前表格定位
-      const originalElementList = this.draw.getOriginalElementList()
-      const positionContext = this.position.getPositionContext()
-      curElement = originalElementList[positionContext.index!]
+      curElement =
+        this.draw.getTargetResolver().resolveContextTable({
+          positionContext: this.coordinate.getPositionContext(),
+          range: this.range
+        })?.element || null
     } else {
       const index = ~endIndex ? endIndex : 0
       // 行首以第一个非换行符元素定位
-      const elementList = this.draw.getElementList()
+      const elementList = this.draw.getObjectResolver().getElementList()
       curElement = this.getRangeAnchorStyle(elementList, index)
     }
     if (!curElement) return
@@ -189,12 +195,19 @@ export class RangeManagerEdit extends RangeManagerQuery {
 
   /** 按控件组件边界收缩当前编辑范围。 */
   public shrinkBoundary(context: IControlContext = {}) {
-    const elementList = context.elementList || this.draw.getElementList()
+    const elementList = context.elementList || this.draw.getObjectResolver().getElementList()
     const range = context.range || this.getEditBoundaryRange()
     const { startIndex, endIndex } = range
     if (!~startIndex && !~endIndex) return
-    const startElement = elementList[startIndex]
-    const endElement = elementList[endIndex]
+    const targetResolver = this.draw.getTargetResolver()
+    // 控件边界判断统一交给 TargetResolver，RangeManager 只负责收缩结果。
+    const { startElement, endElement } = targetResolver.resolveRangeBoundaryElements(
+      {
+        range,
+        elementList
+      }
+    )
+    if (!startElement || !endElement) return
     if (startIndex === endIndex) {
       if (startElement.controlComponent === ControlComponent.PLACEHOLDER) {
         // 找到第一个placeholder字符

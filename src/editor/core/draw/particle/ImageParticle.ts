@@ -6,6 +6,7 @@ import { IElement, IElementMetrics } from '../../../interface/Element'
 import { RenderLayer } from '../../render-backend'
 import { convertStringToBase64 } from '../../../utils'
 import { Draw } from '../Draw'
+import { walkElementTree } from '../../utils/ElementTreeTraversal'
 
 /** WebGL 图片预览 bitmap 固化缓存项。 */
 interface IImagePreviewBitmapCacheItem {
@@ -89,27 +90,14 @@ export class ImageParticle {
    */
   public getOriginalMainImageList(): IElement[] {
     const imageList: IElement[] = []
-    // 递归遍历元素列表，收集图片
-    const getImageList = (elementList: IElement[]) => {
-      for (const element of elementList) {
-        // 如果是表格，递归处理单元格
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList!
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              getImageList(td.value)
-            }
-          }
-        } else if (element.type === ElementType.IMAGE) {
-          // 收集图片元素
+    walkElementTree({
+      elementList: this.draw.getObjectResolver().getOriginalMainElementList(),
+      visitor: ({ element }) => {
+        if (element.type === ElementType.IMAGE) {
           imageList.push(element)
         }
       }
-    }
-    // 获取正文图片列表
-    getImageList(this.draw.getOriginalMainElementList())
+    })
     return imageList
   }
 
@@ -162,7 +150,7 @@ export class ImageParticle {
   }
 
   protected addImageObserver(promise: Promise<unknown>) {
-    this.draw.getImageObserver().add(promise)
+    this.draw.getComponents().imageObserver.add(promise)
   }
 
   protected getFallbackImage(width: number, height: number): HTMLImageElement {

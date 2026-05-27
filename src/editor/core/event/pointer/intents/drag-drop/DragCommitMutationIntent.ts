@@ -12,6 +12,7 @@ import { deepClone, omitObject } from '../../../../../utils'
 import { formatElementContext, formatElementList } from '../../../../../utils/element'
 import { Draw } from '../../../../draw/Draw'
 import { createDragId, getElementIndexByDragId } from './DragCommitHelpers'
+import { resolvePositionAtIndex } from '../../../utils/resolvePositionAtIndex'
 
 export function applyDragCommitMutation(payload: {
   draw: Draw
@@ -40,10 +41,10 @@ export function applyDragCommitMutation(payload: {
     isPreserveSourceContext = false
   } = payload
   const components = draw.getComponents()
-  const position = components.position
+  const coordinate = draw.getCoordinate()
   const rangeManager = components.range
   const control = components.control
-  const elementList = draw.getElementList()
+  const elementList = draw.getObjectResolver().getElementList()
   const isOmitControlAttr =
     !isContainControl ||
     !!elementList[range.startIndex].controlId ||
@@ -148,12 +149,17 @@ export function applyDragCommitMutation(payload: {
     let isTdElementDeletable = true
     if (cachePositionContext?.isTable) {
       const { tableId, trIndex, tdIndex } = cachePositionContext
-      const originElementList = draw.getOriginalElementList()
-      isTdElementDeletable = !originElementList.some(
-        el =>
-          el.id === tableId &&
-          el?.trList?.[trIndex!]?.tdList?.[tdIndex!]?.deletable === false
-      )
+      const tableContext = tableId
+        ? draw.getTargetResolver().resolveOriginalTableById(tableId)
+        : null
+      const td = tableContext
+        ? draw.getTargetResolver().resolveOriginalTableTdByIndex({
+            tableIndex: tableContext.index,
+            trIndex: trIndex!,
+            tdIndex: tdIndex!
+          })?.td
+        : null
+      isTdElementDeletable = td?.deletable !== false
     }
     if (isTdElementDeletable) {
       draw.spliceElementList(
@@ -165,9 +171,9 @@ export function applyDragCommitMutation(payload: {
   }
 
   const startElement = elementList[range.startIndex]
-  const startPosition = position.getPositionList()[range.startIndex]
-  let positionContextIndex = position.getPositionContext().index
-  if (positionContextIndex) {
+  const startPosition = resolvePositionAtIndex(draw, range.startIndex)
+  let positionContextIndex = coordinate.getPositionContext().index
+  if (positionContextIndex && startPosition) {
     if (startElement.tableId && !cacheStartElement.tableId) {
       if (cacheStartPosition.index < positionContextIndex) {
         positionContextIndex -= replaceLength
@@ -177,8 +183,8 @@ export function applyDragCommitMutation(payload: {
         positionContextIndex += replaceLength
       }
     }
-    position.setPositionContext({
-      ...position.getPositionContext(),
+    coordinate.setPositionContext({
+      ...coordinate.getPositionContext(),
       index: positionContextIndex
     })
   }

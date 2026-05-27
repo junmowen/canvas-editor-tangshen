@@ -394,7 +394,6 @@ export class DrawComponentRegistry {
     this.tableTool = new TableTool(draw)
     this.tableOperate = new TableOperate(draw, {
       range: this.range,
-      position: this.position,
       tableTool: this.tableTool,
       tableParticle: this.tableParticle,
       options: draw.getRuntime().getOptions()
@@ -410,7 +409,6 @@ export class DrawComponentRegistry {
     this.hyperlinkParticle = new HyperlinkParticle(draw)
     draw.setBootstrapHyperlinkParticle(this.hyperlinkParticle)
     this.dateParticle = new DateParticle(draw, i18n)
-    draw.setBootstrapDateParticle(this.dateParticle)
     this.separatorParticle = new SeparatorParticle(draw)
     this.pageBreakParticle = new PageBreakParticle(draw, i18n)
     this.superscriptParticle = new SuperscriptParticle()

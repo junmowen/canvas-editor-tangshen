@@ -24,6 +24,6 @@ export class DrawLifecycleService {
     this.draw.getComponents().previewer.clearResizer()
     this.draw.getComponents().tableTool.dispose()
     this.draw.getHyperlinkParticle().clearHyperlinkPopup()
-    this.draw.getDateParticle().clearDatePicker()
+    this.draw.getComponents().dateParticle.clearDatePicker()
   }
 }

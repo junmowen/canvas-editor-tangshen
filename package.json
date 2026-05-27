@@ -47,6 +47,7 @@
     "issues:verify": "node scripts/verifyIssues.js",
     "issues:verify:list": "node scripts/verifyIssues.js --list",
     "issues:verify:current": "node scripts/verifyIssues.js --current",
+    "architecture:check": "node scripts/verify-architecture.js",
     "type:check": "tsc --noEmit",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
@@ -74,7 +75,7 @@
     "prismjs": "^1.27.0"
   },
   "simple-git-hooks": {
-    "pre-commit": "npm run encoding:check:staged && npm run lint && npm run type:check",
+    "pre-commit": "npm run encoding:check:staged && npm run architecture:check && npm run lint && npm run type:check",
     "commit-msg": "node scripts/verifyCommit.js"
   }
 }

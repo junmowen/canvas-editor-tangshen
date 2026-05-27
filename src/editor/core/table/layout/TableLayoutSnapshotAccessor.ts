@@ -1,5 +1,5 @@
 import { IElement, IElementPosition } from '../../../interface/Element'
-import { IPositionContext } from '../../../interface/Position'
+import { ICurrentPosition, IPositionContext } from '../../../interface/Position'
 import { resolveSelectionContentRange } from '../../range/utils/resolveSelectionContent'
 import { Draw } from '../../draw/Draw'
 import {
@@ -171,7 +171,7 @@ export class TableLayoutSnapshotAccessor {
   }
 
   public resolveSliceByPositionContext(
-    positionContext: IPositionContext | null | undefined
+    positionContext: IPositionContext | ICurrentPosition | null | undefined
   ): ITableLayoutCellSlice | null {
     // 事件层 / 命令层经常持有的是 positionContext，
     // 这里统一把它桥接回快照 slice。
@@ -198,9 +198,14 @@ export class TableLayoutSnapshotAccessor {
       return null
     }
 
-    const table = this.draw.getOriginalElementList()[positionContext.index]
-    const tr = table?.trList?.[positionContext.trIndex]
-    const td = tr?.tdList?.[positionContext.tdIndex]
+    const tableCell = this.draw.getTargetResolver().resolveOriginalTableTdByIndex({
+      tableIndex: positionContext.index,
+      trIndex: positionContext.trIndex,
+      tdIndex: positionContext.tdIndex
+    })
+    const table = tableCell?.table
+    const tr = tableCell?.tr
+    const td = tableCell?.td
     if (!table?.id || !tr?.id || !td?.id) {
       return null
     }

@@ -2,6 +2,7 @@ import { ElementType } from '../../../dataset/enum/Element'
 import { IElementPosition } from '../../../interface/Element'
 import { ITableFragmentDescriptor } from '../../../interface/table/TableFragment'
 import { Draw } from '../../draw/Draw'
+import { forEachTableCell } from '../utils/TableCellTraversal'
 import {
   getTableLayoutCellFragmentAliasKey,
   getTableLayoutCellPageKey,
@@ -251,7 +252,7 @@ export class TableLayoutSnapshotBuilder {
 
   private collectFragmentPositionsByPageNo() {
     const fragmentPositionsByPageNo = new Map<number, IElementPosition[]>()
-    const positionList = this.draw.getPosition().getLayoutMainPositionList()
+    const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
 
     for (let index = 0; index < positionList.length; index++) {
       const position = positionList[index]
@@ -474,7 +475,7 @@ export class TableLayoutSnapshotBuilder {
 
   private buildLogicalTableLookupMap() {
     const logicalTableLookupMap = new Map<string, ILogicalTableLookup>()
-    const elementList = this.draw.getOriginalMainElementList()
+    const elementList = this.draw.getObjectResolver().getOriginalMainElementList()
 
     for (let tableIndex = 0; tableIndex < elementList.length; tableIndex++) {
       const element = elementList[tableIndex]
@@ -486,15 +487,17 @@ export class TableLayoutSnapshotBuilder {
       const tdLocationByTrId = new Map<string, Map<string, ILogicalCellLocation>>()
       const tdLocationById = new Map<string, ILogicalCellLocation>()
 
-      for (let trIndex = 0; trIndex < element.trList.length; trIndex++) {
-        const tr = element.trList[trIndex]
-        if (!tr?.id) continue
-        trIndexById.set(tr.id, trIndex)
-
-        const tdLocationMap = new Map<string, ILogicalCellLocation>()
-        for (let tdIndex = 0; tdIndex < tr.tdList.length; tdIndex++) {
-          const td = tr.tdList[tdIndex]
-          if (!td?.id) continue
+      forEachTableCell({
+        tableElement: element,
+        tableIndex,
+        visitor: ({ tr, td, trIndex, tdIndex }) => {
+          if (!tr?.id || !td?.id) return
+          trIndexById.set(tr.id, trIndex)
+          let tdLocationMap = tdLocationByTrId.get(tr.id)
+          if (!tdLocationMap) {
+            tdLocationMap = new Map<string, ILogicalCellLocation>()
+            tdLocationByTrId.set(tr.id, tdLocationMap)
+          }
           const logicalCellLocation: ILogicalCellLocation = {
             logicalTrId: tr.id,
             logicalTdId: td.id,
@@ -504,8 +507,7 @@ export class TableLayoutSnapshotBuilder {
           tdLocationMap.set(td.id, logicalCellLocation)
           tdLocationById.set(td.id, logicalCellLocation)
         }
-        tdLocationByTrId.set(tr.id, tdLocationMap)
-      }
+      })
 
       logicalTableLookupMap.set(element.id, {
         tableId: element.id,

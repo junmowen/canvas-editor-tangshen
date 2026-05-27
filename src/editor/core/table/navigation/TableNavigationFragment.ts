@@ -1,11 +1,23 @@
 import { IPositionContext } from '../../../interface/Position'
 import { ITableLayoutCellSlice } from '../layout/TableLayoutSnapshotTypes'
 import { ITableFragmentTransitionRequest } from './TableNavigationTypes'
-import { resolveLogicalCellFromContext } from './TableNavigationAlgorithms'
 
 interface IFragmentNavigationDeps {
+  resolveLogicalCellFromContext: (positionContext: IPositionContext) => {
+    tableIndex: number
+    trIndex: number
+    tdIndex: number
+  } | null
+  resolveTableTdByIndex: (payload: {
+    tableIndex: number
+    trIndex: number
+    tdIndex: number
+  }) => {
+    table: { id?: string }
+    tr: { id?: string }
+    td: { id?: string; rowspan: number; colspan: number }
+  } | null
   resolveSliceByPositionContext: (positionContext: IPositionContext) => ITableLayoutCellSlice | null
-  getOriginalElementList: () => any[]
   getCellSlicesByLogicalCell: (payload: {
     tableId: string
     trId: string
@@ -18,18 +30,15 @@ export function resolveFragmentTransitionIndex(
   payload: ITableFragmentTransitionRequest
 ): number | null {
   const { positionContext, cursorIndex, direction } = payload
-  const logicalCell = resolveLogicalCellFromContext({
-    positionContext,
-    resolveSliceByPositionContext: deps.resolveSliceByPositionContext,
-    getOriginalElementList: deps.getOriginalElementList
-  })
+  const logicalCell = deps.resolveLogicalCellFromContext(positionContext)
   if (!logicalCell) {
     return null
   }
 
-  const table = deps.getOriginalElementList()[logicalCell.tableIndex]
-  const tr = table?.trList?.[logicalCell.trIndex]
-  const td = tr?.tdList?.[logicalCell.tdIndex]
+  const tableCell = deps.resolveTableTdByIndex(logicalCell)
+  const table = tableCell?.table
+  const tr = tableCell?.tr
+  const td = tableCell?.td
   if (!table?.id || !tr?.id || !td?.id) {
     return null
   }

@@ -16,9 +16,9 @@ import {
   formatElementContext,
   formatElementList
 } from '../../../../utils/element'
-import { Position } from '../../../position/Position'
 import { RangeManager } from '../../../range/RangeManager'
 import { Draw } from '../../Draw'
+import type { DrawCoordinateService } from '../../coordinate/DrawCoordinateService'
 import { TableParticle } from './TableParticle'
 import { TableTool } from './TableTool'
 
@@ -44,7 +44,7 @@ const ALL_TD_BORDERS = [
 export class TableOperate {
   private draw: Draw
   private range: RangeManager
-  private position: Position
+  private coordinate: DrawCoordinateService
   private tableTool: TableTool
   private tableParticle: TableParticle
   private options: DeepRequired<IEditorOption>
@@ -53,7 +53,6 @@ export class TableOperate {
     draw: Draw,
     deps: {
       range: RangeManager
-      position: Position
       tableTool: TableTool
       tableParticle: TableParticle
       options: DeepRequired<IEditorOption>
@@ -61,64 +60,16 @@ export class TableOperate {
   ) {
     this.draw = draw
     this.range = deps.range
-    this.position = deps.position
+    this.coordinate = draw.getCoordinate()
     this.tableTool = deps.tableTool
     this.tableParticle = deps.tableParticle
     this.options = deps.options
   }
-  /**
-   * 读取逻辑态表格，并补齐当前结构操作依赖的行列位置信息。
-   * fragment 重组后可能缺少最新的 rowIndex / colIndex / x / y，这里统一补算。
-   */
-  private getContextTableElement(index: number): IElement {
-    const element = this.draw.getOriginalElementList()[index]
-    this.tableParticle.computeRowColInfo(element)
-    return element
-  }
-
   private resolveContextTable(tableId?: string) {
-    const positionContext = this.position.getPositionContext()
-    const range = this.range.getEditBoundaryRange()
-    const rangeTableId = tableId || range.tableId
-    if (!positionContext.isTable && !rangeTableId) return null
-    let tableIndex = positionContext.index
-    const originalElementList = this.draw.getOriginalElementList()
-    let element =
-      tableIndex !== undefined ? originalElementList[tableIndex] : undefined
-    if (tableId && element?.id !== tableId) {
-      tableIndex = this.resolveTableIndexById(tableId)
-      element = ~tableIndex ? originalElementList[tableIndex] : undefined
-    }
-    if (element?.type !== ElementType.TABLE || !element.trList?.length) {
-      const tableId = positionContext.tableId || rangeTableId
-      tableIndex = tableId ? this.resolveTableIndexById(tableId) : -1
-      element = ~tableIndex ? originalElementList[tableIndex] : undefined
-    }
-    if (element?.type !== ElementType.TABLE || !element.trList?.length) {
-      return null
-    }
-    this.tableParticle.computeRowColInfo(element)
-    return {
-      positionContext,
-      index: tableIndex!,
-      element,
-      trIndex: positionContext.trIndex ?? range.startTrIndex,
-      tdIndex: positionContext.tdIndex ?? range.startTdIndex,
-      tableId: element.id || positionContext.tableId || rangeTableId
-    }
-  }
-
-  private resolveTableIndexById(tableId: string): number {
-    const originalElementList = this.draw.getOriginalElementList()
-    return originalElementList.findIndex(element => {
-      if (element.type !== ElementType.TABLE || !element.id) return false
-      return (
-        element.id === tableId ||
-        this.draw.getTableLayoutSnapshotAccessor().isSameLogicalTable(
-          element.id,
-          tableId
-        )
-      )
+    return this.draw.getTargetResolver().resolveContextTable({
+      tableId,
+      range: this.range.getEditBoundaryRange(),
+      normalize: true
     })
   }
 
@@ -264,7 +215,7 @@ export class TableOperate {
   }
 
   private resolveInlineTableWidth(startIndex: number, fallbackWidth: number) {
-    const positionList = this.position.getPositionList()
+    const positionList = this.coordinate.getPositionList()
     const cursorPosition = positionList[startIndex]
     if (!cursorPosition) {
       return fallbackWidth
@@ -293,12 +244,12 @@ export class TableOperate {
     const { startIndex, endIndex } = this.range.getEditBoundaryRange()
     if (!~startIndex && !~endIndex) return
     const { defaultTrMinHeight } = this.options.table
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     let offsetX = 0
     if (elementList[startIndex]?.listId) {
-      const positionList = this.position.getPositionList()
+      const positionList = this.coordinate.getPositionList()
       const { rowIndex } = positionList[startIndex]
-      const rowList = this.draw.getRowList()
+      const rowList = this.draw.getObjectResolver().getRowList()
       const row = rowList[rowIndex]
       offsetX = row?.offsetX || 0
     }
@@ -409,7 +360,7 @@ export class TableOperate {
       })
     }
     curTrList.splice(trIndex!, 0, newTr)
-    this.position.setPositionContext({
+    this.draw.getCoordinate().setPositionContext({
       isTable: true,
       index,
       trIndex,
@@ -474,7 +425,7 @@ export class TableOperate {
     curTrList.splice(trIndex! + 1, 0, newTr)
 
     // 重新设置表格光标上下文。
-    this.position.setPositionContext({
+    this.draw.getCoordinate().setPositionContext({
       isTable: true,
       index,
       trIndex: trIndex! + 1,
@@ -579,7 +530,7 @@ export class TableOperate {
     this.adjustColWidth(element)
 
     // 重置表格光标上下文。
-    this.position.setPositionContext({
+    this.draw.getCoordinate().setPositionContext({
       isTable: true,
       index,
       trIndex: 0,
@@ -631,7 +582,7 @@ export class TableOperate {
     this.adjustColWidth(element)
 
     // 重置表格光标上下文。
-    this.position.setPositionContext({
+    this.draw.getCoordinate().setPositionContext({
       isTable: true,
       index,
       trIndex: 0,
@@ -701,7 +652,7 @@ export class TableOperate {
 
     // 删除当前行，并重置选区与工具状态。
     trList.splice(trIndex!, 1)
-    this.position.setPositionContext({
+    this.draw.getCoordinate().setPositionContext({
       isTable: false
     })
     this.range.clearRange()
@@ -750,7 +701,7 @@ export class TableOperate {
     element.colgroup?.splice(curColIndex, 1)
 
     // 清理表格上下文。
-    this.position.setPositionContext({
+    this.draw.getCoordinate().setPositionContext({
       isTable: false
     })
     this.range.setRange(0, 0)
@@ -765,11 +716,11 @@ export class TableOperate {
   public deleteTable() {
     const context = this.resolveContextTable()
     if (!context) return
-    const originalElementList = this.draw.getOriginalElementList()
+    const originalElementList = this.draw.getObjectResolver().getOriginalElementList()
     const deleteIndex = context.index
     this.draw.spliceElementList(originalElementList, deleteIndex, 1)
     const curIndex = deleteIndex - 1
-    this.position.setPositionContext({
+    this.draw.getCoordinate().setPositionContext({
       isTable: false,
       index: curIndex
     })
@@ -779,7 +730,6 @@ export class TableOperate {
   }
 
   public mergeTableCell() {
-    let positionContext = this.position.getPositionContext()
     const {
       isCrossRowCol,
       tableId,
@@ -789,35 +739,9 @@ export class TableOperate {
       endTrIndex
     } = this.range.getEditBoundaryRange()
     if (!isCrossRowCol) return
-    let tableIndex = positionContext.index
-    const currentTable =
-      tableIndex !== undefined
-        ? this.draw.getOriginalElementList()[tableIndex]
-        : undefined
+    const context = this.resolveContextTable(tableId)
     if (
-      (!positionContext.isTable ||
-        tableIndex === undefined ||
-        currentTable?.type !== ElementType.TABLE ||
-        !currentTable.trList?.length) &&
-      tableId
-    ) {
-      const resolvedIndex = this.resolveTableIndexById(tableId)
-      if (~resolvedIndex) {
-        const resolvedTable = this.draw.getOriginalElementList()[resolvedIndex]
-        positionContext = {
-          ...positionContext,
-          isTable: true,
-          index: resolvedIndex,
-          trIndex: startTrIndex,
-          tdIndex: startTdIndex,
-          tableId: resolvedTable.id
-        }
-        tableIndex = resolvedIndex
-      }
-    }
-    if (
-      !positionContext.isTable ||
-      tableIndex === undefined ||
+      !context ||
       startTdIndex === undefined ||
       endTdIndex === undefined ||
       startTrIndex === undefined ||
@@ -825,7 +749,16 @@ export class TableOperate {
     ) {
       return
     }
-    const element = this.getContextTableElement(tableIndex)
+    const tableIndex = context.index
+    const element = context.element
+    const positionContext = {
+      ...context.positionContext,
+      isTable: true,
+      index: tableIndex,
+      trIndex: startTrIndex,
+      tdIndex: startTdIndex,
+      tableId: context.tableId || element.id
+    }
     const curTrList = element.trList!
     const startTd = curTrList[startTrIndex!].tdList[startTdIndex!]
     const endTd = curTrList[endTrIndex!].tdList[endTdIndex!]
@@ -945,7 +878,7 @@ export class TableOperate {
     }
 
     // 设置新的表格位置上下文。
-    this.position.setPositionContext({
+    this.draw.getCoordinate().setPositionContext({
       ...positionContext,
       index: tableIndex,
       tableId: element.id,
@@ -1359,10 +1292,9 @@ export class TableOperate {
   public tableSelectAll() {
     const context = this.resolveContextTable()
     if (!context || !context.tableId) return
-    const { index, tableId } = context
+    const { tableId, element } = context
     const { startIndex, endIndex } = this.range.getEditBoundaryRange()
-    const originalElementList = this.draw.getOriginalElementList()
-    const trList = originalElementList[index!].trList!
+    const trList = element.trList!
 
     // 计算最后一个单元格位置。
     const endTrIndex = trList.length - 1

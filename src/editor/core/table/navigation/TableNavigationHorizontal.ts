@@ -3,14 +3,18 @@ import { IPositionContext } from '../../../interface/Position'
 import { ITableAdjacentCellNavigationResult, ITableHorizontalBoundaryNavigationRequest } from './TableNavigationTypes'
 import {
   createTablePositionContext,
-  resolveHorizontalSiblingCell,
-  resolveLogicalCellFromContext
+  resolveHorizontalSiblingCell
 } from './TableNavigationAlgorithms'
 import { ITableLayoutCellSlice } from '../layout/TableLayoutSnapshotTypes'
 
 interface IHorizontalNavigationDeps {
-  getOriginalElementList: () => any[]
-  getElementList: () => any[]
+  getOriginalElement: (index: number) => any
+  getElement: (index: number) => any
+  resolveLogicalCellFromContext: (positionContext: IPositionContext) => {
+    tableIndex: number
+    trIndex: number
+    tdIndex: number
+  } | null
   resolveSliceByPositionContext: (positionContext: IPositionContext) => ITableLayoutCellSlice | null
   getLogicalCellSliceList: (
     tableIndex: number,
@@ -25,11 +29,9 @@ export function resolveHorizontalBoundaryNavigation(
 ): ITableAdjacentCellNavigationResult | null {
   const { positionContext, range, direction } = payload
   const { startIndex, endIndex } = range
-  const originalElementList = deps.getOriginalElementList()
-  const elementList = deps.getElementList()
 
   if (direction === 'prev') {
-    const currentElement = elementList[startIndex]
+    const currentElement = deps.getElement(startIndex)
     if (
       currentElement?.type !== ElementType.TABLE &&
       (!currentElement?.tableId || startIndex !== 0)
@@ -37,8 +39,8 @@ export function resolveHorizontalBoundaryNavigation(
       return null
     }
   } else {
-    const currentElement = elementList[endIndex]
-    const nextElement = elementList[endIndex + 1]
+    const currentElement = deps.getElement(endIndex)
+    const nextElement = deps.getElement(endIndex + 1)
     if (
       nextElement?.type !== ElementType.TABLE &&
       (!currentElement?.tableId || !!nextElement)
@@ -48,9 +50,9 @@ export function resolveHorizontalBoundaryNavigation(
   }
 
   if (direction === 'prev') {
-    const currentElement = elementList[startIndex]
+    const currentElement = deps.getElement(startIndex)
     if (currentElement?.type === ElementType.TABLE) {
-      const table = originalElementList[startIndex]
+      const table = deps.getOriginalElement(startIndex)
       if (!table?.trList?.length) {
         return null
       }
@@ -81,16 +83,12 @@ export function resolveHorizontalBoundaryNavigation(
       return null
     }
 
-    const logicalCell = resolveLogicalCellFromContext({
-      positionContext,
-      resolveSliceByPositionContext: deps.resolveSliceByPositionContext,
-      getOriginalElementList: deps.getOriginalElementList
-    })
+    const logicalCell = deps.resolveLogicalCellFromContext(positionContext)
     if (!logicalCell) {
       return null
     }
 
-    const table = originalElementList[logicalCell.tableIndex]
+    const table = deps.getOriginalElement(logicalCell.tableIndex)
     if (!table?.trList?.length) {
       return null
     }
@@ -138,10 +136,10 @@ export function resolveHorizontalBoundaryNavigation(
     }
   }
 
-  const currentElement = elementList[endIndex]
-  const nextElement = elementList[endIndex + 1]
+  const currentElement = deps.getElement(endIndex)
+  const nextElement = deps.getElement(endIndex + 1)
   if (nextElement?.type === ElementType.TABLE) {
-    const table = originalElementList[endIndex + 1]
+    const table = deps.getOriginalElement(endIndex + 1)
     if (!table?.trList?.length) {
       return null
     }
@@ -170,11 +168,7 @@ export function resolveHorizontalBoundaryNavigation(
     return null
   }
 
-  const logicalCell = resolveLogicalCellFromContext({
-    positionContext,
-    resolveSliceByPositionContext: deps.resolveSliceByPositionContext,
-    getOriginalElementList: deps.getOriginalElementList
-  })
+  const logicalCell = deps.resolveLogicalCellFromContext(positionContext)
   if (!logicalCell) {
     return null
   }
@@ -198,7 +192,7 @@ export function resolveHorizontalBoundaryNavigation(
       nextIndex
     }
   }
-  const table = originalElementList[logicalCell.tableIndex]
+  const table = deps.getOriginalElement(logicalCell.tableIndex)
   if (!table?.trList?.length) {
     return null
   }

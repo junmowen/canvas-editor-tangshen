@@ -11,7 +11,7 @@ export function runSelectionDragIntent(payload: {
   const draw = host.getDraw()
   const components = draw.getComponents()
   const session = host.getPointerSession()
-  const coordinates = draw.getPointerCoordinates(evt, session.lastPointerCoordinates)
+  const coordinates = draw.getCoordinate().getPointerCoordinates(evt, session.lastPointerCoordinates)
   const pagePoint = coordinates.page
   if (!session.isAllowSelection || !session.mouseDownStartPosition || !pagePoint) {
     session.lastPointerCoordinates = coordinates
@@ -19,7 +19,7 @@ export function runSelectionDragIntent(payload: {
   }
 
   draw.setPageNo(pagePoint.pageNo)
-  const position = components.position
+  const coordinate = draw.getCoordinate()
   const rangeManager = components.range
   const hitTestResult = components.tableHitTestService.resolve({
     x: pagePoint.x,
@@ -58,7 +58,7 @@ export function runSelectionDragIntent(payload: {
     selectionUpdate.range.endTrIndex
   )
   if (selectionUpdate.positionContext) {
-    position.setPositionContext(selectionUpdate.positionContext)
+    coordinate.setPositionContext(selectionUpdate.positionContext)
   }
   if (selectionUpdate.hasSelectionDrag) {
     disposeTableTool(draw)

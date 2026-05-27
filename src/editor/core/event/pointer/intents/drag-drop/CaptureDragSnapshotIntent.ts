@@ -12,8 +12,8 @@ export function captureDragSnapshot(
   const session = host.getPointerSession()
   session.isAllowDrag = true
   session.dragSnapshot.range = deepClone(components.range.getEditBoundaryRange())
-  session.dragSnapshot.elementList = draw.getElementList()
-  session.dragSnapshot.positionList = components.position.getPositionList()
-  session.dragSnapshot.positionContext = components.position.getPositionContext()
+  session.dragSnapshot.elementList = draw.getObjectResolver().getElementList()
+  session.dragSnapshot.positionList = draw.getCoordinate().getPositionList()
+  session.dragSnapshot.positionContext = draw.getCoordinate().getPositionContext()
   session.dragSnapshot.dragSource = options.dragSource || null
 }

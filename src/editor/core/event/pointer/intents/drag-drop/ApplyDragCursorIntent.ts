@@ -2,6 +2,7 @@ import { ImageDisplay } from '../../../../../dataset/enum/Common'
 import { ElementType } from '../../../../../dataset/enum/Element'
 import { CanvasEvent } from '../../../CanvasEvent'
 import { drawDragCursor } from '../../effects/DragEffect'
+import { resolvePositionAtIndex } from '../../../utils/resolvePositionAtIndex'
 
 export function applyDragCursorIntent(payload: {
   host: CanvasEvent
@@ -10,14 +11,13 @@ export function applyDragCursorIntent(payload: {
   const { host, positionContext } = payload
   const draw = host.getDraw()
   const session = host.getPointerSession()
-  const position = draw.getComponents().position
+  const coordinate = draw.getCoordinate()
   const { isTable, tdValueIndex, index } = positionContext
-  const positionList = position.getPositionList()
   const curIndex = isTable ? tdValueIndex! : index
   if (~index) {
     const rangeManager = draw.getComponents().range
     rangeManager.setRange(curIndex, curIndex)
-    position.setCursorPosition(positionList[curIndex])
+    coordinate.setCursorPosition(resolvePositionAtIndex(draw, curIndex))
   }
   const {
     cursor: { dragColor, dragWidth, dragFloatImageDisabled }

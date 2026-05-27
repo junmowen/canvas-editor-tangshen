@@ -45,7 +45,6 @@ import {
   formatElementList,
   getControlInlineContentText,
   getControlInlineText,
-  getNonHideElementIndex,
   getTextFromElementList,
   pickElementAttr,
   zipElementList
@@ -64,7 +63,6 @@ import { DateControl } from './date/DateControl'
 import { NumberControl } from './number/NumberControl'
 import { MoveDirection } from '../../../dataset/enum/Observer'
 import {
-  CONTROL_CONTEXT_ATTR,
   CONTROL_STYLE_ATTR,
   LIST_CONTEXT_ATTR,
   TITLE_CONTEXT_ATTR
@@ -72,15 +70,50 @@ import {
 import { IRowElement } from '../../../interface/Row'
 import { RowFlex } from '../../../dataset/enum/Row'
 import { ZERO } from '../../../dataset/constant/Common'
+import { resolvePositionAtIndex } from '../../event/utils/resolvePositionAtIndex'
+import {
+  IControlMoveCursorResult,
+  resolveControlMoveCursorResult
+} from './controlCursor'
+import {
+  collectTextControlValueBlock,
+  resolveControlCodeDisplayText
+} from './controlRead'
+import { resolveControlBlockEndIndex } from './controlScan'
+import { createExpandedNestedControlValueElementList } from './controlNested'
+import {
+  isControlPlaceholderComponent,
+  isControlPrefixComponent,
+  isControlSuffixComponent,
+  isControlValueComponent,
+  hasControlValueAtIndex
+} from './controlValue'
+import { resolveAdjacentControlContext } from './controlNeighbor'
+import {
+  transformTableCellValueList,
+  walkControlElementList
+} from './controlTraversal'
+import {
+  findMatchedControlIdentity,
+  isControlIdentityMatched
+} from './controlMatch'
+import { isChoiceControlType, isTextLikeControlType } from './controlType'
 
-/**
- * 光标移动结果接口。
- */
-interface IMoveCursorResult {
-  /** 新的元素索引 */
-  newIndex: number
-  /** 新的元素 */
-  newElement: IElement
+interface ITextLikeControlInstance extends IControlInstance {
+  setValue(
+    data: IElement[],
+    context?: IControlContext,
+    options?: IControlRuleOption
+  ): number
+  clearValue(context?: IControlContext, options?: IControlRuleOption): number
+}
+
+interface IChoiceControlInstance extends IControlInstance {
+  setSelect(
+    value: string[] | string,
+    context?: IControlContext,
+    options?: IControlRuleOption
+  ): number | void
 }
 
 /**
@@ -200,22 +233,12 @@ export class Control {
   public filterAssistElement(elementList: IElement[]): IElement[] {
     return elementList.filter((element, index) => {
       // 如果是表格元素，递归处理表格单元格
-      if (element.type === ElementType.TABLE) {
-        const trList = element.trList!
-        for (let r = 0; r < trList.length; r++) {
-          const tr = trList[r]
-          for (let d = 0; d < tr.tdList.length; d++) {
-            const td = tr.tdList[d]
-            // 递归过滤单元格中的辅助元素
-            td.value = this.filterAssistElement(td.value)
-          }
-        }
-      }
+      transformTableCellValueList(element, value => this.filterAssistElement(value))
       // 如果不是控件元素，保留
       if (!element.controlId) return true
       if (
         element.control?.underline &&
-        element.controlComponent === ControlComponent.PLACEHOLDER
+        isControlPlaceholderComponent(element.controlComponent)
       ) {
         element.value = element.value ? ' ' : ''
         element.color = this.options.defaultColor
@@ -224,8 +247,8 @@ export class Control {
       // 如果控件有最小宽度，处理前缀和后缀
       if (element.control?.minWidth) {
         if (
-          element.controlComponent === ControlComponent.PREFIX ||
-          element.controlComponent === ControlComponent.POSTFIX
+          isControlPrefixComponent(element.controlComponent) ||
+          isControlSuffixComponent(element.controlComponent)
         ) {
           // 清空前缀和后缀的值，但保留元素
           element.value = ''
@@ -236,47 +259,23 @@ export class Control {
         // 处理前缀文本
         if (
           element.control?.preText &&
-          element.controlComponent === ControlComponent.PRE_TEXT
+          isControlPrefixComponent(element.controlComponent)
         ) {
-          // 检查后面是否有控件值
-          let isExistValue = false
-          let start = index + 1
-          while (start < elementList.length) {
-            const nextElement = elementList[start]
-            if (element.controlId !== nextElement.controlId) break
-            if (nextElement.controlComponent === ControlComponent.VALUE) {
-              isExistValue = true
-              break
-            }
-            start++
-          }
-          return isExistValue
+          return hasControlValueAtIndex({ elementList, index })
         }
         // 处理后缀文本
         if (
           element.control?.postText &&
-          element.controlComponent === ControlComponent.POST_TEXT
+          isControlSuffixComponent(element.controlComponent)
         ) {
-          // 检查前面是否有控件值
-          let isExistValue = false
-          let start = index - 1
-          while (start < elementList.length) {
-            const preElement = elementList[start]
-            if (element.controlId !== preElement.controlId) break
-            if (preElement.controlComponent === ControlComponent.VALUE) {
-              isExistValue = true
-              break
-            }
-            start--
-          }
-          return isExistValue
+          return hasControlValueAtIndex({ elementList, index })
         }
       }
       // 过滤掉前缀、后缀和占位符组件
       return (
-        element.controlComponent !== ControlComponent.PREFIX &&
-        element.controlComponent !== ControlComponent.POSTFIX &&
-        element.controlComponent !== ControlComponent.PLACEHOLDER
+        !isControlPrefixComponent(element.controlComponent) &&
+        !isControlSuffixComponent(element.controlComponent) &&
+        !isControlPlaceholderComponent(element.controlComponent)
       )
     })
   }
@@ -288,24 +287,21 @@ export class Control {
    */
   public getIsRangeCanCaptureEvent(): boolean {
     if (!this.activeControl) return false
-    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
+    const { range, startElement, endElement } = this.draw
+      .getTargetResolver()
+      .resolveRangeBoundaryElements()
+    const { startIndex, endIndex } = range
     // 如果没有有效的边界范围，返回 false
     if (!~startIndex && !~endIndex) return false
-    const elementList = this.draw.getElementList()
-    const startElement = elementList[startIndex]
     // 情况1：闭合光标在后缀处，可以捕获事件
-    if (
-      startIndex === endIndex &&
-      startElement.controlComponent === ControlComponent.POSTFIX
-    ) {
+    if (startIndex === endIndex && isControlSuffixComponent(startElement?.controlComponent)) {
       return true
     }
     // 情况2：选区在控件内，可以捕获事件
-    const endElement = elementList[endIndex]
     if (
-      startElement.controlId &&
-      startElement.controlId === endElement.controlId &&
-      endElement.controlComponent !== ControlComponent.POSTFIX
+      startElement?.controlId &&
+      startElement.controlId === endElement?.controlId &&
+      !isControlSuffixComponent(endElement?.controlComponent)
     ) {
       return true
     }
@@ -329,9 +325,12 @@ export class Control {
     const { startIndex, endIndex } =
       context.range || this.range.getEditBoundaryRange()
     if (startIndex === endIndex) return false
-    const elementList = context.elementList || this.draw.getElementList()
-    const startElement = elementList[startIndex]
-    const endElement = elementList[endIndex]
+    const { elementList, startElement, endElement } = this.draw
+      .getTargetResolver()
+      .resolveRangeBoundaryElements({
+        range: { startIndex, endIndex },
+        elementList: context.elementList
+      })
     if (
       !startElement?.controlId ||
       startElement.controlId !== endElement?.controlId
@@ -340,10 +339,7 @@ export class Control {
     }
     for (let i = startIndex + 1; i <= endIndex; i++) {
       const element = elementList[i]
-      if (
-        element?.controlId &&
-        element.controlComponent !== ControlComponent.VALUE
-      ) {
+      if (element?.controlId && !isControlValueComponent(element.controlComponent)) {
         return true
       }
     }
@@ -357,13 +353,14 @@ export class Control {
    */
   public getIsRangeInPostfix(): boolean {
     if (!this.activeControl) return false
-    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
+    const { range, startElement } = this.draw
+      .getTargetResolver()
+      .resolveRangeBoundaryElements()
+    const { startIndex, endIndex } = range
     // 如果是范围选择，不在后缀处
     if (startIndex !== endIndex) return false
-    const elementList = this.draw.getElementList()
-    const element = elementList[startIndex]
     // 检查元素是否为后缀组件
-    return element.controlComponent === ControlComponent.POSTFIX
+    return startElement?.controlComponent === ControlComponent.POSTFIX
   }
 
   /**
@@ -372,17 +369,17 @@ export class Control {
    * @returns 是否在控件内
    */
   public getIsRangeWithinControl(): boolean {
-    const { startIndex, endIndex } = this.range.getEditBoundaryRange()
+    const { range, startElement, endElement } = this.draw
+      .getTargetResolver()
+      .resolveRangeBoundaryElements()
+    const { startIndex, endIndex } = range
     // 如果没有有效的边界范围，返回 false
     if (!~startIndex && !~endIndex) return false
-    const elementList = this.draw.getElementList()
-    const startElement = elementList[startIndex]
-    const endElement = elementList[endIndex]
     // 检查选区是否在同一个控件内，且不在后缀处
     if (
       startElement?.controlId &&
-      startElement.controlId === endElement.controlId &&
-      endElement.controlComponent !== ControlComponent.POSTFIX
+      startElement.controlId === endElement?.controlId &&
+      endElement?.controlComponent !== ControlComponent.POSTFIX
     ) {
       return true
     }
@@ -395,9 +392,10 @@ export class Control {
   public selectAllValue(): boolean {
     if (!this.activeControl || !this.getIsRangeWithinControl()) return false
 
-    const elementList = this.draw.getElementList()
-    const { startIndex } = this.range.getEditBoundaryRange()
-    const startElement = elementList[startIndex]
+    const { range, elementList, startElement } = this.draw
+      .getTargetResolver()
+      .resolveRangeBoundaryElements()
+    const { startIndex } = range
     const controlId = startElement?.controlId
     if (!controlId) return false
 
@@ -496,12 +494,16 @@ export class Control {
   public getIsDisabledControl(context: IControlContext = {}): boolean {
     // 设计模式或没有激活控件时不禁用
     if (this.draw.isDesignMode() || !this.activeControl) return false
+    const targetResolver = this.draw.getTargetResolver()
     const { startIndex, endIndex } =
       context.range || this.range.getEditBoundaryRange()
     // 如果光标在后缀处，不认为是禁用状态
     if (startIndex === endIndex && ~startIndex && ~endIndex) {
-      const elementList = context.elementList || this.draw.getElementList()
-      const startElement = elementList[startIndex]
+      const { startElement } = targetResolver.resolveRangeBoundaryElements({
+        range: context.range,
+        elementList: context.elementList
+      })
+      if (!startElement) return false
       if (startElement.controlComponent === ControlComponent.POSTFIX) {
         return false
       }
@@ -519,12 +521,16 @@ export class Control {
   public getIsDisabledPasteControl(context: IControlContext = {}): boolean {
     // 设计模式或没有激活控件时不禁用
     if (this.draw.isDesignMode() || !this.activeControl) return false
+    const targetResolver = this.draw.getTargetResolver()
     const { startIndex, endIndex } =
       context.range || this.range.getEditBoundaryRange()
     // 如果光标在后缀处，不认为是禁用粘贴状态
     if (startIndex === endIndex && ~startIndex && ~endIndex) {
-      const elementList = context.elementList || this.draw.getElementList()
-      const startElement = elementList[startIndex]
+      const { startElement } = targetResolver.resolveRangeBoundaryElements({
+        range: context.range,
+        elementList: context.elementList
+      })
+      if (!startElement) return false
       if (startElement.controlComponent === ControlComponent.POSTFIX) {
         return false
       }
@@ -545,63 +551,17 @@ export class Control {
     index: number
   ): boolean {
     const element = elementList[index]
-    // 是否是控件
-    if (!element.controlId) return false
     // 单选框、复选框仅需验证控件值
     if (
-      element.control?.type === ControlType.CHECKBOX ||
-      element.control?.type === ControlType.RADIO
+      element?.control?.type === ControlType.CHECKBOX ||
+      element?.control?.type === ControlType.RADIO
     ) {
       return !!element.control?.code
     }
-    // 其他控件需校验文本
-    if (element.controlComponent === ControlComponent.VALUE) {
-      return true
-    }
-    if (element.controlComponent === ControlComponent.PLACEHOLDER) {
-      return false
-    }
-    // 向后查找值元素
-    if (
-      element.controlComponent === ControlComponent.PREFIX ||
-      element.controlComponent === ControlComponent.PRE_TEXT
-    ) {
-      let i = index + 1
-      while (i < elementList.length) {
-        const nextElement = elementList[i]
-        if (nextElement.controlId !== element.controlId) {
-          return false
-        }
-        if (nextElement.controlComponent === ControlComponent.VALUE) {
-          return true
-        }
-        if (nextElement.controlComponent === ControlComponent.PLACEHOLDER) {
-          return false
-        }
-        i++
-      }
-    }
-    // 向前查找值元素
-    if (
-      element.controlComponent === ControlComponent.POSTFIX ||
-      element.controlComponent === ControlComponent.POST_TEXT
-    ) {
-      let i = index - 1
-      while (i >= 0) {
-        const preElement = elementList[i]
-        if (preElement.controlId !== element.controlId) {
-          return false
-        }
-        if (preElement.controlComponent === ControlComponent.VALUE) {
-          return true
-        }
-        if (preElement.controlComponent === ControlComponent.PLACEHOLDER) {
-          return false
-        }
-        i--
-      }
-    }
-    return false
+    return hasControlValueAtIndex({
+      elementList,
+      index
+    })
   }
 
   public getControlHighlight(elementList: IElement[], index: number) {
@@ -613,13 +573,12 @@ export class Control {
   }
 
   public getElementList(): IElement[] {
-    return this.draw.getElementList()
+    return this.draw.getObjectResolver().getElementList()
   }
 
   public getPosition(): IElementPosition | null {
-    const positionList = this.draw.getPosition().getPositionList()
     const { endIndex } = this.range.getEditBoundaryRange()
-    return positionList[endIndex] || null
+    return resolvePositionAtIndex(this.draw, endIndex)
   }
 
   public getPreY(): number {
@@ -640,28 +599,14 @@ export class Control {
   }
 
   public getControlElementList(context: IControlContext = {}): IElement[] {
-    const elementList = context.elementList || this.draw.getElementList()
-    const { startIndex } = context.range || this.range.getEditBoundaryRange()
-    const startElement = elementList[startIndex]
-    if (!startElement?.controlId) return []
-    const data: IElement[] = []
-    // 向左查找
-    let preIndex = startIndex
-    while (preIndex > 0) {
-      const preElement = elementList[preIndex]
-      if (preElement.controlId !== startElement.controlId) break
-      data.unshift(preElement)
-      preIndex--
-    }
-    // 向右查找
-    let nextIndex = startIndex + 1
-    while (nextIndex < elementList.length) {
-      const nextElement = elementList[nextIndex]
-      if (nextElement.controlId !== startElement.controlId) break
-      data.push(nextElement)
-      nextIndex++
-    }
-    return data
+    const elementList = context.elementList || this.draw.getObjectResolver().getElementList()
+    // 这里直接拿 resolver 算出的控件完整边界，避免业务层重复判断前后缀。
+    const controlBoundary = this.draw.getTargetResolver().resolveControlBoundaryElements({
+      range: context.range,
+      elementList
+    })
+    if (!controlBoundary) return []
+    return elementList.slice(controlBoundary.startIndex, controlBoundary.endIndex + 1)
   }
 
   public updateActiveControlValue() {
@@ -697,7 +642,7 @@ export class Control {
   }
 
   public initControl() {
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const range = this.range.getEditBoundaryRange()
     const element = elementList[range.startIndex]
     // 判断控件是否已经激活
@@ -830,10 +775,12 @@ export class Control {
     if (!controlElement) return
     // 控件被删除不触发事件
     const elementList =
-      options?.context?.elementList || this.draw.getElementList()
-    const { startIndex } =
-      options?.context?.range || this.range.getEditBoundaryRange()
-    if (!elementList[startIndex]?.controlId) return
+      options?.context?.elementList || this.draw.getObjectResolver().getElementList()
+    const startElement = this.draw.getTargetResolver().resolveRangeElement({
+      range: options?.context?.range,
+      elementList
+    })
+    if (!startElement?.controlId) return
     // 格式化回调数据
     const controlValue =
       options?.controlValue || this.getControlElementList(options?.context)
@@ -857,9 +804,13 @@ export class Control {
 
   public reAwakeControl() {
     if (!this.activeControl) return
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const range = this.range.getEditBoundaryRange()
-    const element = elementList[range.startIndex]
+    const element = this.draw.getTargetResolver().resolveRangeElement({
+      range,
+      elementList
+    })
+    if (!element) return
     this.activeControl.setElement(element)
     if (
       (this.activeControl instanceof DateControl ||
@@ -871,99 +822,39 @@ export class Control {
     }
   }
 
-  public moveCursor(position: IControlInitOption): IMoveCursorResult {
+  public moveCursor(position: IControlInitOption): IControlMoveCursorResult {
     const { index, trIndex, tdIndex, tdValueIndex } = position
-    let elementList = this.draw.getOriginalElementList()
+    let elementList = this.draw.getObjectResolver().getOriginalElementList()
     let element: IElement
     const newIndex = position.isTable ? tdValueIndex! : index
     if (position.isTable) {
-      elementList = elementList[index!].trList![trIndex!].tdList[tdIndex!].value
+      const tableTd = this.draw.getTargetResolver().resolveOriginalTableTdByIndex({
+        tableIndex: index!,
+        trIndex: trIndex!,
+        tdIndex: tdIndex!
+      })
+      elementList = tableTd?.td.value || []
       element = elementList[tdValueIndex!]
     } else {
       element = elementList[index]
     }
-    // 隐藏元素移动光标
-    if (element.hide || element.control?.hide || element.area?.hide) {
-      const nonHideIndex = getNonHideElementIndex(elementList, newIndex)
-      return {
-        newIndex: nonHideIndex,
-        newElement: elementList[nonHideIndex]
-      }
-    }
-    // 控件内移动光标
-    if (element.controlComponent === ControlComponent.VALUE) {
-      // VALUE-无需移动
-      return {
-        newIndex,
-        newElement: element
-      }
-    } else if (element.controlComponent === ControlComponent.POSTFIX) {
-      // POSTFIX-移动到最后一个后缀字符后
-      let startIndex = newIndex + 1
-      while (startIndex < elementList.length) {
-        const nextElement = elementList[startIndex]
-        if (nextElement.controlId !== element.controlId) {
-          return {
-            newIndex: startIndex - 1,
-            newElement: elementList[startIndex - 1]
-          }
-        }
-        startIndex++
-      }
-    } else if (
-      element.controlComponent === ControlComponent.PREFIX ||
-      element.controlComponent === ControlComponent.PRE_TEXT
-    ) {
-      // PREFIX或前文本-移动到最后一个前缀字符后
-      let startIndex = newIndex + 1
-      while (startIndex < elementList.length) {
-        const nextElement = elementList[startIndex]
-        if (
-          nextElement.controlId !== element.controlId ||
-          (nextElement.controlComponent !== ControlComponent.PREFIX &&
-            nextElement.controlComponent !== ControlComponent.PRE_TEXT)
-        ) {
-          return {
-            newIndex: startIndex - 1,
-            newElement: elementList[startIndex - 1]
-          }
-        }
-        startIndex++
-      }
-    } else if (
-      element.controlComponent === ControlComponent.PLACEHOLDER ||
-      element.controlComponent === ControlComponent.POST_TEXT
-    ) {
-      // PLACEHOLDER或后文本-移动到第一个前缀或内容后
-      let startIndex = newIndex - 1
-      while (startIndex > 0) {
-        const preElement = elementList[startIndex]
-        if (
-          preElement.controlId !== element.controlId ||
-          preElement.controlComponent === ControlComponent.VALUE ||
-          preElement.controlComponent === ControlComponent.PREFIX ||
-          preElement.controlComponent === ControlComponent.PRE_TEXT
-        ) {
-          return {
-            newIndex: startIndex,
-            newElement: elementList[startIndex]
-          }
-        }
-        startIndex--
-      }
-    }
-    return {
-      newIndex,
-      newElement: element
-    }
+    return resolveControlMoveCursorResult({ elementList, element, newIndex })
   }
 
   public removeControl(
     startIndex: number,
     context: IControlContext = {}
   ): number | null {
-    const elementList = context.elementList || this.draw.getElementList()
-    const startElement = elementList[startIndex]
+    const elementList = context.elementList || this.draw.getObjectResolver().getElementList()
+    const targetResolver = this.draw.getTargetResolver()
+    const startElement = targetResolver.resolveRangeElement({
+      range: {
+        startIndex,
+        endIndex: startIndex
+      },
+      elementList
+    })
+    if (!startElement) return null
     // 设计模式 || 元素隐藏 => 不验证删除权限
     if (
       !this.draw.isDesignMode() &&
@@ -982,34 +873,18 @@ export class Control {
         return null
       }
     }
-    let leftIndex = -1
-    let rightIndex = -1
-    // 向左查找
-    let preIndex = startIndex
-    while (preIndex > 0) {
-      const preElement = elementList[preIndex]
-      if (preElement.controlId !== startElement.controlId) {
-        leftIndex = preIndex
-        break
-      }
-      preIndex--
-    }
-    // 向右查找
-    let nextIndex = startIndex + 1
-    while (nextIndex < elementList.length) {
-      const nextElement = elementList[nextIndex]
-      if (nextElement.controlId !== startElement.controlId) {
-        rightIndex = nextIndex - 1
-        break
-      }
-      nextIndex++
-    }
-    // 控件在最后
-    if (nextIndex === elementList.length) {
-      rightIndex = nextIndex - 1
-    }
-    if (!~leftIndex && !~rightIndex) return startIndex
-    leftIndex = ~leftIndex ? leftIndex : 0
+    const controlBoundary = targetResolver.resolveControlBoundaryElements({
+      range: {
+        startIndex,
+        endIndex: startIndex
+      },
+      elementList
+    })
+    if (!controlBoundary) return startIndex
+    const leftIndex = controlBoundary.startIndex > 0
+      ? controlBoundary.startIndex - 1
+      : 0
+    const rightIndex = controlBoundary.endIndex
     // 删除元素
     this.draw.spliceElementList(
       elementList,
@@ -1020,51 +895,69 @@ export class Control {
   }
 
   public removePlaceholder(startIndex: number, context: IControlContext = {}) {
-    const elementList = context.elementList || this.draw.getElementList()
-    const startElement = elementList[startIndex]
-    const nextElement = elementList[startIndex + 1]
-    if (
-      startElement.controlComponent === ControlComponent.PLACEHOLDER ||
-      nextElement.controlComponent === ControlComponent.PLACEHOLDER
-    ) {
-      let isHasSubmitHistory = false
-      let index = startIndex
-      while (index < elementList.length) {
-        const curElement = elementList[index]
-        if (curElement.controlId !== startElement.controlId) break
-        if (curElement.controlComponent === ControlComponent.PLACEHOLDER) {
-          // 删除占位符时替换前一个历史记录
-          if (!isHasSubmitHistory) {
-            isHasSubmitHistory = true
-            this.draw.getHistoryManager().popUndo()
-            this.draw.submitHistory(startIndex)
-          }
-          elementList.splice(index, 1)
-        } else {
-          index++
+    const elementList = context.elementList || this.draw.getObjectResolver().getElementList()
+    const targetResolver = this.draw.getTargetResolver()
+    const startElement = targetResolver.resolveRangeElement({
+      range: {
+        startIndex,
+        endIndex: startIndex
+      },
+      elementList
+    })
+    if (!startElement) return
+    const controlBoundary = targetResolver.resolveControlBoundaryElements({
+      range: {
+        startIndex,
+        endIndex: startIndex
+      },
+      elementList
+    })
+    if (!controlBoundary) return
+    let isHasSubmitHistory = false
+    let index = controlBoundary.startIndex
+    let controlEndIndex = controlBoundary.endIndex
+    while (index <= controlEndIndex) {
+      const curElement = elementList[index]
+      if (curElement.controlId !== controlBoundary.controlId) break
+      if (isControlPlaceholderComponent(curElement.controlComponent)) {
+        // 删除占位符时替换前一个历史记录
+        if (!isHasSubmitHistory) {
+          isHasSubmitHistory = true
+          this.draw.getHistoryManager().popUndo()
+          this.draw.submitHistory(startIndex)
         }
+        elementList.splice(index, 1)
+        controlEndIndex--
+      } else {
+        index++
       }
     }
   }
 
   public addPlaceholder(startIndex: number, context: IControlContext = {}) {
-    const elementList = context.elementList || this.draw.getElementList()
-    const startElement = elementList[startIndex]
+    const elementList = context.elementList || this.draw.getObjectResolver().getElementList()
+    const targetResolver = this.draw.getTargetResolver()
+    const startElement = targetResolver.resolveRangeElement({
+      range: {
+        startIndex,
+        endIndex: startIndex
+      },
+      elementList
+    })
+    if (!startElement) return
+    const controlBoundary = targetResolver.resolveControlBoundaryElements({
+      range: {
+        startIndex,
+        endIndex: startIndex
+      },
+      elementList
+    })
+    if (!controlBoundary) return
     const control = startElement.control!
     if (!control.placeholder) return
-    let scanIndex = startIndex
-    while (scanIndex >= 0 && elementList[scanIndex]?.controlId === startElement.controlId) {
-      if (elementList[scanIndex].controlComponent === ControlComponent.PLACEHOLDER) {
-        return
-      }
-      scanIndex--
-    }
-    scanIndex = startIndex + 1
-    while (
-      scanIndex < elementList.length &&
-      elementList[scanIndex]?.controlId === startElement.controlId
-    ) {
-      if (elementList[scanIndex].controlComponent === ControlComponent.PLACEHOLDER) {
+    let scanIndex = controlBoundary.startIndex
+    while (scanIndex <= controlBoundary.endIndex) {
+      if (isControlPlaceholderComponent(elementList[scanIndex].controlComponent)) {
         return
       }
       scanIndex++
@@ -1092,6 +985,136 @@ export class Control {
     }
   }
 
+  public addPlaceholderIfEmpty(
+    startIndex: number,
+    context: IControlContext = {}
+  ) {
+    if (!this.activeControl) return
+    const value = this.activeControl.getValue(context)
+    if (!value.length) {
+      this.addPlaceholder(startIndex, context)
+    }
+  }
+
+  public clearControlValueRange(payload: {
+    leftIndex: number
+    rightIndex: number
+    context?: IControlContext
+    options?: IControlRuleOption
+  }): number {
+    const { leftIndex, rightIndex, context = {}, options = {} } = payload
+    const elementList = context.elementList || this.draw.getObjectResolver().getElementList()
+    this.draw.spliceElementList(
+      elementList,
+      leftIndex + 1,
+      rightIndex - leftIndex,
+      [],
+      {
+        isIgnoreDeletedRule: options.isIgnoreDeletedRule
+      }
+    )
+    // 清空后由统一入口补占位符，避免各控件重复拼 placeholder 结构。
+    if (options.isAddPlaceholder !== false) {
+      this.addPlaceholder(leftIndex, {
+        ...context,
+        elementList
+      })
+    }
+    return leftIndex
+  }
+
+  public removeControlValueSegment(payload: {
+    deleteIndex: number
+    deleteCount: number
+    placeholderIndex: number
+    context?: IControlContext
+    options?: IControlRuleOption
+  }): number {
+    const {
+      deleteIndex,
+      deleteCount,
+      placeholderIndex,
+      context = {},
+      options = {}
+    } = payload
+    const elementList = context.elementList || this.draw.getObjectResolver().getElementList()
+    this.draw.spliceElementList(elementList, deleteIndex, deleteCount, [], {
+      isIgnoreDeletedRule: options.isIgnoreDeletedRule
+    })
+    this.addPlaceholderIfEmpty(placeholderIndex, {
+      ...context,
+      elementList
+    })
+    return placeholderIndex
+  }
+
+  public insertControlValueElementList(payload: {
+    elementList: IElement[]
+    startIndex: number
+    insertIndex?: number
+    data: IElement[]
+    anchorElement: Partial<IElement>
+    isPreserveControlComponent?: boolean
+  }): number {
+    const {
+      elementList,
+      startIndex,
+      insertIndex = startIndex + 1,
+      data,
+      anchorElement,
+      isPreserveControlComponent = false
+    } = payload
+    for (let i = 0; i < data.length; i++) {
+      const newElement: IElement = {
+        ...anchorElement,
+        ...data[i],
+        controlComponent: isPreserveControlComponent
+          ? data[i].controlComponent || ControlComponent.VALUE
+          : ControlComponent.VALUE
+      }
+      formatElementContext(elementList, [newElement], startIndex, {
+        editorOptions: this.options
+      })
+      this.draw.spliceElementList(elementList, insertIndex + i, 0, [
+        newElement
+      ])
+    }
+    return insertIndex + data.length - 1
+  }
+
+  public insertControlTextValueElementList(payload: {
+    elementList: IElement[]
+    prefixIndex: number
+    valueList: string[]
+    styleElement: Partial<IElement>
+    propertyElement: Partial<IElement>
+  }): number {
+    const {
+      elementList,
+      prefixIndex,
+      valueList,
+      styleElement,
+      propertyElement
+    } = payload
+    const insertIndex = prefixIndex + 1
+    for (let i = 0; i < valueList.length; i++) {
+      const newElement: IElement = {
+        ...styleElement,
+        ...propertyElement,
+        type: ElementType.TEXT,
+        value: valueList[i],
+        controlComponent: ControlComponent.VALUE
+      }
+      formatElementContext(elementList, [newElement], prefixIndex, {
+        editorOptions: this.options
+      })
+      this.draw.spliceElementList(elementList, insertIndex + i, 0, [
+        newElement
+      ])
+    }
+    return insertIndex + valueList.length - 1
+  }
+
   public setValue(data: IElement[]): number {
     if (!this.activeControl) {
       throw new Error('active control is null')
@@ -1103,30 +1126,19 @@ export class Control {
     properties: Partial<IControl>,
     context: IControlContext = {}
   ) {
-    const elementList = context.elementList || this.draw.getElementList()
-    const { startIndex } = context.range || this.range.getEditBoundaryRange()
-    const startElement = elementList[startIndex]
-    // 向左查找
-    let preIndex = startIndex
-    while (preIndex > 0) {
-      const preElement = elementList[preIndex]
-      if (preElement.controlId !== startElement.controlId) break
-      preElement.control = {
-        ...preElement.control!,
+    const elementList = context.elementList || this.draw.getObjectResolver().getElementList()
+    const targetResolver = this.draw.getTargetResolver()
+    const controlBoundary = targetResolver.resolveControlBoundaryElements({
+      range: context.range,
+      elementList
+    })
+    if (!controlBoundary) return
+    for (let i = controlBoundary.startIndex; i <= controlBoundary.endIndex; i++) {
+      const element = elementList[i]
+      element.control = {
+        ...element.control!,
         ...properties
       }
-      preIndex--
-    }
-    // 向右查找
-    let nextIndex = startIndex + 1
-    while (nextIndex < elementList.length) {
-      const nextElement = elementList[nextIndex]
-      if (nextElement.controlId !== startElement.controlId) break
-      nextElement.control = {
-        ...nextElement.control!,
-        ...properties
-      }
-      nextIndex++
     }
   }
 
@@ -1174,6 +1186,170 @@ export class Control {
     ]
   }
 
+  private getNormalizedControlValueList(
+    element: IElement,
+    value: ISetControlValueOption['value']
+  ): IElement[] {
+    return Array.isArray(value)
+      ? deepClone(value)
+      : this.getStringControlValueElementList(element, value)
+  }
+
+  private applyNestedTextLikeControlValue(
+    element: IElement,
+    value: ISetControlValueOption['value']
+  ): IElement[] {
+    const formatValue = this.getNormalizedControlValueList(element, value)
+    if (formatValue.length) {
+      formatElementList(formatValue, {
+        isHandleFirstElement: false,
+        editorOptions: this.options
+      })
+    }
+    element.control!.value = formatValue
+    return formatValue
+  }
+
+  private applyTextLikeControlValueById(
+    element: IElement,
+    value: ISetControlValueOption['value'],
+    controlContext: IControlContext,
+    controlRule: IControlRuleOption,
+    ControlClass: new (
+      element: IElement,
+      control: Control
+    ) => ITextLikeControlInstance
+  ) {
+    const control = new ControlClass(element, this)
+    this.activeControl = control
+    const formatValue = this.getNormalizedControlValueList(element, value)
+    if (formatValue.length) {
+      formatElementList(formatValue, {
+        isHandleFirstElement: false,
+        editorOptions: this.options
+      })
+      control.setValue(formatValue, controlContext, controlRule)
+    } else {
+      control.clearValue(controlContext, controlRule)
+    }
+  }
+
+  private applySelectControlValueById(
+    element: IElement,
+    value: ISetControlValueOption['value'],
+    controlContext: IControlContext,
+    controlRule: IControlRuleOption
+  ) {
+    if (Array.isArray(value)) return
+    const control = new SelectControl(element, this)
+    this.activeControl = control
+    if (value) {
+      control.setSelect(value, controlContext, controlRule)
+    } else {
+      control.clearSelect(controlContext, controlRule)
+    }
+  }
+
+  private applyCodeControlValueById(
+    element: IElement,
+    value: ISetControlValueOption['value'],
+    controlContext: IControlContext,
+    controlRule: IControlRuleOption,
+    ControlClass: new (element: IElement, control: Control) => IChoiceControlInstance,
+    isMultiValue: boolean
+  ) {
+    if (Array.isArray(value)) return
+    const control = new ControlClass(element, this)
+    this.activeControl = control
+    const codes = value
+      ? isMultiValue
+        ? String(value).split(',')
+        : [String(value)]
+      : []
+    control.setSelect(codes, controlContext, controlRule)
+  }
+
+  private applyDateControlValueById(
+    element: IElement,
+    value: ISetControlValueOption['value'],
+    controlContext: IControlContext,
+    controlRule: IControlRuleOption
+  ) {
+    const date = new DateControl(element, this)
+    this.activeControl = date
+    if (isArray(value)) {
+      if (value.length) {
+        formatElementList(value, {
+          isHandleFirstElement: false,
+          editorOptions: this.options
+        })
+      }
+      date.setValue(value, controlContext, controlRule)
+    } else if (isString(value)) {
+      date.setSelect(value, controlContext, controlRule)
+    } else {
+      date.clearSelect(controlContext, controlRule)
+    }
+  }
+
+  private applyControlValueById(
+    element: IElement,
+    value: ISetControlValueOption['value'],
+    controlContext: IControlContext,
+    controlRule: IControlRuleOption
+  ) {
+    const { type } = element.control!
+    if (type === ControlType.TEXT) {
+      this.applyTextLikeControlValueById(
+        element,
+        value,
+        controlContext,
+        controlRule,
+        TextControl
+      )
+    } else if (type === ControlType.SELECT) {
+      this.applySelectControlValueById(
+        element,
+        value,
+        controlContext,
+        controlRule
+      )
+    } else if (type === ControlType.CHECKBOX) {
+      this.applyCodeControlValueById(
+        element,
+        value,
+        controlContext,
+        controlRule,
+        CheckboxControl,
+        true
+      )
+    } else if (type === ControlType.RADIO) {
+      this.applyCodeControlValueById(
+        element,
+        value,
+        controlContext,
+        controlRule,
+        RadioControl,
+        false
+      )
+    } else if (type === ControlType.DATE) {
+      this.applyDateControlValueById(
+        element,
+        value,
+        controlContext,
+        controlRule
+      )
+    } else if (type === ControlType.NUMBER) {
+      this.applyTextLikeControlValueById(
+        element,
+        value,
+        controlContext,
+        controlRule,
+        NumberControl
+      )
+    }
+  }
+
   private getNestedControlValueResult(
     element: IElement,
     zone: EditorZone
@@ -1186,11 +1362,7 @@ export class Control {
       value: text || null,
       innerText: text || null
     }
-    if (
-      control.type === ControlType.TEXT ||
-      control.type === ControlType.DATE ||
-      control.type === ControlType.NUMBER
-    ) {
+    if (isTextLikeControlType(control.type)) {
       result.elementList = Array.isArray(control.value)
         ? zipElementList(control.value)
         : []
@@ -1204,26 +1376,9 @@ export class Control {
     elementList?: IElement[]
   ) {
     const control = element.control!
-    if (
-      control.type === ControlType.TEXT ||
-      control.type === ControlType.DATE ||
-      control.type === ControlType.NUMBER
-    ) {
-      const formatValue = Array.isArray(value)
-        ? deepClone(value)
-        : this.getStringControlValueElementList(element, value)
-      if (formatValue.length) {
-        formatElementList(formatValue, {
-          isHandleFirstElement: false,
-          editorOptions: this.options
-        })
-      }
-      control.value = formatValue
-    } else if (
-      control.type === ControlType.SELECT ||
-      control.type === ControlType.CHECKBOX ||
-      control.type === ControlType.RADIO
-    ) {
+    if (isTextLikeControlType(control.type)) {
+      this.applyNestedTextLikeControlValue(element, value)
+    } else if (isChoiceControlType(control.type)) {
       control.code = Array.isArray(value) ? null : value
       control.value = null
     }
@@ -1247,31 +1402,16 @@ export class Control {
       if (nextElement.controlId !== controlId) break
       endIndex++
     }
-    if (
-      control.type === ControlType.TEXT ||
-      control.type === ControlType.DATE ||
-      control.type === ControlType.NUMBER
-    ) {
-      const formatValue = Array.isArray(value)
-        ? deepClone(value)
-        : this.getStringControlValueElementList(prefixElement, value)
-      if (formatValue.length) {
-        formatElementList(formatValue, {
-          isHandleFirstElement: false,
-          editorOptions: this.options
-        })
-      }
-      control.value = formatValue
-      const valueElementList = formatValue.map(item => ({
-        ...pickObject(prefixElement, [
-          'parentControlId',
-          'controlId',
-          ...CONTROL_STYLE_ATTR
-        ]),
-        ...item,
+    if (isTextLikeControlType(control.type)) {
+      const formatValue = this.applyNestedTextLikeControlValue(
+        prefixElement,
+        value
+      )
+      const valueElementList = createExpandedNestedControlValueElementList({
+        prefixElement,
         control,
-        controlComponent: ControlComponent.VALUE
-      }))
+        valueElementList: formatValue
+      })
       elementList.splice(prefixIndex + 1, endIndex - prefixIndex - 2, ...valueElementList)
       return prefixIndex + valueElementList.length + 2
     }
@@ -1298,24 +1438,12 @@ export class Control {
         .replace(new RegExp(`${ZERO}`, 'g'), '')
         .trim()
     }
-    if (
-      (control.type === ControlType.SELECT ||
-        control.type === ControlType.CHECKBOX ||
-        control.type === ControlType.RADIO) &&
-      control.code !== undefined &&
-      control.code !== null &&
-      Array.isArray(control.valueSets)
-    ) {
-      return String(control.code)
-        .split(',')
-        .map(
-          code =>
-            control.valueSets?.find(
-              valueSet => String(valueSet.code) === code
-            )?.value
-        )
-        .filter(Boolean)
-        .join(control.multiSelectDelimiter || '、')
+    if (isChoiceControlType(control.type)) {
+      return resolveControlCodeDisplayText({
+        code: control.code,
+        valueSets: control.valueSets,
+        delimiter: control.multiSelectDelimiter || '、'
+      })
     }
     return ''
   }
@@ -1329,135 +1457,73 @@ export class Control {
       zone: EditorZone,
       scopeAreaId?: string
     ) => {
-      let i = 0
-      while (i < elementList.length) {
-        const element = elementList[i]
-        i++
-        // 表格下钻处理
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList!
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              getValue(td.value, zone, scopeAreaId)
-            }
-          }
-        }
-        if (element.type === ElementType.AREA && element.valueList?.length) {
-          getValue(element.valueList, zone, element.areaId || scopeAreaId)
-        }
-        const isControlEntry =
-          element.controlComponent === ControlComponent.PREFIX ||
-          (element.controlComponent === ControlComponent.VALUE &&
-            !elementList[i - 2]?.controlId) ||
-          (element.controlComponent === ControlComponent.PLACEHOLDER &&
-            !elementList[i - 2]?.controlId)
-        if (
-          element.controlComponent &&
-          !isControlEntry
-        ) {
-          continue
-        }
-        if (
-          !element.control ||
-          (id && element.controlId !== id) ||
-          (conceptId && element.control.conceptId !== conceptId) ||
-          (areaId && element.areaId !== areaId && scopeAreaId !== areaId)
-        ) {
-          continue
-        }
-        if (this.isNestedControlValueElement(element)) {
-          result.push(this.getNestedControlValueResult(element, zone))
-          continue
-        }
-        const { type, code, valueSets } = element.control
-        let j = i
-        let textControlValue = ''
-        const textControlElementList = []
-        if (
-          (type === ControlType.TEXT ||
-            type === ControlType.DATE ||
-            type === ControlType.NUMBER) &&
-          element.controlComponent === ControlComponent.VALUE
-        ) {
-          textControlValue += element.value
-          textControlElementList.push(omitObject(element, CONTROL_CONTEXT_ATTR))
-        }
-        while (j < elementList.length) {
-          const nextElement = elementList[j]
-          if (nextElement.controlId !== element.controlId) break
+      walkControlElementList({
+        elementList,
+        zone,
+        scopeAreaId,
+        isIncludeArea: true,
+        isOnlyControlEntry: true,
+        visitor: ({
+          element,
+          elementList,
+          index,
+          zone,
+          scopeAreaId
+        }): number | void => {
+          const control = element.control!
           if (
-            (type === ControlType.TEXT ||
-              type === ControlType.DATE ||
-              type === ControlType.NUMBER) &&
-            nextElement.controlComponent === ControlComponent.VALUE
+            !isControlIdentityMatched({
+              element,
+              option: payload,
+              scopeAreaId,
+              isIncludeScopeArea: true
+            })
           ) {
-            textControlValue += nextElement.value
-            textControlElementList.push(
-              omitObject(nextElement, CONTROL_CONTEXT_ATTR)
-            )
+            return
           }
-          j++
+          if (this.isNestedControlValueElement(element)) {
+            result.push(this.getNestedControlValueResult(element, zone!))
+            return
+          }
+          const { type, code, valueSets } = control
+          if (isTextLikeControlType(type)) {
+            const {
+              textControlValue,
+              textControlElementList,
+              endIndex
+            } = collectTextControlValueBlock({
+              elementList,
+              startIndex: index,
+              controlId: element.controlId!,
+              controlType: type
+            })
+            result.push({
+              ...control,
+              zone: zone!,
+              value: textControlValue || null,
+              innerText: textControlValue || null,
+              elementList: zipElementList(textControlElementList)
+            })
+            return endIndex
+          } else if (isChoiceControlType(type)) {
+            const innerText = resolveControlCodeDisplayText({
+              code,
+              valueSets
+            })
+            result.push({
+              ...control,
+              zone: zone!,
+              value:
+                code !== undefined && code !== null ? String(code) || null : null,
+              innerText: innerText || null
+            })
+          }
         }
-        if (
-          type === ControlType.TEXT ||
-          type === ControlType.DATE ||
-          type === ControlType.NUMBER
-        ) {
-          const textControlDisplayValue = textControlValue
-            .replace(new RegExp(`${ZERO}`, 'g'), '')
-            .trim()
-          result.push({
-            ...element.control,
-            zone,
-            value: textControlDisplayValue || null,
-            innerText: textControlDisplayValue || null,
-            elementList: zipElementList(textControlElementList)
-          })
-        } else if (
-          type === ControlType.SELECT ||
-          type === ControlType.CHECKBOX ||
-          type === ControlType.RADIO
-        ) {
-          const innerText = (code !== undefined && code !== null
-            ? String(code)
-            : ''
-          )
-            .split(',')
-            .map(
-              selectCode =>
-                valueSets?.find(valueSet => String(valueSet.code) === selectCode)
-                  ?.value
-            )
-            .filter(Boolean)
-            .join('')
-          result.push({
-            ...element.control,
-            zone,
-            value:
-              code !== undefined && code !== null ? String(code) || null : null,
-            innerText: innerText || null
-          })
-        }
-        i = j
-      }
+      })
     }
-    const data = [
-      {
-        zone: EditorZone.HEADER,
-        elementList: this.draw.getHeaderElementList()
-      },
-      {
-        zone: EditorZone.MAIN,
-        elementList: this.draw.getOriginalMainElementList()
-      },
-      {
-        zone: EditorZone.FOOTER,
-        elementList: this.draw.getFooterElementList()
-      }
-    ]
-    for (const { zone, elementList } of data) {
+    for (const { zone, elementList } of this.draw
+      .getObjectResolver()
+      .getOriginalZoneElementList()) {
       getValue(elementList, zone)
     }
     return result
@@ -1469,191 +1535,94 @@ export class Control {
     let isExistSubmitHistory = false
     // 设置值
     const setValue = (elementList: IElement[], scopeAreaId?: string) => {
-      let i = 0
-      while (i < elementList.length) {
-        const element = elementList[i]
-        i++
-        // 表格下钻处理
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList!
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              setValue(td.value, scopeAreaId)
+      walkControlElementList({
+        elementList,
+        scopeAreaId,
+        isIncludeArea: true,
+        isOnlyControlEntry: true,
+        visitor: ({
+          element,
+          elementList,
+          index,
+          cursorIndex,
+          scopeAreaId
+        }): number | void => {
+          // 获取设置值优先id、conceptId、areaId
+          const payloadItem = findMatchedControlIdentity({
+            element,
+            optionList: payload,
+            scopeAreaId,
+            isIncludeScopeArea: true
+          })
+          if (!payloadItem) return
+          if (this.isNestedControlValueElement(element)) {
+            this.setNestedControlValue(element, payloadItem.value, elementList)
+            isExistSet = true
+            if (payloadItem.isSubmitHistory !== false) {
+              isExistSubmitHistory = true
             }
+            return
           }
-        }
-        if (element.type === ElementType.AREA && element.valueList?.length) {
-          setValue(element.valueList, element.areaId || scopeAreaId)
-        }
-        if (!element.control) continue
-        const isControlEntry =
-          element.controlComponent === ControlComponent.PREFIX ||
-          (element.controlComponent === ControlComponent.VALUE &&
-            !elementList[i - 2]?.controlId) ||
-          (element.controlComponent === ControlComponent.PLACEHOLDER &&
-            !elementList[i - 2]?.controlId)
-        if (
-          element.controlComponent &&
-          !isControlEntry
-        ) {
-          continue
-        }
-        // 获取设置值优先id、conceptId、areaId
-        const payloadItem = payload.find(
-          p =>
-            (p.id && element.controlId === p.id) ||
-            (p.conceptId && element.control!.conceptId === p.conceptId) ||
-            (p.areaId && (element.areaId === p.areaId || scopeAreaId === p.areaId))
-        )
-        if (!payloadItem) continue
-        if (this.isNestedControlValueElement(element)) {
-          this.setNestedControlValue(element, payloadItem.value, elementList)
+          if (element.parentControlId) {
+            isExistSet = true
+            if (payloadItem.isSubmitHistory !== false) {
+              isExistSubmitHistory = true
+            }
+            return this.setExpandedNestedControlValue(
+              elementList,
+              index,
+              payloadItem.value
+            )
+          }
+          const { value, isSubmitHistory = true } = payloadItem
+          // 只要存在一次保存历史均记录
           isExistSet = true
-          if (payloadItem.isSubmitHistory !== false) {
+          if (isSubmitHistory) {
             isExistSubmitHistory = true
           }
-          continue
-        }
-        if (element.parentControlId) {
-          isExistSet = true
-          if (payloadItem.isSubmitHistory !== false) {
-            isExistSubmitHistory = true
-          }
-          i = this.setExpandedNestedControlValue(
+          // 当前控件结束索引
+          const currentEndIndex = resolveControlBlockEndIndex({
             elementList,
-            i - 1,
-            payloadItem.value
-          )
-          continue
-        }
-        const { value, isSubmitHistory = true } = payloadItem
-        // 只要存在一次保存历史均记录
-        isExistSet = true
-        if (isSubmitHistory) {
-          isExistSubmitHistory = true
-        }
-        const { type } = element.control!
-        // 当前控件结束索引
-        let currentEndIndex = i
-        while (currentEndIndex < elementList.length) {
-          const nextElement = elementList[currentEndIndex]
-          if (nextElement.controlId !== element.controlId) break
-          currentEndIndex++
-        }
-        // 模拟光标选区上下文
-        const fakeRange = {
-          startIndex: i - 1,
-          endIndex: currentEndIndex - 2
-        }
-        const controlContext: IControlContext = {
-          range: fakeRange,
-          elementList
-        }
-        const controlRule: IControlRuleOption = {
-          isIgnoreDisabledRule: true,
-          isIgnoreDeletedRule: true
-        }
-        if (type === ControlType.TEXT) {
-          const formatValue = Array.isArray(value)
-            ? value
-            : this.getStringControlValueElementList(element, value)
-          if (formatValue.length) {
-            formatElementList(formatValue, {
-              isHandleFirstElement: false,
-              editorOptions: this.options
-            })
+            startIndex: cursorIndex,
+            controlId: element.controlId!
+          })
+          // 模拟光标选区上下文
+          const fakeRange = {
+            startIndex: index,
+            endIndex: currentEndIndex - 2
           }
-          const text = new TextControl(element, this)
-          this.activeControl = text
-          if (formatValue.length) {
-            text.setValue(formatValue, controlContext, controlRule)
-          } else {
-            text.clearValue(controlContext, controlRule)
+          const controlContext: IControlContext = {
+            range: fakeRange,
+            elementList
           }
-        } else if (type === ControlType.SELECT) {
-          if (Array.isArray(value)) continue
-          const select = new SelectControl(element, this)
-          this.activeControl = select
-          if (value) {
-            select.setSelect(value, controlContext, controlRule)
-          } else {
-            select.clearSelect(controlContext, controlRule)
+          const controlRule: IControlRuleOption = {
+            isIgnoreDisabledRule: true,
+            isIgnoreDeletedRule: true
           }
-        } else if (type === ControlType.CHECKBOX) {
-          if (Array.isArray(value)) continue
-          const checkbox = new CheckboxControl(element, this)
-          this.activeControl = checkbox
-          const codes = value ? value.split(',') : []
-          checkbox.setSelect(codes, controlContext, controlRule)
-        } else if (type === ControlType.RADIO) {
-          if (Array.isArray(value)) continue
-          const radio = new RadioControl(element, this)
-          this.activeControl = radio
-          const codes = value ? [value] : []
-          radio.setSelect(codes, controlContext, controlRule)
-        } else if (type === ControlType.DATE) {
-          const date = new DateControl(element, this)
-          this.activeControl = date
-          if (isArray(value)) {
-            if (value.length) {
-              formatElementList(value, {
-                isHandleFirstElement: false,
-                editorOptions: this.options
-              })
-            }
-            date.setValue(value, controlContext, controlRule)
-          } else if (isString(value)) {
-            date.setSelect(value, controlContext, controlRule)
-          } else {
-            date.clearSelect(controlContext, controlRule)
-          }
-        } else if (type === ControlType.NUMBER) {
-          const formatValue = Array.isArray(value)
-            ? value
-            : this.getStringControlValueElementList(element, value)
-          if (formatValue.length) {
-            formatElementList(formatValue, {
-              isHandleFirstElement: false,
-              editorOptions: this.options
-            })
-          }
-          const text = new NumberControl(element, this)
-          this.activeControl = text
-          if (formatValue.length) {
-            text.setValue(formatValue, controlContext, controlRule)
-          } else {
-            text.clearValue(controlContext, controlRule)
-          }
+          this.applyControlValueById(element, value, controlContext, controlRule)
+          // 控件值变更事件
+          this.emitControlContentChange({
+            context: controlContext
+          })
+          // 模拟控件激活后销毁
+          this.activeControl = null
+          // 修改后控件结束索引
+          return resolveControlBlockEndIndex({
+            elementList,
+            startIndex: cursorIndex,
+            controlId: element.controlId!
+          })
         }
-        // 控件值变更事件
-        this.emitControlContentChange({
-          context: controlContext
-        })
-        // 模拟控件激活后销毁
-        this.activeControl = null
-        // 修改后控件结束索引
-        let newEndIndex = i
-        while (newEndIndex < elementList.length) {
-          const nextElement = elementList[newEndIndex]
-          if (nextElement.controlId !== element.controlId) break
-          newEndIndex++
-        }
-        i = newEndIndex
-      }
+      })
     }
     // 销毁旧控件
     this.destroyControl({
       isEmitEvent: false
     })
     // 页眉、内容区、页脚同时处理
-    const data = [
-      this.draw.getHeaderElementList(),
-      this.draw.getOriginalMainElementList(),
-      this.draw.getFooterElementList()
-    ]
-    for (const elementList of data) {
+    for (const { elementList } of this.draw
+      .getObjectResolver()
+      .getOriginalZoneElementList()) {
       setValue(elementList)
     }
     if (isExistSet) {
@@ -1671,57 +1640,38 @@ export class Control {
   public setExtensionListById(payload: ISetControlExtensionOption[]) {
     if (!payload.length) return
     const setExtension = (elementList: IElement[]) => {
-      let i = 0
-      while (i < elementList.length) {
-        const element = elementList[i]
-        i++
-        // 表格下钻处理
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList!
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              setExtension(td.value)
+      walkControlElementList({
+        elementList,
+        visitor: ({ element, elementList, cursorIndex }): number | void => {
+          // 获取设置值优先id、conceptId、areaId
+          const payloadItem = findMatchedControlIdentity({
+            element,
+            optionList: payload
+          })
+          if (!payloadItem) return
+          const { extension } = payloadItem
+          // 设置值
+          this.setControlProperties(
+            {
+              extension
+            },
+            {
+              elementList,
+              range: { startIndex: cursorIndex, endIndex: cursorIndex }
             }
-          }
-        }
-        if (!element.control) continue
-        // 获取设置值优先id、conceptId、areaId
-        const payloadItem = payload.find(
-          p =>
-            (p.id && element.controlId === p.id) ||
-            (p.conceptId && element.control!.conceptId === p.conceptId) ||
-            (p.areaId && element.areaId === p.areaId)
-        )
-        if (!payloadItem) continue
-        const { extension } = payloadItem
-        // 设置值
-        this.setControlProperties(
-          {
-            extension
-          },
-          {
+          )
+          // 修改后控件结束索引
+          return resolveControlBlockEndIndex({
             elementList,
-            range: { startIndex: i, endIndex: i }
-          }
-        )
-        // 修改后控件结束索引
-        let newEndIndex = i
-        while (newEndIndex < elementList.length) {
-          const nextElement = elementList[newEndIndex]
-          if (nextElement.controlId !== element.controlId) break
-          newEndIndex++
+            startIndex: cursorIndex,
+            controlId: element.controlId!
+          })
         }
-        i = newEndIndex
-      }
+      })
     }
-    const data = [
-      this.draw.getHeaderElementList(),
-      this.draw.getOriginalMainElementList(),
-      this.draw.getFooterElementList()
-    ]
-    for (const elementList of data) {
+    for (const { elementList } of this.draw
+      .getObjectResolver()
+      .getOriginalZoneElementList()) {
       setExtension(elementList)
     }
   }
@@ -1731,76 +1681,60 @@ export class Control {
     let isExistUpdate = false
     let isExistSubmitHistory = false
     const setProperties = (elementList: IElement[]) => {
-      let i = 0
-      while (i < elementList.length) {
-        const element = elementList[i]
-        i++
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList!
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              setProperties(td.value)
-            }
+      walkControlElementList({
+        elementList,
+        visitor: ({ element, elementList, index, cursorIndex }): number | void => {
+          const control = element.control!
+          // 获取设置值优先id、conceptId、areaId
+          const payloadItem = findMatchedControlIdentity({
+            element,
+            optionList: payload
+          })
+          if (!payloadItem) return
+          const { properties, isSubmitHistory = true } = payloadItem
+          isExistUpdate = true
+          if (isSubmitHistory) {
+            isExistSubmitHistory = true
           }
-        }
-        if (!element.control) continue
-        // 获取设置值优先id、conceptId、areaId
-        const payloadItem = payload.find(
-          p =>
-            (p.id && element.controlId === p.id) ||
-            (p.conceptId && element.control!.conceptId === p.conceptId) ||
-            (p.areaId && element.areaId === p.areaId)
-        )
-        if (!payloadItem) continue
-        const { properties, isSubmitHistory = true } = payloadItem
-        isExistUpdate = true
-        if (isSubmitHistory) {
-          isExistSubmitHistory = true
-        }
-        // 设置属性
-        this.setControlProperties(
-          {
-            ...element.control,
-            ...properties,
-            value: element.control.value
-          },
-          {
+          // 设置属性
+          this.setControlProperties(
+            {
+              ...control,
+              ...properties,
+              value: control.value
+            },
+            {
+              elementList,
+              range: { startIndex: cursorIndex, endIndex: cursorIndex }
+            }
+          )
+          // 控件默认样式
+          const controlStartIndex = index
+          CONTROL_STYLE_ATTR.forEach(key => {
+            const controlStyleProperty = properties[key]
+            if (controlStyleProperty !== undefined) {
+              let styleIndex = controlStartIndex
+              while (styleIndex < elementList.length) {
+                const styleElement = elementList[styleIndex]
+                if (styleElement.controlId !== element.controlId) break
+                Reflect.set(styleElement, key, controlStyleProperty)
+                styleIndex++
+              }
+            }
+          })
+          // 修改后控件结束索引
+          return resolveControlBlockEndIndex({
             elementList,
-            range: { startIndex: i, endIndex: i }
-          }
-        )
-        // 控件默认样式
-        const controlStartIndex = i - 1
-        CONTROL_STYLE_ATTR.forEach(key => {
-          const controlStyleProperty = properties[key]
-          if (controlStyleProperty !== undefined) {
-            let styleIndex = controlStartIndex
-            while (styleIndex < elementList.length) {
-              const styleElement = elementList[styleIndex]
-              if (styleElement.controlId !== element.controlId) break
-              Reflect.set(styleElement, key, controlStyleProperty)
-              styleIndex++
-            }
-          }
-        })
-        // 修改后控件结束索引
-        let newEndIndex = i
-        while (newEndIndex < elementList.length) {
-          const nextElement = elementList[newEndIndex]
-          if (nextElement.controlId !== element.controlId) break
-          newEndIndex++
+            startIndex: cursorIndex,
+            controlId: element.controlId!
+          })
         }
-        i = newEndIndex
-      }
+      })
     }
     // 页眉页脚正文启动搜索
-    const pageComponentData: IEditorData = {
-      header: this.draw.getHeaderElementList(),
-      main: this.draw.getOriginalMainElementList(),
-      footer: this.draw.getFooterElementList()
-    }
+    const pageComponentData: IEditorData = this.draw
+      .getObjectResolver()
+      .getOriginalEditorData()
     for (const key in pageComponentData) {
       const elementList = pageComponentData[<keyof IEditorData>key]!
       setProperties(elementList)
@@ -1844,29 +1778,18 @@ export class Control {
       controlElementList.push(controlElement)
       controlElementMap.set(controlId, controlElementList)
     }
-    function getControlElementList(elementList: IElement[]) {
-      for (let e = 0; e < elementList.length; e++) {
-        const element = elementList[e]
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList!
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              const tdElement = td.value
-              getControlElementList(tdElement)
-            }
-          }
+    const getControlElementList = (elementList: IElement[]) => {
+      walkControlElementList({
+        elementList,
+        isRequireControl: false,
+        visitor: ({ element }) => {
+          collectControlElement(element)
         }
-        collectControlElement(element)
-      }
+      })
     }
-    const data = [
-      this.draw.getHeader().getElementList(),
-      this.draw.getOriginalMainElementList(),
-      this.draw.getFooter().getElementList()
-    ]
-    for (const elementList of data) {
+    for (const { elementList } of this.draw
+      .getObjectResolver()
+      .getOriginalZoneElementList()) {
       getControlElementList(elementList)
     }
     const result: IElement[] = []
@@ -1891,233 +1814,38 @@ export class Control {
 
   public getPreControlContext(): INextControlContext | null {
     if (!this.activeControl) return null
-    const position = this.draw.getPosition()
-    const positionContext = position.getPositionContext()
+    const positionContext = this.draw.getCoordinate().getPositionContext()
     if (!positionContext) return null
     const controlElement = this.activeControl.getElement()
-    // 获取上一个控件上下文本信息
-    function getPreContext(
-      elementList: IElement[],
-      start: number
-    ): INextControlContext | null {
-      for (let e = start; e > 0; e--) {
-        const element = elementList[e]
-        // 表格元素
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList || []
-          for (let r = trList.length - 1; r >= 0; r--) {
-            const tr = trList[r]
-            const tdList = tr.tdList
-            for (let d = tdList.length - 1; d >= 0; d--) {
-              const td = tdList[d]
-              const context = getPreContext(td.value, td.value.length - 1)
-              if (context) {
-                return {
-                  positionContext: {
-                    isTable: true,
-                    index: e,
-                    trIndex: r,
-                    tdIndex: d,
-                    tdId: td.id,
-                    trId: tr.id,
-                    tableId: element.id
-                  },
-                  nextIndex: context.nextIndex
-                }
-              }
-            }
-          }
-        }
-        if (
-          !element.controlId ||
-          element.controlId === controlElement.controlId
-        ) {
-          continue
-        }
-        // 找到尾部第一个非占位符元素
-        let nextIndex = e
-        while (nextIndex > 0) {
-          const nextElement = elementList[nextIndex]
-          if (
-            nextElement.controlComponent === ControlComponent.VALUE ||
-            nextElement.controlComponent === ControlComponent.PREFIX ||
-            nextElement.controlComponent === ControlComponent.PRE_TEXT
-          ) {
-            break
-          }
-          nextIndex--
-        }
-        return {
-          positionContext: {
-            isTable: false
-          },
-          nextIndex
-        }
-      }
-      return null
-    }
     // 当前上下文控件信息
     const { startIndex } = this.range.getEditBoundaryRange()
-    const elementList = this.draw.getElementList()
-    const context = getPreContext(elementList, startIndex)
-    if (context) {
-      return {
-        positionContext: positionContext.isTable
-          ? positionContext
-          : context.positionContext,
-        nextIndex: context.nextIndex
-      }
-    }
-    // 控件在单元内时继续循环
-    if (controlElement.tableId) {
-      const originalElementList = this.draw.getOriginalElementList()
-      const { index, trIndex, tdIndex } = positionContext
-      const trList = originalElementList[index!].trList!
-      for (let r = trIndex!; r >= 0; r--) {
-        const tr = trList[r]
-        const tdList = tr.tdList
-        for (let d = tdList.length - 1; d >= 0; d--) {
-          if (trIndex === r && d >= tdIndex!) continue
-          const td = tdList[d]
-          const context = getPreContext(td.value, td.value.length - 1)
-          if (context) {
-            return {
-              positionContext: {
-                isTable: true,
-                index: positionContext.index,
-                trIndex: r,
-                tdIndex: d,
-                tdId: td.id,
-                trId: tr.id,
-                tableId: controlElement.tableId
-              },
-              nextIndex: context.nextIndex
-            }
-          }
-        }
-      }
-      // 跳出表格继续循环
-      const context = getPreContext(originalElementList, index! - 1)
-      if (context) {
-        return {
-          positionContext: {
-            isTable: false
-          },
-          nextIndex: context.nextIndex
-        }
-      }
-    }
-    return null
+    return resolveAdjacentControlContext({
+      direction: 'pre',
+      currentControlId: controlElement.controlId!,
+      currentElementList: this.draw.getObjectResolver().getElementList(),
+      currentBoundaryIndex: startIndex,
+      currentPositionContext: positionContext,
+      originalElementList: this.draw.getObjectResolver().getOriginalElementList(),
+      tableId: controlElement.tableId
+    })
   }
 
   public getNextControlContext(): INextControlContext | null {
     if (!this.activeControl) return null
-    const position = this.draw.getPosition()
-    const positionContext = position.getPositionContext()
+    const positionContext = this.draw.getCoordinate().getPositionContext()
     if (!positionContext) return null
     const controlElement = this.activeControl.getElement()
-    // 获取下一个控件上下文本信息
-    function getNextContext(
-      elementList: IElement[],
-      start: number
-    ): INextControlContext | null {
-      for (let e = start; e < elementList.length; e++) {
-        const element = elementList[e]
-        // 表格元素
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList || []
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            const tdList = tr.tdList
-            for (let d = 0; d < tdList.length; d++) {
-              const td = tdList[d]
-              const context = getNextContext(td.value!, 0)
-              if (context) {
-                return {
-                  positionContext: {
-                    isTable: true,
-                    index: e,
-                    trIndex: r,
-                    tdIndex: d,
-                    tdId: td.id,
-                    trId: tr.id,
-                    tableId: element.id
-                  },
-                  nextIndex: context.nextIndex
-                }
-              }
-            }
-          }
-        }
-        if (
-          !element.controlId ||
-          element.controlId === controlElement.controlId ||
-          elementList[e + 1]?.controlComponent === ControlComponent.PREFIX ||
-          elementList[e + 1]?.controlComponent === ControlComponent.PRE_TEXT
-        ) {
-          continue
-        }
-        return {
-          positionContext: {
-            isTable: false
-          },
-          nextIndex: e
-        }
-      }
-      return null
-    }
     // 当前上下文控件信息
     const { endIndex } = this.range.getEditBoundaryRange()
-    const elementList = this.draw.getElementList()
-    const context = getNextContext(elementList, endIndex)
-    if (context) {
-      return {
-        positionContext: positionContext.isTable
-          ? positionContext
-          : context.positionContext,
-        nextIndex: context.nextIndex
-      }
-    }
-    // 控件在单元内时继续循环
-    if (controlElement.tableId) {
-      const originalElementList = this.draw.getOriginalElementList()
-      const { index, trIndex, tdIndex } = positionContext
-      const trList = originalElementList[index!].trList!
-      for (let r = trIndex!; r < trList.length; r++) {
-        const tr = trList[r]
-        const tdList = tr.tdList
-        for (let d = 0; d < tdList.length; d++) {
-          if (trIndex === r && d <= tdIndex!) continue
-          const td = tdList[d]
-          const context = getNextContext(td.value, 0)
-          if (context) {
-            return {
-              positionContext: {
-                isTable: true,
-                index: positionContext.index,
-                trIndex: r,
-                tdIndex: d,
-                tdId: td.id,
-                trId: tr.id,
-                tableId: controlElement.tableId
-              },
-              nextIndex: context.nextIndex
-            }
-          }
-        }
-      }
-      // 跳出表格继续循环
-      const context = getNextContext(originalElementList, index! + 1)
-      if (context) {
-        return {
-          positionContext: {
-            isTable: false
-          },
-          nextIndex: context.nextIndex
-        }
-      }
-    }
-    return null
+    return resolveAdjacentControlContext({
+      direction: 'next',
+      currentControlId: controlElement.controlId!,
+      currentElementList: this.draw.getObjectResolver().getElementList(),
+      currentBoundaryIndex: endIndex,
+      currentPositionContext: positionContext,
+      originalElementList: this.draw.getObjectResolver().getOriginalElementList(),
+      tableId: controlElement.tableId
+    })
   }
 
   public initNextControl(option: IInitNextControlOption = {}) {
@@ -2130,9 +1858,8 @@ export class Control {
     }
     if (!context) return
     const { nextIndex, positionContext } = context
-    const position = this.draw.getPosition()
     // 设置上下文
-    position.setPositionContext(positionContext)
+    this.draw.getCoordinate().setPositionContext(positionContext)
     this.draw.getRange().replaceRange({
       startIndex: nextIndex,
       endIndex: nextIndex
@@ -2145,7 +1872,7 @@ export class Control {
       isSubmitHistory: false,
       pageRenderScope: 'visible'
     })
-    const positionList = position.getPositionList()
+    const positionList = this.draw.getCoordinate().getPositionList()
     this.draw.getCursor().moveCursorToVisible({
       cursorPosition: positionList[nextIndex],
       direction

@@ -41,8 +41,8 @@ export class DocumentChunkIndex {
   /** 重建 chunk 索引，并尽量绑定已有布局位置的页码范围。 */
   public rebuild(reason = 'manual') {
     const startTime = performance.now()
-    const elementList = this.draw.getOriginalMainElementList()
-    const positionList = this.draw.getComponents().position.getPositionList()
+    const elementList = this.draw.getObjectResolver().getOriginalMainElementList()
+    const positionList = this.draw.getCoordinate().getPositionList()
     const pageNoMap = new Map<number, number>()
     for (let i = 0; i < positionList.length; i++) {
       const position = positionList[i]
@@ -64,7 +64,7 @@ export class DocumentChunkIndex {
   /** 仅按当前 pageRowList 重建页级 chunk，用于页窗口 rebalance 后快速同步边界。 */
   public rebuildPageChunks(reason = 'page-window-rebalance') {
     const startTime = performance.now()
-    const elementList = this.draw.getOriginalMainElementList()
+    const elementList = this.draw.getObjectResolver().getOriginalMainElementList()
     this.chunkList = this.createPageChunkList(elementList)
     this.version++
     this.lastBuildReason = reason

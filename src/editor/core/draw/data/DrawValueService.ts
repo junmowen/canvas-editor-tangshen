@@ -35,8 +35,9 @@ export class DrawValueService {
     options: IGetOriginValueOption = {}
   ): Required<IEditorData> {
     const { pageNo } = options
+    const data = this.draw.getObjectResolver().getOriginalEditorData()
     // 获取正文元素列表
-    let mainElementList = this.draw.getOriginalMainElementList()
+    let mainElementList = data.main
     // 如果指定了有效页码，获取指定页的元素列表
     if (
       Number.isInteger(pageNo) &&
@@ -50,9 +51,9 @@ export class DrawValueService {
     }
     // 返回完整的编辑器数据
     return {
-      header: this.draw.getHeaderElementList(),
+      header: data.header,
       main: mainElementList,
-      footer: this.draw.getFooterElementList()
+      footer: data.footer
     }
   }
 

@@ -16,11 +16,13 @@ export class TableTypingRenderHelper {
 
   /** 读取当前逻辑表在表格快照中覆盖的页码，用于完整 layout 回退后清理旧表格残影。 */
   public resolveCurrentLogicalTablePageNoList(): number[] {
-    const positionContext = this.draw.getPosition().getPositionContext()
+    const positionContext = this.draw.getCoordinate().getPositionContext()
     if (!positionContext.isTable || positionContext.index === undefined) {
       return []
     }
-    const logicalTableId = this.draw.getOriginalMainElementList()[positionContext.index]?.id
+    const logicalTableId = this.draw
+      .getTargetResolver()
+      .resolveContextTable({ positionContext })?.element.id
     if (!logicalTableId) {
       return []
     }

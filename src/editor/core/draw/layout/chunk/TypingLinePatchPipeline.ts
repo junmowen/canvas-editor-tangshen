@@ -84,9 +84,9 @@ export class TypingLinePatchPipeline {
     editIndex?: number
     insertedCount: number
   }): IChunkLayoutPatchResult {
-    const position = this.draw.getPosition()
-    const positionContext = position.getPositionContext()
-    const cursorPosition = position.getCursorPosition()
+    const coordinate = this.draw.getCoordinate()
+    const positionContext = coordinate.getPositionContext()
+    const cursorPosition = coordinate.getCursorPosition()
     if (!cursorPosition || positionContext.isTable) {
       return this.fail('line-no-cursor-or-table')
     }
@@ -99,7 +99,7 @@ export class TypingLinePatchPipeline {
     if (!this.canPatchElementList(sourceRow.elementList)) {
       return this.fail('line-complex-row')
     }
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const startIndex = sourceRow.startIndex
     const oldElementCount = sourceRow.elementList.length
     const endIndex = Math.min(
@@ -132,7 +132,7 @@ export class TypingLinePatchPipeline {
       return this.fail('line-expanded')
     }
     const nextPositionList: IElementPosition[] = []
-    position.computePageRowPosition({
+    coordinate.computePageRowPosition({
       positionList: nextPositionList,
       rowList,
       pageNo,
@@ -211,7 +211,7 @@ export class TypingLinePatchPipeline {
     this.draw.replaceLayoutState({
       rowList: runtimeRowList,
       pageRowList,
-      layoutElementList: this.draw.getLayoutMainElementList(),
+      layoutElementList: this.draw.getObjectResolver().getLayoutMainElementList(),
       tableLayoutSnapshotVersion: this.draw.getTableLayoutSnapshotVersion(),
       tableLayoutSnapshot: this.draw.getRuntime().getTableLayoutSnapshot()
     })
@@ -234,7 +234,7 @@ export class TypingLinePatchPipeline {
     deleteCount: number
     indexDelta: number
   }) {
-    const positionList = this.draw.getPosition().getPositionList()
+    const positionList = this.draw.getCoordinate().getPositionList()
     patchArraySegment({
       list: positionList,
       startIndex: payload.startIndex,
@@ -259,7 +259,7 @@ export class TypingLinePatchPipeline {
         positionList[i].index += payload.indexDelta
       }
     }
-    this.draw.getPosition().setPositionList(positionList)
+    this.draw.getCoordinate().setPositionList(positionList)
   }
 
   /** 替换 layoutElementList 的当前行片段。 */
@@ -269,7 +269,7 @@ export class TypingLinePatchPipeline {
     deleteCount: number
   }) {
     patchArraySegment({
-      list: this.draw.getLayoutMainElementList(),
+      list: this.draw.getObjectResolver().getLayoutMainElementList(),
       startIndex: payload.startIndex,
       deleteCount: payload.deleteCount,
       itemList: payload.elementList

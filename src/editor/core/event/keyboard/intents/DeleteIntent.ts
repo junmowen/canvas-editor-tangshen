@@ -12,7 +12,7 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
   if (!rangeManager.getIsCanInput()) return
   const { startIndex, endIndex, isCrossRowCol } =
     rangeManager.getEditBoundaryRange()
-  const elementList = draw.getElementList()
+  const elementList = draw.getObjectResolver().getElementList()
   const control = components.control
   const tableNavigationService = components.tableNavigationService
   if (rangeManager.getIsCollapsed()) {
@@ -47,11 +47,11 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
       editIndex = endIndex + 1
     }
     if (curIndex === null) {
-      const position = components.position
-      const cursorPosition = position.getCursorPosition()
+      const coordinate = draw.getCoordinate()
+      const cursorPosition = coordinate.getCursorPosition()
       if (!cursorPosition) return
       const { index } = cursorPosition
-      const positionContext = position.getPositionContext()
+      const positionContext = coordinate.getPositionContext()
       if (positionContext.isDirectHit && positionContext.isImage) {
         draw.spliceElementList(elementList, index, 1)
         curIndex = index - 1

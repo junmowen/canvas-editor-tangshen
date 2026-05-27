@@ -1,4 +1,5 @@
 import { CanvasEvent } from '../../CanvasEvent'
+import { resolvePositionAtIndex } from '../../utils/resolvePositionAtIndex'
 
 export function removeHiddenElements(
   host: CanvasEvent,
@@ -8,7 +9,7 @@ export function removeHiddenElements(
   const components = draw.getComponents()
   const rangeManager = components.range
   const range = rangeManager.getEditBoundaryRange()
-  const elementList = draw.getElementList()
+  const elementList = draw.getObjectResolver().getElementList()
   const startIndex =
     direction === 'prev' ? range.startIndex : range.startIndex + 1
   const startElement = elementList[startIndex]
@@ -48,9 +49,7 @@ export function removeHiddenElements(
         range.startIndex = newIndex
         range.endIndex = newIndex
         rangeManager.replaceRange(range)
-        const position = components.position
-        const positionList = position.getPositionList()
-        position.setCursorPosition(positionList[newIndex])
+        draw.getCoordinate().setCursorPosition(resolvePositionAtIndex(draw, newIndex))
       }
       break
     }

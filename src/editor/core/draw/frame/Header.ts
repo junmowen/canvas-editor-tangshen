@@ -5,9 +5,9 @@ import { IEditorOption } from '../../../interface/Editor'
 import { IElement, IElementPosition } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
 import { pickSurroundElementList } from '../../../utils/element'
-import { Position } from '../../position/Position'
 import { Zone } from '../../zone/Zone'
 import { Draw } from '../Draw'
+import type { DrawCoordinateService } from '../coordinate/DrawCoordinateService'
 
 /**
  * 页眉框架。
@@ -17,8 +17,8 @@ import { Draw } from '../Draw'
 export class Header {
   /** Draw 门面对象 */
   private draw: Draw
-  /** 位置管理器 */
-  private position: Position
+  /** 坐标服务 */
+  private coordinate: DrawCoordinateService
   /** 区域管理器 */
   private zone: Zone
   /** 编辑器选项 */
@@ -38,7 +38,7 @@ export class Header {
    */
   constructor(draw: Draw, data?: IElement[]) {
     this.draw = draw
-    this.position = draw.getPosition()
+    this.coordinate = draw.getCoordinate()
     this.zone = draw.getZone()
     this.options = draw.getOptions()
     // 初始化元素列表
@@ -147,7 +147,7 @@ export class Header {
     const startX = margins[3]
     const startY = headerTop
     // 计算位置列表
-    this.position.computePageRowPosition({
+    this.coordinate.computePageRowPosition({
       positionList: this.positionList,
       rowList: this.rowList,
       pageNo: 0,

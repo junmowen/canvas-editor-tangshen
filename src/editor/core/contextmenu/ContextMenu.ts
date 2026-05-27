@@ -12,8 +12,8 @@ import { findParent } from '../../utils'
 import { zipElementList } from '../../utils/element'
 import { Command } from '../command/Command'
 import { Draw } from '../draw/Draw'
+import type { DrawCoordinateService } from '../draw/coordinate/DrawCoordinateService'
 import { I18n } from '../i18n/I18n'
-import { Position } from '../position/Position'
 import { RangeManager } from '../range/RangeManager'
 import { controlMenus } from './menus/controlMenus'
 import { globalMenus } from './menus/globalMenus'
@@ -33,7 +33,7 @@ export class ContextMenu {
   private draw: Draw
   private command: Command
   private range: RangeManager
-  private position: Position
+  private coordinate: DrawCoordinateService
   private i18n: I18n
   private container: HTMLDivElement
   private contextMenuList: IRegisterContextMenu[]
@@ -47,7 +47,7 @@ export class ContextMenu {
     this.draw = draw
     this.command = command
     this.range = components.range
-    this.position = components.position
+    this.coordinate = draw.getCoordinate()
     this.i18n = components.i18n
     this.container = draw.getPageCanvasHost().getContainer()
     this.context = null
@@ -157,32 +157,26 @@ export class ContextMenu {
       isMustDirectHit: false
     })
     const hitTableInfo = hitContext?.tableInfo || null
-    const { isTable, trIndex, tdIndex, index } =
-      this.position.getPositionContext()
+    const tableTarget = this.draw.getTargetResolver().resolveTableTarget({
+      hitTableInfo,
+      positionContext: this.coordinate.getPositionContext()
+    })
     let tableElement: IElement | null = null
-    let tableTrIndex: number | null = trIndex ?? null
-    let tableTdIndex: number | null = tdIndex ?? null
-    if (hitTableInfo?.element) {
-      tableElement = zipElementList([hitTableInfo.element], {
+    const tableTrIndex: number | null = tableTarget?.trIndex ?? null
+    const tableTdIndex: number | null = tableTarget?.tdIndex ?? null
+    if (tableTarget?.element) {
+      tableElement = zipElementList([tableTarget.element], {
         extraPickAttrs: ['id']
       })[0]
-      tableTrIndex = hitTableInfo.trIndex
-      tableTdIndex = hitTableInfo.tdIndex
-    } else if (isTable) {
-      const originalElementList = this.draw.getOriginalElementList()
-      const originTableElement = originalElementList[index!] || null
-      if (originTableElement) {
-        tableElement = zipElementList([originTableElement], {
-          extraPickAttrs: ['id']
-        })[0]
-      }
     }
     // 是否存在跨行/列
     const isCrossRowCol = !!tableElement && !!crossRowCol
     // 当前元素
-    const elementList = this.draw.getElementList()
-    const startElement = elementList[startIndex] || null
-    const endElement = elementList[endIndex] || null
+    const { startElement, endElement } = this.draw
+      .getTargetResolver()
+      .resolveRangeBoundaryElements({
+        range: this.range.getEditBoundaryRange()
+      })
     // 当前区域
     const zone = this.draw.getZone().getZone()
     return {

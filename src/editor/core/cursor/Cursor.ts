@@ -10,7 +10,7 @@ import { isMobile } from '../../utils/ua'
 import { Draw } from '../draw/Draw'
 import { EditorClipboardController } from '../event/EditorClipboardController'
 import { EditorInputController } from '../event/EditorInputController'
-import { Position } from '../position/Position'
+import type { DrawCoordinateService } from '../draw/coordinate/DrawCoordinateService'
 import { CursorAgent } from './CursorAgent'
 
 export type IDrawCursorOption = ICursorOption & {
@@ -30,7 +30,7 @@ export class Cursor {
   private draw: Draw
   private container: HTMLDivElement
   private options: DeepRequired<IEditorOption>
-  private position: Position
+  private coordinate: DrawCoordinateService
   private cursorDom: HTMLDivElement
   private cursorAgent: CursorAgent
   private blinkTimeout: number | null
@@ -42,7 +42,7 @@ export class Cursor {
   ) {
     this.draw = draw
     this.container = draw.getPageCanvasHost().getContainer()
-    this.position = draw.getPosition()
+    this.coordinate = draw.getCoordinate()
     this.options = draw.getOptions()
 
     this.cursorDom = document.createElement('div')
@@ -107,7 +107,7 @@ export class Cursor {
   }
 
   public drawCursor(payload?: IDrawCursorOption) {
-    const cursorPosition = this.position.getCursorPosition()
+    const cursorPosition = this.coordinate.getCursorPosition()
     if (!cursorPosition) return
     const { scale, cursor } = this.options
     const {

@@ -14,7 +14,7 @@ export function finalizeDeletion(payload: {
   if (curIndex === null) {
     rangeManager.setRange(startIndex, startIndex)
     // 删除后的排版会延迟执行，先把同步键盘链路需要的逻辑光标索引更新到最新。
-    components.position.setCursorLogicalIndex(startIndex)
+    draw.getCoordinate().setCursorLogicalIndex(startIndex)
     if (draw.getTrackChange().isEnabled()) {
       // 留痕删除没有真实减少元素数量，跳过删除类 typing patch，避免索引增量误判。
       // 删除痕迹本身是文档变更，需要提交历史并触发 contentChange 刷新右侧审阅卡片。
@@ -40,7 +40,7 @@ export function finalizeDeletion(payload: {
   } else {
     rangeManager.setRange(curIndex, curIndex)
     // 删除后的排版会延迟执行，先把同步键盘链路需要的逻辑光标索引更新到最新。
-    components.position.setCursorLogicalIndex(curIndex)
+    draw.getCoordinate().setCursorLogicalIndex(curIndex)
     if (draw.getTrackChange().isEnabled()) {
       // 留痕删除没有真实减少元素数量，跳过删除类 typing patch，避免索引增量误判。
       // 删除痕迹本身是文档变更，需要提交历史并触发 contentChange 刷新右侧审阅卡片。

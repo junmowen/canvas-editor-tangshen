@@ -12,7 +12,7 @@ export class PageContentPainter {
   /** 绘制当前页的浮动图片与浮动元素。 */
   public drawFloat(ctx: CanvasRenderingContext2D, payload: IDrawFloatPayload) {
     const { scale } = this.draw.getOptions()
-    const floatPositionList = this.draw.getPosition().getFloatPositionList()
+    const floatPositionList = this.draw.getCoordinate().getFloatPositionList()
     const {
       imgDisplays,
       pageNo,
@@ -96,13 +96,13 @@ export class PageContentPainter {
       this.draw.getHeader().render(ctx, payload.pageNo)
     }
     if (!pageNumber.disabled) {
-      this.draw.getPageNumber().render(ctx, payload.pageNo)
+      this.draw.getComponents().pageNumber.render(ctx, payload.pageNo)
     }
     if (!footer.disabled) {
       this.draw.getFooter().render(ctx, payload.pageNo)
     }
     if (!lineNumber.disabled) {
-      this.draw.getLineNumber().render(ctx, payload.pageNo)
+      this.draw.getComponents().lineNumber.render(ctx, payload.pageNo)
     }
     if (!pageBorder.disabled) {
       this.draw.getPageBorder().render(ctx, payload.pageNo)
@@ -227,7 +227,7 @@ export class PageContentPainter {
       // 不再让 RowRenderer 自己在整份 positionList 上做 pageNo 过滤。
       const pagePositionList =
         pageNo >= 0
-          ? this.draw.getPosition().getLayoutMainPositionListByPage(pageNo)
+          ? this.draw.getCoordinate().getLayoutMainPositionListByPage(pageNo)
           : positionList
       const index = rowList[0]?.startIndex
       this.draw.drawRow(ctx, {
@@ -254,10 +254,9 @@ export class PageContentPainter {
         this.draw.getSearch().render(selectionCtx || ctx, pageNo)
       }
       if (
-        this.draw.getOriginalMainElementList().length <= 1 &&
-        !this.draw.getOriginalMainElementList()[0]?.listId
+        this.draw.getObjectResolver().getIsOriginalMainPlaceholderAvailable()
       ) {
-        this.draw.getPlaceholder().render(ctx)
+        this.draw.getComponents().placeholder.render(ctx)
       }
       if (pageMode === PageMode.CONTINUITY) {
         this.renderContinuousFrame(ctx, payload, surface, offsetY)

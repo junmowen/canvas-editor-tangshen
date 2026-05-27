@@ -67,7 +67,7 @@ export class TableHitTestService {
     if (!Number.isFinite(pageNo)) return null
 
     const pageFragmentPositions = this.draw
-      .getTableLayoutSnapshotAccessor()
+      .getTargetResolver()
       .getPageFragmentPositions(pageNo)
     let activeFragmentPosition: IElementPosition | null = null
     for (let i = 0; i < pageFragmentPositions.length; i++) {
@@ -128,7 +128,7 @@ export class TableHitTestService {
       | undefined
 
     const cellBoundsList = this.draw
-      .getTableLayoutSnapshotAccessor()
+      .getTargetResolver()
       .getFragmentCellBounds(sourceTableId)
     for (let index = 0; index < cellBoundsList.length; index++) {
       const cellBounds = cellBoundsList[index]
@@ -161,7 +161,7 @@ export class TableHitTestService {
 
     const activeSlice =
       resolvedTr.id && resolvedTd.id
-        ? this.draw.getTableLayoutSnapshotAccessor().resolveSliceByFragmentContext({
+        ? this.draw.getTargetResolver().resolveTableSliceByFragmentContext({
             tableId: sourceTableId,
             trId: resolvedTr.id,
             tdId: resolvedTd.id
@@ -531,7 +531,7 @@ export class TableHitTestService {
   ): TResolvedPointerPosition | null {
     // 非表格命中最后统一回退到 Position 基础命中，
     // 同时把 Position 内部结果重新包装成命中服务可继续消费的结构。
-    const positionResult = this.draw.getPosition().getPositionByXY(
+    const positionResult = this.draw.getCoordinate().getPositionByXY(
       payload
     ) as TResolvedPointerPosition
 
@@ -540,7 +540,7 @@ export class TableHitTestService {
     // 但如果确实发生了，我们需要提供一个合理的回退值，避免光标定位完全失败。
     if (!~positionResult.index && !positionResult.zone) {
       // 尝试获取文档的第一个有效位置作为回退
-      const positionList = this.draw.getPosition().getPositionList()
+      const positionList = this.draw.getCoordinate().getPositionList()
       if (positionList && positionList.length > 0) {
         positionResult.index = positionList[0]?.index ?? 0
       } else {
@@ -674,7 +674,7 @@ export class TableHitTestService {
 
     const activeSlice =
       snapshotHit.activeSlice ||
-      this.draw.getTableLayoutSnapshotAccessor().resolveSliceByFragmentContext({
+      this.draw.getTargetResolver().resolveTableSliceByFragmentContext({
         tableId: currentTableId,
         trId: snapshotHit.trId,
         tdId: snapshotHit.tdId

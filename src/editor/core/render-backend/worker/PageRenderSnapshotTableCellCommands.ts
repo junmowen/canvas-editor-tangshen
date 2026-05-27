@@ -49,7 +49,7 @@ export abstract class PageRenderSnapshotTableCellCommands extends PageRenderSnap
     alpha: number
   ) {
     const trList = table.trList || []
-    const snapshotAccessor = this.draw.getTableLayoutSnapshotAccessor()
+    const targetResolver = this.draw.getTargetResolver()
     for (let t = 0; t < trList.length; t++) {
       const tr = trList[t]
       for (let d = 0; d < tr.tdList.length; d++) {
@@ -58,7 +58,7 @@ export abstract class PageRenderSnapshotTableCellCommands extends PageRenderSnap
         const tableId = 'tableId' in table ? table.tableId : undefined
         const cellBounds =
           tableId && tr.id && td.id
-            ? snapshotAccessor
+            ? targetResolver
                 .getFragmentCellBounds(tableId)
                 .find(
                   bounds =>
@@ -109,8 +109,8 @@ export abstract class PageRenderSnapshotTableCellCommands extends PageRenderSnap
     if (!tableId || !trId || !tdId) {
       return
     }
-    const snapshotAccessor = this.draw.getTableLayoutSnapshotAccessor()
-    const activeSlice = snapshotAccessor.resolveSliceByFragmentContext({
+    const targetResolver = this.draw.getTargetResolver()
+    const activeSlice = targetResolver.resolveTableSliceByFragmentContext({
       tableId,
       trId,
       tdId
@@ -118,7 +118,7 @@ export abstract class PageRenderSnapshotTableCellCommands extends PageRenderSnap
     if (!activeSlice) {
       return
     }
-    const cellBounds = snapshotAccessor
+    const cellBounds = targetResolver
       .getFragmentCellBounds(activeSlice.fragmentTableId)
       .find(
         bounds =>
@@ -128,8 +128,9 @@ export abstract class PageRenderSnapshotTableCellCommands extends PageRenderSnap
     if (!cellBounds) {
       return
     }
-    const tableElement =
-      this.draw.getOriginalElementList()[activeSlice.logicalTableIndex]
+    const tableElement = this.draw
+      .getTargetResolver()
+      .resolveOriginalTableByIndex(activeSlice.logicalTableIndex)?.element
     const {
       scale,
       table: { defaultBorderColor }

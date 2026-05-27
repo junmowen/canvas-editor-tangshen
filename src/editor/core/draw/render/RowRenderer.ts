@@ -101,19 +101,18 @@ export class RowRenderer {
     const draw = this.draw
     const marginHeight = draw.getDefaultBasicRowMarginHeight()
     const highlightMarginHeight = draw.getServices().metricsService.getHighlightMarginHeight()
-    const highlight = draw.getHighlight()
+    const highlight = draw.getComponents().highlight
     const control = draw.getControl()
+    const sourceElementList = payload.tableCellContext
+      ? elementList
+      : draw.getObjectResolver().getOriginalMainElementList()
     this.forEachRowPositionSlice(payload, (curRow, rowPositionList) => {
       for (let j = 0; j < curRow.elementList.length; j++) {
         const element = curRow.elementList[j]
         const preElement = curRow.elementList[j - 1]
         const controlHighlightIndex = curRow.startIndex + j
-        const sourceElement = payload.tableCellContext
-          ? elementList[controlHighlightIndex]
-          : draw.getOriginalMainElementList()[controlHighlightIndex]
-        const preSourceElement = payload.tableCellContext
-          ? elementList[controlHighlightIndex - 1]
-          : draw.getOriginalMainElementList()[controlHighlightIndex - 1]
+        const sourceElement = sourceElementList[controlHighlightIndex]
+        const preSourceElement = sourceElementList[controlHighlightIndex - 1]
         const controlHighlight =
           elementList[controlHighlightIndex]
             ? control.getControlHighlight(elementList, controlHighlightIndex)
@@ -247,18 +246,18 @@ export class RowRenderer {
     options: ReturnType<Draw['getOptions']>
     textParticle: ReturnType<Draw['getTextParticle']>
     control: ReturnType<Draw['getControl']>
-    underline: ReturnType<Draw['getUnderline']>
-    strikeout: ReturnType<Draw['getStrikeout']>
+    underline: ReturnType<Draw['getComponents']>['underline']
+    strikeout: ReturnType<Draw['getComponents']>['strikeout']
     groupParticle: ReturnType<Draw['getGroup']>
     tableParticle: ReturnType<Draw['getTableParticle']>
-    lineBreakParticle: ReturnType<Draw['getLineBreakParticle']>
+    lineBreakParticle: ReturnType<Draw['getComponents']>['lineBreakParticle']
     imageParticle: ReturnType<Draw['getImageParticle']>
-    laTexParticle: ReturnType<Draw['getLaTexParticle']>
+    laTexParticle: ReturnType<Draw['getComponents']>['laTexParticle']
     hyperlinkParticle: ReturnType<Draw['getHyperlinkParticle']>
-    superscriptParticle: ReturnType<Draw['getSuperscriptParticle']>
-    subscriptParticle: ReturnType<Draw['getSubscriptParticle']>
-    separatorParticle: ReturnType<Draw['getSeparatorParticle']>
-    pageBreakParticle: ReturnType<Draw['getPageBreakParticle']>
+    superscriptParticle: ReturnType<Draw['getComponents']>['superscriptParticle']
+    subscriptParticle: ReturnType<Draw['getComponents']>['subscriptParticle']
+    separatorParticle: ReturnType<Draw['getComponents']>['separatorParticle']
+    pageBreakParticle: ReturnType<Draw['getComponents']>['pageBreakParticle']
     checkboxParticle: ReturnType<Draw['getCheckboxParticle']>
     radioParticle: ReturnType<Draw['getRadioParticle']>
     blockParticle: ReturnType<Draw['getBlockParticle']>
@@ -548,7 +547,6 @@ export class RowRenderer {
     // 2. 普通字符选择按字符盒范围。
     const rangeManager = this.draw.getRange()
     const rangeMinWidth = this.draw.getOptions().rangeMinWidth
-    const position = this.draw.getPosition()
     const {
       elementList,
       zone,
@@ -568,7 +566,7 @@ export class RowRenderer {
     }
     const skipCurrentLayerSelection = !!(
       !tableCellContext &&
-      position.getPositionContext().isTable &&
+      this.draw.getCoordinate().getPositionContext().isTable &&
       !isCrossRowCol
     )
     const renderSelectionRange =
@@ -667,26 +665,26 @@ export class RowRenderer {
     const rangeManager = this.draw.getRange()
     const textParticle = this.draw.getTextParticle()
     const control = this.draw.getControl()
-    const underline = this.draw.getUnderline()
-    const strikeout = this.draw.getStrikeout()
+    const components = this.draw.getComponents()
+    const underline = components.underline
+    const strikeout = components.strikeout
     const groupParticle = this.draw.getGroup()
     const tableParticle = this.draw.getTableParticle()
     const listParticle = this.draw.getListParticle()
-    const lineBreakParticle = this.draw.getLineBreakParticle()
+    const lineBreakParticle = components.lineBreakParticle
     const imageParticle = this.draw.getImageParticle()
-    const laTexParticle = this.draw.getLaTexParticle()
+    const laTexParticle = components.laTexParticle
     const hyperlinkParticle = this.draw.getHyperlinkParticle()
-    const superscriptParticle = this.draw.getSuperscriptParticle()
-    const subscriptParticle = this.draw.getSubscriptParticle()
-    const separatorParticle = this.draw.getSeparatorParticle()
-    const pageBreakParticle = this.draw.getPageBreakParticle()
+    const superscriptParticle = components.superscriptParticle
+    const subscriptParticle = components.subscriptParticle
+    const separatorParticle = components.separatorParticle
+    const pageBreakParticle = components.pageBreakParticle
     const checkboxParticle = this.draw.getCheckboxParticle()
     const radioParticle = this.draw.getRadioParticle()
     const blockParticle = this.draw.getBlockParticle()
     const options = this.draw.getOptions()
     const mode = this.draw.getMode()
     const isDesignMode = this.draw.isDesignMode()
-    const snapshotAccessor = this.draw.getTableLayoutSnapshotAccessor()
     const getElementSize =
       this.draw.getServices().metricsService.getElementSize.bind(
         this.draw.getServices().metricsService
@@ -812,8 +810,7 @@ export class RowRenderer {
         rowPositionList,
         isPrintMode,
         isCrossRowCol,
-        tableId,
-        snapshotAccessor
+        tableId
       })
     }
 

@@ -110,7 +110,7 @@ function shouldEnableRowDragHandle(payload: {
   const mode = draw.getMode()
   if (mode === EditorMode.CLEAN || mode === EditorMode.PRINT) return false
   if (!row.elementList.length || !rowPositionList.length) return false
-  const elementList = draw.getLayoutMainElementList()
+  const elementList = draw.getObjectResolver().getLayoutMainElementList()
   if (getIsTitleRow({ elementList, rowPositionList, row })) {
     return false
   }
@@ -184,7 +184,7 @@ export function isRowDragHandleVisible(payload: {
   if (range.zone && range.zone !== zone) {
     return false
   }
-  const elementList = draw.getLayoutMainElementList()
+  const elementList = draw.getObjectResolver().getLayoutMainElementList()
   const rowParagraphRange = resolveRowDragParagraphRange({
     elementList,
     rowPositionList
@@ -259,8 +259,8 @@ export function resolveRowDragHandleAtPoint(payload: {
 }): IResolvedRowDragHandle | null {
   const { draw, x, y, pageNo } = payload
   const rowList = draw.getPageRowList()[pageNo] || []
-  const positionList = draw.getPosition().getLayoutMainPositionListByPage(pageNo)
-  const elementList = draw.getLayoutMainElementList()
+  const positionList = draw.getCoordinate().getLayoutMainPositionListByPage(pageNo)
+  const elementList = draw.getObjectResolver().getLayoutMainElementList()
   const { scale } = draw.getOptions()
   let rowPositionOffset = 0
   for (let i = 0; i < rowList.length; i++) {

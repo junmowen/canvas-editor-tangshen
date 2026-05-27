@@ -7,11 +7,11 @@ import { TableOperate } from '../draw/particle/table/TableOperate'
 import { CanvasEvent } from '../event/CanvasEvent'
 import { HistoryManager } from '../history/HistoryManager'
 import { I18n } from '../i18n/I18n'
-import { Position } from '../position/Position'
 import { RangeManager } from '../range/RangeManager'
 import { isEditorDisabled } from '../utils/editorState'
 import { WorkerManager } from '../worker/WorkerManager'
 import { Zone } from '../zone/Zone'
+import type { DrawCoordinateService } from '../draw/coordinate/DrawCoordinateService'
 
 /**
  * 命令适配层基础上下文。
@@ -23,8 +23,8 @@ export class CommandAdaptBase {
   protected draw: Draw
   /** 选区管理器，维护当前编辑范围。 */
   protected range: RangeManager
-  /** 位置管理器，维护光标、元素和表格上下文。 */
-  protected position: Position
+  /** 坐标服务，维护光标、元素位置和表格上下文。 */
+  protected coordinate: DrawCoordinateService
   /** 历史管理器，负责撤销重做栈。 */
   protected historyManager: HistoryManager
   /** 画布事件门面，承接剪贴板、选区等事件命令。 */
@@ -57,7 +57,7 @@ export class CommandAdaptBase {
     const components = draw.getComponents()
     this.draw = draw
     this.range = components.range
-    this.position = components.position
+    this.coordinate = draw.getCoordinate()
     this.historyManager = components.historyManager
     this.canvasEvent = components.canvasEvent
     this.options = draw.getRuntime().getOptions()

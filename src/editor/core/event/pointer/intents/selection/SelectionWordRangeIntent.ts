@@ -9,7 +9,7 @@ function getWordRangeBySegmenter(host: CanvasEvent): IRange | null {
   if (!Intl.Segmenter) return null
   const draw = host.getDraw()
   const components = draw.getComponents()
-  const cursorPosition = components.position.getCursorPosition()
+  const cursorPosition = draw.getCoordinate().getCursorPosition()
   if (!cursorPosition) return null
   const paragraphInfo = components.range.getRangeParagraphInfo()
   if (!paragraphInfo) return null
@@ -47,10 +47,10 @@ function getWordRangeBySegmenter(host: CanvasEvent): IRange | null {
 
 function getWordRangeByCursor(host: CanvasEvent): IRange | null {
   const draw = host.getDraw()
-  const cursorPosition = draw.getComponents().position.getCursorPosition()
+  const cursorPosition = draw.getCoordinate().getCursorPosition()
   if (!cursorPosition) return null
   const { value, index } = cursorPosition
-  const elementList = draw.getElementList()
+  const elementList = draw.getObjectResolver().getElementList()
   if (index < 0 || index > elementList.length - 1 || !elementList[index]) {
     return null
   }

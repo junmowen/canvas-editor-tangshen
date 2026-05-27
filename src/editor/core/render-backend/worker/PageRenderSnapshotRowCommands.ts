@@ -12,7 +12,7 @@ export abstract class PageRenderSnapshotRowCommands extends PageRenderSnapshotRo
   protected buildMainTextCommands(payload: IDrawPagePayload): IWorkerPaintCommand[] {
     const commandList: IWorkerPaintCommand[] = []
     const pagePositionList =
-      this.draw.getPosition().getLayoutMainPositionListByPage(payload.pageNo)
+      this.draw.getCoordinate().getLayoutMainPositionListByPage(payload.pageNo)
     this.buildRowTextCommands(
       commandList,
       payload.rowList,
@@ -108,7 +108,7 @@ export abstract class PageRenderSnapshotRowCommands extends PageRenderSnapshotRo
   ): IWorkerPaintCommand[] {
     const { scale } = this.draw.getRuntime().getOptions()
     const commandList: IWorkerPaintCommand[] = []
-    const floatPositionList = this.draw.getPosition().getFloatPositionList()
+    const floatPositionList = this.draw.getCoordinate().getFloatPositionList()
     for (let i = 0; i < floatPositionList.length; i++) {
       const floatPosition = floatPositionList[i]
       const element = floatPosition.element

@@ -75,12 +75,14 @@ export class DrawMetricsService {
   }
 
   public getContextInnerWidth(): number {
-    const positionContext = this.draw.getComponents().position.getPositionContext()
+    const positionContext = this.draw.getCoordinate().getPositionContext()
     if (positionContext.isTable) {
-      const { index, trIndex, tdIndex } = positionContext
-      const elementList = this.draw.getOriginalElementList()
-      const table = elementList[index!]
-      const td = table.trList![trIndex!].tdList[tdIndex!]
+      const tableCell = this.draw.getTargetResolver().resolveActiveLogicalTableTd({
+        positionContext
+      })
+      const table = tableCell?.table
+      const td = tableCell?.td
+      if (!table || !td) return this.getOriginalInnerWidth()
       const tdPadding = this.getTdPadding()
       const contentInset = getTableCellContentInset(table, td)
       return Math.max(

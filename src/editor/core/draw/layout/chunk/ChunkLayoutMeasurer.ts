@@ -50,7 +50,7 @@ export class ChunkLayoutMeasurer {
         sourceStartIndex: context.chunk.startIndex
       })
       positionList = []
-      this.draw.getPosition().computePageRowPosition({
+      this.draw.getCoordinate().computePageRowPosition({
         positionList,
         rowList,
         pageNo: context.pageNo,

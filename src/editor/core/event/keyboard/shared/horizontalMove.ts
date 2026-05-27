@@ -19,16 +19,16 @@ export function runHorizontalMove(
   if (draw.isReadonly()) return
 
   const tableNavigationService = components.tableNavigationService
-  const position = components.position
-  const cursorPosition = position.getCursorPosition()
+  const coordinate = draw.getCoordinate()
+  const cursorPosition = coordinate.getCursorPosition()
   if (!cursorPosition) return
 
   const rangeManager = components.range
   const { startIndex, endIndex } = rangeManager.getEditBoundaryRange()
   const isCollapsed = rangeManager.getIsCollapsed()
-  const positionContext = position.getPositionContext()
-  const positionList = position.getPositionList()
-  let elementList = draw.getElementList()
+  const positionContext = coordinate.getPositionContext()
+  const positionList = coordinate.getPositionList()
+  let elementList = draw.getObjectResolver().getElementList()
   const { index } = cursorPosition
 
   if (direction === 'prev') {
@@ -105,11 +105,11 @@ export function runHorizontalMove(
         direction
       })
     if (navigationResult?.nextPositionContext) {
-      position.setPositionContext(navigationResult.nextPositionContext)
+      coordinate.setPositionContext(navigationResult.nextPositionContext)
       anchorStartIndex = navigationResult.nextIndex
       anchorEndIndex = anchorStartIndex
       if (navigationResult.disposeTableTool && direction === 'next') {
-        elementList = draw.getElementList()
+        elementList = draw.getObjectResolver().getElementList()
       }
       applyTableToolState(draw, !!navigationResult.disposeTableTool)
     }
@@ -123,13 +123,13 @@ export function runHorizontalMove(
     return
   }
 
-  const newElementList = draw.getElementList()
+  const newElementList = draw.getObjectResolver().getElementList()
   const location = direction === 'next' ? LocationPosition.AFTER : undefined
   anchorStartIndex = getNonHideElementIndex(newElementList, anchorStartIndex, location)
   anchorEndIndex = getNonHideElementIndex(newElementList, anchorEndIndex, location)
   rangeManager.setRange(anchorStartIndex, anchorEndIndex)
-  position.setPositionContext({
-    ...position.getPositionContext()
+  coordinate.setPositionContext({
+    ...coordinate.getPositionContext()
   })
   const isAnchorCollapsed = anchorStartIndex === anchorEndIndex
   draw.render({

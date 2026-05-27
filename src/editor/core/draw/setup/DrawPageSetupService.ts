@@ -64,7 +64,7 @@ export class DrawPageSetupService {
    */
   private restoreFullMainDataBeforeContinuityLayout() {
     const snapshotMain = this.draw.getEditor2DocumentTree().main || []
-    const currentMain = this.draw.getOriginalMainElementList()
+    const currentMain = this.draw.getObjectResolver().getOriginalMainElementList()
     if (snapshotMain.length <= currentMain.length) {
       return
     }
@@ -74,7 +74,7 @@ export class DrawPageSetupService {
   public setPageScale(payload: number) {
     this.draw.getOptions().scale = payload
     this.draw.getPageCanvasHost().syncPageMetrics()
-    const cursorPosition = this.draw.getComponents().position.getCursorPosition()
+    const cursorPosition = this.draw.getCoordinate().getCursorPosition()
     this.draw.render({
       isSubmitHistory: false,
       isSetCursor: !!cursorPosition,
@@ -117,7 +117,7 @@ export class DrawPageSetupService {
   }
 
   public setPaperMargin(payload: IMargin) {
-    const cursorPosition = this.draw.getComponents().position.getCursorPosition()
+    const cursorPosition = this.draw.getCoordinate().getCursorPosition()
     this.draw.getOptions().margins = payload
     this.draw.render({
       isSubmitHistory: false,

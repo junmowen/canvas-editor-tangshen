@@ -35,44 +35,17 @@ export class RadioControl extends CheckboxControl {
     const { control } = this.element
     const elementList = context.elementList || this.control.getElementList()
     const { startIndex } = context.range || this.control.getEditBoundaryRange()
-    const startElement = elementList[startIndex]
-    // 向左查找单选项
-    let preIndex = startIndex
-    while (preIndex > 0) {
-      const preElement = elementList[preIndex]
-      // 遇到前缀或前文本时停止
-      if (
-        preElement.controlId !== startElement.controlId ||
-        preElement.controlComponent === ControlComponent.PREFIX ||
-        preElement.controlComponent === ControlComponent.PRE_TEXT
-      ) {
-        break
-      }
-      // 更新单选框值
-      if (preElement.controlComponent === ControlComponent.RADIO) {
-        const radio = preElement.radio!
+    const controlBoundary = this.control.getDraw().getTargetResolver().resolveControlBoundaryElements({
+      range: context.range,
+      elementList
+    })
+    if (!controlBoundary) return
+    for (let i = controlBoundary.startIndex; i <= controlBoundary.endIndex; i++) {
+      const element = elementList[i]
+      if (element.controlComponent === ControlComponent.RADIO) {
+        const radio = element.radio!
         radio.value = codes.includes(String(radio.code))
       }
-      preIndex--
-    }
-    // 向右查找单选项
-    let nextIndex = startIndex + 1
-    while (nextIndex < elementList.length) {
-      const nextElement = elementList[nextIndex]
-      // 遇到后缀或后文本时停止
-      if (
-        nextElement.controlId !== startElement.controlId ||
-        nextElement.controlComponent === ControlComponent.POSTFIX ||
-        nextElement.controlComponent === ControlComponent.POST_TEXT
-      ) {
-        break
-      }
-      // 更新单选框值
-      if (nextElement.controlComponent === ControlComponent.RADIO) {
-        const radio = nextElement.radio!
-        radio.value = codes.includes(String(radio.code))
-      }
-      nextIndex++
     }
     // 更新控件代码
     control!.code = codes.join(',')

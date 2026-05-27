@@ -2,7 +2,7 @@ import { ElementStyleKey } from '../../dataset/enum/ElementStyle'
 import { TEXTLIKE_ELEMENT_TYPE } from '../../dataset/constant/Element'
 import { NUMBER_LIKE_REG } from '../../dataset/constant/Regular'
 import { Draw } from '../draw/Draw'
-import { Position } from '../position/Position'
+import type { DrawCoordinateService } from '../draw/coordinate/DrawCoordinateService'
 import { RangeManager } from '../range/RangeManager'
 import { isEditorDisabled } from '../utils/editorState'
 import { threeClick } from '../../utils'
@@ -30,7 +30,7 @@ export class CanvasEvent {
   private draw: Draw
   private pageContainer: HTMLDivElement
   private range: RangeManager
-  private position: Position
+  private coordinate: DrawCoordinateService
   private pointerSession: IPointerSession
   private pointerController: PointerController
   private pointerSessionController: PointerSessionController
@@ -41,7 +41,7 @@ export class CanvasEvent {
     this.draw = draw
     this.pageContainer = draw.getPageCanvasHost().getPageContainer()
     this.range = draw.getRange()
-    this.position = draw.getPosition()
+    this.coordinate = draw.getCoordinate()
 
     this.isComposing = false
     this.compositionInfo = null
@@ -126,7 +126,7 @@ export class CanvasEvent {
   private resolvePainterWordSelection() {
     const { startIndex, endIndex } = this.range.getEditBoundaryRange()
     if (startIndex !== endIndex || !~endIndex) return null
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const cursorIndex = endIndex
     const cursorElement = elementList[cursorIndex]
     if (
@@ -178,11 +178,11 @@ export class CanvasEvent {
     if (control.selectAllValue()) {
       return
     }
-    this.position.setPositionContext({
+    this.coordinate.setPositionContext({
       isTable: false,
       isControl: false
     })
-    const position = this.position.getPositionList()
+    const position = this.coordinate.getPositionList()
     this.range.setRange(0, position.length - 1)
     this.draw.render({
       isSubmitHistory: false,

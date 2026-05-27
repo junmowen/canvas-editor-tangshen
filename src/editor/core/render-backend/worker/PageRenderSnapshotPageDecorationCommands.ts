@@ -82,7 +82,7 @@ export abstract class PageRenderSnapshotPageDecorationCommands extends PageRende
     } = options
     const commandList: IWorkerPaintCommand[] = []
     const pagePositionList =
-      this.draw.getPosition().getLayoutMainPositionListByPage(payload.pageNo)
+      this.draw.getCoordinate().getLayoutMainPositionListByPage(payload.pageNo)
     const commandFont = `${size * scale}px ${font}`
     let rowPositionOffset = 0
     for (let i = 0; i < payload.rowList.length; i++) {

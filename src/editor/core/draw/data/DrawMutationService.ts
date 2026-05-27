@@ -115,7 +115,7 @@ export class DrawMutationService {
       components.control.emitControlContentChange()
     } else {
       // 获取当前元素列表
-      const elementList = this.draw.getElementList()
+      const elementList = this.draw.getObjectResolver().getElementList()
       // 判断是否为折叠光标（光标位置前后相同）
       const isCollapsed = startIndex === endIndex
       const start = startIndex + 1
@@ -148,7 +148,7 @@ export class DrawMutationService {
     if (~curIndex) {
       components.range.setRange(curIndex, curIndex)
       // 批量插入后的真实坐标由 chunk patch 刷新，逻辑索引必须先同步给后续删除 / 输入读取。
-      components.position.setCursorLogicalIndex(curIndex)
+      this.draw.getCoordinate().setCursorLogicalIndex(curIndex)
       if (options.isSilentBatch) {
         return
       }
@@ -193,7 +193,7 @@ export class DrawMutationService {
       this.asyncInsertTransactionManager.recordSyncFallback('footer-context')
       return false
     }
-    if (this.draw.getComponents().position.getPositionContext().isTable) {
+    if (this.draw.getCoordinate().getPositionContext().isTable) {
       this.asyncInsertTransactionManager.recordSyncFallback('table-context')
       return false
     }
@@ -274,7 +274,7 @@ export class DrawMutationService {
       options,
       isSubmitHistory,
       isSelection: this.draw.getComponents().range.getIsSelection(),
-      isTableContext: this.draw.getComponents().position.getPositionContext().isTable
+      isTableContext: this.draw.getCoordinate().getPositionContext().isTable
     })
   }
 
@@ -305,7 +305,7 @@ export class DrawMutationService {
     let curIndex: number
     const { isPrepend, isSubmitHistory = true } = options
     // 获取正文元素列表
-    const mainElementList = this.draw.getOriginalMainElementList()
+    const mainElementList = this.draw.getObjectResolver().getOriginalMainElementList()
     // 如果是前置模式，在开头插入；否则在末尾追加
     if (isPrepend) {
       // 有起始占位符时保留占位符；否则真正插到正文第一项之前。
@@ -347,7 +347,7 @@ export class DrawMutationService {
     options?: ISpliceElementListOption
   ) {
     const isMainElementListMutation =
-      elementList === this.draw.getOriginalMainElementList()
+      elementList === this.draw.getObjectResolver().getOriginalMainElementList()
     const oldLength = isMainElementListMutation ? elementList.length : 0
     const deleteRecordList: Array<{ index: number; signature: string }> = []
     if (!this.isInternalInsertSplice) {
@@ -400,7 +400,7 @@ export class DrawMutationService {
         (!isWithinControl || isDisableControlDeleteInFormMode)
       ) {
         // 获取当前表格单元格的可删除性设置
-        const tdDeletable = this.draw.getTd()?.deletable
+        const tdDeletable = this.draw.getObjectResolver().getTd()?.deletable
         let deleteIndex = endIndex - 1
         // 从后向前遍历要删除的元素，根据可删除规则判断是否删除
         while (deleteIndex >= start) {

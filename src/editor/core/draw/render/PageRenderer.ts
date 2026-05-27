@@ -257,11 +257,11 @@ export class PageRenderer {
     if (this.isActiveControlPage(pageNo)) {
       return true
     }
-    const cursorPosition = this.draw.getPosition().getCursorPosition()
+    const cursorPosition = this.draw.getCoordinate().getCursorPosition()
     if (cursorPosition?.pageNo === pageNo) {
       return true
     }
-    const positionList = this.draw.getPosition().getPositionList()
+    const positionList = this.draw.getCoordinate().getPositionList()
     const { startIndex, endIndex } = this.draw.getRange().getEditBoundaryRange()
     return (
       positionList[startIndex]?.pageNo === pageNo ||
@@ -276,7 +276,7 @@ export class PageRenderer {
     if (!controlId) {
       return false
     }
-    const positionList = this.draw.getPosition().getPositionList()
+    const positionList = this.draw.getCoordinate().getPositionList()
     return positionList.some(position => {
       return position.pageNo === pageNo && position.element?.controlId === controlId
     })
@@ -307,7 +307,7 @@ export class PageRenderer {
   /** base bitmap cache 命中时仍需重放 DOM/SVG block host。 */
   private renderDomBlockHosts(payload: IDrawPagePayload) {
     const pagePositionList =
-      this.draw.getPosition().getLayoutMainPositionListByPage(payload.pageNo)
+      this.draw.getCoordinate().getLayoutMainPositionListByPage(payload.pageNo)
     let rowPositionOffset = 0
     for (let i = 0; i < payload.rowList.length; i++) {
       const row = payload.rowList[i]
@@ -345,8 +345,8 @@ export class PageRenderer {
             // 先从画布池挂载画布
             this.draw.getPageCanvasHost().mountCanvas(index)
 
-            const currentPositionList = this.draw.getPosition().getLayoutMainPositionList()
-            const currentElementList = this.draw.getLayoutMainElementList()
+            const currentPositionList = this.draw.getCoordinate().getLayoutMainPositionList()
+            const currentElementList = this.draw.getObjectResolver().getLayoutMainElementList()
             const currentRowList = this.draw.getPageRowList()[index]
 
             if (currentRowList) {
@@ -373,8 +373,8 @@ export class PageRenderer {
   }
 
   public immediateRender() {
-    const positionList = this.draw.getPosition().getLayoutMainPositionList()
-    const elementList = this.draw.getLayoutMainElementList()
+    const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
+    const elementList = this.draw.getObjectResolver().getLayoutMainElementList()
     for (let i = 0; i < this.draw.getPageRowList().length; i++) {
       this.draw.getPageCanvasHost().mountCanvas(i)
       this.drawPage({
@@ -388,8 +388,8 @@ export class PageRenderer {
 
   /** 仅渲染当前视口内可见的页面。 */
   public renderVisiblePages() {
-    const positionList = this.draw.getPosition().getLayoutMainPositionList()
-    const elementList = this.draw.getLayoutMainElementList()
+    const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
+    const elementList = this.draw.getObjectResolver().getLayoutMainElementList()
     const searchRenderPageNoList =
       this.draw.getSearch().consumeSearchRenderPageNoList()
     const pageNoList = this.draw.resolveVisibleRenderPageNos(searchRenderPageNoList)

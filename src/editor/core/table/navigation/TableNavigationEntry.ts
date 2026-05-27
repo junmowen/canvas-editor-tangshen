@@ -5,13 +5,13 @@ export function resolveVerticalEntryNavigation(payload: {
   tableIndex: number
   cursorX: number
   direction: 'up' | 'down'
-  getElementList: () => any[]
+  getElement: (index: number) => any
   getOptions: () => any
   getMargins: () => number[]
 }): ITableVerticalEntryNavigationResult | null {
-  const { tableIndex, cursorX, direction, getElementList, getOptions, getMargins } =
+  const { tableIndex, cursorX, direction, getElement, getOptions, getMargins } =
     payload
-  const table = getElementList()[tableIndex]
+  const table = getElement(tableIndex)
   if (table?.type !== ElementType.TABLE || !table.trList?.length) {
     return null
   }

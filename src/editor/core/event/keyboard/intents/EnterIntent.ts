@@ -18,7 +18,7 @@ export function runEnterIntent(evt: KeyboardEvent, host: CanvasEvent) {
   if (!rangeManager.getIsCanInput()) return
   const { startIndex, endIndex } = rangeManager.getEditBoundaryRange()
   const isCollapsed = rangeManager.getIsCollapsed()
-  const elementList = draw.getElementList()
+  const elementList = draw.getObjectResolver().getElementList()
   const startElement = elementList[startIndex]
   const endElement = elementList[endIndex]
 
@@ -78,7 +78,7 @@ export function runEnterIntent(evt: KeyboardEvent, host: CanvasEvent) {
   if (controlInsertIndex !== null) {
     curIndex = controlInsertIndex
   } else {
-    const cursorPosition = draw.getPosition().getCursorPosition()
+    const cursorPosition = draw.getCoordinate().getCursorPosition()
     const cursorIndex = cursorPosition?.index ?? endIndex
     curIndex = insertWithContext({
       draw,
@@ -94,7 +94,7 @@ export function runEnterIntent(evt: KeyboardEvent, host: CanvasEvent) {
   if (~curIndex) {
     rangeManager.setRange(curIndex, curIndex)
     // 回车后的实际坐标由立即布局刷新，这里先同步逻辑索引给连续键盘操作。
-    draw.getPosition().setCursorLogicalIndex(curIndex)
+    draw.getCoordinate().setCursorLogicalIndex(curIndex)
     draw.render({
       curIndex,
       isTyping: true,

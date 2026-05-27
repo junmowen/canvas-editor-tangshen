@@ -11,7 +11,6 @@ import { titleOrderNumberMapping } from '../../dataset/constant/Title'
 import { LocationPosition } from '../../dataset/enum/Common'
 import { ControlComponent } from '../../dataset/enum/Control'
 import { EditorMode, EditorZone } from '../../dataset/enum/Editor'
-import { ElementType } from '../../dataset/enum/Element'
 import { MoveDirection } from '../../dataset/enum/Observer'
 import {
   IGetControlValueOption,
@@ -39,6 +38,10 @@ import {
   ISetAreaValueOption
 } from '../../interface/Area'
 import { ISetTrackChangeOption } from '../../interface/Command'
+import {
+  findCommandElementList,
+  walkCommandElementList
+} from './CommandElementTraversal'
 
 /**
  * 业务域命令适配模块，负责分组、控件、修订、标题、事件定位和区域相关命令。
@@ -67,7 +70,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
 
   public getGroupRectList(groupId: string) {
     const pageCanvasHost = this.draw.getPageCanvasHost()
-    return this.position
+    return this.coordinate
       .getLayoutMainPositionList()
       .filter(position => position.element?.groupIds?.includes(groupId))
       .map(position => {
@@ -84,14 +87,11 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
 
   /** 定位到指定批注分组所在位置。 */
   public locationGroup(groupId: string) {
-    const elementList = this.draw.getOriginalMainElementList()
-    const context = this.draw
-      .getGroup()
-      .getContextByGroupId(elementList, groupId)
+    const context = this.draw.getGroup().getContextByGroupId(groupId)
     if (!context) return
     const { isTable, index, trIndex, tdIndex, tdId, trId, tableId, endIndex } =
       context
-    this.position.setPositionContext({
+    this.coordinate.setPositionContext({
       isTable,
       index,
       trIndex,
@@ -200,7 +200,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
 
   private renderTrackChangeResolution() {
     const { startIndex } = this.range.getEditBoundaryRange()
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const curIndex = Math.min(startIndex, Math.max(0, elementList.length - 1))
     this.range.setRange(curIndex, curIndex)
     this.draw.render({
@@ -218,108 +218,78 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
 
   /** 定位到指定控件的内部或外部位置。 */
   public locationControl(controlId: string, options?: ILocationControlOption) {
-    function location(
+    const location = (
       elementList: IElement[],
       zone: EditorZone
-    ): ILocationPosition | null {
-      let i = 0
-      while (i < elementList.length) {
-        const element = elementList[i]
-        i++
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList!
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              const locationContext = location(td.value, zone)
-              if (locationContext) {
-                return {
-                  ...locationContext,
-                  positionContext: {
-                    isTable: true,
-                    index: i - 1,
-                    trIndex: r,
-                    tdIndex: d,
-                    tdId: element.tdId,
-                    trId: element.trId,
-                    tableId: element.tableId
-                  }
-                }
-              }
+    ): ILocationPosition | null =>
+      findCommandElementList<ILocationPosition>({
+        elementList,
+        visitor: ({
+          element,
+          elementList,
+          index,
+          cursorIndex,
+          tableContext
+        }) => {
+          if (element?.controlId !== controlId) return null
+          let curIndex = index
+          if (options?.position === LocationPosition.OUTER_AFTER) {
+            // 控件外面最后
+            if (
+              !(
+                element.controlComponent === ControlComponent.POSTFIX &&
+                elementList[cursorIndex + 1]?.controlComponent !==
+                  ControlComponent.POST_TEXT
+              )
+            ) {
+              return null
+            }
+          } else if (options?.position === LocationPosition.OUTER_BEFORE) {
+            // 控件外面最前
+            curIndex -= 1
+          } else if (options?.position === LocationPosition.AFTER) {
+            // 控件内部最后
+            curIndex -= 1
+            if (
+              element.controlComponent !== ControlComponent.PLACEHOLDER &&
+              element.controlComponent !== ControlComponent.POSTFIX &&
+              element.controlComponent !== ControlComponent.POST_TEXT
+            ) {
+              return null
+            }
+          } else {
+            // 控件内部最前（默认）
+            if (
+              (element.controlComponent !== ControlComponent.PREFIX &&
+                element.controlComponent !== ControlComponent.PRE_TEXT) ||
+              elementList[cursorIndex]?.controlComponent ===
+                ControlComponent.PREFIX ||
+              elementList[cursorIndex]?.controlComponent ===
+                ControlComponent.PRE_TEXT
+            ) {
+              return null
+            }
+          }
+          return {
+            zone,
+            range: {
+              startIndex: curIndex,
+              endIndex: curIndex
+            },
+            positionContext: tableContext || {
+              isTable: false
             }
           }
         }
-        if (element?.controlId !== controlId) continue
-        let curIndex = i - 1
-        if (options?.position === LocationPosition.OUTER_AFTER) {
-          // 控件外面最后
-          if (
-            !(
-              element.controlComponent === ControlComponent.POSTFIX &&
-              elementList[i + 1]?.controlComponent !==
-                ControlComponent.POST_TEXT
-            )
-          ) {
-            continue
-          }
-        } else if (options?.position === LocationPosition.OUTER_BEFORE) {
-          // 控件外面最前
-          curIndex -= 1
-        } else if (options?.position === LocationPosition.AFTER) {
-          // 控件内部最后
-          curIndex -= 1
-          if (
-            element.controlComponent !== ControlComponent.PLACEHOLDER &&
-            element.controlComponent !== ControlComponent.POSTFIX &&
-            element.controlComponent !== ControlComponent.POST_TEXT
-          ) {
-            continue
-          }
-        } else {
-          // 控件内部最前（默认）
-          if (
-            (element.controlComponent !== ControlComponent.PREFIX &&
-              element.controlComponent !== ControlComponent.PRE_TEXT) ||
-            elementList[i]?.controlComponent === ControlComponent.PREFIX ||
-            elementList[i]?.controlComponent === ControlComponent.PRE_TEXT
-          ) {
-            continue
-          }
-        }
-        return {
-          zone,
-          range: {
-            startIndex: curIndex,
-            endIndex: curIndex
-          },
-          positionContext: {
-            isTable: false
-          }
-        }
-      }
-      return null
-    }
-    const data = [
-      {
-        zone: EditorZone.HEADER,
-        elementList: this.draw.getHeaderElementList()
-      },
-      {
-        zone: EditorZone.MAIN,
-        elementList: this.draw.getOriginalMainElementList()
-      },
-      {
-        zone: EditorZone.FOOTER,
-        elementList: this.draw.getFooterElementList()
-      }
-    ]
-    for (const context of data) {
+      })
+    for (const context of this.draw
+      .getObjectResolver()
+      .getOriginalZoneElementList()) {
       const locationContext = location(context.elementList, context.zone)
       if (locationContext) {
         // 设置区域、上下文、光标信息
         this.setZone(locationContext.zone)
-        this.position.setPositionContext(locationContext.positionContext)
+        this.coordinate.setPositionContext(locationContext.positionContext)
         this.range.replaceRange(locationContext.range)
         this.draw.render({
           curIndex: locationContext.range.startIndex,
@@ -362,7 +332,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
     }
     // 格式化上下文信息
     const { startIndex } = this.getRange()
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const copyElement = getAnchorElement(elementList, startIndex)
     if (!copyElement) return
     const defaultStyle = this.range.getDefaultStyle()
@@ -397,61 +367,39 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
     const { conceptId } = payload
     const result: IGetTitleValueResult = []
     const getValue = (elementList: IElement[], zone: EditorZone) => {
-      let i = 0
-      while (i < elementList.length) {
-        const element = elementList[i]
-        i++
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList!
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              getValue(td.value, zone)
+      walkCommandElementList({
+        elementList,
+        visitor: ({ element, elementList, cursorIndex }): number | void => {
+          if (element?.title?.conceptId !== conceptId) return
+          // 先查找到标题，后循环至同级或上级标题处停止
+          const valueList: IElement[] = []
+          let j = cursorIndex
+          while (j < elementList.length) {
+            const nextElement = elementList[j]
+            j++
+            if (element.titleId === nextElement.titleId) continue
+            if (
+              nextElement.level &&
+              titleOrderNumberMapping[nextElement.level] <=
+                titleOrderNumberMapping[element.level!]
+            ) {
+              break
             }
+            valueList.push(nextElement)
           }
+          result.push({
+            ...element.title!,
+            value: getTextFromElementList(valueList),
+            elementList: zipElementList(valueList),
+            zone
+          })
+          return j
         }
-        if (element?.title?.conceptId !== conceptId) continue
-        // 先查找到标题，后循环至同级或上级标题处停止
-        const valueList: IElement[] = []
-        let j = i
-        while (j < elementList.length) {
-          const nextElement = elementList[j]
-          j++
-          if (element.titleId === nextElement.titleId) continue
-          if (
-            nextElement.level &&
-            titleOrderNumberMapping[nextElement.level] <=
-              titleOrderNumberMapping[element.level!]
-          ) {
-            break
-          }
-          valueList.push(nextElement)
-        }
-        result.push({
-          ...element.title!,
-          value: getTextFromElementList(valueList),
-          elementList: zipElementList(valueList),
-          zone
-        })
-        i = j
-      }
+      })
     }
-    const data = [
-      {
-        zone: EditorZone.HEADER,
-        elementList: this.draw.getHeaderElementList()
-      },
-      {
-        zone: EditorZone.MAIN,
-        elementList: this.draw.getOriginalMainElementList()
-      },
-      {
-        zone: EditorZone.FOOTER,
-        elementList: this.draw.getFooterElementList()
-      }
-    ]
-    for (const { zone, elementList } of data) {
+    for (const { zone, elementList } of this.draw
+      .getObjectResolver()
+      .getOriginalZoneElementList()) {
       getValue(elementList, zone)
     }
     return result
@@ -462,7 +410,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
     evt: MouseEvent,
     options: IPositionContextByEventOption = {}
   ): IPositionContextByEventResult | null {
-    const pagePoint = this.draw.getPointerCoordinates(evt).page
+    const pagePoint = this.draw.getCoordinate().getPointerCoordinates(evt).page
     const pageIndex = pagePoint?.pageIndex
     if (!pagePoint || pageIndex === undefined || pageIndex === null) return null
     const { isMustDirectHit = true } = options
@@ -479,8 +427,6 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
       isDirectHit,
       isTable,
       index,
-      trIndex,
-      tdIndex,
       tdValueIndex,
       zone
     } = positionContext
@@ -494,20 +440,26 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
     // 命中元素信息
     let tableInfo: ITableInfoByEvent | null = null
     let element: IElement | null = null
-    const elementList = this.draw.getOriginalElementList()
     let position: IElementPosition | null = null
-    const positionList = this.position.getOriginalPositionList()
+    const positionList = this.coordinate.getOriginalPositionList()
+    const resolvedElement = this.draw
+      .getTargetResolver()
+      .resolveElementByPositionContext(positionContext)
     if (isTable) {
-      const td = elementList[index!].trList?.[trIndex!].tdList[tdIndex!]
-      element = td?.value[tdValueIndex!] || null
+      const tableCell = resolvedElement.tableCell
+      const tableElement = tableCell?.table
+      const td = tableCell?.td
+      element = resolvedElement.element
       position = td?.positionList?.[tdValueIndex!] || null
-      tableInfo = {
-        element: elementList[index!],
-        trIndex: trIndex!,
-        tdIndex: tdIndex!
+      if (tableElement) {
+        tableInfo = {
+          element: tableElement,
+          trIndex: tableCell.trIndex,
+          tdIndex: tableCell.tdIndex
+        }
       }
     } else {
-      element = elementList[index] || null
+      element = resolvedElement.element
       position = positionList[index] || null
     }
     if (element?.controlId) {
@@ -553,7 +505,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
     const cloneElement = deepClone(payload)
     // 格式化上下文信息
     const { startIndex } = this.getRange()
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const copyElement = getAnchorElement(elementList, startIndex)
     if (!copyElement) return
     const cloneAttr = [
@@ -585,7 +537,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
         position === LocationPosition.BEFORE ? range.startIndex : range.endIndex
     } else if (isNumber(rowNo)) {
       // 根据行号定位
-      const rowList = this.draw.getOriginalRowList()
+      const rowList = this.draw.getObjectResolver().getOriginalRowList()
       curIndex =
         position === LocationPosition.BEFORE
           ? rowList[rowNo]?.startIndex
@@ -597,7 +549,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
       curIndex =
         position === LocationPosition.BEFORE
           ? 0
-          : this.draw.getOriginalMainElementList().length - 1
+          : this.draw.getObjectResolver().getOriginalMainLastIndex()
       this.range.setRange(curIndex, curIndex)
     }
     // 光标存在且闭合时定位
@@ -614,7 +566,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
     this.draw.render(renderParams)
     // 移动滚动条到可见区域
     if (isMoveCursorToVisible) {
-      const positionList = this.draw.getPosition().getPositionList()
+      const positionList = this.draw.getCoordinate().getPositionList()
       this.draw.getCursor().moveCursorToVisible({
         cursorPosition: positionList[curIndex],
         direction: MoveDirection.DOWN
@@ -649,8 +601,10 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
       options?.isAppendLastLineBreak &&
       options?.position === LocationPosition.OUTER_AFTER
     ) {
-      const elementList = this.draw.getOriginalMainElementList()
-      if (elementList[elementList.length - 1].areaId === areaId) {
+      const lastElement = this.draw
+        .getObjectResolver()
+        .getOriginalMainLastElement()
+      if (lastElement?.areaId === areaId) {
         this.draw.appendElementList(
           [
             {
@@ -670,7 +624,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
       range: { endIndex },
       elementPosition
     } = context
-    this.position.setPositionContext({
+    this.coordinate.setPositionContext({
       isTable: false
     })
     this.range.setRange(endIndex, endIndex)
@@ -683,7 +637,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
     })
     // 移动到可见区域
     const cursor = this.draw.getCursor()
-    this.position.setCursorPosition(elementPosition)
+    this.coordinate.setCursorPosition(elementPosition)
     cursor.moveCursorToVisible({
       cursorPosition: elementPosition,
       direction: MoveDirection.UP

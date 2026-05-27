@@ -4,31 +4,16 @@ import { createTablePositionContext } from './TableNavigationAlgorithms'
 
 export function resolveBackspaceNavigation(payload: {
   positionContext: IPositionContext
-  getOriginalElementList: () => any[]
+  resolvePreviousPagingTable: (positionContext: IPositionContext) => {
+    currentElement: any
+    previousIndex: number
+    previousElement: any
+  } | null
 }): ITableBackspaceNavigationResult | null {
-  const { positionContext, getOriginalElementList } = payload
-  if (!positionContext.isTable || positionContext.index === undefined) {
-    return null
-  }
-
-  const originalElementList = getOriginalElementList()
-  const currentElement = originalElementList[positionContext.index]
-  if (!currentElement?.pagingId || (currentElement.pagingIndex ?? 0) <= 0) {
-    return null
-  }
-
-  let previousTableIndex = -1
-  for (let i = positionContext.index - 1; i >= 0; i--) {
-    if (originalElementList[i]?.pagingId === currentElement.pagingId) {
-      previousTableIndex = i
-      break
-    }
-  }
-  if (!~previousTableIndex) {
-    return null
-  }
-
-  const previousElement = originalElementList[previousTableIndex]
+  const { positionContext, resolvePreviousPagingTable } = payload
+  const pagingTable = resolvePreviousPagingTable(positionContext)
+  if (!pagingTable) return null
+  const { currentElement, previousIndex, previousElement } = pagingTable
   const previousTrList = previousElement.trList || []
   let lastTrIndex = previousTrList.length - 1
   while (lastTrIndex >= 0 && previousTrList[lastTrIndex].pagingRepeat) {
@@ -60,7 +45,7 @@ export function resolveBackspaceNavigation(payload: {
   const targetTd = lastTr.tdList[targetTdIndex]
   return {
     nextPositionContext: createTablePositionContext({
-      logicalTableIndex: previousTableIndex,
+      logicalTableIndex: previousIndex,
       logicalTrIndex: lastTrIndex,
       logicalTdIndex: targetTdIndex,
       fragmentTableId: previousElement.id,
@@ -70,4 +55,3 @@ export function resolveBackspaceNavigation(payload: {
     nextIndex: Math.max(0, targetTd.value.length - 1)
   }
 }
-

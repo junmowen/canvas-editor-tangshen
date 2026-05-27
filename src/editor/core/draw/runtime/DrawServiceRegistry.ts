@@ -10,6 +10,9 @@ import { DrawExportStateService } from '../export/DrawExportStateService'
 import { DrawStateQueryService } from '../query/DrawStateQueryService'
 import { DrawMetricsService } from '../layout/DrawMetricsService'
 import { DrawRenderFacadeService } from '../render/DrawRenderFacadeService'
+import { DrawCoordinateService } from '../coordinate/DrawCoordinateService'
+import { DrawObjectResolverService } from '../data/DrawObjectResolverService'
+import { DrawTargetResolverService } from '../data/DrawTargetResolverService'
 import { DrawPainterService } from './DrawPainterService'
 import { DrawLifecycleService } from './DrawLifecycleService'
 import { TrackChangeService } from '../track-change/TrackChangeService'
@@ -115,6 +118,8 @@ export class DrawServiceRegistry {
   public readonly cursorService: DrawCursorService
   /** 视口相关服务。 */
   public readonly viewportService: DrawViewportService
+  /** 坐标统一入口。 */
+  public readonly coordinateService: DrawCoordinateService
   /** 导出状态快照/恢复服务。 */
   public readonly exportStateService: DrawExportStateService
   /** 只读/禁用/模式状态判断服务。 */
@@ -123,6 +128,10 @@ export class DrawServiceRegistry {
   public readonly metricsService: DrawMetricsService
   /** render 门面服务：负责把主渲染流程从 `Draw` 中抽离。 */
   public readonly renderFacadeService: DrawRenderFacadeService
+  /** 当前对象统一解析入口。 */
+  public readonly objectResolverService: DrawObjectResolverService
+  /** 当前目标统一解析入口。 */
+  public readonly targetResolverService: DrawTargetResolverService
   /** 画笔相关服务。 */
   public readonly painterService: DrawPainterService
   /** 生命周期相关服务。 */
@@ -183,6 +192,9 @@ export class DrawServiceRegistry {
     this.stateQueryService = new DrawStateQueryService(draw)
     this.metricsService = new DrawMetricsService(draw)
     this.renderFacadeService = new DrawRenderFacadeService(draw)
+    this.coordinateService = new DrawCoordinateService(draw)
+    this.objectResolverService = new DrawObjectResolverService(draw)
+    this.targetResolverService = new DrawTargetResolverService(draw)
     this.painterService = new DrawPainterService(draw)
     this.lifecycleService = new DrawLifecycleService(draw)
     this.trackChangeService = new TrackChangeService(draw)

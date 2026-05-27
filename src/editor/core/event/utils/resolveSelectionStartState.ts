@@ -4,6 +4,7 @@ import { Draw } from '../../draw/Draw'
 import { resolveTableSelectionStartState } from '../../table/selection/resolveTableSelectionStartState'
 import { IPagePoint } from './PagePointTypes'
 import { resolvePointerMouseDownIndex } from './resolvePointerMouseDownIndex'
+import { resolvePositionAtIndex } from './resolvePositionAtIndex'
 
 interface IResolveSelectionStartStatePayload {
   draw: Draw
@@ -24,7 +25,6 @@ export function resolveSelectionStartState(
 ): IResolvedSelectionStartState | null {
   const { draw, x, y, pageNo, pagePoint, range } = payload
   const components = draw.getComponents()
-  const position = components.position
   const hitTestResult = components.tableHitTestService.resolve({
     x,
     y,
@@ -41,14 +41,15 @@ export function resolveSelectionStartState(
     localIndex: currentLocalIndex,
     hitTargetIndex
   } = boundary
-  const positionList = position.getPositionList()
-  const currentPosition =
-    positionList[currentLocalIndex] ||
-    positionList[positionList.length - 1] ||
-    null
+  // 命中结果通常只给逻辑索引，这里统一回填当前/目标坐标，避免各处自己做兜底。
+  const currentPosition = resolvePositionAtIndex(draw, currentLocalIndex, {
+    fallbackToLast: true
+  })
   const hitTargetPosition =
     hitTargetIndex !== undefined
-      ? positionList[hitTargetIndex] || currentPosition
+      ? resolvePositionAtIndex(draw, hitTargetIndex, {
+          fallbackToLast: true
+        }) || currentPosition
       : currentPosition
   const isRepeatCollapsedHit =
     range.startIndex === range.endIndex &&

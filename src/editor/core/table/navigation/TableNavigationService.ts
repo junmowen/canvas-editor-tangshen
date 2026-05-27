@@ -1,6 +1,5 @@
 import { Draw } from '../../draw/Draw'
 import { IPositionContext } from '../../../interface/Position'
-import { ITableLayoutCellSlice } from '../layout/TableLayoutSnapshotTypes'
 import {
   ITableBackspaceNavigationRequest,
   ITableBackspaceNavigationResult,
@@ -16,8 +15,6 @@ import { resolveBackspaceNavigation } from './TableNavigationBackspace'
 import { resolveVerticalEntryNavigation } from './TableNavigationEntry'
 import { resolveFragmentTransitionIndex } from './TableNavigationFragment'
 import { resolveHorizontalBoundaryNavigation } from './TableNavigationHorizontal'
-import {
-} from './TableNavigationAlgorithms'
 import { resolveVerticalFragmentTransition } from './TableNavigationVerticalFragment'
 import { resolveVerticalNavigation } from './TableNavigationVertical'
 
@@ -28,43 +25,25 @@ export class TableNavigationService {
     this.draw = draw
   }
 
-  // navigation 层内部统一读取逻辑 cell 的全部 slice，
-  // 后续 fragment 前后跳转、同 cell 垂直导航都复用这份数据。
-  private getLogicalCellSliceList(
-    tableIndex: number,
-    trIndex: number,
-    tdIndex: number
-  ): ITableLayoutCellSlice[] {
-    const table = this.draw.getOriginalElementList()[tableIndex]
-    const tr = table?.trList?.[trIndex]
-    const td = tr?.tdList?.[tdIndex]
-    if (!table?.id || !tr?.id || !td?.id) {
-      return []
-    }
-
-    return this.draw
-      .getTableLayoutSnapshotAccessor()
-      .getCellSlicesByLogicalCell({
-        tableId: table.id,
-        trId: tr.id,
-        tdId: td.id
-      })
-      .slice()
-  }
-
-
   public resolveFragmentTransitionIndex(
     payload: ITableFragmentTransitionRequest
   ): number | null {
     return resolveFragmentTransitionIndex(
       {
+        resolveLogicalCellFromContext: this.draw
+          .getTargetResolver()
+          .resolveLogicalTableCellByPositionContext.bind(
+            this.draw.getTargetResolver()
+          ),
+        resolveTableTdByIndex: this.draw
+          .getTargetResolver()
+          .resolveOriginalTableTdByIndex.bind(this.draw.getTargetResolver()),
         resolveSliceByPositionContext: this.draw
-          .getTableLayoutSnapshotAccessor()
-          .resolveSliceByPositionContext.bind(this.draw.getTableLayoutSnapshotAccessor()),
-        getOriginalElementList: this.draw.getOriginalElementList.bind(this.draw),
+          .getTargetResolver()
+          .resolveTableSliceByPositionContext.bind(this.draw.getTargetResolver()),
         getCellSlicesByLogicalCell: this.draw
-          .getTableLayoutSnapshotAccessor()
-          .getCellSlicesByLogicalCell.bind(this.draw.getTableLayoutSnapshotAccessor())
+          .getTargetResolver()
+          .getCellSlicesByLogicalCell.bind(this.draw.getTargetResolver())
       },
       payload
     )
@@ -75,12 +54,23 @@ export class TableNavigationService {
   ): ITableAdjacentCellNavigationResult | null {
     return resolveHorizontalBoundaryNavigation(
       {
-        getOriginalElementList: this.draw.getOriginalElementList.bind(this.draw),
-        getElementList: this.draw.getElementList.bind(this.draw),
+        getOriginalElement: this.draw.getObjectResolver().getOriginalElement.bind(
+          this.draw.getObjectResolver()
+        ),
+        getElement: this.draw.getObjectResolver().getElement.bind(
+          this.draw.getObjectResolver()
+        ),
+        resolveLogicalCellFromContext: this.draw
+          .getTargetResolver()
+          .resolveLogicalTableCellByPositionContext.bind(
+            this.draw.getTargetResolver()
+          ),
         resolveSliceByPositionContext: this.draw
-          .getTableLayoutSnapshotAccessor()
-          .resolveSliceByPositionContext.bind(this.draw.getTableLayoutSnapshotAccessor()),
-        getLogicalCellSliceList: this.getLogicalCellSliceList.bind(this)
+          .getTargetResolver()
+          .resolveTableSliceByPositionContext.bind(this.draw.getTargetResolver()),
+        getLogicalCellSliceList: this.draw
+          .getTargetResolver()
+          .getLogicalCellSliceList.bind(this.draw.getTargetResolver())
       },
       payload
     )
@@ -91,17 +81,26 @@ export class TableNavigationService {
   ): ITableVerticalNavigationResult | null {
     return resolveVerticalNavigation(
       {
-        getOriginalElementList: this.draw.getOriginalElementList.bind(this.draw),
-        getPositionList: this.draw.getPosition().getPositionList.bind(
-          this.draw.getPosition()
+        getOriginalElement: this.draw.getObjectResolver().getOriginalElement.bind(
+          this.draw.getObjectResolver()
         ),
-        getCursorPosition: this.draw.getPosition().getCursorPosition.bind(
-          this.draw.getPosition()
+        getPositionList: this.draw.getCoordinate().getPositionList.bind(
+          this.draw.getCoordinate()
         ),
+        getCursorPosition: this.draw.getCoordinate().getCursorPosition.bind(
+          this.draw.getCoordinate()
+        ),
+        resolveLogicalCellFromContext: this.draw
+          .getTargetResolver()
+          .resolveLogicalTableCellByPositionContext.bind(
+            this.draw.getTargetResolver()
+          ),
         resolveSliceByPositionContext: this.draw
-          .getTableLayoutSnapshotAccessor()
-          .resolveSliceByPositionContext.bind(this.draw.getTableLayoutSnapshotAccessor()),
-        getLogicalCellSliceList: this.getLogicalCellSliceList.bind(this),
+          .getTargetResolver()
+          .resolveTableSliceByPositionContext.bind(this.draw.getTargetResolver()),
+        getLogicalCellSliceList: this.draw
+          .getTargetResolver()
+          .getLogicalCellSliceList.bind(this.draw.getTargetResolver()),
         resolveFragmentTransitionIndex: this.resolveFragmentTransitionIndex.bind(this)
       },
       payload
@@ -117,11 +116,14 @@ export class TableNavigationService {
   }): number | null {
     return resolveVerticalFragmentTransition({
       ...payload,
-      resolveSliceByPositionContext: this.draw
-        .getTableLayoutSnapshotAccessor()
-        .resolveSliceByPositionContext.bind(this.draw.getTableLayoutSnapshotAccessor()),
-      getOriginalElementList: this.draw.getOriginalElementList.bind(this.draw),
-      getLogicalCellSliceList: this.getLogicalCellSliceList.bind(this),
+      resolveLogicalCellFromContext: this.draw
+        .getTargetResolver()
+        .resolveLogicalTableCellByPositionContext.bind(
+          this.draw.getTargetResolver()
+        ),
+      getLogicalCellSliceList: this.draw
+        .getTargetResolver()
+        .getLogicalCellSliceList.bind(this.draw.getTargetResolver()),
       resolveFragmentTransitionIndex: this.resolveFragmentTransitionIndex.bind(this)
     })
   }
@@ -131,7 +133,9 @@ export class TableNavigationService {
   ): ITableBackspaceNavigationResult | null {
     return resolveBackspaceNavigation({
       positionContext: payload.positionContext,
-      getOriginalElementList: this.draw.getOriginalElementList.bind(this.draw)
+      resolvePreviousPagingTable: this.draw
+        .getTargetResolver()
+        .resolvePreviousPagingTable.bind(this.draw.getTargetResolver())
     })
   }
 
@@ -142,7 +146,9 @@ export class TableNavigationService {
       tableIndex: payload.tableIndex,
       cursorX: payload.cursorX,
       direction: payload.direction,
-      getElementList: this.draw.getElementList.bind(this.draw),
+      getElement: this.draw.getObjectResolver().getElement.bind(
+        this.draw.getObjectResolver()
+      ),
       getOptions: this.draw.getOptions.bind(this.draw),
       getMargins: this.draw.getMargins.bind(this.draw)
     })

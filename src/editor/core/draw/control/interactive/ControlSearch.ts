@@ -1,6 +1,5 @@
 import { ZERO } from '../../../../dataset/constant/Common'
 import { ControlComponent } from '../../../../dataset/enum/Control'
-import { ElementType } from '../../../../dataset/enum/Element'
 import { DeepRequired } from '../../../../interface/Common'
 import {
   IControlHighlight,
@@ -8,12 +7,12 @@ import {
 } from '../../../../interface/Control'
 import { IEditorOption } from '../../../../interface/Editor'
 import { IElement, IElementPosition } from '../../../../interface/Element'
-import {
-  ISearchResult,
-  ISearchResultRestArgs
-} from '../../../../interface/Search'
+import { ISearchResult } from '../../../../interface/Search'
 import { Draw } from '../../Draw'
 import { Control } from '../Control'
+import { findMatchedControlIdentity } from '../controlMatch'
+import { resolveControlBlockEndIndex } from '../controlScan'
+import { walkControlElementList } from '../controlTraversal'
 
 type IHighlightMatchResult = (ISearchResult & IControlHighlightRule)[]
 
@@ -114,79 +113,57 @@ export class ControlSearch {
 
   public computeHighlightList() {
     const search = this.draw.getSearch()
-    const computeHighlight = (
-      elementList: IElement[],
-      restArgs?: ISearchResultRestArgs
-    ) => {
-      let i = 0
-      while (i < elementList.length) {
-        const element = elementList[i]
-        i++
-        // 表格下钻处理
-        if (element.type === ElementType.TABLE) {
-          const trList = element.trList!
-          for (let r = 0; r < trList.length; r++) {
-            const tr = trList[r]
-            for (let d = 0; d < tr.tdList.length; d++) {
-              const td = tr.tdList[d]
-              const restArgs: ISearchResultRestArgs = {
-                tableId: element.id,
-                tableIndex: i - 1,
-                trIndex: r,
-                tdIndex: d,
-                tdId: td.id
-              }
-              computeHighlight(td.value, restArgs)
-            }
+    const computeHighlight = (elementList: IElement[]) => {
+      walkControlElementList({
+        elementList,
+        visitor: ({
+          element,
+          elementList,
+          cursorIndex,
+          tableContext
+        }): number | void => {
+          const highlight = findMatchedControlIdentity({
+            element,
+            optionList: this.highlightList
+          })
+          if (!highlight) return
+          // 搜索后控件结束索引
+          const startIndex = cursorIndex
+          const newEndIndex = resolveControlBlockEndIndex({
+            elementList,
+            startIndex,
+            controlId: element.controlId!
+          })
+          // 高亮信息
+          const controlElementList = elementList
+            .slice(startIndex, newEndIndex)
+            .map(element =>
+              element.controlComponent === ControlComponent.VALUE
+                ? element
+                : { value: ZERO }
+            )
+          const { ruleList } = highlight
+          for (let r = 0; r < ruleList.length; r++) {
+            const rule = ruleList[r]
+            const searchResult = search.getMatchList(
+              rule.keyword,
+              controlElementList
+            )
+            this.highlightMatchResult.push(
+              ...searchResult.map(result => ({
+                ...result,
+                ...rule,
+                ...tableContext,
+                index: result.index + startIndex // 实际索引
+              }))
+            )
           }
+          return newEndIndex
         }
-        const currentControl = element?.control
-        if (!currentControl) continue
-        const highlightIndex = this.highlightList.findIndex(
-          highlight =>
-            highlight.id === element.controlId ||
-            (currentControl.conceptId &&
-              currentControl.conceptId === highlight.conceptId)
-        )
-        if (!~highlightIndex) continue
-        // 搜索后控件结束索引
-        const startIndex = i
-        let newEndIndex = i
-        while (newEndIndex < elementList.length) {
-          const nextElement = elementList[newEndIndex]
-          if (nextElement.controlId !== element.controlId) break
-          newEndIndex++
-        }
-        i = newEndIndex
-        // 高亮信息
-        const controlElementList = elementList
-          .slice(startIndex, newEndIndex)
-          .map(element =>
-            element.controlComponent === ControlComponent.VALUE
-              ? element
-              : { value: ZERO }
-          )
-        const highlight = this.highlightList[highlightIndex]
-        const { ruleList } = highlight
-        for (let r = 0; r < ruleList.length; r++) {
-          const rule = ruleList[r]
-          const searchResult = search.getMatchList(
-            rule.keyword,
-            controlElementList
-          )
-          this.highlightMatchResult.push(
-            ...searchResult.map(result => ({
-              ...result,
-              ...rule,
-              ...restArgs,
-              index: result.index + startIndex // 实际索引
-            }))
-          )
-        }
-      }
+      })
     }
     this.highlightMatchResult = []
-    computeHighlight(this.draw.getOriginalMainElementList())
+    computeHighlight(this.draw.getObjectResolver().getOriginalMainElementList())
     this._rebuildHighlightPageMap()
   }
 
@@ -214,14 +191,15 @@ export class ControlSearch {
   private _getPositionByHighlightMatch(
     searchMatch: ISearchResult & IControlHighlightRule
   ): IElementPosition | null {
-    const positionList = this.draw.getPosition().getOriginalPositionList()
-    const elementList = this.draw.getOriginalElementList()
+    const positionList = this.draw.getCoordinate().getOriginalPositionList()
     if (searchMatch.tableId) {
       const { tableIndex, trIndex, tdIndex, index } = searchMatch
-      return (
-        elementList[tableIndex!]?.trList?.[trIndex!].tdList?.[tdIndex!]
-          ?.positionList?.[index] || null
-      )
+      const tableTd = this.draw.getTargetResolver().resolveOriginalTableTdByIndex({
+        tableIndex: tableIndex!,
+        trIndex: trIndex!,
+        tdIndex: tdIndex!
+      })
+      return tableTd?.td.positionList?.[index] || null
     }
     return positionList[searchMatch.index] || null
   }

@@ -1,5 +1,6 @@
 import { ICatalog, ICatalogItem } from '../../../interface/Catalog'
 import { IElement, IElementPosition } from '../../../interface/Element'
+import { walkElementTree } from '../../utils/ElementTreeTraversal'
 
 interface IGetCatalogPayload {
   elementList: IElement[]
@@ -68,88 +69,67 @@ function getCatalog(payload: IGetCatalogPayload): ICatalog | null {
   const { elementList, positionList } = payload
   // 筛选标题
   const titleElementList: ICatalogElement[] = []
-  let t = 0
-  while (t < elementList.length) {
-    const element = elementList[t]
-    const getElementInfo = (
-      element: IElement,
-      elementList: IElement[],
-      position: number,
-      fallbackPageNo?: number
-    ) => {
-      const titleId = element.titleId
-      const level = element.level
-      const titlePosition = positionList[position] || positionList[t]
-      const pageNo = titlePosition?.pageNo ?? fallbackPageNo
-      if (pageNo === undefined) {
-        return {
-          position,
-          titleElement: null
-        }
+  const getElementInfo = (
+    element: IElement,
+    elementList: IElement[],
+    position: number,
+    fallbackPageNo?: number
+  ) => {
+    const titleId = element.titleId
+    const level = element.level
+    const titlePosition = positionList[position]
+    const pageNo = titlePosition?.pageNo ?? fallbackPageNo
+    if (pageNo === undefined) {
+      return {
+        position,
+        titleElement: null
       }
-      const titleElement: ICatalogElement = {
-        type: ElementType.TITLE,
-        value: '',
-        level,
-        titleId,
-        // chunk 增量排版期间 positionList 可能短暂缺少标题位置；有位置时才生成目录项。
-        pageNo
-      }
-      const valueList: IElement[] = []
-      while (position < elementList.length) {
-        const titleE = elementList[position]
-        if (titleId !== titleE.titleId) {
-          position--
-          break
-        }
-        valueList.push(titleE)
-        position++
-      }
-      titleElement.value = valueList
-        .filter(el => isTextLikeElement(el))
-        .map(el => el.value)
-        .join('')
-        .replace(new RegExp(ZERO, 'g'), '')
-      return { position, titleElement }
     }
-    if (element.titleId) {
-      const { position, titleElement } = getElementInfo(element, elementList, t)
-      t = position
+    const titleElement: ICatalogElement = {
+      type: ElementType.TITLE,
+      value: '',
+      level,
+      titleId,
+      // chunk 增量排版期间 positionList 可能短暂缺少标题位置；有位置时才生成目录项。
+      pageNo
+    }
+    const valueList: IElement[] = []
+    while (position < elementList.length) {
+      const titleE = elementList[position]
+      if (titleId !== titleE.titleId) {
+        position--
+        break
+      }
+      valueList.push(titleE)
+      position++
+    }
+    titleElement.value = valueList
+      .filter(el => isTextLikeElement(el))
+      .map(el => el.value)
+      .join('')
+      .replace(new RegExp(ZERO, 'g'), '')
+    return { position, titleElement }
+  }
+  walkElementTree({
+    elementList,
+    visitor: ({ element, elementList, index, tableContext }): number | void => {
+      if (tableContext && index === 0) return undefined
+      if (!element.titleId) return undefined
+      const tablePageNo = tableContext
+        ? positionList[tableContext.tableIndex]?.pageNo
+        : undefined
+      const { position, titleElement } = getElementInfo(
+        element,
+        elementList,
+        index,
+        tablePageNo
+      )
       if (titleElement) {
         titleElementList.push(titleElement)
       }
+      return position + 1
     }
-    if (element.type === ElementType.TABLE) {
-      const tablePageNo = positionList[t]?.pageNo
-      const trList = element.trList!
-      for (let r = 0; r < trList.length; r++) {
-        const tr = trList[r]
-        for (let d = 0; d < tr.tdList.length; d++) {
-          const td = tr.tdList[d]
-          const value = td.value
-          if (value.length > 1) {
-            let index = 1
-            while (index < value.length) {
-              if (value[index]?.titleId) {
-                const { titleElement, position } = getElementInfo(
-                  value[index],
-                  value,
-                  index,
-                  tablePageNo
-                )
-                if (titleElement) {
-                  titleElementList.push(titleElement)
-                }
-                index = position
-              }
-              index++
-            }
-          }
-        }
-      }
-    }
-    t++
-  }
+  })
   if (!titleElementList.length) return null
   // 查找到比最新元素大的标题时终止
   const recursiveInsert = (

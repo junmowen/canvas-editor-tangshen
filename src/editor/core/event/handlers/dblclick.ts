@@ -5,6 +5,7 @@ import { resolvePointerHitIntent } from '../pointer/intents/ResolvePointerHitInt
 import { resolveWordRangeIntent } from '../pointer/intents/selection/SelectionWordRangeIntent'
 import { resolveTableCellDblclickIntent } from '../pointer/intents/table/TableCellMultiClickIntent'
 import { renderSelectionRange } from '../pointer/effects/PointerRenderEffect'
+import { resolvePositionAtIndex } from '../utils/resolvePositionAtIndex'
 
 /**
  * 处理双击事件。
@@ -23,16 +24,15 @@ export function dblclick(host: CanvasEvent, evt: MouseEvent): void {
   const { positionResult: positionContext, boundary } = hitTestResult
   if (!positionContext) return
 
-  applyPointerPositionContext(components.position, positionContext)
+  applyPointerPositionContext(draw.getCoordinate(), positionContext)
   const cursorIndex =
     boundary?.hitTargetIndex ??
     boundary?.absoluteIndex ??
     (positionContext.isTable ? positionContext.tdValueIndex! : positionContext.index)
   if (positionContext.cursorPosition) {
-    components.position.setCursorPosition(positionContext.cursorPosition)
+    draw.getCoordinate().setCursorPosition(positionContext.cursorPosition)
   } else if (~cursorIndex) {
-    const positionList = components.position.getPositionList()
-    components.position.setCursorPosition(positionList[cursorIndex] || null)
+    draw.getCoordinate().setCursorPosition(resolvePositionAtIndex(draw, cursorIndex))
   }
   if (positionContext.isImage && positionContext.isDirectHit) {
     components.previewer.render()
@@ -41,7 +41,7 @@ export function dblclick(host: CanvasEvent, evt: MouseEvent): void {
   if (draw.getIsPagingMode() && !~positionContext.index && positionContext.zone) {
     draw.getZone().setZone(positionContext.zone)
     draw.clearSideEffect()
-    components.position.setPositionContext({ isTable: false })
+    draw.getCoordinate().setPositionContext({ isTable: false })
     return
   }
   if (
@@ -75,8 +75,10 @@ export function dblclick(host: CanvasEvent, evt: MouseEvent): void {
       tableDblclick.activeSlice?.logicalTableIndex ??
       (tableDblclick.tableCellDblclickInfo.logicalTableId
         ? draw
-            .getTableLayoutSnapshotAccessor()
-            .resolveLogicalTableIndex(tableDblclick.tableCellDblclickInfo.logicalTableId)
+            .getTargetResolver()
+            .resolveLogicalTableById(
+              tableDblclick.tableCellDblclickInfo.logicalTableId
+            )?.index
         : null)
     const logicalTrIndex =
       tableDblclick.tableCellDblclickInfo.logicalTrIndex ??
@@ -84,14 +86,17 @@ export function dblclick(host: CanvasEvent, evt: MouseEvent): void {
     const logicalTdIndex =
       tableDblclick.tableCellDblclickInfo.logicalTdIndex ??
       tableDblclick.tableCellDblclickInfo.tdIndex
-    const tableElement =
+    const td =
       logicalTableIndex !== null && logicalTableIndex !== undefined && ~logicalTableIndex
-        ? draw.getOriginalElementList()[logicalTableIndex]
+        ? draw.getTargetResolver().resolveOriginalTableTdByIndex({
+            tableIndex: logicalTableIndex,
+            trIndex: logicalTrIndex!,
+            tdIndex: logicalTdIndex!
+          })?.td
         : null
-    const td = tableElement?.trList?.[logicalTrIndex!]?.tdList?.[logicalTdIndex!]
     if (!td?.value?.length) return
     const cellSliceList = draw
-      .getTableLayoutSnapshotAccessor()
+      .getTargetResolver()
       .getCellSlicesByCellKey(tableDblclick.tableCellDblclickInfo.cellKey)
     const startIndex = cellSliceList.length
       ? Math.min(...cellSliceList.map(slice => slice.absoluteStart))

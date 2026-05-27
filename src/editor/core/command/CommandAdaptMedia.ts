@@ -20,7 +20,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     if (activeControl) return
     const { startIndex, endIndex } = this.range.getEditBoundaryRange()
     if (!~startIndex && !~endIndex) return
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const { valueList, url } = payload
     const hyperlinkId = getUUID()
     const newElementList = valueList?.map<IElement>(v => ({
@@ -48,33 +48,42 @@ export class CommandAdaptMedia extends CommandAdaptTable {
 
   /** 解析当前光标或选区所在的超链接范围。 */
   public getHyperlinkRange(): [number, number] | null {
-    const elementList = this.draw.getElementList()
+    const targetResolver = this.draw.getTargetResolver()
+    const { elementList, startElement, endElement } =
+      targetResolver.resolveRangeBoundaryElements()
     const selectedElementList = this.range.getSelectionElementList() || []
-    const activeRange = this.getRange()
-    const candidateIndexList = [
-      selectedElementList.length
-        ? elementList.findIndex(el => el === selectedElementList[0])
-        : -1,
-      this.getCursorPosition()?.index ?? -1,
-      activeRange.startIndex,
-      activeRange.startIndex + 1,
-      activeRange.startIndex - 1
+    // 超链接入口不只看当前光标，还要兼容选区两端和相邻元素。
+    const nextElement = targetResolver.resolveRangeElement({
+      elementList,
+      anchor: 'end',
+      offset: 1
+    })
+    const prevElement = targetResolver.resolveRangeElement({
+      elementList,
+      anchor: 'start',
+      offset: -1
+    })
+    const candidateElementList = [
+      selectedElementList[0] || null,
+      startElement,
+      endElement,
+      nextElement,
+      prevElement
     ]
-    const startIndex =
-      candidateIndexList.find(index => {
-        const element = elementList[index]
-        return element?.type === ElementType.HYPERLINK
-      }) ?? -1
-    if (!~startIndex) return null
-    const startElement = elementList[startIndex]
-    if (!startElement?.hyperlinkId) return null
+    const matchedElement = candidateElementList.find(
+      element => element?.type === ElementType.HYPERLINK
+    )
+    if (!matchedElement?.hyperlinkId) return null
+    const hyperlinkId = matchedElement.hyperlinkId
+    const startIndex = elementList.indexOf(matchedElement)
+    if (startIndex < 0) return null
     let leftIndex = startIndex
     let rightIndex = startIndex
     // 向左查找
     let preIndex = startIndex - 1
     while (preIndex >= 0) {
       const preElement = elementList[preIndex]
-      if (preElement.hyperlinkId !== startElement.hyperlinkId) {
+      if (preElement.hyperlinkId !== hyperlinkId) {
         break
       }
       leftIndex = preIndex
@@ -84,7 +93,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     let nextIndex = startIndex + 1
     while (nextIndex < elementList.length) {
       const nextElement = elementList[nextIndex]
-      if (nextElement.hyperlinkId !== startElement.hyperlinkId) {
+      if (nextElement.hyperlinkId !== hyperlinkId) {
         break
       }
       rightIndex = nextIndex
@@ -104,7 +113,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     // 获取超链接索引
     const hyperRange = this.getHyperlinkRange()
     if (!hyperRange) return
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const [leftIndex, rightIndex] = hyperRange
     // 删除元素
     this.draw.spliceElementList(
@@ -127,7 +136,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     // 获取超链接索引
     const hyperRange = this.getHyperlinkRange()
     if (!hyperRange) return
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const [leftIndex, rightIndex] = hyperRange
     // 删除属性
     for (let i = leftIndex; i <= rightIndex; i++) {
@@ -153,7 +162,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     // 获取超链接索引
     const hyperRange = this.getHyperlinkRange()
     if (!hyperRange) return
-    const elementList = this.draw.getElementList()
+    const elementList = this.draw.getObjectResolver().getElementList()
     const [leftIndex, rightIndex] = hyperRange
     // 替换url
     for (let i = leftIndex; i <= rightIndex; i++) {
@@ -177,10 +186,15 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     if (activeControl) return
     const { startIndex, endIndex } = this.getRange()
     if (!~startIndex && !~endIndex) return
-    const elementList = this.draw.getElementList()
+    const targetResolver = this.draw.getTargetResolver()
+    const elementList = targetResolver.resolveRangeBoundaryElements().elementList
     let curIndex = -1
     // 光标存在分割线，则判断为修改线段逻辑
-    const endElement = elementList[endIndex + 1]
+    const endElement = targetResolver.resolveRangeElement({
+      elementList,
+      anchor: 'end',
+      offset: 1
+    })
     if (endElement && endElement.type === ElementType.SEPARATOR) {
       if (
         endElement.dashArray &&
@@ -200,7 +214,11 @@ export class CommandAdaptMedia extends CommandAdaptTable {
       formatElementContext(elementList, [newElement], startIndex, {
         editorOptions: this.options
       })
-      if (startIndex !== 0 && elementList[startIndex].value === ZERO) {
+      const startElement = targetResolver.resolveRangeElement({
+        elementList,
+        anchor: 'start'
+      })
+      if (startIndex !== 0 && startElement?.value === ZERO) {
         this.draw.spliceElementList(elementList, startIndex, 1, [newElement])
         curIndex = startIndex - 1
       } else {
@@ -287,9 +305,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
 
   /** 替换当前图片元素的资源信息。 */
   public replaceImageElement(payload: string) {
-    const { startIndex } = this.getRange()
-    const elementList = this.draw.getElementList()
-    const element = elementList[startIndex]
+    const element = this.draw.getTargetResolver().resolveRangeElement()
     if (!element || element.type !== ElementType.IMAGE) return
     element.value = payload
     this.draw.render({
@@ -299,9 +315,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
 
   /** 将当前图片元素保存为本地图片文件。 */
   public saveAsImageElement() {
-    const { startIndex } = this.getRange()
-    const elementList = this.draw.getElementList()
-    const element = elementList[startIndex]
+    const element = this.draw.getTargetResolver().resolveRangeElement()
     if (!element || element.type !== ElementType.IMAGE) return
     downloadFile(element.value, `${element.id!}.png`)
   }
@@ -317,7 +331,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
       display === ImageDisplay.FLOAT_TOP ||
       display === ImageDisplay.FLOAT_BOTTOM
     ) {
-      const positionList = this.position.getPositionList()
+      const positionList = this.coordinate.getPositionList()
       const {
         pageNo,
         coordinate: { leftTop }

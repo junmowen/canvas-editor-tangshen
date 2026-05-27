@@ -24,12 +24,12 @@ export function runLineBoundaryNavigationIntent(
   const draw = host.getDraw()
   if (draw.isReadonly()) return
   const components = draw.getComponents()
-  const position = components.position
-  const cursorPosition = position.getCursorPosition()
+  const coordinate = draw.getCoordinate()
+  const cursorPosition = coordinate.getCursorPosition()
   if (!cursorPosition) return
 
   const isHome = evt.key === KeyMap.Home
-  const positionList = position.getPositionList()
+  const positionList = coordinate.getPositionList()
   const targetPosition = getRowBoundaryPosition(
     positionList,
     cursorPosition,
@@ -58,7 +58,9 @@ export function runLineBoundaryNavigationIntent(
   }
 
   if (anchorStartIndex > anchorEndIndex) {
-    ;[anchorStartIndex, anchorEndIndex] = [anchorEndIndex, anchorStartIndex]
+    const nextStartIndex = anchorEndIndex
+    anchorEndIndex = anchorStartIndex
+    anchorStartIndex = nextStartIndex
   }
   rangeManager.setRange(anchorStartIndex, anchorEndIndex)
   const isCollapsed = anchorStartIndex === anchorEndIndex

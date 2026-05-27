@@ -6,6 +6,7 @@ import { IRow } from '../../../interface/Row'
 import { EditorMode, PageMode } from '../../../dataset/enum/Editor'
 import { ElementType } from '../../../dataset/enum/Element'
 import type { Draw } from '../Draw'
+import { forEachTableCell } from '../../table/utils/TableCellTraversal'
 import { PagePartitioner } from './PagePartitioner'
 
 /**
@@ -127,7 +128,7 @@ export class DrawLayoutPipeline {
     // 获取编辑器配置信息
     const { header, footer } = this.draw.getRuntime().getOptions()
     // 获取主元素列表
-    const mainElementList = this.draw.getOriginalMainElementList()
+    const mainElementList = this.draw.getObjectResolver().getOriginalMainElementList()
     const featurePresence = this.scanFeaturePresence(mainElementList)
     // 获取内部宽度
     const innerWidth = this.draw.getInnerWidth()
@@ -137,7 +138,7 @@ export class DrawLayoutPipeline {
     const nextSnapshotVersion = this.draw.getTableLayoutSnapshotVersion() + 1
 
     // 清空浮动元素位置列表
-    this.draw.getComponents().position.setFloatPositionList([])
+    this.draw.getCoordinate().setFloatPositionList([])
 
     // 如果是分页模式，计算页眉和页脚
     if (isPagingMode || this.draw.getOptions().pageMode === PageMode.CONTINUITY) {
@@ -201,7 +202,7 @@ export class DrawLayoutPipeline {
     })
     // 计算位置列表
     const positionStartTime = performance.now()
-    this.draw.getComponents().position.computePositionList()
+    this.draw.getCoordinate().computePositionList()
     this.lastPositionDuration = performance.now() - positionStartTime
     const continuousPageHeight =
       partitionResult.continuousPageHeight !== undefined
@@ -283,19 +284,21 @@ export class DrawLayoutPipeline {
       for (let i = 0; i < elementList.length; i++) {
         const element = elementList[i]
         if (element.type === ElementType.TABLE) {
-          element.trList?.forEach(tr => {
-            tr.tdList.forEach(td => {
+          forEachTableCell({
+            tableElement: element,
+            tableIndex: i,
+            visitor: ({ td }) => {
               visitPositionList(td.positionList)
               visitElementList(td.value || [])
-            })
+            }
           })
         }
       }
     }
-    visitPositionList(this.draw.getPosition().getLayoutMainPositionList())
-    visitElementList(this.draw.getLayoutMainElementList())
+    visitPositionList(this.draw.getCoordinate().getLayoutMainPositionList())
+    visitElementList(this.draw.getObjectResolver().getLayoutMainElementList())
     const { scale } = this.draw.getRuntime().getOptions()
-    this.draw.getPosition().getFloatPositionList().forEach(floatPosition => {
+    this.draw.getCoordinate().getFloatPositionList().forEach(floatPosition => {
       const element = floatPosition.element
       if (element.imgFloatPosition && element.height) {
         maxBottom = Math.max(
@@ -318,8 +321,10 @@ export class DrawLayoutPipeline {
         const element = payload[i]
         if (element.type === ElementType.TABLE) {
           result.hasTable = true
-          element.trList?.forEach(tr => {
-            tr.tdList.forEach(td => visit(td.value || []))
+          forEachTableCell({
+            tableElement: element,
+            tableIndex: i,
+            visitor: ({ td }) => visit(td.value || [])
           })
         }
         if (element.areaId) {
@@ -341,8 +346,8 @@ export class DrawLayoutPipeline {
     if (layoutPatch.type !== 'text-input') {
       return null
     }
-    const mainElementList = this.draw.getOriginalMainElementList()
-    const oldRowList = this.draw.getRowList()
+    const mainElementList = this.draw.getObjectResolver().getOriginalMainElementList()
+    const oldRowList = this.draw.getObjectResolver().getRowList()
     const oldPageRowList = this.draw.getPageRowList()
     if (
       !this.draw.getComponents().zone.isMainActive() ||
@@ -467,12 +472,12 @@ export class DrawLayoutPipeline {
       tableLayoutSnapshotVersion: nextSnapshotVersion,
       tableLayoutSnapshot: null
     })
-    this.draw.getComponents().position.computePositionListFromPage(layoutPatch.pageNo)
+    this.draw.getCoordinate().computePositionListFromPage(layoutPatch.pageNo)
     this.draw.replaceTableLayoutSnapshot(null)
     return {
       rowList: nextRowList,
       pageRowList: nextPageRowList,
-      layoutElementList: this.draw.getLayoutMainElementList(),
+      layoutElementList: this.draw.getObjectResolver().getLayoutMainElementList(),
       mainElementList,
       tableLayoutSnapshotVersion: nextSnapshotVersion
     }

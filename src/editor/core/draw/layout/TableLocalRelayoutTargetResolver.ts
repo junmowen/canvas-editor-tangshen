@@ -13,13 +13,16 @@ export class TableLocalRelayoutTargetResolver {
 
   /** 解析当前表格输入的局部重分页目标。 */
   public resolveCurrentTarget(): ITableLocalRelayoutTargetResult {
-    const positionContext = this.draw.getPosition().getPositionContext()
+    const positionContext = this.draw.getCoordinate().getPositionContext()
     if (!positionContext.isTable || positionContext.index === undefined) {
       return { target: null, reason: 'not-table-context' }
     }
 
-    const tableIndex = positionContext.index
-    const sourceTable = this.draw.getOriginalMainElementList()[tableIndex]
+    const tableContext = this.draw.getTargetResolver().resolveContextTable({
+      positionContext
+    })
+    const tableIndex = tableContext?.index ?? -1
+    const sourceTable = tableContext?.element
     if (!sourceTable || sourceTable.type !== ElementType.TABLE || !sourceTable.id) {
       return { target: null, reason: 'logical-table-miss' }
     }

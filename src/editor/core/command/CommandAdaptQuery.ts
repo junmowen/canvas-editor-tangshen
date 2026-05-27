@@ -55,26 +55,26 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
   public getHTML(): IEditorHTML {
     this.draw.flushAsyncInsertTransaction('command-get-html')
     const options = this.options
-    const headerElementList = this.draw.getHeaderElementList()
-    const mainElementList = this.draw.getOriginalMainElementList()
-    const footerElementList = this.draw.getFooterElementList()
+    const { header, main, footer } = this.draw
+      .getObjectResolver()
+      .getOriginalEditorData()
     return {
-      header: createDomFromElementList(headerElementList, options).innerHTML,
-      main: createDomFromElementList(mainElementList, options).innerHTML,
-      footer: createDomFromElementList(footerElementList, options).innerHTML
+      header: createDomFromElementList(header, options).innerHTML,
+      main: createDomFromElementList(main, options).innerHTML,
+      footer: createDomFromElementList(footer, options).innerHTML
     }
   }
 
   /** 获取当前文档的纯文本内容。 */
   public getText(): IEditorText {
     this.draw.flushAsyncInsertTransaction('command-get-text')
-    const headerElementList = this.draw.getHeaderElementList()
-    const mainElementList = this.draw.getOriginalMainElementList()
-    const footerElementList = this.draw.getFooterElementList()
+    const { header, main, footer } = this.draw
+      .getObjectResolver()
+      .getOriginalEditorData()
     return {
-      header: getTextFromElementList(headerElementList),
-      main: getTextFromElementList(mainElementList),
-      footer: getTextFromElementList(footerElementList)
+      header: getTextFromElementList(header),
+      main: getTextFromElementList(main),
+      footer: getTextFromElementList(footer)
     }
   }
 
@@ -88,43 +88,6 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
     return this.range.toString()
   }
 
-  /** 解析选区上下文的边界元素。 */
-  private resolveRangeContextBoundaryElements(payload: {
-    isCollapsed: boolean
-    startIndex: number
-    endIndex: number
-    elementList: IElement[]
-    selectedElementList: IElement[]
-  }) {
-    // 统一解析 rangeContext 的首尾元素来源。
-    // 闭合光标和非闭合选区在“首尾元素取谁”上不同，
-    // 但最终都在这里收成同一套输出。
-    const { isCollapsed, startIndex, endIndex, elementList, selectedElementList } =
-      payload
-    const startSourceElement =
-      (isCollapsed ? elementList[startIndex] : selectedElementList[0]) ||
-      elementList[startIndex] ||
-      null
-    const endSourceElement =
-      (isCollapsed
-        ? elementList[endIndex]
-        : selectedElementList[selectedElementList.length - 1]) ||
-      elementList[Math.max(0, endIndex - 1)] ||
-      elementList[endIndex] ||
-      null
-    if (!startSourceElement || !endSourceElement) {
-      return null
-    }
-    return {
-      startElement: pickElementAttr(startSourceElement, {
-        extraPickAttrs: ['id', 'controlComponent']
-      }),
-      endElement: pickElementAttr(endSourceElement, {
-        extraPickAttrs: ['id', 'controlComponent']
-      })
-    }
-  }
-
   /** 解析选区上下文的起止位置信息。 */
   private resolveRangeContextPositions(payload: {
     isCollapsed: boolean
@@ -135,7 +98,7 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
     // 统一解析 rangeContext 里的首尾位置和选区位置列表。
     // 这样 getRangeContext 主体只做编排，不再铺开大量 fallback 分支。
     const { isCollapsed, startIndex, endIndex, cursorPosition } = payload
-    const positionList = this.position.getPositionList()
+    const positionList = this.coordinate.getPositionList()
     const selectionContentRange = this.range.getSelectionContentRange()
     const selectionPositionList = selectionContentRange
       ? positionList.slice(
@@ -215,7 +178,7 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
       return rangeRects
     }
 
-    const positionList = this.position.getPositionList()
+    const positionList = this.coordinate.getPositionList()
     const position = cursorPosition || positionList[endIndex]
     if (!position) {
       return null
@@ -275,8 +238,10 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
     const cursorPosition = this.getCursorPosition()
     const selectedElementList = this.range.getSelectionElementList() || []
     const selectionElementList = zipElementList(selectedElementList)
-    const elementList = this.draw.getElementList()
-    const boundaryElements = this.resolveRangeContextBoundaryElements({
+    const elementList = this.draw.getObjectResolver().getElementList()
+    const boundaryElements = this.draw
+      .getTargetResolver()
+      .resolveRangeContextBoundaryElements({
       isCollapsed,
       startIndex,
       endIndex,
@@ -284,8 +249,14 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
       selectedElementList
     })
     if (!boundaryElements) return null
-    const { startElement, endElement } = boundaryElements
-    const rowList = this.draw.getRowList()
+    const { startSourceElement, endSourceElement } = boundaryElements
+    const startElement = pickElementAttr(startSourceElement, {
+      extraPickAttrs: ['id', 'controlComponent']
+    })
+    const endElement = pickElementAttr(endSourceElement, {
+      extraPickAttrs: ['id', 'controlComponent']
+    })
+    const rowList = this.draw.getObjectResolver().getRowList()
     const resolvedPositions = this.resolveRangeContextPositions({
       isCollapsed,
       startIndex,
@@ -328,10 +299,10 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
     if (!rangeRects) return null
     const zone = this.draw.getZone().getZone()
     const { isTable, trIndex, tdIndex, index } =
-      this.position.getPositionContext()
+      this.coordinate.getPositionContext()
     let tableElement: IElement | null = null
     if (isTable) {
-      const originalElementList = this.draw.getOriginalElementList()
+      const originalElementList = this.draw.getObjectResolver().getOriginalElementList()
       const originTableElement = originalElementList[index!] || null
       if (originTableElement) {
         tableElement = zipElementList([originTableElement])[0]
@@ -389,19 +360,23 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
     const rangeList = this.getKeywordRangeList(payload)
     if (!rangeList.length) return null
     const searchResultContextList: ISearchResultContext[] = []
-    const positionList = this.position.getLayoutMainPositionList()
-    const elementList = this.draw.getOriginalMainElementList()
+    const positionList = this.coordinate.getLayoutMainPositionList()
     for (let r = 0; r < rangeList.length; r++) {
       const range = rangeList[r]
       const { startIndex, endIndex, tableId, startTrIndex, startTdIndex } =
         range
       let keywordPositionList: IElementPosition[] = positionList
       if (range.tableId) {
-        const tableElement = elementList.find(el => el.id === tableId)
-        if (tableElement) {
+        const tableContext = this.draw
+          .getTargetResolver()
+          .resolveOriginalTableById(tableId!)
+        if (tableContext) {
           keywordPositionList =
-            tableElement.trList?.[startTrIndex!]?.tdList?.[startTdIndex!]
-              ?.positionList || []
+            this.draw.getTargetResolver().resolveOriginalTableTdByIndex({
+              tableIndex: tableContext.index,
+              trIndex: startTrIndex!,
+              tdIndex: startTdIndex!
+            })?.td.positionList || []
         }
       }
       // 获取关键词始末位置

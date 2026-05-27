@@ -27,22 +27,13 @@ import { Listener } from '../listener/Listener'
 import { Position } from '../position/Position'
 import { RangeManager } from '../range/RangeManager'
 import { Background } from './frame/Background'
-import { Highlight } from './richtext/Highlight'
 import { Margin } from './frame/Margin'
 import { Search } from './interactive/Search'
-import { Strikeout } from './richtext/Strikeout'
-import { Underline } from './richtext/Underline'
 import { ImageParticle } from './particle/ImageParticle'
-import { LaTexParticle } from './particle/latex/LaTexParticle'
 import { TextParticle } from './particle/TextParticle'
-import { PageNumber } from './frame/PageNumber'
 import { TableParticle } from './particle/table/TableParticle'
 import { HyperlinkParticle } from './particle/HyperlinkParticle'
 import { Header } from './frame/Header'
-import { SuperscriptParticle } from './particle/SuperscriptParticle'
-import { SubscriptParticle } from './particle/SubscriptParticle'
-import { SeparatorParticle } from './particle/SeparatorParticle'
-import { PageBreakParticle } from './particle/PageBreakParticle'
 import { Watermark } from './frame/Watermark'
 import {
   EditorMode,
@@ -53,26 +44,19 @@ import { Control } from './control/Control'
 import { CheckboxParticle } from './particle/CheckboxParticle'
 import { RadioParticle } from './particle/RadioParticle'
 import { DeepRequired, IPadding } from '../../interface/Common'
-import { DateParticle } from './particle/date/DateParticle'
 import { IMargin } from '../../interface/Margin'
 import { BlockParticle } from './particle/block/BlockParticle'
 import { I18n } from '../i18n/I18n'
-import { ImageObserver } from '../observer/ImageObserver'
 import { Zone } from '../zone/Zone'
 import { Footer } from './frame/Footer'
 import { ListParticle } from './particle/ListParticle'
-import { Placeholder } from './frame/Placeholder'
 import { EventBus } from '../event/eventbus/EventBus'
 import { EventBusMap } from '../../interface/EventBus'
 import { Group } from './interactive/Group'
 import { Override } from '../override/Override'
-import { LineBreakParticle } from './particle/LineBreakParticle'
-import { LineNumber } from './frame/LineNumber'
 import { PageBorder } from './frame/PageBorder'
-import { ITd } from '../../interface/table/Td'
 import { Area } from './interactive/Area'
 import { Badge } from './frame/Badge'
-import { TableLayoutSnapshotAccessor } from '../table/layout/TableLayoutSnapshotAccessor'
 import { TableOverlayRenderer } from '../table/render/TableOverlayRenderer'
 import { ITableLayoutSnapshot } from '../table/layout/TableLayoutSnapshotTypes'
 import { TableHitTestService } from '../table/hittest/TableHitTestService'
@@ -86,8 +70,10 @@ import {
 import { DrawRuntime } from './runtime/DrawRuntime'
 import { DrawComponentRegistry } from './runtime/DrawComponentRegistry'
 import { DrawServiceRegistry } from './runtime/DrawServiceRegistry'
-import { IPointerCoordinatePayload } from '../event/pointer/coordinates/PointerCoordinateTypes'
 import { TrackChangeService } from './track-change/TrackChangeService'
+import { DrawCoordinateService } from './coordinate/DrawCoordinateService'
+import { DrawObjectResolverService } from './data/DrawObjectResolverService'
+import { DrawTargetResolverService } from './data/DrawTargetResolverService'
 
 export class Draw {
   private runtime: DrawRuntime
@@ -103,7 +89,6 @@ export class Draw {
   private bootstrapFooter?: Footer
   private bootstrapTableParticle?: TableParticle
   private bootstrapHyperlinkParticle?: HyperlinkParticle
-  private bootstrapDateParticle?: DateParticle
   private bootstrapImageParticle?: ImageParticle
   private bootstrapControl?: Control
   private bootstrapCursor?: Cursor
@@ -312,20 +297,16 @@ export class Draw {
     return this.pageCanvasHost.getPageCount()
   }
 
-  public getTableLayoutSnapshotAccessor(): TableLayoutSnapshotAccessor {
-    return this.services.tableLayoutSnapshotAccessor
+  public getCoordinate(): DrawCoordinateService {
+    return this.services.coordinateService
   }
 
-  public getTableRowList(sourceElementList: IElement[]): IRow[] {
-    return this.services.dataAccess.getTableRowList(sourceElementList)
+  public getObjectResolver(): DrawObjectResolverService {
+    return this.services.objectResolverService
   }
 
-  public getOriginalRowList() {
-    return this.services.dataAccess.getOriginalRowList()
-  }
-
-  public getRowList(): IRow[] {
-    return this.services.dataAccess.getRowList()
+  public getTargetResolver(): DrawTargetResolverService {
+    return this.services.targetResolverService
   }
 
   public getPageRowList(): IRow[][] {
@@ -338,10 +319,6 @@ export class Draw {
 
   public isPagingPageMode(): boolean {
     return this.getIsPagingMode()
-  }
-
-  public getLayoutMainElementList(): IElement[] {
-    return this.runtime.getLayoutMainElementList()
   }
 
   public getTableLayoutSnapshot(): ITableLayoutSnapshot {
@@ -399,7 +376,7 @@ export class Draw {
       asyncInsert: this.services.mutationService.getAsyncInsertStats(),
       // typingLinePatch 统计 chunk 失败后单行正式 patch 的覆盖情况。
       typingLinePatch: this.services.typingLinePatchPipeline.getStats(),
-      tableSnapshot: this.services.tableLayoutSnapshotAccessor.getStats(),
+      tableSnapshot: this.services.targetResolverService.getTableSnapshotStats(),
       // documentTextStore 统计正文主数据适配层，后续替换为 piece-table / rope 时用于双写对比。
       documentTextStore: this.runtime.getDocumentTextStoreStats(),
       // workerRender 统计 OffscreenCanvas 后台页渲染 job、fallback 和过期丢弃。
@@ -600,10 +577,6 @@ export class Draw {
     this.bootstrapHyperlinkParticle = payload
   }
 
-  public setBootstrapDateParticle(payload: DateParticle) {
-    this.bootstrapDateParticle = payload
-  }
-
   public setBootstrapImageParticle(payload: ImageParticle) {
     this.bootstrapImageParticle = payload
   }
@@ -644,32 +617,8 @@ export class Draw {
     return this.components.margin
   }
 
-  public getPageNumber(): PageNumber {
-    return this.components.pageNumber
-  }
-
-  public getPlaceholder(): Placeholder {
-    return this.components.placeholder
-  }
-
-  public getLineNumber(): LineNumber {
-    return this.components.lineNumber
-  }
-
   public getPageBorder(): PageBorder {
     return this.components.pageBorder
-  }
-
-  public getHighlight(): Highlight {
-    return this.components.highlight
-  }
-
-  public getUnderline(): Underline {
-    return this.components.underline
-  }
-
-  public getStrikeout(): Strikeout {
-    return this.components.strikeout
   }
 
   public getGroup(): Group {
@@ -688,7 +637,8 @@ export class Draw {
     return this.components?.historyManager || this.bootstrapHistoryManager!
   }
 
-  public getPosition(): Position {
+  /** 内部坐标实现入口，仅允许 DrawCoordinateService 调用。 */
+  public getInternalPosition(): Position {
     return this.components?.position || this.bootstrapPosition!
   }
 
@@ -708,48 +658,12 @@ export class Draw {
     return this.components?.range || this.bootstrapRange!
   }
 
-  public getLineBreakParticle(): LineBreakParticle {
-    return this.components.lineBreakParticle
-  }
-
   public getTextParticle(): TextParticle {
     return this.components.textParticle
   }
 
-  public getHeaderElementList(): IElement[] {
-    return this.services.dataAccess.getHeaderElementList()
-  }
-
-  public getTableElementList(sourceElementList: IElement[]): IElement[] {
-    return this.services.dataAccess.getTableElementList(sourceElementList)
-  }
-
-  public getElementList(): IElement[] {
-    return this.services.dataAccess.getElementList()
-  }
-
-  public getMainElementList(): IElement[] {
-    return this.services.dataAccess.getMainElementList()
-  }
-
-  public getOriginalElementList() {
-    return this.services.dataAccess.getOriginalElementList()
-  }
-
-  public getOriginalMainElementList(): IElement[] {
-    return this.runtime.getOriginalMainElementList()
-  }
-
   public getEditor2DocumentTree(): IEditorData {
     return this.runtime.getEditor2DocumentTree()
-  }
-
-  public getFooterElementList(): IElement[] {
-    return this.services.dataAccess.getFooterElementList()
-  }
-
-  public getTd(): ITd | null {
-    return this.services.dataAccess.getTd()
   }
 
   public insertElementList(
@@ -802,10 +716,6 @@ export class Draw {
     return this.components?.imageParticle || this.bootstrapImageParticle!
   }
 
-  public getLaTexParticle(): LaTexParticle {
-    return this.components.laTexParticle
-  }
-
   public getTableParticle(): TableParticle {
     return this.components?.tableParticle || this.bootstrapTableParticle!
   }
@@ -820,26 +730,6 @@ export class Draw {
 
   public getHyperlinkParticle(): HyperlinkParticle {
     return this.components?.hyperlinkParticle || this.bootstrapHyperlinkParticle!
-  }
-
-  public getDateParticle(): DateParticle {
-    return this.components?.dateParticle || this.bootstrapDateParticle!
-  }
-
-  public getSeparatorParticle(): SeparatorParticle {
-    return this.components.separatorParticle
-  }
-
-  public getPageBreakParticle(): PageBreakParticle {
-    return this.components.pageBreakParticle
-  }
-
-  public getSuperscriptParticle(): SuperscriptParticle {
-    return this.components.superscriptParticle
-  }
-
-  public getSubscriptParticle(): SubscriptParticle {
-    return this.components.subscriptParticle
   }
 
   public getListParticle(): ListParticle {
@@ -862,20 +752,14 @@ export class Draw {
     return this.components?.control || this.bootstrapControl!
   }
 
-  public getImageObserver(): ImageObserver {
-    return this.components.imageObserver
-  }
-
   public replaceMainElementList(payload: IElement[]) {
     this.runtime.replaceMainElementList(payload)
   }
 
   public syncEditor2DocumentTree() {
-    this.runtime.syncEditor2DocumentTree({
-      header: this.getHeaderElementList(),
-      main: this.getOriginalMainElementList(),
-      footer: this.getFooterElementList()
-    })
+    this.runtime.syncEditor2DocumentTree(
+      this.getObjectResolver().getOriginalEditorData()
+    )
   }
 
   /** 记录仍由旧数组链路完成的正文写操作，供后续 store mirror 对齐。 */
@@ -933,14 +817,6 @@ export class Draw {
     this.viewState.replacePagePixelRatio(payload)
   }
 
-  public scheduleFrameRender(payload?: IDrawOption) {
-    this.services.renderInvalidationManager.scheduleFrameRender(payload)
-  }
-
-  public flushScheduledFrameRender() {
-    this.services.renderInvalidationManager.flushScheduledFrameRender()
-  }
-
   public refreshVisibleOverlay(options?: {
     isSelectionDirty?: boolean
     isSearchDirty?: boolean
@@ -961,26 +837,8 @@ export class Draw {
     return this.services.viewportService.getLazyRenderObserver()
   }
 
-  public getPointerCoordinates(
-    evt: MouseEvent | DragEvent,
-    prev: IPointerCoordinatePayload | null = null
-  ) {
-    return this.services.viewportService.getPointerCoordinates(evt, prev)
-  }
-
-  public getPointerDelta(
-    prev: IPointerCoordinatePayload | null,
-    next: IPointerCoordinatePayload
-  ) {
-    return this.services.viewportService.getPointerDelta(prev, next)
-  }
-
   public resolveVisibleRenderPageNos(extraPageNos: number[] = []): number[] {
     return this.services.viewportService.resolveVisibleRenderPageNos(extraPageNos)
-  }
-
-  public getRowCount(): number {
-    return this.getRowList().length
   }
 
   public async getDataURL(payload: IGetImageOption = {}): Promise<string[]> {
@@ -1003,10 +861,6 @@ export class Draw {
     this.services.painterService.setPainterStyle(payload, options)
   }
 
-  public setDefaultRange() {
-    this.services.painterService.setDefaultRange()
-  }
-
   public getIsPagingMode(): boolean {
     return this.getOptions().pageMode === PageMode.PAGING
   }
@@ -1021,13 +875,6 @@ export class Draw {
 
   public getPagePixelRatio(): number {
     return this.viewState.getPagePixelRatio()
-  }
-
-  public setPagePixelRatio(payload: number | null) {
-    if (!this.viewState.setPagePixelRatio(payload)) {
-      return
-    }
-    this.setPageDevicePixel()
   }
 
   public setPageDevicePixel() {
