@@ -1,13 +1,13 @@
 # Event Pointer 目录说明
 
-`pointer/` 管理鼠标、拖拽、选区和命中相关状态，是 DOM pointer 事件到编辑器选择 / 拖拽意图的编排层。
+`pointer/` 管理鼠标动作、拖拽、选区和命中相关状态，是 DOM pointer 事件到编辑器选择 / 拖拽意图的编排层。
 
 ## 位置说明
 
 - 所属层级：事件层 / 指针交互
 - 上游调用：`CanvasEvent.ts`
 - 下游依赖：`handlers/**`、`pointer/intents/**`、draw、range、position
-- 子目录：`coordinates/`、`effects/`、`intents/`、`utils/`
+- 子目录：`actions/`、`coordinates/`、`effects/`、`intents/`、`utils/`
 
 ## 文件说明
 
@@ -16,6 +16,7 @@
 | `PointerController.ts` | 指针事件控制器，转发 mouse / drag / wheel 到 handlers。 |
 | `PointerSession.ts` | 指针会话状态类型和默认状态。 |
 | `PointerSessionController.ts` | 清理选区和拖拽会话状态。 |
+| `actions/` | 鼠标动作切片，例如保留右键选区、从选区开始拖拽、行拖拽和普通选区起点。 |
 | `coordinates/` | 指针坐标解析。 |
 | `effects/` | 指针交互后的渲染副作用。 |
 | `intents/` | 命中、选区、拖拽意图。 |
@@ -30,3 +31,4 @@
 | `PointerController.ts` | `contextmenu()` / `wheel()` / `dblclick()` / `threeClick()` | 转发右键、滚轮和多击事件。 | `CanvasEvent.ts` |
 | `PointerSession.ts` | `createDefaultPointerSession()` | 创建 pointer session 初始状态。 | `CanvasEvent.ts` |
 | `PointerSessionController.ts` | `clearSelection()` / `clearDrag()` | 清理选区或拖拽状态。 | handlers、drag-drop intents |
+| `actions/` | `*Action(payload)` | 执行鼠标按下后的具体动作分支。 | `handlers/mousedown.ts` |

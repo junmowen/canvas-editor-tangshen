@@ -1,16 +1,9 @@
-import { MouseEventButton } from '../../../dataset/enum/Event'
-import { TEXTLIKE_ELEMENT_TYPE } from '../../../dataset/constant/Element'
-import { deepClone } from '../../../utils'
 import { CanvasEvent } from '../CanvasEvent'
-import { isElementInControl } from '../../modules/control/hittest/ControlHitTest'
-import { hasListSelectionContext } from '../../modules/list/interaction/ListSelectionPolicy'
 import { debugMousedown } from '../debug/mousedown'
-import { captureDragSnapshot } from '../pointer/intents/drag-drop/CaptureDragSnapshotIntent'
-import { applyPointerPositionContext } from '../pointer/utils/applyPointerPositionContext'
-import { resolveRowDragHandleAtPoint } from '../../modules/row-drag/RowDragHandle'
-import { resolveSelectionStartState } from '../../range/selection/resolveSelectionStartState'
-import { runSelectionStartIntent } from '../pointer/intents/selection/SelectionStartIntent'
-import { resolvePositionAtIndex } from '../../position/utils/resolvePositionAtIndex'
+import { keepContextMenuSelectionAction } from '../pointer/actions/KeepContextMenuSelectionAction'
+import { startSelectedRangeDragAction } from '../pointer/actions/StartSelectedRangeDragAction'
+import { startRowDragAction } from '../pointer/actions/StartRowDragAction'
+import { startSelectionAction } from '../pointer/actions/StartSelectionAction'
 
 /**
  * 处理鼠标按下事件。
@@ -24,46 +17,18 @@ export function mousedown(evt: MouseEvent, host: CanvasEvent) {
   debugMousedown(evt, host)
   try {
     const draw = host.getDraw()
-    const components = draw.getComponents()
     const session = host.getPointerSession()
-    const isReadonly = draw.isReadonly()
-    const rangeManager = components.range
-    const coordinate = draw.getCoordinate()
-    const range = rangeManager.getEditBoundaryRange()
     const coordinates = draw.getCoordinate().getPointerCoordinates(evt, session.lastPointerCoordinates)
     const pagePoint = coordinates.page
-    const selectedElementList = rangeManager.getSelectionElementList() || []
-    const isPureTextSelection =
-      !!selectedElementList.length &&
-      selectedElementList.every(
-        element =>
-          (!element.type || TEXTLIKE_ELEMENT_TYPE.includes(element.type)) &&
-          !isElementInControl(element)
-      )
-    const isListSelection = hasListSelectionContext(selectedElementList)
 
-    if (
-      evt.button === MouseEventButton.RIGHT &&
-      (range.isCrossRowCol || !rangeManager.getIsCollapsed())
-    ) {
-      session.lastPointerCoordinates = coordinates
+    if (keepContextMenuSelectionAction({ evt, host, coordinates })) {
       return
     }
-
     if (
-      !session.isAllowDrag &&
-      !isReadonly &&
-      range.startIndex !== range.endIndex &&
-      (!isPureTextSelection || isListSelection)
+      pagePoint &&
+      startSelectedRangeDragAction({ host, pagePoint, coordinates })
     ) {
-      const isPointInRange = pagePoint
-        ? rangeManager.getIsPointInRange(pagePoint.x, pagePoint.y)
-        : false
-      if (isPointInRange) {
-        captureDragSnapshot(host)
-        session.lastPointerCoordinates = coordinates
-        return
-      }
+      return
     }
 
     if (!pagePoint) {
@@ -72,84 +37,10 @@ export function mousedown(evt: MouseEvent, host: CanvasEvent) {
     }
     draw.setPageNo(pagePoint.pageNo)
 
-    if (!isReadonly && evt.button === MouseEventButton.LEFT) {
-      const rowDragHandle = resolveRowDragHandleAtPoint({
-        draw,
-        x: pagePoint.x,
-        y: pagePoint.y,
-        pageNo: pagePoint.pageNo
-      })
-      if (rowDragHandle) {
-        rangeManager.setRange(rowDragHandle.startIndex, rowDragHandle.endIndex)
-        coordinate.setPositionContext({
-          isTable: false,
-          index: rowDragHandle.cursorIndex
-        })
-        const cursorPosition = resolvePositionAtIndex(
-          draw,
-          rowDragHandle.cursorIndex
-        )
-        if (cursorPosition) {
-          coordinate.setCursorPosition(cursorPosition)
-        }
-        draw.render({
-          curIndex: rowDragHandle.cursorIndex,
-          isSetCursor: false,
-          isCompute: false,
-          isSubmitHistory: false,
-          pageRenderScope: 'visible'
-        })
-        captureDragSnapshot(host, {
-          dragSource: 'row-handle'
-        })
-        session.isAllowDrop = true
-        session.isAllowSelection = false
-        session.mouseDownStartPosition = {
-          index: rowDragHandle.cursorIndex,
-          x: pagePoint.x,
-          y: pagePoint.y,
-          pageNo: pagePoint.pageNo
-        }
-        session.mouseDownStartCoordinates = coordinates
-        session.lastPointerCoordinates = coordinates
-        return
-      }
-    }
-
-    session.isAllowSelection = true
-    const oldPositionContext = deepClone(coordinate.getPositionContext())
-    const selectionStartState = resolveSelectionStartState({
-      draw,
-      x: pagePoint.x,
-      y: pagePoint.y,
-      pageNo: Number(pagePoint.pageIndex),
-      pagePoint,
-      range
-    })
-    const positionResult = selectionStartState?.positionResult
-    if (!positionResult) {
-      session.lastPointerCoordinates = coordinates
+    if (startRowDragAction({ evt, host, pagePoint, coordinates })) {
       return
     }
-
-    session.mouseDownStartPosition = {
-      ...positionResult,
-      index: selectionStartState.mouseDownIndex,
-      x: pagePoint.x,
-      y: pagePoint.y,
-      pageNo: pagePoint.pageNo
-    }
-    session.mouseDownStartCoordinates = coordinates
-    session.lastPointerCoordinates = coordinates
-
-    applyPointerPositionContext(coordinate, positionResult)
-    runSelectionStartIntent({
-      host,
-      evt,
-      oldPositionContextTdId: oldPositionContext.tdId,
-      isReadonly,
-      positionResult
-    })
+    startSelectionAction({ evt, host, pagePoint, coordinates })
   } finally {
     debugMousedown(evt, host, 'after')
   }
