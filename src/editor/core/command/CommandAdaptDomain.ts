@@ -9,7 +9,6 @@ import {
 } from '../../dataset/constant/Element'
 import { titleOrderNumberMapping } from '../../dataset/constant/Title'
 import { LocationPosition } from '../../dataset/enum/Common'
-import { ControlComponent } from '../../dataset/enum/Control'
 import { EditorMode, EditorZone } from '../../dataset/enum/Editor'
 import { MoveDirection } from '../../dataset/enum/Observer'
 import {
@@ -42,6 +41,7 @@ import {
   findCommandElementList,
   walkCommandElementList
 } from './CommandElementTraversal'
+import { resolveControlLocationCursorIndex } from '../modules/control/command/ControlLocationPolicy'
 
 /**
  * 业务域命令适配模块，负责分组、控件、修订、标题、事件定位和区域相关命令。
@@ -232,44 +232,14 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
           tableContext
         }) => {
           if (element?.controlId !== controlId) return null
-          let curIndex = index
-          if (options?.position === LocationPosition.OUTER_AFTER) {
-            // 控件外面最后
-            if (
-              !(
-                element.controlComponent === ControlComponent.POSTFIX &&
-                elementList[cursorIndex + 1]?.controlComponent !==
-                  ControlComponent.POST_TEXT
-              )
-            ) {
-              return null
-            }
-          } else if (options?.position === LocationPosition.OUTER_BEFORE) {
-            // 控件外面最前
-            curIndex -= 1
-          } else if (options?.position === LocationPosition.AFTER) {
-            // 控件内部最后
-            curIndex -= 1
-            if (
-              element.controlComponent !== ControlComponent.PLACEHOLDER &&
-              element.controlComponent !== ControlComponent.POSTFIX &&
-              element.controlComponent !== ControlComponent.POST_TEXT
-            ) {
-              return null
-            }
-          } else {
-            // 控件内部最前（默认）
-            if (
-              (element.controlComponent !== ControlComponent.PREFIX &&
-                element.controlComponent !== ControlComponent.PRE_TEXT) ||
-              elementList[cursorIndex]?.controlComponent ===
-                ControlComponent.PREFIX ||
-              elementList[cursorIndex]?.controlComponent ===
-                ControlComponent.PRE_TEXT
-            ) {
-              return null
-            }
-          }
+          const curIndex = resolveControlLocationCursorIndex({
+            element,
+            elementList,
+            index,
+            cursorIndex,
+            position: options?.position
+          })
+          if (curIndex === null) return null
           return {
             zone,
             range: {
@@ -344,6 +314,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
         }
       })
     }
+    // 初始化 clone Attr 列表。
     const cloneAttr = [
       ...TABLE_CONTEXT_ATTR,
       ...EDITOR_ROW_ATTR,
@@ -365,6 +336,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
     payload: IGetTitleValueOption
   ): IGetTitleValueResult | null {
     const { conceptId } = payload
+    // 初始化 result 列表。
     const result: IGetTitleValueResult = []
     const getValue = (elementList: IElement[], zone: EditorZone) => {
       walkCommandElementList({
@@ -508,6 +480,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
     const elementList = this.draw.getObjectResolver().getElementList()
     const copyElement = getAnchorElement(elementList, startIndex)
     if (!copyElement) return
+    // 初始化 clone Attr 列表。
     const cloneAttr = [
       ...TABLE_CONTEXT_ATTR,
       ...EDITOR_ROW_ATTR,

@@ -158,6 +158,7 @@ export class DocumentChunkIndex {
   /** 局部 patch 成功后平移后续 chunk 索引，避免连续输入命中旧边界。 */
   public shiftChunksAfterPatch(payload: {
     patchedChunk: IDocumentChunk
+    /** 索引偏移量，用于把局部变更同步到后续元素。 */
     indexDelta: number
   }) {
     const { patchedChunk, indexDelta } = payload

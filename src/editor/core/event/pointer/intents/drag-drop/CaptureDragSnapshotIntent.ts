@@ -1,9 +1,11 @@
 import { deepClone } from '../../../../../utils'
 import { CanvasEvent } from '../../../CanvasEvent'
 
+/** 捕获 Drag Snapshot 对应的当前状态。 */
 export function captureDragSnapshot(
   host: CanvasEvent,
   options: {
+    /** 拖拽来源信息，用于提交时判断移动的数据范围。 */
     dragSource?: 'row-handle' | null
   } = {}
 ) {

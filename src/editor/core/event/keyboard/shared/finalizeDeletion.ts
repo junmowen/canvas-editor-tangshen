@@ -1,10 +1,15 @@
 import { Draw } from '../../../draw/Draw'
 
 export function finalizeDeletion(payload: {
+  /** 绘制核心实例，提供布局、渲染和命中查询能力。 */
   draw: Draw
+  /** 起始元素索引，用于确定处理范围的左边界。 */
   startIndex: number
+  /** 当前元素索引，用于记录遍历或命中过程的位置。 */
   curIndex: number | null
+  /** 已删除数量，用于累加实际删除的元素个数。 */
   deletedCount?: number
+  /** 编辑索引，用于定位本次修改发生的位置。 */
   editIndex?: number
 }) {
   const { draw, startIndex, curIndex, deletedCount = 1, editIndex } = payload

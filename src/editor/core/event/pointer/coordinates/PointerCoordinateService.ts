@@ -8,8 +8,10 @@ import {
 } from './PointerCoordinateTypes'
 
 export class PointerCoordinateService {
+  /** 初始化 PointerCoordinateService 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
+  /** 解析当前项，把输入位置或状态转换为可执行结果。 */
   public resolve(
     evt: MouseEvent | DragEvent,
     prev: IPointerCoordinatePayload | null = null

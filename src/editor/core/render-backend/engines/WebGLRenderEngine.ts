@@ -2,7 +2,7 @@ import type { IRenderBackend } from '../types/RenderBackend'
 import type { IRenderSurface } from '../types/RenderSurface'
 import type { IRenderTask } from '../types/RenderTask'
 
-/** WebGL 渲染引擎配置。 */
+/** webgl渲染engine选项契约，用于约束内部流程中传递的数据结构。 */
 export interface IWebGLRenderEngineOptions {
   /** 是否启用 WebGL 任务处理，默认关闭以避免影响正文 Canvas2D 渲染。 */
   enabled?: boolean
@@ -16,12 +16,17 @@ export interface IWebGLRenderEngineOptions {
   maxTextureCacheBytes?: number
 }
 
-/** WebGL 图片纹理缓存项。 */
+/** webgltexture缓存item契约，用于约束内部流程中传递的数据结构。 */
 interface IWebGLTextureCacheItem {
+  /** WebGL 纹理对象，用于缓存位图上传结果。 */
   texture: WebGLTexture
+  /** 宽度尺寸，使用编辑器内部像素单位。 */
   width: number
+  /** 高度尺寸，使用编辑器内部像素单位。 */
   height: number
+  /** 估算字节数，用于衡量缓存或纹理占用。 */
   estimatedBytes: number
+  /** 最近使用序号，用于缓存淘汰策略判断冷热。 */
   lastUsedSeq: number
 }
 
@@ -40,6 +45,7 @@ export class WebGLRenderEngine implements IRenderBackend {
   private readonly options: IWebGLRenderEngineOptions
   /** 复用的 WebGL 探测 / 任务上下文。 */
   private readonly canvas: HTMLCanvasElement | null
+  /** 只读WebGL 上下文，用于执行纹理上传和 GPU 绘制。 */
   private readonly gl: WebGLRenderingContext | null
   private contextLost = false
   /** 复用的图片处理 shader 程序和顶点 buffer。 */
@@ -161,7 +167,9 @@ export class WebGLRenderEngine implements IRenderBackend {
 
   /** 探测当前环境是否支持 WebGL 上下文。 */
   private createContext(): {
+    /** Canvas 画布实例，承载当前渲染输出。 */
     canvas: HTMLCanvasElement | null
+    /** WebGL 上下文，用于执行纹理上传和 GPU 绘制。 */
     gl: WebGLRenderingContext | null
   } {
     if (typeof document === 'undefined') {

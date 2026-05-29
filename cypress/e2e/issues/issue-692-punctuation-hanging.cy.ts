@@ -11,7 +11,7 @@ function getContentRows(editor: Editor) {
 
 describe('issue #692 punctuation hanging layout', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
     cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
 

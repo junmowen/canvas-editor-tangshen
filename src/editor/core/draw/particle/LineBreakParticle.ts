@@ -4,11 +4,13 @@ import { IRowElement } from '../../../interface/Row'
 import { Draw } from '../Draw'
 
 export class LineBreakParticle {
+  /** 编辑器选项快照，读取页面尺寸、样式和功能开关。 */
   private options: DeepRequired<IEditorOption>
   public static readonly WIDTH = 12
   public static readonly HEIGHT = 9
   public static readonly GAP = 3 // 距离左边间隙
 
+  /** 初始化 LineBreakParticle 实例并注入运行依赖。 */
   constructor(draw: Draw) {
     this.options = draw.getOptions()
   }

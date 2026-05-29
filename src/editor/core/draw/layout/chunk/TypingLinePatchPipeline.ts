@@ -1,7 +1,7 @@
 import { EditorZone } from '../../../../dataset/enum/Editor'
-import { ElementType } from '../../../../dataset/enum/Element'
 import { IElement, IElementPosition } from '../../../../interface/Element'
 import { IRow } from '../../../../interface/Row'
+import { isPatchableTextElement } from '../../../modules/paragraph/layout/ParagraphPatchLayoutPolicy'
 import type { Draw } from '../../Draw'
 import { IChunkLayoutPatchResult } from './ChunkLayoutTypes'
 import {
@@ -9,7 +9,7 @@ import {
   shiftRowsAfterPatch
 } from './ChunkPatchAlgorithms'
 
-/** 输入态单行正式 patch 统计，用于观察 chunk 失败后的非整篇兜底覆盖率。 */
+/** typing行补丁stats契约，用于约束内部流程中传递的数据结构。 */
 export interface ITypingLinePatchStats {
   /** 单行 patch 尝试次数。 */
   attemptCount: number
@@ -44,8 +44,11 @@ export class TypingLinePatchPipeline {
    * 不做整篇 layout，也不调度 idle 回放，避免复杂页内的输入停留在临时预览。
    */
   public patchAroundCursor(payload: {
+    /** 当前元素索引，用于记录遍历或命中过程的位置。 */
     curIndex?: number
+    /** 编辑索引，用于定位本次修改发生的位置。 */
     editIndex?: number
+    /** 已插入数量，用于累加本次写入的元素个数。 */
     insertedCount: number
   }): IChunkLayoutPatchResult {
     this.stats.attemptCount++
@@ -80,8 +83,11 @@ export class TypingLinePatchPipeline {
 
   /** 执行单行 patch 的核心逻辑。 */
   private patchInternal(payload: {
+    /** 当前元素索引，用于记录遍历或命中过程的位置。 */
     curIndex?: number
+    /** 编辑索引，用于定位本次修改发生的位置。 */
     editIndex?: number
+    /** 已插入数量，用于累加本次写入的元素个数。 */
     insertedCount: number
   }): IChunkLayoutPatchResult {
     const coordinate = this.draw.getCoordinate()
@@ -161,13 +167,21 @@ export class TypingLinePatchPipeline {
 
   /** 把单行测量结果写回 runtime、pageRows、layoutElementList 和 positionList。 */
   private patchRuntime(payload: {
+    /** 页码，用于定位分页结果中的目标页面。 */
     pageNo: number
+    /** 来源行对象，用于和局部补丁后的下一行对照。 */
     sourceRow: IRow
+    /** 下一行对象，用于局部补丁后承接溢出的行内容。 */
     nextRow: IRow
+    /** 行内元素列表，保存参与本行局部补丁的元素。 */
     lineElementList: IElement[]
+    /** 下一行位置列表，用于局部补丁后同步后续元素坐标。 */
     nextPositionList: IElementPosition[]
+    /** 起始元素索引，用于确定处理范围的左边界。 */
     startIndex: number
+    /** 旧元素数量，用于计算增量变更后的索引偏移。 */
     oldElementCount: number
+    /** 编辑索引，用于定位本次修改发生的位置。 */
     editIndex?: number
   }) {
     const runtimeRowList = this.draw.getRuntime().getRuntimeRowList()
@@ -223,15 +237,20 @@ export class TypingLinePatchPipeline {
       ...nextRow,
       startIndex: sourceRow.startIndex,
       rowIndex: sourceRow.rowIndex,
+      /** 行号，用于定位页面内的目标行。 */
       rowNo: (sourceRow as IRow & { rowNo?: number }).rowNo
     } as IRow
   }
 
   /** 替换主 positionList 的当前行片段，并平移后续 position.index。 */
   private patchPositionList(payload: {
+    /** 布局位置列表，保存元素分页后的坐标结果。 */
     positionList: IElementPosition[]
+    /** 起始元素索引，用于确定处理范围的左边界。 */
     startIndex: number
+    /** 删除数量，用于描述从起点移除的元素个数。 */
     deleteCount: number
+    /** 索引偏移量，用于把局部变更同步到后续元素。 */
     indexDelta: number
   }) {
     const positionList = this.draw.getCoordinate().getPositionList()
@@ -264,8 +283,11 @@ export class TypingLinePatchPipeline {
 
   /** 替换 layoutElementList 的当前行片段。 */
   private patchLayoutElementList(payload: {
+    /** 文档元素列表，按文档顺序保存参与处理的元素。 */
     elementList: IElement[]
+    /** 起始元素索引，用于确定处理范围的左边界。 */
     startIndex: number
+    /** 删除数量，用于描述从起点移除的元素个数。 */
     deleteCount: number
   }) {
     patchArraySegment({
@@ -292,18 +314,8 @@ export class TypingLinePatchPipeline {
   }
 
   /** 判断当前行元素是否适合单行正式 patch。 */
-  private canPatchElementList(elementList: Array<{ type?: ElementType }>) {
-    return elementList.every(element => {
-      return (
-        !element.type ||
-        element.type === ElementType.TEXT ||
-        element.type === ElementType.HYPERLINK ||
-        element.type === ElementType.DATE ||
-        element.type === ElementType.SUBSCRIPT ||
-        element.type === ElementType.SUPERSCRIPT ||
-        element.type === ElementType.TAB
-      )
-    })
+  private canPatchElementList(elementList: Array<{ type?: unknown }>) {
+    return elementList.every(element => isPatchableTextElement(element as any))
   }
 
   /** 构建失败结果。 */

@@ -1,7 +1,12 @@
+import {
+  handleDeleteControlDeletion,
+  removeNextControlForDelete
+} from '../../../modules/control/interaction/handleControlDeletion'
+import { isRangeControlDeletionDisabled } from '../../../modules/control/policy/ControlDeletionPolicy'
+import { resolveTableDeleteFragmentTransition } from '../../../modules/table/navigation/resolveTableDeleteFragmentTransition'
+import { clearCrossRowColSelection } from '../../../modules/table/selection/clearCrossRowColSelection'
 import { CanvasEvent } from '../../CanvasEvent'
-import { clearCrossRowColSelection } from '../shared/clearCrossRowColSelection'
 import { finalizeDeletion } from '../shared/finalizeDeletion'
-import { handleControlDeletion } from '../shared/handleControlDeletion'
 import { removeHiddenElements } from '../shared/removeHiddenElements'
 
 export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
@@ -14,7 +19,6 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
     rangeManager.getEditBoundaryRange()
   const elementList = draw.getObjectResolver().getElementList()
   const control = components.control
-  const tableNavigationService = components.tableNavigationService
   if (rangeManager.getIsCollapsed()) {
     removeHiddenElements(host, 'next')
   }
@@ -28,7 +32,7 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
     editIndex = startIndex + 1
   } else {
     if (
-      control.getIsRangeControlDeletionDisabled({
+      isRangeControlDeletionDisabled(control, {
         range: rangeManager.getEditBoundaryRange(),
         elementList
       })
@@ -36,13 +40,15 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
       evt.preventDefault()
       return
     }
-    curIndex = handleControlDeletion(
-      control,
-      evt,
-      () => !!(control.getActiveControl() && control.getIsRangeWithinControl())
-    )
-    if (curIndex === null && elementList[endIndex + 1]?.controlId) {
-      curIndex = control.removeControl(endIndex + 1)
+    curIndex = handleDeleteControlDeletion(control, evt)
+    if (curIndex === null) {
+      curIndex = removeNextControlForDelete({
+        control,
+        elementList,
+        endIndex
+      })
+    }
+    if (curIndex !== null) {
       deletedCount = 1
       editIndex = endIndex + 1
     }
@@ -74,11 +80,11 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
           editIndex = index + 1
         }
         curIndex = isCollapsed
-          ? tableNavigationService.resolveFragmentTransitionIndex({
+          ? resolveTableDeleteFragmentTransition({
+              draw,
               positionContext,
-              cursorIndex: index,
-              direction: 'next'
-            }) ?? index
+              cursorIndex: index
+            })
           : startIndex
       }
     }

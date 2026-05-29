@@ -1,11 +1,11 @@
-import { ElementType } from '../../../dataset/enum/Element'
 import { EditorZone } from '../../../dataset/enum/Editor'
 import { IDrawPagePayload } from '../../../interface/Draw'
 import { IElement, IElementPosition } from '../../../interface/Element'
+import { isPatchableTextElement } from '../../modules/paragraph/layout/ParagraphPatchLayoutPolicy'
 import { IRenderSurface, RenderLayer } from '../../render-backend'
 import type { Draw } from '../Draw'
 
-/** 输入态局部重绘统计，用于验证段落 / chunk 级真实增量渲染是否命中。 */
+/** typing预览stats契约，用于约束内部流程中传递的数据结构。 */
 export interface ITypingPreviewStats {
   /** 输入态局部重绘尝试次数。 */
   attemptCount: number
@@ -26,6 +26,7 @@ export class TypingPreviewRenderer {
   /** 输入态局部重绘统计。 */
   private stats: ITypingPreviewStats = this.createEmptyStats()
 
+  /** 初始化 TypingPreviewRenderer 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
   /**
@@ -35,8 +36,11 @@ export class TypingPreviewRenderer {
    * 失败时不做假预览，等待后台 layout。
    */
   public renderTypingChunkPreview(payload: {
+    /** 当前元素索引，用于记录遍历或命中过程的位置。 */
     curIndex: number
+    /** 编辑索引，用于定位本次修改发生的位置。 */
     editIndex?: number
+    /** 已插入数量，用于累加本次写入的元素个数。 */
     insertedCount: number
   }): boolean {
     this.stats.attemptCount++
@@ -84,9 +88,14 @@ export class TypingPreviewRenderer {
 
   /** 输入态当前 chunk / 段落 canvas 快速重绘。 */
   private renderTypingChunkPreviewInternal(payload: {
+    /** 当前元素索引，用于记录遍历或命中过程的位置。 */
     curIndex: number
+    /** 编辑索引，用于定位本次修改发生的位置。 */
     editIndex?: number
+    /** 已插入数量，用于累加本次写入的元素个数。 */
     insertedCount: number
+  /** 原因说明，用于记录降级、跳过或失败的触发条件。 */
+  /** rendered文本，用于标识、展示或匹配当前对象。 */
   }): { rendered: boolean; reason?: string } {
     const coordinate = this.draw.getCoordinate()
     const positionContext = coordinate.getPositionContext()
@@ -210,8 +219,12 @@ export class TypingPreviewRenderer {
 
   /** 输入态当前行 canvas 快速重绘兜底。 */
   private renderTypingLinePreviewInternal(payload: {
+    /** 当前元素索引，用于记录遍历或命中过程的位置。 */
     curIndex: number
+    /** 已插入数量，用于累加本次写入的元素个数。 */
     insertedCount: number
+  /** 原因说明，用于记录降级、跳过或失败的触发条件。 */
+  /** rendered文本，用于标识、展示或匹配当前对象。 */
   }): { rendered: boolean; reason?: string } {
     const coordinate = this.draw.getCoordinate()
     const positionContext = coordinate.getPositionContext()
@@ -295,18 +308,8 @@ export class TypingPreviewRenderer {
   }
 
   /** 判断当前行是否适合输入态局部 canvas 重绘。 */
-  private canPreviewRow(elementList: Array<{ type?: ElementType; value?: string }>) {
-    return elementList.every(element => {
-      return (
-        !element.type ||
-        element.type === ElementType.TEXT ||
-        element.type === ElementType.HYPERLINK ||
-        element.type === ElementType.DATE ||
-        element.type === ElementType.SUBSCRIPT ||
-        element.type === ElementType.SUPERSCRIPT ||
-        element.type === ElementType.TAB
-      )
-    })
+  private canPreviewRow(elementList: Array<{ type?: unknown; value?: string }>) {
+    return elementList.every(element => isPatchableTextElement(element as any))
   }
 
   /** 获取某页中落在索引范围内的旧行。 */
@@ -327,14 +330,23 @@ export class TypingPreviewRenderer {
   /** 清理旧局部区域并绘制新的局部行结果。 */
   private clearAndDrawPreviewRows(payload: {
     surface: IRenderSurface
+    /** 页码，用于定位分页结果中的目标页面。 */
     pageNo: number
+    /** 起始横坐标，用于记录拖拽、绘制或选择的起点。 */
     startX: number
+    /** 起始纵坐标，用于记录拖拽、绘制或选择的起点。 */
     startY: number
+    /** 需要清理的预览区域高度。 */
     clearHeight: number
+    /** 文档元素列表，按文档顺序保存参与处理的元素。 */
     elementList: IElement[]
+    /** 布局位置列表，保存元素分页后的坐标结果。 */
     positionList: IElementPosition[]
+    /** 行列表，保存排版后的行结构。 */
     rowList: IDrawPagePayload['rowList']
+    /** 起始元素索引，用于确定处理范围的左边界。 */
     startIndex: number
+    /** 内部可用宽度，用于排版时扣除边距或缩进。 */
     innerWidth: number
   }) {
     const ctx = payload.surface.ctx2d

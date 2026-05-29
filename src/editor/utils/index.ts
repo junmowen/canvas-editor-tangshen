@@ -126,13 +126,16 @@ export function getUUID(): string {
 }
 
 export function splitText(text: string): string[] {
+  // 初始化 data 列表。
   const data: string[] = []
   const segmenterCtor = (Intl as unknown as {
+    /** Intl 分词器构造器，用于按浏览器能力进行文本分段。 */
     Segmenter?: new () => {
       segment(input: string): Iterable<{ segment: string }>
     }
   }).Segmenter
   if (segmenterCtor) {
+    // 创建 segmenter 实例。
     const segmenter = new segmenterCtor()
     const segments = segmenter.segment(text)
     for (const { segment } of segments) {
@@ -229,6 +232,7 @@ export function nextTick(fn: Function) {
 }
 
 export function convertNumberToChinese(num: number) {
+  // 初始化 chinese Num 列表。
   const chineseNum = [
     '零',
     '一',
@@ -241,6 +245,7 @@ export function convertNumberToChinese(num: number) {
     '八',
     '九'
   ]
+  // 初始化 chinese Unit 列表。
   const chineseUnit = [
     '',
     '十',
@@ -314,6 +319,7 @@ export function omitObject<T>(object: T, omitKeys: (keyof T)[]): T {
 }
 
 export function convertStringToBase64(input: string) {
+  // 创建 encoder 实例。
   const encoder = new TextEncoder()
   const data = encoder.encode(input)
   const charArray = Array.from(data, byte => String.fromCharCode(byte))

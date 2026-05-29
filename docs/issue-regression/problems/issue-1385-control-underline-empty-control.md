@@ -10,14 +10,14 @@
 
 复跑失败：
 
-```text
+```txt
 TypeError: Cannot read properties of undefined (reading 'coordinate')
 at cypress/e2e/issues/issue-1385-control-underline.cy.ts:289:23
 ```
 
 截图：
 
-```text
+```txt
 cypress/screenshots/issue-1385-control-underline.cy.ts/issue #1385 - control underline rendering -- inherits pending underline style when inserting an empty control (failed).png
 ```
 

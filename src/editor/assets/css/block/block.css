@@ -1,3 +1,4 @@
+/* 块级元素挂载容器样式。 */
 .ce-block-item {
   position: absolute;
   z-index: 0;
@@ -7,6 +8,7 @@
   border: 1px solid rgb(235 236 240);
 }
 
+/* 块级元素挂载容器样式。 */
 .ce-block-item__disabled {
   pointer-events: none;
 }

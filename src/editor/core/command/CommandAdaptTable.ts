@@ -1,7 +1,7 @@
 import { CommandAdaptRichText } from './CommandAdaptRichText'
 import { TableBorder, TdBorder, TdSlash } from '../../dataset/enum/table/Table'
 import { VerticalAlign } from '../../dataset/enum/VerticalAlign'
-import { TableOperate } from '../draw/particle/table/TableOperate'
+import { TableOperate } from '../modules/table/particle/TableOperate'
 
 /**
  * 表格命令适配模块，负责表格结构、单元格合并拆分和边框样式相关命令。

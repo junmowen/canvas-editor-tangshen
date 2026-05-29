@@ -2,29 +2,46 @@ import {
   CONTROL_CONTEXT_ATTR,
   EDITOR_ELEMENT_STYLE_ATTR,
   EDITOR_ROW_ATTR,
-  LIST_CONTEXT_ATTR,
   TITLE_CONTEXT_ATTR
 } from '../../../../../dataset/constant/Element'
-import { ControlComponent } from '../../../../../dataset/enum/Control'
-import { ElementType } from '../../../../../dataset/enum/Element'
 import { IElement } from '../../../../../interface/Element'
 import { deepClone, omitObject } from '../../../../../utils'
 import { formatElementContext, formatElementList } from '../../../../../utils/element'
+import {
+  cutControlDragSourceIfNeeded,
+  insertDragDropIntoActiveControl
+} from '../../../../modules/control/interaction/applyControlDragDropMutation'
+import { shouldOmitControlContextForDragDrop } from '../../../../modules/control/policy/ControlDragPolicy'
 import { Draw } from '../../../../draw/Draw'
+import { appendListDragDropCopyAttrs } from '../../../../modules/list/interaction/ListDragDropContext'
+import { isParagraphPlainTextDragElement } from '../../../../modules/paragraph/interaction/ParagraphIntentElementPolicy'
+import { adjustTableDragDropPositionContext } from '../../../../modules/table/interaction/adjustTableDragDropPositionContext'
+import { isTableDragSourceDeletable } from '../../../../modules/table/selection/isTableDragSourceDeletable'
 import { createDragId, getElementIndexByDragId } from './DragCommitHelpers'
-import { resolvePositionAtIndex } from '../../../utils/resolvePositionAtIndex'
+import { resolvePositionAtIndex } from '../../../../position/utils/resolvePositionAtIndex'
 
 export function applyDragCommitMutation(payload: {
+  /** 绘制核心实例，提供布局、渲染和命中查询能力。 */
   draw: Draw
+  /** 选区范围，记录起止索引和方向信息。 */
   range: any
+  /** 缓存选区范围，用于恢复拖拽或粘贴前的选择状态。 */
   cacheRange: any
+  /** 缓存元素列表，用于拖拽或粘贴前保留原始内容。 */
   cacheElementList: IElement[]
+  /** 缓存位置列表，用于恢复拖拽或粘贴前的布局坐标。 */
   cachePositionList: any[]
+  /** 缓存位置上下文，用于恢复拖拽或粘贴前的命中状态。 */
   cachePositionContext: any
+  /** 缓存起始索引，用于记录拖拽或粘贴前范围左边界。 */
   cacheStartIndex: number
+  /** 缓存结束索引，用于记录拖拽或粘贴前范围右边界。 */
   cacheEndIndex: number
+  /** 拖拽元素列表，保存正在移动的文档元素。 */
   dragElementList: IElement[]
+  /** 是否包含控件，用于拖拽或删除时选择控件保护逻辑。 */
   isContainControl: boolean
+  /** 是否保留来源上下文，用于拖拽后继续复用原始范围信息。 */
   isPreserveSourceContext?: boolean
 }) {
   const {
@@ -41,28 +58,32 @@ export function applyDragCommitMutation(payload: {
     isPreserveSourceContext = false
   } = payload
   const components = draw.getComponents()
-  const coordinate = draw.getCoordinate()
   const rangeManager = components.range
   const control = components.control
   const elementList = draw.getObjectResolver().getElementList()
-  const isOmitControlAttr =
-    !isContainControl ||
-    !!elementList[range.startIndex].controlId ||
-    !control.getIsElementListContainFullControl(dragElementList)
+  const isOmitControlAttr = shouldOmitControlContextForDragDrop({
+    control,
+    targetElement: elementList[range.startIndex],
+    dragElementList,
+    isContainControl
+  })
   const editorOptions = draw.getOptions()
   const replaceElementList = dragElementList.map(el => {
-    if (!el.type || el.type === ElementType.TEXT) {
+    if (isParagraphPlainTextDragElement(el)) {
       const newElement: IElement = {
         value: el.value
       }
+      // 初始化 copy Attr 列表。
       const copyAttr = [...EDITOR_ELEMENT_STYLE_ATTR]
       if (isPreserveSourceContext) {
         copyAttr.push(...EDITOR_ROW_ATTR)
-        copyAttr.push(...LIST_CONTEXT_ATTR)
         copyAttr.push(...CONTROL_CONTEXT_ATTR)
-      } else if (el.listId) {
-        copyAttr.push(...LIST_CONTEXT_ATTR)
       }
+      appendListDragDropCopyAttrs({
+        copyAttr,
+        element: el,
+        isPreserveSourceContext
+      })
       if (!isOmitControlAttr) {
         copyAttr.push(...CONTROL_CONTEXT_ATTR)
       }
@@ -105,13 +126,17 @@ export function applyDragCommitMutation(payload: {
   const replaceLength = replaceElementList.length
   let rangeStart = range.startIndex
   let rangeEnd = rangeStart + replaceLength
-  const activeControl = control.getActiveControl()
-  if (
-    activeControl &&
-    cacheElementList[rangeStart].controlComponent !== ControlComponent.POSTFIX
-  ) {
-    rangeEnd = activeControl.setValue(replaceElementList)
-    rangeStart = rangeEnd - replaceLength
+  const controlInsertResult = insertDragDropIntoActiveControl({
+    control,
+    cacheElementList,
+    rangeStart,
+    replaceElementList,
+    replaceLength
+  })
+  const activeControl = controlInsertResult?.activeControl ?? null
+  if (controlInsertResult) {
+    rangeStart = controlInsertResult.rangeStart
+    rangeEnd = controlInsertResult.rangeEnd
   } else {
     draw.spliceElementList(elementList, rangeStart + 1, 0, replaceElementList)
   }
@@ -134,34 +159,16 @@ export function applyDragCommitMutation(payload: {
     cacheRangeEndId,
     cacheElementList
   )
-  const cacheEndElement = cacheElementList[cacheRangeEndIndex]
-  if (
-    cacheEndElement.controlId &&
-    cacheEndElement.controlComponent !== ControlComponent.POSTFIX
-  ) {
-    rangeManager.replaceRange({
-      ...cacheRange,
-      startIndex: cacheRangeStartIndex,
-      endIndex: cacheRangeEndIndex
-    })
-    control.getActiveControl()?.cut()
-  } else {
-    let isTdElementDeletable = true
-    if (cachePositionContext?.isTable) {
-      const { tableId, trIndex, tdIndex } = cachePositionContext
-      const tableContext = tableId
-        ? draw.getTargetResolver().resolveOriginalTableById(tableId)
-        : null
-      const td = tableContext
-        ? draw.getTargetResolver().resolveOriginalTableTdByIndex({
-            tableIndex: tableContext.index,
-            trIndex: trIndex!,
-            tdIndex: tdIndex!
-          })?.td
-        : null
-      isTdElementDeletable = td?.deletable !== false
-    }
-    if (isTdElementDeletable) {
+  const isControlDragSourceCut = cutControlDragSourceIfNeeded({
+    control,
+    rangeManager,
+    cacheRange,
+    cacheElementList,
+    cacheRangeStartIndex,
+    cacheRangeEndIndex
+  })
+  if (!isControlDragSourceCut) {
+    if (isTableDragSourceDeletable({ draw, cachePositionContext })) {
       draw.spliceElementList(
         cacheElementList,
         cacheRangeStartIndex + 1,
@@ -172,22 +179,14 @@ export function applyDragCommitMutation(payload: {
 
   const startElement = elementList[range.startIndex]
   const startPosition = resolvePositionAtIndex(draw, range.startIndex)
-  let positionContextIndex = coordinate.getPositionContext().index
-  if (positionContextIndex && startPosition) {
-    if (startElement.tableId && !cacheStartElement.tableId) {
-      if (cacheStartPosition.index < positionContextIndex) {
-        positionContextIndex -= replaceLength
-      }
-    } else if (!startElement.tableId && cacheStartElement.tableId) {
-      if (startPosition.index < positionContextIndex) {
-        positionContextIndex += replaceLength
-      }
-    }
-    coordinate.setPositionContext({
-      ...coordinate.getPositionContext(),
-      index: positionContextIndex
-    })
-  }
+  adjustTableDragDropPositionContext({
+    draw,
+    startElement,
+    cacheStartElement,
+    startPosition,
+    cacheStartPosition,
+    replaceLength
+  })
 
   const rangeStartIndex = getElementIndexByDragId(rangeStartId, elementList)
   const rangeEndIndex = getElementIndexByDragId(rangeEndId, elementList)

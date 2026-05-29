@@ -8,51 +8,80 @@ import {
   IWorkerRenderResult
 } from './WorkerRenderProtocol'
 
-/** worker 调度统计。 */
+/** 后台线程渲染schedulerstats契约，用于约束内部流程中传递的数据结构。 */
 export interface IWorkerRenderSchedulerStats {
+  /** 提交次数，用于统计渲染任务进入后台执行的频率。 */
   submitCount: number
+  /** 成功次数，用于统计渲染任务完成情况。 */
   successCount: number
+  /** 降级次数，用于统计回退到备用渲染路径的频率。 */
   fallbackCount: number
+  /** stalediscardcount，用于统计当前场景的发生次数。 */
   staleDiscardCount: number
+  /** composerejectcount，用于统计当前场景的发生次数。 */
   composeRejectCount: number
+  /** timeoutcount，用于统计当前场景的发生次数。 */
   timeoutCount: number
+  /** cancelcount，用于统计当前场景的发生次数。 */
   cancelCount: number
+  /** queuedropcount，用于统计当前场景的发生次数。 */
   queueDropCount: number
+  /** priorityreordercount，用于统计当前场景的发生次数。 */
   priorityReorderCount: number
+  /** circuitopencount，用于统计当前场景的发生次数。 */
   circuitOpenCount: number
+  /** 最近一次降级原因，用于诊断渲染后端回退。 */
   lastFallbackReason: string
+  /** 待处理count，用于统计当前场景的发生次数。 */
   pendingCount: number
+  /** 正在执行的任务数量，用于观察后台渲染并发。 */
   activeCount: number
+  /** 排队任务数量，用于观察渲染调度积压。 */
   queuedCount: number
+  /** 最大concurrent数值，用于当前布局、统计或索引计算。 */
   maxConcurrent: number
+  /** 最大queuelength数值，用于当前布局、统计或索引计算。 */
   maxQueueLength: number
+  /** consecutivefailurecount，用于统计当前场景的发生次数。 */
   consecutiveFailureCount: number
+  /** 熔断状态，用于暂停不稳定的异步渲染路径。 */
   circuitOpen: boolean
 }
 
-/** worker 调度器调试配置；用于专项压测和浏览器回归注入边界条件。 */
+/** 后台线程渲染schedulerdebug选项契约，用于约束内部流程中传递的数据结构。 */
 export interface IWorkerRenderSchedulerDebugOptions {
+  /** timeoutms数值，用于当前布局、统计或索引计算。 */
   timeoutMs?: number
+  /** 最大queuelength数值，用于当前布局、统计或索引计算。 */
   maxQueueLength?: number
+  /** circuitbreakerfailurethreshold数值，用于当前布局、统计或索引计算。 */
   circuitBreakerFailureThreshold?: number
 }
 
-/** 单个 worker job 状态。 */
+/** 后台线程渲染job契约，用于约束内部流程中传递的数据结构。 */
 interface IWorkerRenderJob {
+  /** 任务标识，用于关联异步渲染请求和响应。 */
   jobId: number
   surface: IRenderSurface
   task: IRenderTask
   snapshot: IWorkerPageRenderSnapshot
+  /** timerid，用于关联对应业务对象。 */
   timerId?: number
+  /** sequence数值，用于当前布局、统计或索引计算。 */
   sequence: number
 }
 
 /** OffscreenCanvas worker 调度器。 */
 export class WorkerRenderScheduler {
+  /** worker worker 实例，用于把耗时计算移出主线程。 */
   private worker: Worker | null = null
+  /** Worker 渲染任务递增编号，用于关联请求和回包。 */
   private nextJobId = 1
+  /** 只读待处理jobmap，按键保存运行期对象，便于快速查找和清理。 */
   private readonly pendingJobMap = new Map<number, IWorkerRenderJob>()
+  /** 只读活动jobmap，按键保存运行期对象，便于快速查找和清理。 */
   private readonly activeJobMap = new Map<number, IWorkerRenderJob>()
+  /** 只读queuedjob列表，按执行顺序保存待处理对象。 */
   private readonly queuedJobList: IWorkerRenderJob[] = []
   private readonly latestJobIdByPageNo = new Map<number, number>()
   private readonly compositor = new WorkerBitmapCompositor()
@@ -68,6 +97,7 @@ export class WorkerRenderScheduler {
   private circuitOpenCount = 0
   private consecutiveFailureCount = 0
   private circuitOpen = false
+  /** 最近一次降级渲染原因，供调试面板和统计信息展示。 */
   private lastFallbackReason = ''
   private timeoutMs = 1500
   private readonly maxConcurrent = 1
@@ -77,6 +107,7 @@ export class WorkerRenderScheduler {
   private scrollAnchorPageNo = 0
   private scrollDirection: -1 | 0 | 1 = 0
 
+  /** 初始化 WorkerRenderScheduler 实例并注入运行依赖。 */
   constructor(private readonly snapshotBuilder: PageRenderSnapshotBuilder) {}
 
   /** 当前 worker 是否已经熔断。 */
@@ -135,7 +166,9 @@ export class WorkerRenderScheduler {
 
   /** 同步当前视口信息，用于 worker 队列按滚动方向优先消费。 */
   public updateViewport(payload: {
+    /** 可见页码列表，保存视口内当前可见页面。 */
     visiblePageNoList?: number[]
+    /** intersection页面no，用于定位对应页、行或序号。 */
     intersectionPageNo?: number
   }) {
     if (payload.visiblePageNoList) {

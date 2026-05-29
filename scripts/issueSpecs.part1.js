@@ -2,16 +2,16 @@ export const ISSUE_SPECS_PART_1 = {
   41: {
     title: '表格分页',
     specs: [
-      'cypress/e2e/menus/table-selection-nonpaged.cy.ts',
-      'cypress/e2e/menus/table-pagination-input.cy.ts',
-      'cypress/e2e/menus/table-pagination-merged.cy.ts',
-      'cypress/e2e/menus/table-pagination-mock.cy.ts',
-      'cypress/e2e/menus/table-pagination-multicell.cy.ts',
-      'cypress/e2e/menus/table-pagination-border.cy.ts',
-      'cypress/e2e/menus/table-pagination-adjacent-cell.cy.ts',
-      'cypress/e2e/menus/table-pagination-adjacent-highlight.cy.ts',
-      'cypress/e2e/menus/table-pagination-empty-last-row.cy.ts',
-      'cypress/e2e/menus/table-pagination-merge-highlight.cy.ts'
+      'cypress/e2e/table/table-selection-nonpaged.cy.ts',
+      'cypress/e2e/table/table-pagination-input.cy.ts',
+      'cypress/e2e/table/table-pagination-merged.cy.ts',
+      'cypress/e2e/table/table-pagination-mock.cy.ts',
+      'cypress/e2e/table/table-pagination-multicell.cy.ts',
+      'cypress/e2e/table/table-pagination-border.cy.ts',
+      'cypress/e2e/table/table-pagination-adjacent-cell.cy.ts',
+      'cypress/e2e/table/table-pagination-adjacent-highlight.cy.ts',
+      'cypress/e2e/table/table-pagination-empty-last-row.cy.ts',
+      'cypress/e2e/table/table-pagination-merge-highlight.cy.ts'
     ]
   },
   94: {
@@ -355,14 +355,14 @@ export const ISSUE_SPECS_PART_1 = {
     specs: [
       'cypress/e2e/issues/issue-1053-table-cell-border.cy.ts',
       'cypress/e2e/issues/issue-1053-single-cell-drag-selection.cy.ts',
-      'cypress/e2e/menus/table.cy.ts',
-      'cypress/e2e/menus/table-pagination-border.cy.ts'
+      'cypress/e2e/table/table.cy.ts',
+      'cypress/e2e/table/table-pagination-border.cy.ts'
     ]
   },
   1163: {
     title: '表格前如何添加文字',
     specs: [
-      'cypress/e2e/menus/table.cy.ts',
+      'cypress/e2e/table/table.cy.ts',
       'cypress/e2e/issues/issue-inline-table-label.cy.ts',
       'cypress/e2e/issues/issue-1163-text-before-table.cy.ts',
       'cypress/e2e/issues/issue-left-blank-after-table-click.cy.ts'
@@ -393,7 +393,7 @@ export const ISSUE_SPECS_PART_1 = {
   },
   1211: {
     title: '跨单元格选择时选区高亮样式正确',
-    specs: ['cypress/e2e/menus/table-selection-nonpaged.cy.ts']
+    specs: ['cypress/e2e/table/table-selection-nonpaged.cy.ts']
   },
   1202: {
     title: 'getValue 获取表格 id',
@@ -533,7 +533,7 @@ export const ISSUE_SPECS_PART_1 = {
   },
   1387: {
     title: '希望表格可以添加根据内容自动调整的功能',
-    specs: ['cypress/e2e/menus/table.cy.ts']
+    specs: ['cypress/e2e/table/table.cy.ts']
   },
   1385: {
     title: '官网的demo中 在文本、列举控件中 插入下划线 显示异常',
@@ -557,7 +557,7 @@ export const ISSUE_SPECS_PART_1 = {
     title: '插入表格的时候当colgroup未传入时，默认使用编辑器宽度平分',
     specs: [
       'cypress/e2e/issues/issue-1404-table-colgroup-default.cy.ts',
-      'cypress/e2e/menus/table.cy.ts'
+      'cypress/e2e/table/table.cy.ts'
     ]
   }
 

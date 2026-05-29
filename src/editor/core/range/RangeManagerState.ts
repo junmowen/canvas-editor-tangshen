@@ -1,11 +1,14 @@
 import { RangeManagerBase } from './RangeManagerBase'
-import { ZERO } from '../../dataset/constant/Common'
 import { TEXTLIKE_ELEMENT_TYPE } from '../../dataset/constant/Element'
 import { IElement, IElementPosition } from '../../interface/Element'
 import { IRange, IRangeElementStyle } from '../../interface/Range'
 import { getAnchorElement } from '../../utils/element'
 import { sliceSelectionContent } from './utils/resolveSelectionContent'
-import { IGetTableSelectionRenderRangePayload, ITableSelectionRenderRange } from '../table/selection/TableSelectionTypes'
+import { IGetTableSelectionRenderRangePayload, ITableSelectionRenderRange } from '../modules/table/selection/TableSelectionTypes'
+import {
+  resolveActiveTableFragmentOffset,
+  resolveActiveTableLeadingOffset
+} from '../modules/table/selection/resolveActiveTableSelectionOffset'
 
 /**
  * RangeManager 状态模块，负责内部 range、默认样式、公开投影和选区内容读取。
@@ -91,25 +94,12 @@ export class RangeManagerState extends RangeManagerBase {
     return this.selectionProjectionService.getSelectionContentRange()
   }
 
-  /** 解析当前活动表格单元格的逻辑位置。 */
-  private resolveActiveLogicalTableCell() {
-    return this.draw.getTargetResolver().resolveActiveLogicalTableCell({
-      range: this.range,
-      positionContext: this.coordinate.getPositionContext()
-    })
-  }
-
   /** 获取当前表格单元格的前置零宽占位偏移。 */
   protected getActiveTableLeadingOffset(): number {
-    const logicalCell = this.resolveActiveLogicalTableCell()
-    if (!logicalCell) {
-      return 0
-    }
-    const td = this.draw.getTargetResolver().resolveActiveLogicalTableTd({
-      range: this.range,
-      positionContext: this.coordinate.getPositionContext()
-    })?.td
-    return td?.value?.[0]?.value === ZERO && td.value[1] ? 1 : 0
+    return resolveActiveTableLeadingOffset({
+      draw: this.draw,
+      range: this.range
+    })
   }
 
   /** 获取当前表格分页碎片相对逻辑单元格的偏移。 */
@@ -117,59 +107,12 @@ export class RangeManagerState extends RangeManagerBase {
     leadingOffset: number,
     cursorPosition?: IElementPosition | null
   ): number {
-    const targetResolver = this.draw.getTargetResolver()
-    const activeSlice = targetResolver.resolveTableSliceByPositionContext(
-      this.coordinate.getPositionContext()
-    )
-    const logicalCell = this.resolveActiveLogicalTableCell()
-    if (!logicalCell || !cursorPosition) {
-      return 0
-    }
-    const activeTd = this.draw.getTargetResolver().resolveActiveLogicalTableTd({
+    return resolveActiveTableFragmentOffset({
+      draw: this.draw,
       range: this.range,
-      positionContext: this.coordinate.getPositionContext()
+      leadingOffset,
+      cursorPosition
     })
-    const td = activeTd?.td
-    if (!td || td.rowspan > 1 || td.colspan > 1) {
-      return 0
-    }
-    const table = activeTd?.table
-    const tr = activeTd?.tr
-    const logicalTd = activeTd?.td
-    const logicalCellIdentity =
-      table?.id && tr?.id && logicalTd?.id
-        ? {
-            tableId: table.id,
-            trId: tr.id,
-            tdId: logicalTd.id
-          }
-        : null
-    const sliceList =
-      logicalCellIdentity
-        ? targetResolver.getCellSlicesByLogicalCell(logicalCellIdentity)
-        : []
-    if (sliceList.length <= 1) {
-      return 0
-    }
-    const resolvedActiveSlice =
-      (logicalCellIdentity
-        ? targetResolver.resolveCellSliceByAbsoluteIndex({
-            ...logicalCellIdentity,
-            absoluteIndex: cursorPosition.index
-          })
-        : null) ||
-      (logicalCellIdentity
-        ? targetResolver.resolveCellSliceByPageNo({
-            ...logicalCellIdentity,
-            pageNo: cursorPosition.pageNo
-          })
-        : null) ||
-      activeSlice ||
-      null
-    if (!resolvedActiveSlice) {
-      return 0
-    }
-    return Math.max(0, resolvedActiveSlice.absoluteStart - leadingOffset)
   }
 
   /** 获取对外公开的光标位置，并统一修正表格偏移。 */

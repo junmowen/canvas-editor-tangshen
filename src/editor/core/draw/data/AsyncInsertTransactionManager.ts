@@ -1,5 +1,6 @@
 import { IElement, IInsertElementListOption } from '../../../interface/Element'
 
+/** async插入batch插入选项，用于约束调用方可传入的可选配置。 */
 export type IAsyncInsertBatchInsertOption = IInsertElementListOption & {
   /** 大批量粘贴后台批次只写数据，最后一批再统一完整 layout。 */
   isSilentBatch?: boolean
@@ -7,6 +8,7 @@ export type IAsyncInsertBatchInsertOption = IInsertElementListOption & {
   asyncInsertTransactionId?: number
 }
 
+/** async插入transaction契约，用于约束内部流程中传递的数据结构。 */
 interface IAsyncInsertTransaction {
   /** 当前后台大粘贴事务 id，递增用于识别过期批次。 */
   id: number
@@ -38,6 +40,7 @@ interface IAsyncInsertTransaction {
   firstBatchDurationMs: number
 }
 
+/** async插入transactionstats契约，用于约束内部流程中传递的数据结构。 */
 export interface IAsyncInsertTransactionStats {
   /** 当前是否存在后台大粘贴事务。 */
   active: boolean
@@ -124,6 +127,7 @@ export class AsyncInsertTransactionManager {
   /** 大批量插入事务 id 生成器。 */
   private transactionSeed = 0
 
+  /** 初始化 AsyncInsertTransactionManager 实例并注入运行依赖。 */
   constructor(
     private readonly insertBatch: (
       batch: IElement[],
@@ -135,9 +139,13 @@ export class AsyncInsertTransactionManager {
   /** 启动大批量插入后台事务。 */
   public start(payload: {
     batchList: IElement[][]
+    /** 插入options，用于调整当前流程的可选行为。 */
     insertOptions: IInsertElementListOption
+    /** 是否提交历史记录，用于控制本次变更是否可撤销。 */
     isSubmitHistory: boolean
+    /** rawweight数值，用于当前布局、统计或索引计算。 */
     rawWeight: number
+    /** totalbatchcount，用于统计当前场景的发生次数。 */
     totalBatchCount: number
   }) {
     this.cancel('replaced-by-new-transaction')

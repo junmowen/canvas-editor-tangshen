@@ -4,7 +4,7 @@ describe('菜单-打印', () => {
   let initialPageCount = 0
 
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
 
     cy.get('canvas[data-index]')
       .should($canvas => {

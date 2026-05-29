@@ -8,10 +8,10 @@
 
 ```javascript
 export function myPlugin(editor: Editor, options?: Option) {
-  // 1. 修改方法，详见：src/plugins/copy
+  // 1. 修改方法，详见：src/demo/plugins/copy
   editor.command.updateFunction = () => {}
 
-  // 2. 增加方法，详见：src/plugins/markdown
+  // 2. 增加方法，详见：src/demo/plugins/markdown
   editor.command.addFunction = () => {}
 
   // 3. 事件监听、快捷键、右键菜单、重写方法等组合处理

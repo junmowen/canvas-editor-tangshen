@@ -2,7 +2,7 @@ import type { IRenderBackend } from '../types/RenderBackend'
 import type { IRenderSurface } from '../types/RenderSurface'
 import type { IRenderTask } from '../types/RenderTask'
 
-/** SVG / DOM 渲染引擎配置。 */
+/** svgdom渲染engine选项契约，用于约束内部流程中传递的数据结构。 */
 export interface ISvgDomRenderEngineOptions {
   /** 是否启用 SVG / DOM 任务处理，默认关闭以保持现有 canvas 主链路稳定。 */
   enabled?: boolean

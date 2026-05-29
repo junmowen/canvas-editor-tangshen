@@ -9,6 +9,7 @@ import {
   RenderSurfaceManager
 } from '../../render-backend'
 
+/** 页面画布hostmetrics契约，用于约束内部流程中传递的数据结构。 */
 export interface IPageCanvasHostMetrics {
   getWidth(): number
   getHeight(): number
@@ -754,12 +755,19 @@ export class PageCanvasHost {
   }
 
   private rebuildExtraLayerTileSurfaces(payload: {
+    /** 页码，用于定位分页结果中的目标页面。 */
     pageNo: number
+    /** 渲染图层标识，用于区分页背景、正文和浮层。 */
     layer: RenderLayer
+    /** 宽度尺寸，使用编辑器内部像素单位。 */
     width: number
+    /** 分片绘制覆盖的总高度。 */
     totalHeight: number
+    /** 单个分片画布的高度。 */
     tileHeight: number
+    /** tilecount，用于统计当前场景的发生次数。 */
     tileCount: number
+    /** 设备像素比，用于将 CSS 尺寸换算为画布像素。 */
     dpr: number
     pageWrapper: HTMLDivElement
   }): IRenderSurface[] {
@@ -789,6 +797,7 @@ export class PageCanvasHost {
     return tileList
   }
 
+  /** 格式化tile画布，生成界面显示或提交需要的文本。 */
   private formatTileCanvas(
     canvas: HTMLCanvasElement,
     layer: RenderLayer,

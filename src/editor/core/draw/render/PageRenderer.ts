@@ -1,5 +1,7 @@
 import { IDrawFloatPayload, IDrawPagePayload } from '../../../interface/Draw'
-import { ElementType } from '../../../dataset/enum/Element'
+import { BlockPageHostRenderer } from '../../modules/block/render/BlockPageHostRenderer'
+import { BlockRenderLifecycle } from '../../modules/block/render/BlockRenderLifecycle'
+import { PageSearchRenderer } from '../../modules/search/render/PageSearchRenderer'
 import { IRenderSurface, RenderLayer } from '../../render-backend'
 import type { RenderTaskPriority } from '../../render-backend/types/RenderTask'
 import type { Draw } from '../Draw'
@@ -12,25 +14,38 @@ import {
 
 export type { ITypingPreviewStats }
 
+/** 基准渲染来源类型，用于约束内部流程中传递的数据结构。 */
 export type BaseRenderSource =
   | 'canvas-2d-render'
   | 'worker-render'
   | 'bitmap-cache-compose'
 
+/** 基准渲染来源recentsample契约，用于约束内部流程中传递的数据结构。 */
 export interface IBaseRenderSourceRecentSample {
+  /** 页码，用于定位分页结果中的目标页面。 */
   pageNo: number
+  /** 数据来源标识，用于区分渲染、缓存或事件来源。 */
   source: BaseRenderSource
+  /** 时间戳，用于标记任务、缓存或事件发生时间。 */
   timestamp: number
 }
 
+/** 基准渲染来源stats契约，用于约束内部流程中传递的数据结构。 */
 export interface IBaseRenderSourceStats {
+  /** Canvas 2D 渲染次数，用于对比后端渲染路径占比。 */
   canvas2DRenderCount: number
+  /** 后台线程渲染count，用于统计当前场景的发生次数。 */
   workerRenderCount: number
+  /** 位图缓存合成次数，用于观察缓存复用效果。 */
   bitmapCacheComposeCount: number
+  /** last来源by页面no，用于定位对应页、行或序号。 */
   lastSourceByPageNo: Record<number, BaseRenderSource>
   recentWindow: {
+    /** 渲染窗口页数，限制一次绘制的页面范围。 */
     windowSize: number
+    /** samplecount，用于统计当前场景的发生次数。 */
     sampleCount: number
+    /** 来源countmap，用于按键快速查找对应数据。 */
     sourceCountMap: Partial<Record<BaseRenderSource, number>>
     sampleList: IBaseRenderSourceRecentSample[]
   }
@@ -44,21 +59,32 @@ export interface IBaseRenderSourceStats {
 export class PageRenderer {
   /** base bitmap cache 控制器。 */
   private readonly bitmapCacheController: PageBitmapCacheController
+  /** block 页级 DOM host 重放器。 */
+  private readonly blockPageHostRenderer: BlockPageHostRenderer
+  /** block 运行态 host 生命周期辅助。 */
+  private readonly blockRenderLifecycle: BlockRenderLifecycle
   /** 单页内容绘制器。 */
   private readonly contentPainter: PageContentPainter
+  /** 搜索页级渲染状态。 */
+  private readonly pageSearchRenderer: PageSearchRenderer
   /** 输入态局部 canvas 快速重绘器。 */
   private readonly typingPreviewRenderer: TypingPreviewRenderer
   /** base 内容来源统计，用于区分同步绘制、worker 合成和 bitmap cache 合成。 */
   private readonly baseRenderSourceSampleList: IBaseRenderSourceRecentSample[] = []
+  /** 只读基准渲染来源recentwindowsize，限制缓存窗口或资源池的最大规模。 */
   private readonly baseRenderSourceRecentWindowSize = 120
   private readonly lastBaseRenderSourceByPageNo = new Map<number, BaseRenderSource>()
   private canvas2DRenderCount = 0
   private workerRenderCount = 0
   private bitmapCacheComposeCount = 0
 
+  /** 初始化 PageRenderer 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {
     this.bitmapCacheController = new PageBitmapCacheController(draw)
+    this.blockPageHostRenderer = new BlockPageHostRenderer(draw)
+    this.blockRenderLifecycle = new BlockRenderLifecycle(draw)
     this.contentPainter = new PageContentPainter(draw)
+    this.pageSearchRenderer = new PageSearchRenderer(draw)
     this.typingPreviewRenderer = new TypingPreviewRenderer(draw)
   }
 
@@ -69,8 +95,11 @@ export class PageRenderer {
    * 失败时不做假预览，等待后台 layout。
    */
   public renderTypingChunkPreview(payload: {
+    /** 当前元素索引，用于记录遍历或命中过程的位置。 */
     curIndex: number
+    /** 编辑索引，用于定位本次修改发生的位置。 */
     editIndex?: number
+    /** 已插入数量，用于累加本次写入的元素个数。 */
     insertedCount: number
   }): boolean {
     return this.typingPreviewRenderer.renderTypingChunkPreview(payload)
@@ -169,7 +198,7 @@ export class PageRenderer {
         pageNo,
         'continuous page rendered by tiled sync backend'
       )
-      this.draw.getComponents().blockParticle.clearPage(pageNo)
+      this.blockRenderLifecycle.clearPageRuntimeHosts(pageNo)
       tileSurfaceList.forEach(tileSurface => {
         this.draw.getServices().renderBackendManager.render(tileSurface, {
           pageNo,
@@ -193,7 +222,7 @@ export class PageRenderer {
       return
     }
     if (this.bitmapCacheController.restoreBaseSurfaceFromBitmapCache(surface)) {
-      this.renderDomBlockHosts(payload)
+      this.blockPageHostRenderer.render(payload)
       // base 命中缓存后仍需刷新 overlay，避免选区、搜索和控件高亮丢失。
       this.draw.getTableOverlayRenderer().renderPageOverlay(pageNo)
       return
@@ -248,7 +277,7 @@ export class PageRenderer {
 
   /** 当前页、光标页、选区边界页、搜索态和激活控件页都视为交互页。 */
   private isInteractivePage(pageNo: number): boolean {
-    if (this.draw.getSearch().getSearchKeyword()) {
+    if (this.pageSearchRenderer.hasActiveKeyword()) {
       return true
     }
     if (pageNo === this.draw.getPageNo()) {
@@ -302,33 +331,6 @@ export class PageRenderer {
   /** 取消所有待写入的 base bitmap 缓存，通常在编辑器销毁时调用。 */
   public cancelPendingBitmapCache() {
     this.bitmapCacheController.cancelPendingBitmapCache()
-  }
-
-  /** base bitmap cache 命中时仍需重放 DOM/SVG block host。 */
-  private renderDomBlockHosts(payload: IDrawPagePayload) {
-    const pagePositionList =
-      this.draw.getCoordinate().getLayoutMainPositionListByPage(payload.pageNo)
-    let rowPositionOffset = 0
-    for (let i = 0; i < payload.rowList.length; i++) {
-      const row = payload.rowList[i]
-      const rowPositionList = pagePositionList.slice(
-        rowPositionOffset,
-        rowPositionOffset + row.elementList.length
-      )
-      rowPositionOffset += row.elementList.length
-      for (let j = 0; j < row.elementList.length; j++) {
-        const element = row.elementList[j]
-        const rowPosition = rowPositionList[j]
-        if (element.type !== ElementType.BLOCK || !rowPosition) continue
-        const {
-          ascent,
-          coordinate: {
-            leftTop: [x, y]
-          }
-        } = rowPosition
-        this.draw.getBlockParticle().render(payload.pageNo, element, x, y + ascent)
-      }
-    }
   }
 
   /** 使用 requestAnimationFrame 延迟触发渲染。 */
@@ -391,7 +393,7 @@ export class PageRenderer {
     const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
     const elementList = this.draw.getObjectResolver().getLayoutMainElementList()
     const searchRenderPageNoList =
-      this.draw.getSearch().consumeSearchRenderPageNoList()
+      this.pageSearchRenderer.consumeRenderPageNoList()
     const pageNoList = this.draw.resolveVisibleRenderPageNos(searchRenderPageNoList)
 
     for (let i = 0; i < pageNoList.length; i++) {

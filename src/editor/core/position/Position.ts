@@ -1,4 +1,3 @@
-import { ElementType, RowFlex, VerticalAlign } from '../..'
 import { ZERO } from '../../dataset/constant/Common'
 import {
   IComputePageRowPositionPayload,
@@ -12,22 +11,39 @@ import { IElement, IElementPosition } from '../../interface/Element'
 import { IPositionContext } from '../../interface/Position'
 import { Draw } from '../draw/Draw'
 import { deepClone, isRectIntersect } from '../../utils'
-import { ImageDisplay } from '../../dataset/enum/Common'
 import { DeepRequired } from '../../interface/Common'
 import { EventBus } from '../event/eventbus/EventBus'
 import { EventBusMap } from '../../interface/EventBus'
 import { getIsBlockElement } from '../../utils/element'
-import { getTableCellContentInset } from '../table/layout/TableCellContentInset'
-import { forEachTableCell } from '../table/utils/TableCellTraversal'
+import {
+  ensureFloatImagePosition,
+  resolveScaledFloatImageRect,
+  shouldCacheFloatImagePosition,
+  shouldUseImageOffset
+} from '../modules/image/position/ImagePositionPolicy'
+import { resolveRowFlexOffsetX } from '../modules/paragraph/layout/ParagraphRowLayoutPolicy'
+import { computeTableCellPositions } from '../modules/table/position/computeTableCellPositions'
+import {
+  hasInlineTableElement,
+  isNonTableElementInInlineTableRow,
+  resolveTableFragmentForPositionElement,
+  shouldComputeTableCellPosition
+} from '../modules/table/position/TablePositionPolicy'
+import { resolveTablePositionList } from '../modules/table/position/resolveTablePositionList'
 import { installPositionHitTestMethods } from './PositionHitTestMethods'
 
 // 页内行带索引。用于把“按整页扫描位置列表”的命中过程
 // 缩到“先定位行带，再在局部范围内继续判断”。
 type TPageRowBand = {
+  /** 行号，用于定位页面内的目标行。 */
   rowNo: number
+  /** 上侧偏移或边距，用于计算区域边界。 */
   top: number
+  /** 下侧偏移或边距，用于计算区域边界。 */
   bottom: number
+  /** 起始位置，用于描述范围、拖拽或扫描的入口。 */
   start: number
+  /** 结束数值，用于当前布局、统计或索引计算。 */
   end: number
 }
 
@@ -40,7 +56,9 @@ type TPageRowBand = {
  * 3. 不再承接复杂表格语义，表格主命中已下沉到 TableHitTestService。
  */
 export class Position {
+  /** 当前光标位置缓存，包含元素索引、页码和坐标信息。 */
   private cursorPosition: IElementPosition | null
+  /** 当前光标上下文，记录是否处于表格、页眉、页脚等特殊区域。 */
   private positionContext: IPositionContext
   private positionList: IElementPosition[]
   private floatPositionList: IFloatPosition[]
@@ -50,10 +68,14 @@ export class Position {
   private positionLookupMapCache: WeakMap<IElementPosition[], Map<string, IElementPosition>>
   private pageRowBandsLookupMapCache: WeakMap<IElementPosition[], Map<number, TPageRowBand[]>>
 
+  /** Draw 门面实例，用于访问编辑器布局、渲染、数据和组件服务。 */
   private draw: Draw
+  /** 事件总线实例，用于发布和订阅编辑器内部事件。 */
   private eventBus: EventBus<EventBusMap>
+  /** 编辑器选项快照，读取页面尺寸、样式和功能开关。 */
   private options: DeepRequired<IEditorOption>
 
+  /** 初始化 Position 实例并注入运行依赖。 */
   constructor(draw: Draw) {
     this.positionList = []
     this.floatPositionList = []
@@ -77,154 +99,14 @@ export class Position {
     return this.floatPositionList
   }
 
-  private normalizeTablePositionList(
-    positionList: IElementPosition[]
-  ): IElementPosition[] {
-    // 表格内部 positionList 在局部 cell 内通常从 0 开始重新编号，
-    // 这里统一重排成连续局部索引，供 cell 内命中与导航使用。
-    return positionList.map((position, index) => ({
-      ...position,
-      index
-    }))
-  }
-
   public getTablePositionList(
     sourceElementList: IElement[]
   ): IElementPosition[] {
-    // 当前 positionContext 落在表格内时，优先尝试拿到“当前逻辑 cell 的连续位置列表”。
-    // paged / fragment / pagingOriginId 等差异都在这里统一收口。
-    const { index, trIndex, tdIndex, tableId, tdId } = this.positionContext
-    const tableCell =
-      index !== undefined && trIndex !== undefined && tdIndex !== undefined
-        ? this.draw.getTargetResolver().resolveTableTdByIndex({
-            elementList: sourceElementList,
-            tableIndex: index,
-            trIndex,
-            tdIndex
-          })
-        : null
-    const table = tableCell?.table || null
-    const tr = tableCell?.tr || null
-    const td = tableCell?.td || null
-
-    const directPositionList = td?.positionList || []
-    if (directPositionList.length && !table?.pagingId) {
-      return this.normalizeTablePositionList(directPositionList)
-    }
-
-    const matchedPositionList: IElementPosition[] = []
-    const expectedTableIds = new Set(
-      [tableId, table?.id, (table as any)?.tableId].filter(Boolean)
-    )
-    const expectedTdIds = new Set(
-      [tdId, td?.id, td?.pagingOriginId].filter(Boolean)
-    )
-
-    sourceElementList.forEach(element => {
-      if (element.type !== ElementType.TABLE) return
-      const tableIdMatched =
-        !expectedTableIds.size ||
-        expectedTableIds.has(element.id) ||
-        expectedTableIds.has((element as any).tableId) ||
-        (!!table?.pagingId && element.pagingId === table.pagingId)
-      if (!tableIdMatched) return
-
-      forEachTableCell({
-        tableElement: element,
-        tableIndex: -1,
-        visitor: ({ td: fragmentTd }) => {
-          const tdIdMatched =
-            !expectedTdIds.size ||
-            expectedTdIds.has(fragmentTd.id) ||
-            expectedTdIds.has(fragmentTd.pagingOriginId)
-          if (!tdIdMatched) return
-          if (fragmentTd.positionList?.length) {
-            matchedPositionList.push(...fragmentTd.positionList)
-          }
-        }
-      })
+    return resolveTablePositionList({
+      draw: this.draw,
+      positionContext: this.positionContext,
+      sourceElementList
     })
-
-    if (matchedPositionList.length) {
-      return this.normalizeTablePositionList(matchedPositionList)
-    }
-
-    const pageRowFragmentPositionList: IElementPosition[] = []
-    if (table?.id && tr?.id && td?.id) {
-      const sliceList = this.draw
-        .getTargetResolver()
-        .getCellSlicesByLogicalCell({
-          tableId: table.id,
-          trId: tr.id,
-          tdId: td.id
-        })
-      const fragmentTableIds = new Set(sliceList.map(slice => slice.fragmentTableId))
-      const fragmentTrIds = new Set(sliceList.map(slice => slice.fragmentTrId))
-      const fragmentTdIds = new Set(sliceList.map(slice => slice.fragmentTdId))
-
-      this.draw.getPageRowList().forEach(pageRows => {
-        pageRows.forEach(row => {
-          const fragmentTable = row.tableFragment
-          if (!fragmentTable) {
-            return
-          }
-          const rowTableElement = row.elementList.find(
-            element => element.type === ElementType.TABLE
-          ) as IElement | undefined
-          const fragmentTableId =
-            rowTableElement?.id ||
-            (rowTableElement as any)?.tableId ||
-            (fragmentTable as any).id ||
-            (fragmentTable as any).tableId
-          if (!fragmentTableId || !fragmentTableIds.has(fragmentTableId)) {
-            return
-          }
-
-          fragmentTable.trList?.forEach(fragmentTr => {
-            if (!fragmentTr.id || !fragmentTrIds.has(fragmentTr.id)) {
-              return
-            }
-            fragmentTr.tdList.forEach(fragmentTd => {
-              if (!fragmentTd.id || !fragmentTdIds.has(fragmentTd.id)) {
-                return
-              }
-              if (fragmentTd.positionList?.length) {
-                pageRowFragmentPositionList.push(...fragmentTd.positionList)
-              }
-            })
-          })
-        })
-      })
-    }
-
-    if (pageRowFragmentPositionList.length) {
-      return this.normalizeTablePositionList(pageRowFragmentPositionList)
-    }
-
-    if (table?.pagingId && td) {
-      const originTdId = td.pagingOriginId || td.id
-      const positionList: IElementPosition[] = []
-      sourceElementList.forEach(element => {
-        if (element.type !== ElementType.TABLE || element.pagingId !== table.pagingId) {
-          return
-        }
-        forEachTableCell({
-          tableElement: element,
-          tableIndex: -1,
-          visitor: ({ td: fragmentTd }) => {
-            if (
-              fragmentTd.id === originTdId ||
-              fragmentTd.pagingOriginId === originTdId
-            ) {
-              positionList.push(...(fragmentTd.positionList || []))
-            }
-          }
-        })
-      })
-      return this.normalizeTablePositionList(positionList)
-    }
-
-    return this.normalizeTablePositionList(directPositionList)
   }
 
   public getPositionList(): IElementPosition[] {
@@ -282,6 +164,7 @@ export class Position {
     this.floatPositionList = payload
   }
 
+  /** 计算 Page Row Position 对应的布局或状态。 */
   public computePageRowPosition(
     payload: IComputePageRowPositionPayload
   ): IComputePageRowPositionResult {
@@ -306,26 +189,11 @@ export class Position {
     for (let i = 0; i < rowList.length; i++) {
       const curRow = rowList[i]
       if (!curRow?.elementList?.length) continue
-      // 行存在环绕的可能性均不设置行布局
-      if (!curRow.isSurround) {
-        // 计算行偏移量（行居中、居右）
-        const curRowWidth =
-          curRow.width +
-          (curRow.rowFlexOffsetX || 0) +
-          (curRow.rightOffsetX || 0)
-        if (curRow.rowFlex === RowFlex.CENTER) {
-          x += (innerWidth - curRowWidth) / 2
-        } else if (curRow.rowFlex === RowFlex.RIGHT) {
-          x += innerWidth - curRowWidth
-        }
-      }
+      x += resolveRowFlexOffsetX({ row: curRow, innerWidth })
       // 当前行X/Y轴偏移量
       x += curRow.offsetX || 0
       y += curRow.offsetY || 0
-      const isInlineTableRow = curRow.elementList.some(
-        element =>
-          element.type === ElementType.TABLE && element.tableDisplay === 'inline'
-      )
+      const isInlineTableRow = hasInlineTableElement(curRow.elementList)
       for (let j = 0; j < curRow.elementList.length; j++) {
         const element = curRow.elementList[j]
         const metrics = element.metrics
@@ -351,7 +219,10 @@ export class Position {
             positionItem.index = index
             positionItem.value = element.value
             positionItem.element = element
-            positionItem.tableFragment = element.type === ElementType.TABLE ? curRow.tableFragment : undefined
+            positionItem.tableFragment = resolveTableFragmentForPositionElement(
+              element,
+              curRow
+            )
             positionItem.rowIndex = startRowIndex + i
             positionItem.rowNo = i
             positionItem.metrics = metrics
@@ -375,8 +246,10 @@ export class Position {
               index,
               value: element.value,
               element,
-              tableFragment:
-                element.type === ElementType.TABLE ? curRow.tableFragment : undefined,
+              tableFragment: resolveTableFragmentForPositionElement(
+                element,
+                curRow
+              ),
               rowIndex: startRowIndex + i,
               rowNo: i,
               metrics,
@@ -401,8 +274,10 @@ export class Position {
             index,
             value: element.value,
             element,
-            tableFragment:
-              element.type === ElementType.TABLE ? curRow.tableFragment : undefined,
+            tableFragment: resolveTableFragmentForPositionElement(
+              element,
+              curRow
+            ),
             rowIndex: startRowIndex + i,
             rowNo: i,
             metrics,
@@ -420,26 +295,14 @@ export class Position {
           }
         }
         // 缓存浮动元素信息
-        if (
-          element.imgDisplay === ImageDisplay.SURROUND ||
-          element.imgDisplay === ImageDisplay.TIGHT ||
-          element.imgDisplay === ImageDisplay.FLOAT_TOP ||
-          element.imgDisplay === ImageDisplay.FLOAT_BOTTOM
-        ) {
+        if (shouldCacheFloatImagePosition(element)) {
           // 浮动元素使用上一位置信息
           const prePosition = positionList[positionList.length - 1]
           if (prePosition) {
             positionItem.metrics = prePosition.metrics
             positionItem.coordinate = prePosition.coordinate
           }
-          // 兼容浮动元素初始坐标为空的情况-默认使用左上坐标
-          if (!element.imgFloatPosition) {
-            element.imgFloatPosition = {
-              x,
-              y,
-              pageNo
-            }
-          }
+          ensureFloatImagePosition({ element, x, y, pageNo })
           this.floatPositionList.push({
             pageNo,
             element,
@@ -456,86 +319,23 @@ export class Position {
         index++
         x += metrics.width
         // 计算表格内元素位置
-        if (element.type === ElementType.TABLE && !element.hide) {
-          const tablePreX = elementPreX
-          const tablePreY = elementPreY
-          const tableNextX = x
-          const tableNextY = y
-          const tableSource = curRow.tableFragment || element
-          if (!tableSource.trList?.length) {
-            continue
-          }
-          const tdPaddingHeight = tdPadding[0] + tdPadding[2]
-          for (let t = 0; t < tableSource.trList.length; t++) {
-            const tr = tableSource.trList[t]
-            for (let d = 0; d < tr.tdList!.length; d++) {
-              const td = tr.tdList[d]
-              td.positionList = []
-              const rowList = td.rowList!
-              const contentInset = getTableCellContentInset(tableSource, td)
-              const tdHorizontalPadding =
-                tdPadding[1] +
-                tdPadding[3] +
-                contentInset.left +
-                contentInset.right
-              const drawRowResult = this.computePageRowPosition({
-                positionList: td.positionList,
-                rowList,
-                pageNo,
-                startRowIndex: 0,
-                startIndex: 0,
-                startX:
-                  (td.x! + tdPadding[3] + contentInset.left) * scale +
-                  tablePreX,
-                startY:
-                  (td.y! + tdPadding[0] + contentInset.top) * scale +
-                  tablePreY,
-                innerWidth: Math.max(0, td.width! - tdHorizontalPadding) * scale,
-                isTable: true,
-                index: index - 1,
-                tdIndex: d,
-                trIndex: t,
-                zone
-              })
-              // 垂直对齐方式
-              if (
-                td.verticalAlign === VerticalAlign.MIDDLE ||
-                td.verticalAlign === VerticalAlign.BOTTOM
-              ) {
-                const rowsHeight = rowList.reduce(
-                  (pre, cur) => pre + cur.height,
-                  0
-                )
-                const blankHeight =
-                  (td.height! -
-                    tdPaddingHeight -
-                    contentInset.top -
-                    contentInset.bottom) *
-                    scale -
-                  rowsHeight
-                const offsetHeight =
-                  td.verticalAlign === VerticalAlign.MIDDLE
-                    ? blankHeight / 2
-                    : blankHeight
-                if (Math.floor(offsetHeight) > 0) {
-                  td.positionList.forEach(tdPosition => {
-                    const {
-                      coordinate: { leftTop, leftBottom, rightBottom, rightTop }
-                    } = tdPosition
-                    leftTop[1] += offsetHeight
-                    leftBottom[1] += offsetHeight
-                    rightBottom[1] += offsetHeight
-                    rightTop[1] += offsetHeight
-                  })
-                }
-              }
-              x = drawRowResult.x
-              y = drawRowResult.y
-            }
-          }
-          // 恢复初始x、y
-          x = tableNextX
-          y = tableNextY
+        if (shouldComputeTableCellPosition(element)) {
+          const tablePositionResult = computeTableCellPositions({
+            tableSource: curRow.tableFragment || element,
+            tablePreX: elementPreX,
+            tablePreY: elementPreY,
+            tableNextX: x,
+            tableNextY: y,
+            scale,
+            tdPadding,
+            pageNo,
+            tableIndex: index - 1,
+            zone,
+            computePageRowPosition: rowPayload =>
+              this.computePageRowPosition(rowPayload)
+          })
+          x = tablePositionResult.x
+          y = tablePositionResult.y
         }
       }
       x = startX
@@ -544,27 +344,30 @@ export class Position {
     return { x, y, index }
   }
 
+  /** 计算 Element Offset Y 对应的布局或状态。 */
   private computeElementOffsetY(payload: {
+    /** 文档元素对象，承载文本、控件、表格或媒体信息。 */
     element: IElement
+    /** 统计指标集合，用于暴露渲染或布局运行状态。 */
     metrics: IElementPosition['metrics']
+    /** 行ascent数值，用于当前布局、统计或索引计算。 */
     rowAscent: number
+    /** 是否行内表格行，用于命中时区分普通行和表格行。 */
     isInlineTableRow: boolean
   }) {
     const { element, metrics, rowAscent, isInlineTableRow } = payload
-    if (isInlineTableRow && element.type !== ElementType.TABLE) {
+    if (isNonTableElementInInlineTableRow({ element, isInlineTableRow })) {
       const rowMargin =
         this.options.defaultBasicRowMarginHeight *
         (element.rowMargin ?? this.options.defaultRowMargin)
       return Math.max(0, metrics.boundingBoxAscent + rowMargin)
     }
-    return !element.hide &&
-      ((element.imgDisplay !== ImageDisplay.INLINE &&
-        element.type === ElementType.IMAGE) ||
-        element.type === ElementType.LATEX)
+    return shouldUseImageOffset(element)
       ? rowAscent - metrics.height
       : rowAscent
   }
 
+  /** 计算 Position List 对应的布局或状态。 */
   public computePositionList() {
     this.isComputingAllPositions = true
     this.poolIndex = 0
@@ -600,6 +403,7 @@ export class Position {
     this.isComputingAllPositions = false
   }
 
+  /** 计算 Position List From Page 对应的布局或状态。 */
   public computePositionListFromPage(startPageNo: number) {
     const pageRowList = this.draw.getPageRowList()
     if (!pageRowList.length || startPageNo <= 0) {
@@ -639,6 +443,7 @@ export class Position {
     this.positionList = nextPositionList
   }
 
+  /** 计算 Row Position 对应的布局或状态。 */
   public computeRowPosition(
     payload: IComputeRowPositionPayload
   ): IElementPosition[] {
@@ -797,15 +602,11 @@ export class Position {
     ) {
       for (let s = 0; s < surroundElementList.length; s++) {
         const surroundElement = surroundElementList[s]
-        const floatPosition = surroundElement.imgFloatPosition!
-        if (floatPosition.pageNo !== pageNo) continue
-        const surroundRect = {
-          ...floatPosition,
-          x: floatPosition.x * scale,
-          y: floatPosition.y * scale,
-          width: surroundElement.width! * scale,
-          height: surroundElement.height! * scale
-        }
+        const surroundRect = resolveScaledFloatImageRect({
+          element: surroundElement,
+          scale
+        })
+        if (!surroundRect || surroundRect.pageNo !== pageNo) continue
         if (isRectIntersect(rowElementRect, surroundRect)) {
           row.isSurround = true
           // 需向左移动距离：浮动元素宽度 + 浮动元素左上坐标 - 元素左上坐标

@@ -1,6 +1,7 @@
 import { CanvasEvent } from '../CanvasEvent'
 
 export class PointerSessionController {
+  /** 初始化 PointerSessionController 实例并注入运行依赖。 */
   constructor(private readonly host: CanvasEvent) {}
 
   public clearSelection() {

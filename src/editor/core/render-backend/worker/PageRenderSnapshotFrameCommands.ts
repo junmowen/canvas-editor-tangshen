@@ -1,9 +1,9 @@
 
 import { FORMAT_PLACEHOLDER } from '../../../dataset/constant/PageNumber'
-import { RowFlex } from '../../../dataset/enum/Row'
 import { WatermarkType } from '../../../dataset/enum/Watermark'
 import { IDrawPagePayload } from '../../../interface/Draw'
-import { PageNumber } from '../../draw/frame/PageNumber'
+import { resolveWorkerSnapshotPageNumberX } from '../../modules/page-number/render/PageNumberWorkerSnapshotPolicy'
+import { PageNumber } from '../../modules/page-number/runtime/PageNumber'
 import { IWorkerPaintCommand } from './WorkerRenderProtocol'
 import { PageRenderSnapshotPageCommands } from './PageRenderSnapshotPageCommands'
 
@@ -76,12 +76,12 @@ export abstract class PageRenderSnapshotFrameCommands extends PageRenderSnapshot
     const pageNumberBottom =
       this.draw.getServices().metricsService.getPageNumberBottom()
     const margins = this.draw.getMargins()
-    let x = margins[3]
-    if (rowFlex === RowFlex.CENTER) {
-      x = (this.draw.getWidth() - textWidth) / 2
-    } else if (rowFlex === RowFlex.RIGHT) {
-      x = this.draw.getWidth() - textWidth - margins[1]
-    }
+    const x = resolveWorkerSnapshotPageNumberX({
+      rowFlex,
+      pageWidth: this.draw.getWidth(),
+      textWidth,
+      margins
+    })
     commandList.push({
       type: 'fillText',
       text,
@@ -191,6 +191,7 @@ export abstract class PageRenderSnapshotFrameCommands extends PageRenderSnapshot
       pageNumber: { format, startPageNo, fromPageNo, numberType }
     } = this.draw.getRuntime().getOptions()
     let text = format
+    // 创建 page No Reg 实例。
     const pageNoReg = new RegExp(FORMAT_PLACEHOLDER.PAGE_NO)
     if (pageNoReg.test(text)) {
       text = PageNumber.formatNumberPlaceholder(
@@ -200,6 +201,7 @@ export abstract class PageRenderSnapshotFrameCommands extends PageRenderSnapshot
         numberType
       )
     }
+    // 创建 page Count Reg 实例。
     const pageCountReg = new RegExp(FORMAT_PLACEHOLDER.PAGE_COUNT)
     if (pageCountReg.test(text)) {
       text = PageNumber.formatNumberPlaceholder(
@@ -218,6 +220,7 @@ export abstract class PageRenderSnapshotFrameCommands extends PageRenderSnapshot
       watermark: { data, numberType }
     } = this.draw.getRuntime().getOptions()
     let text = data
+    // 创建 page No Reg 实例。
     const pageNoReg = new RegExp(FORMAT_PLACEHOLDER.PAGE_NO)
     if (pageNoReg.test(text)) {
       text = PageNumber.formatNumberPlaceholder(
@@ -227,6 +230,7 @@ export abstract class PageRenderSnapshotFrameCommands extends PageRenderSnapshot
         numberType
       )
     }
+    // 创建 page Count Reg 实例。
     const pageCountReg = new RegExp(FORMAT_PLACEHOLDER.PAGE_COUNT)
     if (pageCountReg.test(text)) {
       text = PageNumber.formatNumberPlaceholder(

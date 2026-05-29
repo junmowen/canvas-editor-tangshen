@@ -2,7 +2,7 @@ import Editor, { ControlType, ElementType } from '../../../src/editor'
 
 describe('控件-复选框', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
 
     cy.get('canvas').first().as('canvas').should('have.length', 1)
   })

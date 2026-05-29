@@ -1,4 +1,4 @@
-import { ElementType } from '../../../../dataset/enum/Element'
+import { isPatchableTextElement } from '../../../modules/paragraph/layout/ParagraphPatchLayoutPolicy'
 import type { Draw } from '../../Draw'
 import {
   IChunkLayoutPatchContext,
@@ -20,6 +20,8 @@ export class ChunkPatchGuard {
   public resolveContext(
     curIndex: number | undefined,
     insertedCount = 0
+  /** 处理结果，用于返回本次计算产出的数据。 */
+  /** 当前操作上下文，汇总本次处理需要共享的状态。 */
   ): { context: IChunkLayoutPatchContext | null; result: IChunkLayoutPatchResult } {
     const positionContext = this.draw.getCoordinate().getPositionContext()
     if (positionContext.isTable) {
@@ -113,18 +115,8 @@ export class ChunkPatchGuard {
   }
 
   /** 判断元素是否适合首版 chunk patch。 */
-  private canPatchElementList(elementList: Array<{ type?: ElementType }>) {
-    return elementList.every(element => {
-      return (
-        !element.type ||
-        element.type === ElementType.TEXT ||
-        element.type === ElementType.HYPERLINK ||
-        element.type === ElementType.DATE ||
-        element.type === ElementType.SUBSCRIPT ||
-        element.type === ElementType.SUPERSCRIPT ||
-        element.type === ElementType.TAB
-      )
-    })
+  private canPatchElementList(elementList: Array<{ type?: unknown }>) {
+    return elementList.every(element => isPatchableTextElement(element as any))
   }
 
   /** 获取某页中落在索引范围内的旧行。 */

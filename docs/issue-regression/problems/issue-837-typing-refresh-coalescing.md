@@ -10,14 +10,14 @@
 
 复跑失败：
 
-```text
+```txt
 AssertionError: coalesced render count: expected 0 to equal 1
 at cypress/e2e/issues/issue-837-large-document-performance.cy.ts:177:55
 ```
 
 截图：
 
-```text
+```txt
 cypress/screenshots/issue-837-large-document-performance.cy.ts/issue #837 large document performance baseline -- coalesces rapid typing refreshes before repainting a 30-page document (failed).png
 ```
 

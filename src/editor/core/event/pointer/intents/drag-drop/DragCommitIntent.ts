@@ -1,14 +1,21 @@
-import { ImageDisplay } from '../../../../../dataset/enum/Common'
-import { ElementType } from '../../../../../dataset/enum/Element'
 import { IElement } from '../../../../../interface/Element'
-import { isEditorDisabled } from '../../../../utils/editorState'
+import { isEditorDisabled } from '../../../../shared/utils/editorState'
 import { CanvasEvent } from '../../../CanvasEvent'
 import { IPointerCoordinatePayload } from '../../coordinates/PointerCoordinateTypes'
-import { isAllowedControlDrag } from '../../policies/ControlDragPolicy'
 import {
+  hasControlElement,
+  isAllowedControlDrag
+} from '../../../../modules/control/policy/ControlDragPolicy'
+import { emitControlDragDropContentChange } from '../../../../modules/control/interaction/applyControlDragDropMutation'
+import {
+  isFloatingImageElement,
+  isImageLikeDragElement,
+  isSurroundImageElement,
+  moveDraggedImagePosition,
   repaintDraggedImageResizer,
   showImageResizer
-} from '../../effects/PreviewerEffect'
+} from '../../../../modules/image/interaction/ImageDragInteraction'
+import { isDragDropWithinSameTableCell } from '../../../../modules/table/interaction/isDragDropWithinSameTableCell'
 import {
   renderDragCommitApplied,
   renderDragCommitBlocked,
@@ -17,39 +24,12 @@ import {
 } from '../../effects/PointerRenderEffect'
 import { applyDragCommitMutation } from './DragCommitMutationIntent'
 
-function moveImgPosition(
-  element: IElement,
-  coordinates: IPointerCoordinatePayload,
-  host: CanvasEvent
-) {
-  const draw = host.getDraw()
-  const components = draw.getComponents()
-  const session = host.getPointerSession()
-  if (
-    element.imgDisplay === ImageDisplay.SURROUND ||
-    element.imgDisplay === ImageDisplay.FLOAT_TOP ||
-    element.imgDisplay === ImageDisplay.FLOAT_BOTTOM
-  ) {
-    const startViewport = session.mouseDownStartCoordinates?.viewport
-    if (!startViewport) {
-      components.imageParticle.destroyFloatImage()
-      return
-    }
-    const moveX = coordinates.viewport.x - startViewport.x
-    const moveY = coordinates.viewport.y - startViewport.y
-    const imgFloatPosition = element.imgFloatPosition!
-    element.imgFloatPosition = {
-      x: imgFloatPosition.x + moveX,
-      y: imgFloatPosition.y + moveY,
-      pageNo: draw.getPageNo()
-    }
-  }
-  components.imageParticle.destroyFloatImage()
-}
-
 export function runDragCommitIntent(payload: {
+  /** 宿主容器节点，用于承载编辑器或渲染表面。 */
   host: CanvasEvent
+  /** 原始 DOM 事件对象，用于读取指针、键盘或剪贴板信息。 */
   evt: MouseEvent
+  /** 指针坐标集合，用于统一页面坐标和客户端坐标。 */
   coordinates: IPointerCoordinatePayload
 }): boolean {
   const { host, evt, coordinates } = payload
@@ -78,23 +58,24 @@ export function runDragCommitIntent(payload: {
   if (
     range.startIndex >= cacheStartIndex &&
     range.endIndex <= cacheEndIndex &&
-    session.dragSnapshot.positionContext?.tdId === positionContext.tdId
+    isDragDropWithinSameTableCell({
+      snapshotPositionContext: session.dragSnapshot.positionContext,
+      positionContext
+    })
   ) {
     draw.clearSideEffect()
     let isSubmitHistory = false
     let isCompute = false
     if (isCacheRangeCollapsed) {
       const dragElement = cacheElementList[cacheEndIndex]
-      if (
-        dragElement.type === ElementType.IMAGE ||
-        dragElement.type === ElementType.LATEX
-      ) {
-        moveImgPosition(dragElement, coordinates, host)
-        if (
-          dragElement.imgDisplay === ImageDisplay.SURROUND ||
-          dragElement.imgDisplay === ImageDisplay.FLOAT_TOP ||
-          dragElement.imgDisplay === ImageDisplay.FLOAT_BOTTOM
-        ) {
+      if (isImageLikeDragElement(dragElement)) {
+        moveDraggedImagePosition({
+          draw,
+          element: dragElement,
+          viewport: coordinates.viewport,
+          startViewport: session.mouseDownStartCoordinates?.viewport
+        })
+        if (isFloatingImageElement(dragElement)) {
           showImageResizer({ draw, element: dragElement })
           isSubmitHistory = true
         } else {
@@ -105,7 +86,7 @@ export function runDragCommitIntent(payload: {
             position: cachePosition
           })
         }
-        isCompute = dragElement.imgDisplay === ImageDisplay.SURROUND
+        isCompute = isSurroundImageElement(dragElement)
       }
     }
     rangeManager.replaceRange({
@@ -132,7 +113,7 @@ export function runDragCommitIntent(payload: {
     cacheStartIndex + 1,
     cacheEndIndex + 1
   )
-  const isContainControl = dragElementList.find(element => element.controlId)
+  const isContainControl = hasControlElement(dragElementList)
   if (isContainControl) {
     const cacheStartElement = cacheElementList[cacheStartIndex + 1]
     const cacheEndElement = cacheElementList[cacheEndIndex]
@@ -165,26 +146,24 @@ export function runDragCommitIntent(payload: {
   if (isCacheRangeCollapsed) {
     const activeElementList = draw.getObjectResolver().getElementList()
     const dragElement = activeElementList[mutationResult.rangeEndIndex]
-    if (
-      dragElement.type === ElementType.IMAGE ||
-      dragElement.type === ElementType.LATEX
-    ) {
-      moveImgPosition(dragElement, coordinates, host)
+    if (isImageLikeDragElement(dragElement)) {
+      moveDraggedImagePosition({
+        draw,
+        element: dragElement,
+        viewport: coordinates.viewport,
+        startViewport: session.mouseDownStartCoordinates?.viewport
+      })
       imgElement = dragElement
     }
   }
   renderDragCommitApplied({ draw })
-  if (mutationResult.activeControl) {
-    control.emitControlContentChange()
-  } else if (mutationResult.cacheStartElement.controlId) {
-    control.emitControlContentChange({
-      context: {
-        range: cacheRange,
-        elementList: cacheElementList
-      },
-      controlElement: mutationResult.cacheStartElement
-    })
-  }
+  emitControlDragDropContentChange({
+    control,
+    activeControl: mutationResult.activeControl,
+    cacheStartElement: mutationResult.cacheStartElement,
+    cacheRange,
+    cacheElementList
+  })
   if (imgElement) {
     repaintDraggedImageResizer({
       draw,

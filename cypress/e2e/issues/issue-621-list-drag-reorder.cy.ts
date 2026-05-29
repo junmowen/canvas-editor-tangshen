@@ -121,7 +121,7 @@ function selectText(editor: Editor, text: string) {
 
 describe('issue #621 list item drag reorder', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
     cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
 

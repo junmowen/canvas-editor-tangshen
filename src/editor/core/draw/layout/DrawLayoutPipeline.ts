@@ -4,9 +4,13 @@ import { IDrawLayoutPatch } from '../../../interface/Draw'
 import { IElement, IElementPosition } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
 import { EditorMode, PageMode } from '../../../dataset/enum/Editor'
-import { ElementType } from '../../../dataset/enum/Element'
+import { resolveScaledFloatImageRect } from '../../modules/image/position/ImagePositionPolicy'
+import { isUnsafeParagraphPatchElement } from '../../modules/paragraph/layout/ParagraphPatchLayoutPolicy'
+import {
+  hasTableElementInRow,
+  visitTableCellValueList
+} from '../../modules/table/layout/TableRowLayoutPolicy'
 import type { Draw } from '../Draw'
-import { forEachTableCell } from '../../table/utils/TableCellTraversal'
 import { PagePartitioner } from './PagePartitioner'
 
 /**
@@ -283,27 +287,28 @@ export class DrawLayoutPipeline {
     const visitElementList = (elementList: IElement[]) => {
       for (let i = 0; i < elementList.length; i++) {
         const element = elementList[i]
-        if (element.type === ElementType.TABLE) {
-          forEachTableCell({
-            tableElement: element,
-            tableIndex: i,
-            visitor: ({ td }) => {
-              visitPositionList(td.positionList)
-              visitElementList(td.value || [])
-            }
-          })
-        }
+        visitTableCellValueList({
+          element,
+          tableIndex: i,
+          visitor: ({ td }) => {
+            visitPositionList(td.positionList)
+            visitElementList(td.value || [])
+          }
+        })
       }
     }
     visitPositionList(this.draw.getCoordinate().getLayoutMainPositionList())
     visitElementList(this.draw.getObjectResolver().getLayoutMainElementList())
     const { scale } = this.draw.getRuntime().getOptions()
     this.draw.getCoordinate().getFloatPositionList().forEach(floatPosition => {
-      const element = floatPosition.element
-      if (element.imgFloatPosition && element.height) {
+      const floatRect = resolveScaledFloatImageRect({
+        element: floatPosition.element,
+        scale
+      })
+      if (floatRect) {
         maxBottom = Math.max(
           maxBottom,
-          (element.imgFloatPosition.y + element.height) * scale
+          floatRect.y + floatRect.height
         )
       }
     })
@@ -319,13 +324,12 @@ export class DrawLayoutPipeline {
     const visit = (payload: IElement[]) => {
       for (let i = 0; i < payload.length; i++) {
         const element = payload[i]
-        if (element.type === ElementType.TABLE) {
+        if (visitTableCellValueList({
+          element,
+          tableIndex: i,
+          visitor: ({ td }) => visit(td.value || [])
+        })) {
           result.hasTable = true
-          forEachTableCell({
-            tableElement: element,
-            tableIndex: i,
-            visitor: ({ td }) => visit(td.value || [])
-          })
         }
         if (element.areaId) {
           result.hasArea = true
@@ -342,6 +346,7 @@ export class DrawLayoutPipeline {
     return result
   }
 
+  /** 计算 Patch 对应的布局或状态。 */
   private computePatch(layoutPatch: IDrawLayoutPatch): IDrawLayoutResult | null {
     if (layoutPatch.type !== 'text-input') {
       return null
@@ -364,7 +369,7 @@ export class DrawLayoutPipeline {
     if (
       !patchRow ||
       !oldPatchPageRows ||
-      patchRow.elementList.some(element => element.type === ElementType.TABLE)
+      hasTableElementInRow(patchRow)
     ) {
       return null
     }
@@ -519,18 +524,7 @@ export class DrawLayoutPipeline {
   private hasUnsafePatchElement(elementList: IElement[], start: number, end: number) {
     for (let index = start; index <= end; index++) {
       const element = elementList[index]
-      if (
-        element.type === ElementType.TABLE ||
-        element.type === ElementType.IMAGE ||
-        element.type === ElementType.LATEX ||
-        element.type === ElementType.BLOCK ||
-        element.type === ElementType.SEPARATOR ||
-        element.type === ElementType.PAGE_BREAK ||
-        element.imgDisplay ||
-        element.areaId ||
-        element.controlId ||
-        element.listId
-      ) {
+      if (isUnsafeParagraphPatchElement(element)) {
         return true
       }
     }

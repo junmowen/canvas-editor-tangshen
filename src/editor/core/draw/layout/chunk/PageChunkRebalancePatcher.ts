@@ -63,6 +63,7 @@ export class PageChunkRebalancePatcher {
    */
   public patch(
     context: IChunkLayoutPatchContext,
+    /** 操作配置项，用于调整当前流程的可选行为。 */
     options: { isAsync?: boolean } = {}
   ): IChunkLayoutPatchResult {
     this.stats.recordPatch({
@@ -404,9 +405,13 @@ export class PageChunkRebalancePatcher {
 
   /** 把窗口内相对行索引转换为整篇文档索引。 */
   private normalizeWindowRows(payload: {
+    /** 页面行列表，保存当前页排版后的行信息。 */
     pageRowList: IRow[][]
+    /** 起始元素索引，用于确定处理范围的左边界。 */
     startIndex: number
+    /** 起始页码，用于限定跨页范围的左边界。 */
     startPageNo: number
+    /** 起始行索引，用于限定表格或页面行处理范围。 */
     startRowIndex: number
   }) {
     let rowIndex = payload.startRowIndex
@@ -416,6 +421,7 @@ export class PageChunkRebalancePatcher {
         const row = pageRows[rowNo]
         row.startIndex = payload.startIndex + row.startIndex
         row.rowIndex = rowIndex
+        /** 行号，用于定位页面内的目标行。 */
         ;(row as IRow & { rowNo: number }).rowNo = rowNo
         rowIndex++
       }
@@ -424,7 +430,9 @@ export class PageChunkRebalancePatcher {
 
   /** 计算窗口内所有页的位置列表。 */
   private computeWindowPositionList(payload: {
+    /** 页面行列表，保存当前页排版后的行信息。 */
     pageRowList: IRow[][]
+    /** 起始页码，用于限定跨页范围的左边界。 */
     startPageNo: number
   }): IElementPosition[] {
     const positionList: IElementPosition[] = []
@@ -454,8 +462,11 @@ export class PageChunkRebalancePatcher {
 
   /** 判断窗口尾页边界是否变化，变化时需要继续同步下一页。 */
   private shouldPropagateNext(payload: {
+    /** 窗口内分页块列表，保存当前可见范围的布局块。 */
     windowChunkList: IChunkLayoutPatchContext['chunk'][]
+    /** 页面行列表，保存当前页排版后的行信息。 */
     pageRowList: IRow[][]
+    /** 已插入数量，用于累加本次写入的元素个数。 */
     insertedCount: number
   }) {
     if (payload.pageRowList.length !== payload.windowChunkList.length) {
@@ -526,9 +537,13 @@ export class PageChunkRebalancePatcher {
 
   /** 生成旧页窗口和新页窗口的并集，确保父 chunk 移动后旧表格页也被重绘清空。 */
   private createAffectedPageNoList(payload: {
+    /** 起始页码，用于限定跨页范围的左边界。 */
     startPageNo: number
+    /** 旧页面数量，用于判断局部重排后的分页变化。 */
     oldPageCount: number
+    /** 重排后的页面数量，用于比较分页变化。 */
     nextPageCount: number
+    /** 是否包含窗口，用于控制当前流程的判断分支。 */
     shouldIncludeWindow: boolean
     tableAffectedPageNoList: number[]
   }) {

@@ -2,7 +2,7 @@ import { DrawMutationService } from '../data/DrawMutationService'
 import { DrawExportService } from '../data/DrawExportService'
 import { DrawDataAccess } from '../data/DrawDataAccess'
 import { DrawHistoryBridge } from '../history/DrawHistoryBridge'
-import { DrawPageSetupService } from '../setup/DrawPageSetupService'
+import { PageSetupService } from '../../modules/page-setup/runtime/PageSetupService'
 import { DrawValueService } from '../data/DrawValueService'
 import { DrawCursorService } from '../cursor/DrawCursorService'
 import { DrawViewportService } from '../viewport/DrawViewportService'
@@ -16,24 +16,24 @@ import { DrawTargetResolverService } from '../data/DrawTargetResolverService'
 import { DrawPainterService } from './DrawPainterService'
 import { DrawLifecycleService } from './DrawLifecycleService'
 import { TrackChangeService } from '../track-change/TrackChangeService'
-import { TableLayoutSnapshotBuilder } from '../../table/layout/TableLayoutSnapshotBuilder'
-import { TableLayoutSnapshotAccessor } from '../../table/layout/TableLayoutSnapshotAccessor'
+import { TableLayoutSnapshotBuilder } from '../../modules/table/layout/TableLayoutSnapshotBuilder'
+import { TableLayoutSnapshotAccessor } from '../../modules/table/layout/TableLayoutSnapshotAccessor'
 import { RowLayoutEngine } from '../layout/RowLayoutEngine'
 import { DrawLayoutPipeline } from '../layout/DrawLayoutPipeline'
 import { DocumentChunkIndex } from '../layout/DocumentChunkIndex'
 import { ChunkLayoutCache } from '../layout/ChunkLayoutCache'
-import { TableChunkRangeIndex } from '../layout/TableChunkRangeIndex'
-import { TableCellChunkIndex } from '../layout/TableCellChunkIndex'
-import { TableCellChunkPipeline } from '../layout/TableCellChunkPipeline'
-import { TableLocalRelayoutPipeline } from '../layout/TableLocalRelayoutPipeline'
+import { TableChunkRangeIndex } from '../../modules/table/layout/engine/TableChunkRangeIndex'
+import { TableCellChunkIndex } from '../../modules/table/layout/engine/TableCellChunkIndex'
+import { TableCellChunkPipeline } from '../../modules/table/layout/engine/TableCellChunkPipeline'
+import { TableLocalRelayoutPipeline } from '../../modules/table/layout/engine/TableLocalRelayoutPipeline'
 import { ChunkLayoutPipeline } from '../layout/ChunkLayoutPipeline'
 import { TypingLinePatchPipeline } from '../layout/chunk/TypingLinePatchPipeline'
 import { RowRenderer } from '../render/RowRenderer'
 import { PageRenderer } from '../render/PageRenderer'
 import { DrawRenderPipeline } from '../render/DrawRenderPipeline'
 import { DrawPostRenderEffects } from '../render/DrawPostRenderEffects'
-import { RenderInvalidationManager } from '../../table/render/RenderInvalidationManager'
-import { TableOverlayRenderer } from '../../table/render/TableOverlayRenderer'
+import { RenderInvalidationManager } from '../../modules/table/render/RenderInvalidationManager'
+import { TableOverlayRenderer } from '../../modules/table/render/TableOverlayRenderer'
 import {
   Canvas2DRenderEngine,
   OffscreenCanvasRenderEngine,
@@ -111,7 +111,7 @@ export class DrawServiceRegistry {
   /** 历史桥接服务。 */
   public readonly historyBridge: DrawHistoryBridge
   /** 页面/模式设置服务。 */
-  public readonly pageSetupService: DrawPageSetupService
+  public readonly pageSetupService: PageSetupService
   /** 值读写服务。 */
   public readonly valueService: DrawValueService
   /** 光标服务。 */
@@ -184,7 +184,7 @@ export class DrawServiceRegistry {
     this.exportService = new DrawExportService(draw)
     this.dataAccess = new DrawDataAccess(draw)
     this.historyBridge = new DrawHistoryBridge(draw)
-    this.pageSetupService = new DrawPageSetupService(draw)
+    this.pageSetupService = new PageSetupService(draw)
     this.valueService = new DrawValueService(draw)
     this.cursorService = new DrawCursorService(draw)
     this.viewportService = new DrawViewportService(draw)

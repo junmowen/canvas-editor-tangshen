@@ -1,6 +1,6 @@
 import { RenderLayer } from './types/RenderLayer'
 
-/** 申请 canvas 池资源时需要提供的尺寸和层信息。 */
+/** 画布poolacquire选项契约，用于约束内部流程中传递的数据结构。 */
 export interface ICanvasPoolAcquireOptions {
   /** 目标渲染层。 */
   layer: RenderLayer
@@ -14,7 +14,7 @@ export interface ICanvasPoolAcquireOptions {
   alpha?: boolean
 }
 
-/** canvas 池中的单个可复用资源。 */
+/** 画布poolitem契约，用于约束内部流程中传递的数据结构。 */
 export interface ICanvasPoolItem {
   /** 被复用的 canvas DOM。 */
   canvas: HTMLCanvasElement
@@ -32,7 +32,7 @@ export interface ICanvasPoolItem {
   alpha: boolean
 }
 
-/** canvas 池调试统计，用于观察复用率和资源增长。 */
+/** 画布poolstats契约，用于约束内部流程中传递的数据结构。 */
 export interface ICanvasPoolStats {
   /** 当前空闲资源数量。 */
   idleCount: number
@@ -60,7 +60,7 @@ export interface ICanvasPoolStats {
   estimatedIdleBytesByLayer: Partial<Record<RenderLayer, number>>
 }
 
-/** canvas 池配置，用于控制空闲资源上限。 */
+/** 画布pool选项契约，用于约束内部流程中传递的数据结构。 */
 export interface ICanvasPoolOptions {
   /** 全局最大空闲 canvas 数量。 */
   maxIdleCount?: number
@@ -287,11 +287,15 @@ export class CanvasPool {
 
   /** 单次遍历生成空闲资源按 layer 分组后的数量和内存统计。 */
   private getIdleLayerStats(): {
+    /** 按图层统计的空闲画布数量，用于观察画布池余量。 */
     idleLayerCountMap: Partial<Record<RenderLayer, number>>
+    /** 按图层统计的空闲画布估算字节数，用于观察画布池占用。 */
     estimatedIdleBytesByLayer: Partial<Record<RenderLayer, number>>
   } {
     return this.idleItemList.reduce<{
+      /** 按图层统计的空闲画布数量，用于观察画布池余量。 */
       idleLayerCountMap: Partial<Record<RenderLayer, number>>
+      /** 按图层统计的空闲画布估算字节数，用于观察画布池占用。 */
       estimatedIdleBytesByLayer: Partial<Record<RenderLayer, number>>
     }>(
       (stats, item) => {

@@ -1,3 +1,4 @@
+/* image previewer 样式规则。 */
 .ce-image-previewer {
   position: fixed;
   left: 0;
@@ -13,6 +14,7 @@
   animation: previewerAnimation .3s;
 }
 
+/* previewer 样式规则。 */
 @keyframes previewerAnimation {
   0% {
     opacity: 0.1;
@@ -23,6 +25,7 @@
   }
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .image-close {
   width: 24px;
   height: 24px;
@@ -38,19 +41,23 @@
   border-radius: 50%;
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .image-close:hover {
   background-color: #e2e6ed;
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-container {
   position: relative;
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-container img {
   cursor: move;
   position: relative;
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-menu {
   height: 50px;
   position: absolute;
@@ -61,6 +68,7 @@
   justify-content: center;
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-menu i {
   width: 32px;
   height: 32px;
@@ -73,49 +81,60 @@
   border-radius: 50%;
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-menu i:hover {
   background-color: #e2e6ed;
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-menu i.zoom-in {
   background-image: url(../../images/zoom-in.svg);
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-menu i.zoom-out {
   background-image: url(../../images/zoom-out.svg);
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-menu i.rotate {
   background-image: url(../../images/rotate.svg);
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-menu i.original-size {
   background-image: url(../../images/original-size.svg);
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-menu i.image-download {
   background-image: url(../../images/image-download.svg);
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-menu .image-navigate {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-menu i.image-pre {
   background-image: url(../../images/image-pre.svg);
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-menu i.image-next {
   background-image: url(../../images/image-next.svg);
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-menu .image-count {
   color: #000000;
   font-size: 20px;
 }
 
+/* image previewer 样式规则。 */
 .ce-image-previewer .ce-image-menu i.disabled {
   cursor: not-allowed;
   opacity: 0.5;

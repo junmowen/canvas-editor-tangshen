@@ -1,21 +1,31 @@
-import { ElementType } from '../../../../dataset/enum/Element'
 import { KeyMap } from '../../../../dataset/enum/KeyMap'
 import { IElementPosition } from '../../../../interface/Element'
+import {
+  resolveTableVerticalKeyboardEntry,
+  resolveTableVerticalKeyboardFragmentTransition,
+  resolveTableVerticalKeyboardMove
+} from '../../../modules/table/navigation/resolveTableVerticalKeyboardMove'
 import { CanvasEvent } from '../../CanvasEvent'
-import { applyTableToolState } from '../shared/applyTableToolState'
 import { finalizeVerticalMove } from '../shared/finalizeVerticalMove'
 
+/** 获取下一个位置索引调用载荷，聚合执行该操作所需的输入数据。 */
 interface IGetNextPositionIndexPayload {
+  /** 布局位置列表，保存元素分页后的坐标结果。 */
   positionList: IElementPosition[]
+  /** 元素索引，用于定位文档列表中的目标元素。 */
   index: number
+  /** 行号，用于定位页面内的目标行。 */
   rowNo: number
+  /** 是否向上移动，用于控制垂直导航方向。 */
   isUp: boolean
+  /** 光标横坐标，用于计算行内插入位置。 */
   cursorX: number
 }
 
 function getNextPositionIndex(payload: IGetNextPositionIndexPayload) {
   const { positionList, index, isUp, rowNo, cursorX } = payload
   let nextIndex = -1
+  // 初始化 probable Position 列表。
   const probablePosition: IElementPosition[] = []
   if (isUp) {
     let p = index - 1
@@ -71,25 +81,21 @@ export function runVerticalNavigationIntent(evt: KeyboardEvent, host: CanvasEven
     startIndex === endIndex ? endIndex : cursorPosition.index
   let positionList = coordinate.getPositionList()
   const isUp = evt.key === KeyMap.Up
-  const tableNavigationService = components.tableNavigationService
   let anchorStartIndex = -1
   let anchorEndIndex = -1
   const positionContext = coordinate.getPositionContext()
 
-  if (!evt.shiftKey && positionContext.isTable) {
-    const navigationResult = tableNavigationService.resolveVerticalNavigation({
-      positionContext,
-      cursorIndex: activeBoundaryIndex,
-      direction: isUp ? 'up' : 'down'
-    })
-    if (!navigationResult) return
-    if (navigationResult.nextPositionContext) {
-      coordinate.setPositionContext(navigationResult.nextPositionContext)
-      positionList = coordinate.getPositionList()
-    }
-    anchorStartIndex = navigationResult.nextIndex
+  const tableNavigation = resolveTableVerticalKeyboardMove({
+    draw,
+    cursorIndex: activeBoundaryIndex,
+    isShiftKey: evt.shiftKey,
+    direction: isUp ? 'up' : 'down'
+  })
+  if (tableNavigation) {
+    if (!tableNavigation.handled) return
+    anchorStartIndex = tableNavigation.nextIndex
     anchorEndIndex = anchorStartIndex
-    applyTableToolState(draw, !!navigationResult.disposeTableTool)
+    positionList = tableNavigation.positionList
   } else {
     let anchorPosition: IElementPosition = cursorPosition
     if (evt.shiftKey) {
@@ -120,7 +126,8 @@ export function runVerticalNavigationIntent(evt: KeyboardEvent, host: CanvasEven
     if (nextIndex < 0) return
     const nextPosition = positionList[nextIndex]
     const fragmentBoundaryIndex =
-      tableNavigationService.resolveVerticalFragmentTransition({
+      resolveTableVerticalKeyboardFragmentTransition({
+        draw,
         positionContext,
         cursorIndex: activeBoundaryIndex,
         cursorPageNo: cursorPosition.pageNo,
@@ -153,21 +160,16 @@ export function runVerticalNavigationIntent(evt: KeyboardEvent, host: CanvasEven
         anchorStartIndex = startIndex
       }
     }
-    const elementList = draw.getObjectResolver().getElementList()
-    const nextElement = elementList[nextIndex]
-    if (nextElement.type === ElementType.TABLE) {
-      const navigationResult = tableNavigationService.resolveVerticalEntryNavigation({
-        tableIndex: nextIndex,
-        cursorX: curRightX,
-        direction: isUp ? 'up' : 'down'
-      })
-      if (navigationResult) {
-        coordinate.setPositionContext(navigationResult.nextPositionContext)
-        anchorStartIndex = navigationResult.nextIndex
-        anchorEndIndex = anchorStartIndex
-        positionList = coordinate.getPositionList()
-        applyTableToolState(draw, false)
-      }
+    const tableEntry = resolveTableVerticalKeyboardEntry({
+      draw,
+      tableIndex: nextIndex,
+      cursorX: curRightX,
+      direction: isUp ? 'up' : 'down'
+    })
+    if (tableEntry) {
+      anchorStartIndex = tableEntry.nextIndex
+      anchorEndIndex = anchorStartIndex
+      positionList = tableEntry.positionList
     }
   }
 

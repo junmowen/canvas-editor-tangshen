@@ -1,6 +1,6 @@
 describe('delete chain consistency', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
     cy.get('canvas').first().as('canvas').should('have.length', 1)
   })
 

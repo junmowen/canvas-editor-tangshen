@@ -9,14 +9,14 @@
 
 复跑失败：
 
-```text
+```txt
 AssertionError: expected 3 to be below 2
 at cypress/e2e/issues/issue-table-fragment-uses-remaining-space.cy.ts:52:37
 ```
 
 截图：
 
-```text
+```txt
 cypress/screenshots/issue-table-fragment-uses-remaining-space.cy.ts/table pagination remaining space -- keeps the first splittable table fragment on the current page when space remains (failed).png
 ```
 

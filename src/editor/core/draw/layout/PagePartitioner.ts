@@ -1,19 +1,24 @@
-import { ElementType } from '../../../dataset/enum/Element'
 import { PageMode } from '../../../dataset/enum/Editor'
 import { IElement } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
+import { shouldFragmentTableRow } from '../../modules/table/layout/TableRowLayoutPolicy'
 import type { Draw } from '../Draw'
 
 export interface IPagePartitionResult {
+  /** 页面行列表，保存当前页排版后的行信息。 */
   pageRowList: IRow[][]
   mainElementList: IElement[]
+  /** 布局元素列表，保存参与本轮排版的元素序列。 */
   layoutElementList: IElement[]
+  /** 连页模式下所有行合并后的页面高度。 */
   continuousPageHeight?: number
 }
 
 export class PagePartitioner {
+  /** 初始化 PagePartitioner 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
+  /** 按分页模式把排版行拆分到各页，并返回实际参与布局的元素序列。 */
   public partitionRows(rowList: IRow[], mainElementList: IElement[]): IPagePartitionResult {
     const pageRowList: IRow[][] = [[]]
     const {
@@ -47,17 +52,12 @@ export class PagePartitioner {
       }
       const row = rowList[i]
       const rowOffsetY = row.offsetY || 0
-      const rowTableElement = row.elementList[0] as IElement | undefined
-      const isTableRow =
-        row.elementList.length === 1 && rowTableElement?.type === ElementType.TABLE
-      const hasInlineTable = row.elementList.some(
-        element => element.type === ElementType.TABLE && element.tableDisplay === 'inline'
-      )
-      const shouldFragmentTableRow =
-        isTableRow ||
-        (hasInlineTable && row.height + rowOffsetY + pageHeight > height)
-
-      if (shouldFragmentTableRow) {
+      if (shouldFragmentTableRow({
+        row,
+        rowOffsetY,
+        pageHeight,
+        pageLimitHeight: height
+      })) {
         const { startOnNewPage, rows: fragmentRows } =
           this.draw.getServices().rowLayoutEngine.getTableLayoutEngine().createFragmentRows({
             row,

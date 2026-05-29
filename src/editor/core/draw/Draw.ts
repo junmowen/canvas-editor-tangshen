@@ -21,45 +21,46 @@ import {
   IInsertElementListOption
 } from '../../interface/Element'
 import { IRow } from '../../interface/Row'
-import { Cursor } from '../cursor/Cursor'
-import { HistoryManager } from '../history/HistoryManager'
-import { Listener } from '../listener/Listener'
+import { Cursor } from '../runtime/cursor/Cursor'
+import { HistoryManager } from '../runtime/history/HistoryManager'
+import { Listener } from '../runtime/listener/Listener'
 import { Position } from '../position/Position'
 import { RangeManager } from '../range/RangeManager'
-import { Background } from './frame/Background'
-import { Margin } from './frame/Margin'
-import { Search } from './interactive/Search'
-import { ImageParticle } from './particle/ImageParticle'
+import { Background } from '../modules/background/runtime/Background'
+import { Margin } from '../modules/page-setup/runtime/Margin'
+import { Search } from '../modules/search/runtime/Search'
+import { ImageParticle } from '../modules/image/particle/ImageParticle'
 import { TextParticle } from './particle/TextParticle'
-import { TableParticle } from './particle/table/TableParticle'
-import { HyperlinkParticle } from './particle/HyperlinkParticle'
-import { Header } from './frame/Header'
-import { Watermark } from './frame/Watermark'
+import { TableParticle } from '../modules/table/particle/TableParticle'
+import { HyperlinkParticle } from '../modules/inline/particle/HyperlinkParticle'
+import { Header } from '../modules/header/runtime/Header'
+import { Watermark } from '../modules/watermark/runtime/Watermark'
 import {
   EditorMode,
   PageMode,
   PaperDirection
 } from '../../dataset/enum/Editor'
-import { Control } from './control/Control'
-import { CheckboxParticle } from './particle/CheckboxParticle'
-import { RadioParticle } from './particle/RadioParticle'
+import { Control } from '../modules/control/runtime/Control'
+import { CheckboxParticle } from '../modules/control/particle/CheckboxParticle'
+import { RadioParticle } from '../modules/control/particle/RadioParticle'
 import { DeepRequired, IPadding } from '../../interface/Common'
 import { IMargin } from '../../interface/Margin'
-import { BlockParticle } from './particle/block/BlockParticle'
-import { I18n } from '../i18n/I18n'
-import { Zone } from '../zone/Zone'
-import { Footer } from './frame/Footer'
-import { ListParticle } from './particle/ListParticle'
+import { BlockParticle } from '../modules/block/particle/BlockParticle'
+import { I18n } from '../extension/i18n/I18n'
+import { Zone } from '../runtime/zone/Zone'
+import { Footer } from '../modules/footer/runtime/Footer'
+import { ListParticle } from '../modules/list/particle/ListParticle'
 import { EventBus } from '../event/eventbus/EventBus'
 import { EventBusMap } from '../../interface/EventBus'
-import { Group } from './interactive/Group'
-import { Override } from '../override/Override'
-import { PageBorder } from './frame/PageBorder'
-import { Area } from './interactive/Area'
-import { Badge } from './frame/Badge'
-import { TableOverlayRenderer } from '../table/render/TableOverlayRenderer'
-import { ITableLayoutSnapshot } from '../table/layout/TableLayoutSnapshotTypes'
-import { TableHitTestService } from '../table/hittest/TableHitTestService'
+import { Group } from '../modules/group/runtime/Group'
+import { Override } from '../extension/override/Override'
+import { PageBorder } from '../modules/page-setup/runtime/PageBorder'
+import { Area } from '../modules/area/runtime/Area'
+import { Badge } from '../modules/badge/runtime/Badge'
+import { TableOverlayRenderer } from '../modules/table/render/TableOverlayRenderer'
+import { ITableLayoutSnapshot } from '../modules/table/layout/TableLayoutSnapshotTypes'
+import { TableLayoutSnapshotAccessor } from '../modules/table/layout/TableLayoutSnapshotAccessor'
+import { TableHitTestService } from '../modules/table/hittest/TableHitTestService'
 import { PageCanvasHost } from './dom/PageCanvasHost'
 import { DrawViewState } from './state/DrawViewState'
 import { createDocumentTextStoreElementSignature } from './data/DocumentTextStore'
@@ -76,31 +77,55 @@ import { DrawObjectResolverService } from './data/DrawObjectResolverService'
 import { DrawTargetResolverService } from './data/DrawTargetResolverService'
 
 export class Draw {
+  /** Draw 运行时状态容器，集中托管模式、配置、正文数据和布局结果。 */
   private runtime: DrawRuntime
+  /** 绘图组件注册表，集中持有光标、选区、控件、粒子等渲染组件。 */
   private components: DrawComponentRegistry
+  /** 绘图服务注册表，集中持有布局、渲染、数据访问等服务实例。 */
   private services: DrawServiceRegistry
+  /** 页面画布宿主，负责页面 DOM、canvas surface 和 bitmap cache 管理。 */
   private pageCanvasHost: PageCanvasHost
+  /** 绘制视图状态，记录页码、可见页、像素比和渲染次数。 */
   private viewState: DrawViewState
+  /** 构造阶段注入的 History Manager 依赖，在服务注册完成前临时保存。 */
   private bootstrapHistoryManager?: HistoryManager
+  /** 构造阶段注入的 Position 依赖，在服务注册完成前临时保存。 */
   private bootstrapPosition?: Position
+  /** 构造阶段注入的 Zone 依赖，在服务注册完成前临时保存。 */
   private bootstrapZone?: Zone
+  /** 构造阶段注入的 Range 依赖，在服务注册完成前临时保存。 */
   private bootstrapRange?: RangeManager
+  /** 构造阶段注入的 Header 依赖，在服务注册完成前临时保存。 */
   private bootstrapHeader?: Header
+  /** 构造阶段注入的 Footer 依赖，在服务注册完成前临时保存。 */
   private bootstrapFooter?: Footer
+  /** 构造阶段注入的 Table Particle 依赖，在服务注册完成前临时保存。 */
   private bootstrapTableParticle?: TableParticle
+  /** 构造阶段注入的 Hyperlink Particle 依赖，在服务注册完成前临时保存。 */
   private bootstrapHyperlinkParticle?: HyperlinkParticle
+  /** 构造阶段注入的 Image Particle 依赖，在服务注册完成前临时保存。 */
   private bootstrapImageParticle?: ImageParticle
+  /** 构造阶段注入的 Control 依赖，在服务注册完成前临时保存。 */
   private bootstrapControl?: Control
+  /** 构造阶段注入的 Cursor 依赖，在服务注册完成前临时保存。 */
   private bootstrapCursor?: Cursor
+  /** 构造阶段注入的 Table Hit Test Service 依赖，在服务注册完成前临时保存。 */
   private bootstrapTableHitTestService?: TableHitTestService
+  /** 外部监听器集合，用于触发内容、页码、选区、控件等回调。 */
   private listener: Listener
+  /** 事件总线实例，用于发布和订阅编辑器内部事件。 */
   private eventBus: EventBus<EventBusMap>
+  /** 外部覆盖处理器集合，用于接管复制、粘贴、拖放等默认行为。 */
   private override: Override
+  /** 渲染后端调试面板实例，用于展示 worker、bitmap cache 和后端命中统计。 */
   private renderBackendDebugPanel: RenderBackendDebugPanel | null = null
 
+  /** 字母字符匹配正则，用于判断单字符是否属于可组词字符。 */
   private LETTER_REG: RegExp
+  /** 类单词边界匹配正则，用于双击选词和词级导航。 */
   private WORD_LIKE_REG: RegExp
 
+  /** 初始化 Draw 实例并注入运行依赖。 */
   constructor(
     rootContainer: HTMLElement,
     options: DeepRequired<IEditorOption>,
@@ -114,6 +139,7 @@ export class Draw {
     this.eventBus = eventBus
     this.override = override
     this.viewState = new DrawViewState(listener, eventBus, options)
+    // 创建 bootstrap I18n 实例。
     const bootstrapI18n = new I18n(options.locale)
     this.services = new DrawServiceRegistry(this)
 
@@ -301,8 +327,33 @@ export class Draw {
     return this.services.coordinateService
   }
 
+  /** @deprecated 仅保留给历史回归用例；业务代码请使用 getCoordinate()。 */
+  public getPosition(): DrawCoordinateService {
+    return this.getCoordinate()
+  }
+
   public getObjectResolver(): DrawObjectResolverService {
     return this.services.objectResolverService
+  }
+
+  /** @deprecated 仅保留给历史回归用例；业务代码请使用 ObjectResolver。 */
+  public getOriginalMainElementList(): IElement[] {
+    return this.getObjectResolver().getOriginalMainElementList()
+  }
+
+  /** @deprecated 仅保留给历史回归用例；业务代码请使用 ObjectResolver。 */
+  public getElementList(): IElement[] {
+    return this.getObjectResolver().getElementList()
+  }
+
+  /** @deprecated 仅保留给历史回归用例；业务代码请使用 ObjectResolver。 */
+  public getOriginalRowList(): IRow[] {
+    return this.getObjectResolver().getOriginalRowList()
+  }
+
+  /** @deprecated 仅保留给历史回归用例；业务代码请使用 ObjectResolver。 */
+  public getRowList(): IRow[] {
+    return this.getObjectResolver().getRowList()
   }
 
   public getTargetResolver(): DrawTargetResolverService {
@@ -323,6 +374,16 @@ export class Draw {
 
   public getTableLayoutSnapshot(): ITableLayoutSnapshot {
     return this.services.renderFacadeService.getTableLayoutSnapshot()
+  }
+
+  /** @deprecated 仅保留给历史回归用例；业务代码请通过 TargetResolver 查询表格目标。 */
+  public getTableLayoutSnapshotAccessor(): TableLayoutSnapshotAccessor {
+    return this.services.tableLayoutSnapshotAccessor
+  }
+
+  /** @deprecated 仅保留给历史回归用例；生产代码请走渲染失效管理器调度。 */
+  public flushScheduledFrameRender() {
+    this.services.renderInvalidationManager.flushScheduledFrameRender()
   }
 
   public getWordLikeReg(): RegExp {
@@ -764,8 +825,11 @@ export class Draw {
 
   /** 记录仍由旧数组链路完成的正文写操作，供后续 store mirror 对齐。 */
   public recordDocumentTextStoreExternalMutation(payload: {
+    /** 起始位置，用于描述范围、拖拽或扫描的入口。 */
     start: number | null
+    /** 删除数量，用于描述从起点移除的元素个数。 */
     deleteCount: number
+    /** 插入数量，用于描述本次新增元素规模。 */
     insertCount: number
     insertSignatureList?: string[]
     deleteIndexList?: number[]
@@ -792,9 +856,13 @@ export class Draw {
   }
 
   public replaceLayoutState(payload: {
+    /** 行列表，保存排版后的行结构。 */
     rowList: IRow[]
+    /** 页面行列表，保存当前页排版后的行信息。 */
     pageRowList: IRow[][]
+    /** 布局元素列表，保存参与本轮排版的元素序列。 */
     layoutElementList: IElement[]
+    /** 表格布局snapshotversion数值，用于当前布局、统计或索引计算。 */
     tableLayoutSnapshotVersion: number
     tableLayoutSnapshot: ITableLayoutSnapshot | null
   }) {
@@ -818,8 +886,11 @@ export class Draw {
   }
 
   public refreshVisibleOverlay(options?: {
+    /** 是否选区脏区，用于控制当前流程的判断分支。 */
     isSelectionDirty?: boolean
+    /** 是否搜索脏区，用于控制当前流程的判断分支。 */
     isSearchDirty?: boolean
+    /** 是否控件脏区，用于控制当前流程的判断分支。 */
     isControlDirty?: boolean
   }) {
     return this.services.viewportService.refreshVisibleOverlay(options)
@@ -919,10 +990,12 @@ export class Draw {
     this.services.valueService.setEditorData(payload)
   }
 
+  /** 捕获 Export Render State 对应的当前状态。 */
   public captureExportRenderState() {
     return this.services.exportStateService.captureExportRenderState()
   }
 
+  /** 恢复 Export Render State 对应的快照状态。 */
   public restoreExportRenderState(
     state: ReturnType<Draw['captureExportRenderState']>
   ) {
@@ -933,6 +1006,7 @@ export class Draw {
     return this.services.metricsService.getElementFont(el, scale)
   }
 
+  /** 计算 Row List 对应的布局或状态。 */
   public computeRowList(payload: IComputeRowListPayload) {
     return this.services.rowLayoutEngine.computeRowList({
       ...payload,
@@ -946,7 +1020,7 @@ export class Draw {
   }
 
   public drawSelection(ctx: CanvasRenderingContext2D, payload: IDrawRowPayload) {
-    this.services.rowRenderer.drawSelection(ctx, payload)
+    this.services.rowRenderer.renderSelection(ctx, payload)
   }
 
   public refreshVisiblePagesIfNeeded() {
@@ -970,6 +1044,7 @@ export class Draw {
     this.services.historyBridge.submitHistory(curIndex)
   }
 
+  /** 销毁destroy相关资源，解除事件监听并释放持有对象。 */
   public destroy() {
     this.renderBackendDebugPanel?.destroy()
     this.renderBackendDebugPanel = null

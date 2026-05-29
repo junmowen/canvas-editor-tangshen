@@ -46,7 +46,7 @@ function findFirstTextPosition(editor: Editor) {
 
 describe('issues #1372 and #1200 image surround wrapping', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
     cy.get('canvas[data-index]').first().should('have.length', 1)
   })
 

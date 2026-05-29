@@ -2,7 +2,7 @@ import { IPadding } from '../../../interface/Common'
 import { IElement } from '../../../interface/Element'
 import { IMargin } from '../../../interface/Margin'
 import { PaperDirection } from '../../../dataset/enum/Editor'
-import { getTableCellContentInset } from '../../table/layout/TableCellContentInset'
+import { getTableCellContentInset } from '../../modules/table/layout/TableCellContentInset'
 import type { Draw } from '../Draw'
 
 /**
@@ -14,7 +14,9 @@ import type { Draw } from '../Draw'
 export class DrawMetricsService {
   /** 关联的 Draw 门面。 */
   constructor(private readonly draw: Draw) {}
+  /** element Font Cache 缓存，用于复用计算结果并减少重复计算。 */
   private elementFontCache = new Map<string, string>()
+  /** 只读最大元素font缓存size，限制缓存窗口或资源池的最大规模。 */
   private readonly maxElementFontCacheSize = 2000
 
   public getOriginalWidth(): number {

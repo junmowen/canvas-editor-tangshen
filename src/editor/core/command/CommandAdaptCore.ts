@@ -108,8 +108,11 @@ export class CommandAdaptCore extends CommandAdaptBase {
   /** 合并程序化连续退格，避免 API 循环中每次删除都同步重绘可见页。 */
 
   private queueProgrammaticBackspaceRender(payload: {
+    /** 当前元素索引，用于记录遍历或命中过程的位置。 */
     curIndex: number
+    /** typingedit索引，用于定位对应元素、行或片段。 */
     typingEditIndex: number
+    /** 已删除数量，用于累加实际删除的元素个数。 */
     deletedCount: number
   }) {
     if (this.coordinate.getPositionContext().isTable) {

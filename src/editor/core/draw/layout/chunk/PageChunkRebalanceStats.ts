@@ -1,7 +1,7 @@
 import { AsyncPageRebalanceQueue } from './AsyncPageRebalanceQueue'
 import { IDirtyPageRangePlan } from './DirtyPageRangePlanner'
 
-/** 页级 chunk rebalance 统计，用于确认传播范围没有退化成整篇处理。 */
+/** 页面分块rebalancestats契约，用于约束内部流程中传递的数据结构。 */
 export interface IPageChunkRebalanceStats {
   /** 同步页窗口 patch 次数。 */
   syncPatchCount: number
@@ -52,6 +52,7 @@ export class PageChunkRebalanceStats {
   /** 当前统计快照。 */
   private stats: IPageChunkRebalanceStats = this.createEmptyStats()
 
+  /** 初始化 PageChunkRebalanceStats 实例并注入运行依赖。 */
   constructor(private readonly asyncQueue: AsyncPageRebalanceQueue) {}
 
   /** 记录一次 patch 尝试。 */

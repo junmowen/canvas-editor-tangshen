@@ -8,6 +8,7 @@
 @import './hyperlink/hyperlink.css';
 @import './zone/zone.css';
 
+/* 隐藏输入域，用于承接原生输入、粘贴和 IME 组合输入。 */
 .ce-inputarea {
   width: 100px;
   height: 30px;
@@ -31,6 +32,7 @@
   background-color: transparent;
 }
 
+/* 编辑光标基础样式。 */
 .ce-cursor {
   width: 1px;
   height: 20px;
@@ -42,12 +44,14 @@
   pointer-events: none;
 }
 
+/* 光标闪烁动画状态。 */
 .ce-cursor.ce-cursor--animation {
   animation-duration: 1s;
   animation-iteration-count: infinite;
   animation-name: cursorAnimation;
 }
 
+/* 光标闪烁动画关键帧。 */
 @keyframes cursorAnimation {
   from {
     opacity: 1
@@ -70,12 +74,14 @@
   }
 }
 
+/* 浮动图片拖拽或预览时的半透明层。 */
 .ce-float-image {
   position: absolute;
   opacity: 0.5;
   pointer-events: none;
 }
 
+/* 渲染后端调试面板固定浮层。 */
 .ce-render-backend-debug-panel {
   position: fixed;
   right: 8px;

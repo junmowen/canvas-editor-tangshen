@@ -1,7 +1,7 @@
 import Editor, { ElementType, TitleLevel } from '../../../src/editor'
 
 describe('菜单-标题', () => {
-  const url = 'http://localhost:3000/canvas-editor/'
+  const url = 'http://localhost:3000/canvas-editor/index.html'
 
   beforeEach(() => {
     cy.visit(url)

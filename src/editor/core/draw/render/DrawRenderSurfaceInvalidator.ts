@@ -3,12 +3,15 @@ import type { Draw } from '../Draw'
 
 /** Draw 渲染门面的 surface / bitmap cache 失效 helper。 */
 export class DrawRenderSurfaceInvalidator {
+  /** 初始化 DrawRenderSurfaceInvalidator 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
   /** 局部 patch 后刷新受影响页，并处理表格迁移导致的旧 surface 残留。 */
   public applyTypingPatchInvalidation(payload: {
     affectedPageNoList: number[]
+    /** requires渲染面clear开关，用于控制当前流程的判断分支。 */
     requiresSurfaceClear?: boolean
+    /** 旧分页数量，用于判断分页变化范围。 */
     oldPageSize: number
   }) {
     const { affectedPageNoList, requiresSurfaceClear, oldPageSize } = payload

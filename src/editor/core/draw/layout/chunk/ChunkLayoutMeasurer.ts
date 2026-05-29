@@ -19,7 +19,9 @@ export class ChunkLayoutMeasurer {
    * @returns 成功时返回测量结果，失败时返回原因
    */
   public measure(context: IChunkLayoutPatchContext): {
+    /** measure结果，保存当前计算返回的数据。 */
     measureResult: IChunkLayoutMeasureResult | null
+    /** 处理结果，用于返回本次计算产出的数据。 */
     result: IChunkLayoutPatchResult
   } {
     const cachePayload = {

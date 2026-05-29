@@ -32,7 +32,7 @@ function buildThirtyThousandCharacterDocument() {
 
 describe('issue #837 large document performance baseline', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
     cy.get('canvas[data-index]').first().should('have.length', 1)
   })
 

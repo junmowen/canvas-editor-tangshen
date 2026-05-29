@@ -1,6 +1,6 @@
 import { isChunkDebugEnabled, logChunkDebug } from './ChunkDebugLogger'
 
-/** 页级 chunk 异步传播队列统计。 */
+/** async页面rebalancequeuestats契约，用于约束内部流程中传递的数据结构。 */
 export interface IAsyncPageRebalanceQueueStats {
   /** 异步传播调度次数。 */
   scheduleCount: number
@@ -23,6 +23,7 @@ export class AsyncPageRebalanceQueue {
     pendingPageCount: 0
   }
 
+  /** 初始化 AsyncPageRebalanceQueue 实例并注入运行依赖。 */
   constructor(
     private readonly getPageCount: () => number,
     private readonly flushPage: (pageNo: number) => void,

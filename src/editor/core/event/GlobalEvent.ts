@@ -1,44 +1,43 @@
 import { EDITOR_COMPONENT } from '../../dataset/constant/Editor'
 import { IEditorOption } from '../../interface/Editor'
 import { findParent } from '../../utils'
-import { Cursor } from '../cursor/Cursor'
-import { Control } from '../draw/control/Control'
+import { Cursor } from '../runtime/cursor/Cursor'
+import { Control } from '../modules/control/runtime/Control'
 import { Draw } from '../draw/Draw'
-import { HyperlinkParticle } from '../draw/particle/HyperlinkParticle'
-import { DateParticle } from '../draw/particle/date/DateParticle'
-import { Previewer } from '../draw/particle/previewer/Previewer'
-import { TableTool } from '../draw/particle/table/TableTool'
+import { clearGlobalImageEffects } from '../modules/image/interaction/GlobalImageEffects'
+import { clearGlobalInlineEffects } from '../modules/inline/interaction/GlobalInlineEffects'
+import { TableTool } from '../modules/table/particle/TableTool'
 import { RangeManager } from '../range/RangeManager'
 import { CanvasEvent } from './CanvasEvent'
-import { ImageParticle } from '../draw/particle/ImageParticle'
 import { INTERNAL_SHORTCUT_KEY } from '../../dataset/constant/Shortcut'
 import { RenderLayer } from '../render-backend'
 
 export class GlobalEvent {
+  /** Draw 门面实例，用于访问编辑器布局、渲染、数据和组件服务。 */
   private draw: Draw
+  /** 编辑器选项快照，读取页面尺寸、样式和功能开关。 */
   private options: Required<IEditorOption>
+  /** Cursor 实例，负责光标显示、移动或输入代理。 */
   private cursor: Cursor | null
+  /** 画布事件控制器实例，用于统一派发键盘、鼠标、剪贴板和输入事件。 */
   private canvasEvent: CanvasEvent
+  /** 选区管理器，用于读取和更新当前编辑范围。 */
   private range: RangeManager
-  private previewer: Previewer
+  /** 表格工具条实例，用于处理行列选择、拖拽和快捷插入。 */
   private tableTool: TableTool
-  private hyperlinkParticle: HyperlinkParticle
   private control: Control
-  private dateParticle: DateParticle
-  private imageParticle: ImageParticle
   private dprMediaQueryList: MediaQueryList
 
+  /** 初始化 GlobalEvent 实例并注入运行依赖。 */
   constructor(
     draw: Draw,
     canvasEvent: CanvasEvent,
     deps: {
+      /** 选区范围，记录起止索引和方向信息。 */
       range: RangeManager
-      previewer: Previewer
       tableTool: TableTool
-      hyperlinkParticle: HyperlinkParticle
+      /** 控件配置对象，描述当前控件的行为和取值规则。 */
       control: Control
-      dateParticle: DateParticle
-      imageParticle: ImageParticle
     }
   ) {
     this.draw = draw
@@ -46,11 +45,7 @@ export class GlobalEvent {
     this.canvasEvent = canvasEvent
     this.cursor = null
     this.range = deps.range
-    this.previewer = deps.previewer
     this.tableTool = deps.tableTool
-    this.hyperlinkParticle = deps.hyperlinkParticle
-    this.dateParticle = deps.dateParticle
-    this.imageParticle = deps.imageParticle
     this.control = deps.control
     this.dprMediaQueryList = window.matchMedia(
       `(resolution: ${window.devicePixelRatio}dppx)`
@@ -62,6 +57,7 @@ export class GlobalEvent {
     this.addEvent()
   }
 
+  /** 绑定编辑器全局 DOM 事件，接入键鼠与窗口交互。 */
   private addEvent() {
     window.addEventListener('blur', this.clearSideEffect)
     document.addEventListener('mousedown', this.clearSideEffect)
@@ -83,6 +79,7 @@ export class GlobalEvent {
     this.dprMediaQueryList.removeEventListener('change', this._handleDprChange)
   }
 
+  /** 全局事件副作用清理函数，用于在交互结束后恢复临时状态。 */
   public clearSideEffect = (evt: Event) => {
     if (!this.cursor) return
     // 编辑器内部 DOM。
@@ -111,20 +108,20 @@ export class GlobalEvent {
     }
     this.cursor.recoveryCursor()
     this.range.recoveryRangeStyle()
-    this.previewer.clearResizer()
+    clearGlobalImageEffects(this.draw)
     this.tableTool.dispose()
-    this.hyperlinkParticle.clearHyperlinkPopup()
+    clearGlobalInlineEffects(this.draw)
     this.control.destroyControl()
-    this.dateParticle.clearDatePicker()
-    this.imageParticle.destroyFloatImage()
   }
 
+  /** 画布事件能力开关函数，用于按场景启用或禁用交互。 */
   public setCanvasEventAbility = () => {
     const pointerSessionController = this.canvasEvent.getPointerSessionController()
     pointerSessionController.clearDrag()
     pointerSessionController.clearSelection()
   }
 
+  /** 监听光标活动，在状态变化时触发对应更新。 */
   public watchCursorActive() {
     // 仅在选区闭合时，才需要校验光标代理是否仍处于激活状态。
     if (!this.range.getIsCollapsed()) return
@@ -139,6 +136,7 @@ export class GlobalEvent {
     })
   }
 
+  /** 页面缩放设置函数，用于同步滚轮缩放后的比例。 */
   public setPageScale = (evt: WheelEvent) => {
     // 若页面缩放快捷键被禁用，则直接忽略本次滚轮事件。
     if (
@@ -167,6 +165,7 @@ export class GlobalEvent {
     }
   }
 
+  /** handle Visibility Change 回调入口，用于通知外部或响应对应事件。 */
   private _handleVisibilityChange = () => {
     if (document.visibilityState === 'visible') {
       // 页面重新可见时，按当前选区重新渲染激活页。
@@ -186,6 +185,7 @@ export class GlobalEvent {
     }
   }
 
+  /** handle Dpr Change 回调入口，用于通知外部或响应对应事件。 */
   private _handleDprChange = () => {
     this.draw.setPageDevicePixel()
   }

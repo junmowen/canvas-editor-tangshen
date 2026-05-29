@@ -10,14 +10,14 @@
 
 复跑失败：
 
-```text
+```txt
 AssertionError: Timed out retrying after 4000ms: Not enough elements found. Found '1', expected '2'.
 at cypress/e2e/issues/issue-877-pagebreak-behavior.cy.ts:35:33
 ```
 
 截图：
 
-```text
+```txt
 cypress/screenshots/issue-877-pagebreak-behavior.cy.ts/issue #877 page break behavior -- keeps the page break element in data and starts following content on a new page (failed).png
 ```
 

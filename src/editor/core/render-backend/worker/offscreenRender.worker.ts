@@ -10,6 +10,7 @@ const imageBitmapCache = new Map<string, Promise<ImageBitmap>>()
 
 /** 根据快照尺寸创建 worker 内部 OffscreenCanvas。 */
 function createCanvas(snapshot: IWorkerPageRenderSnapshot): OffscreenCanvas {
+  // 创建 canvas 实例。
   const canvas = new OffscreenCanvas(
     Math.floor(snapshot.width * snapshot.dpr),
     Math.floor(snapshot.height * snapshot.dpr)
@@ -37,6 +38,7 @@ async function createImageBlob(src: string): Promise<Blob> {
   const base64SvgPrefix = 'data:image/svg+xml;base64,'
   if (src.startsWith(base64SvgPrefix)) {
     const binary = atob(src.slice(base64SvgPrefix.length))
+    // 创建 bytes 实例。
     const bytes = new Uint8Array(binary.length)
     for (let i = 0; i < binary.length; i++) {
       bytes[i] = binary.charCodeAt(i)
@@ -120,6 +122,7 @@ function drawRepeatTextWatermark(
   const diagonalLength = Math.sqrt(textWidth ** 2 + textHeight ** 2)
   const patternWidth = diagonalLength + 2 * command.gap[0]
   const patternHeight = diagonalLength + 2 * command.gap[1]
+  // 创建 pattern Canvas 实例。
   const patternCanvas = new OffscreenCanvas(
     Math.max(1, Math.ceil(patternWidth)),
     Math.max(1, Math.ceil(patternHeight))
@@ -163,6 +166,7 @@ async function drawRepeatImageWatermark(
   )
   const patternWidth = diagonalLength + 2 * command.gap[0]
   const patternHeight = diagonalLength + 2 * command.gap[1]
+  // 创建 pattern Canvas 实例。
   const patternCanvas = new OffscreenCanvas(
     Math.max(1, Math.ceil(patternWidth)),
     Math.max(1, Math.ceil(patternHeight))
@@ -380,6 +384,7 @@ async function renderSnapshot(
 /** 发送 worker 响应；这里不依赖 tsconfig WebWorker lib。 */
 function postWorkerMessage(message: unknown, transfer?: Transferable[]) {
   const workerGlobal = globalThis as unknown as {
+    /** 发送 Message 对应的消息。 */
     postMessage(message: unknown, transfer?: Transferable[]): void
   }
   workerGlobal.postMessage(message, transfer)

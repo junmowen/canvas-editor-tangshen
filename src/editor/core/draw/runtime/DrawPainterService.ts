@@ -3,6 +3,7 @@ import { IPainterOption } from '../../../interface/Draw'
 import type { Draw } from '../Draw'
 
 export class DrawPainterService {
+  /** 初始化 DrawPainterService 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
   public getPainterStyle(): IElementStyle | null {

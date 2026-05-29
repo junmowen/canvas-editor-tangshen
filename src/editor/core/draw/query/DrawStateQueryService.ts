@@ -2,6 +2,7 @@ import { EditorMode } from '../../../dataset/enum/Editor'
 import type { Draw } from '../Draw'
 
 export class DrawStateQueryService {
+  /** 初始化 DrawStateQueryService 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
   public isReadonly() {

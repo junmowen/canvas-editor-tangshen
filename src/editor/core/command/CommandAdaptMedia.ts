@@ -1,13 +1,32 @@
 import { CommandAdaptTable } from './CommandAdaptTable'
-import { WRAP, ZERO } from '../../dataset/constant/Common'
-import { defaultWatermarkOption } from '../../dataset/constant/Watermark'
 import { ImageDisplay } from '../../dataset/enum/Common'
-import { ElementType } from '../../dataset/enum/Element'
 import { IDrawImagePayload } from '../../interface/Draw'
 import { IElement } from '../../interface/Element'
 import { IWatermark } from '../../interface/Watermark'
-import { downloadFile, getUUID } from '../../utils'
+import { getUUID } from '../../utils'
 import { formatElementContext } from '../../utils/element'
+import {
+  applyImageDisplayChange,
+  createCommandImageElement,
+  replaceImageElementValue,
+  saveImageElement
+} from '../modules/image/command/ImageCommandPolicy'
+import {
+  clearHyperlinkAttrs,
+  createHyperlinkElementList,
+  resolveHyperlinkRangeFromCandidates,
+  updateHyperlinkUrl
+} from '../modules/inline/command/HyperlinkCommandPolicy'
+import {
+  applyWatermarkOptions,
+  resetWatermarkOptions
+} from '../modules/watermark/command/WatermarkCommandPolicy'
+import {
+  applySeparatorDashArray,
+  createSeparatorElement,
+  shouldReplaceParagraphStartWithSeparator
+} from '../modules/separator/command/SeparatorCommandPolicy'
+import { createPageBreakElement } from '../modules/page-break/command/PageBreakCommandPolicy'
 
 /**
  * 媒体与装饰命令适配模块，负责超链接、图片、分隔符、分页符和水印相关命令。
@@ -21,15 +40,8 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     const { startIndex, endIndex } = this.range.getEditBoundaryRange()
     if (!~startIndex && !~endIndex) return
     const elementList = this.draw.getObjectResolver().getElementList()
-    const { valueList, url } = payload
     const hyperlinkId = getUUID()
-    const newElementList = valueList?.map<IElement>(v => ({
-      ...v,
-      url,
-      hyperlinkId,
-      value: v.value,
-      type: ElementType.HYPERLINK
-    }))
+    const newElementList = createHyperlinkElementList(payload, hyperlinkId)
     if (!newElementList) return
     const start = startIndex + 1
     formatElementContext(elementList, newElementList, startIndex, {
@@ -70,41 +82,10 @@ export class CommandAdaptMedia extends CommandAdaptTable {
       nextElement,
       prevElement
     ]
-    const matchedElement = candidateElementList.find(
-      element => element?.type === ElementType.HYPERLINK
-    )
-    if (!matchedElement?.hyperlinkId) return null
-    const hyperlinkId = matchedElement.hyperlinkId
-    const startIndex = elementList.indexOf(matchedElement)
-    if (startIndex < 0) return null
-    let leftIndex = startIndex
-    let rightIndex = startIndex
-    // 向左查找
-    let preIndex = startIndex - 1
-    while (preIndex >= 0) {
-      const preElement = elementList[preIndex]
-      if (preElement.hyperlinkId !== hyperlinkId) {
-        break
-      }
-      leftIndex = preIndex
-      preIndex--
-    }
-    // 向右查找
-    let nextIndex = startIndex + 1
-    while (nextIndex < elementList.length) {
-      const nextElement = elementList[nextIndex]
-      if (nextElement.hyperlinkId !== hyperlinkId) {
-        break
-      }
-      rightIndex = nextIndex
-      nextIndex++
-    }
-    // 控件在最后
-    if (nextIndex === elementList.length) {
-      rightIndex = nextIndex - 1
-    }
-    if (!~leftIndex || !~rightIndex) return null
-    return [leftIndex, rightIndex]
+    return resolveHyperlinkRangeFromCandidates({
+      elementList,
+      candidateElementList
+    })
   }
 
   /** 删除当前超链接及其文本内容。 */
@@ -138,14 +119,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     if (!hyperRange) return
     const elementList = this.draw.getObjectResolver().getElementList()
     const [leftIndex, rightIndex] = hyperRange
-    // 删除属性
-    for (let i = leftIndex; i <= rightIndex; i++) {
-      const element = elementList[i]
-      delete element.type
-      delete element.url
-      delete element.hyperlinkId
-      delete element.underline
-    }
+    clearHyperlinkAttrs(elementList, leftIndex, rightIndex)
     this.draw.getHyperlinkParticle().clearHyperlinkPopup()
     // 重置画布
     const { endIndex } = this.getRange()
@@ -164,11 +138,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     if (!hyperRange) return
     const elementList = this.draw.getObjectResolver().getElementList()
     const [leftIndex, rightIndex] = hyperRange
-    // 替换url
-    for (let i = leftIndex; i <= rightIndex; i++) {
-      const element = elementList[i]
-      element.url = payload
-    }
+    updateHyperlinkUrl(elementList, leftIndex, rightIndex, payload)
     this.draw.getHyperlinkParticle().clearHyperlinkPopup()
     // 重置画布
     const { endIndex } = this.getRange()
@@ -195,21 +165,12 @@ export class CommandAdaptMedia extends CommandAdaptTable {
       anchor: 'end',
       offset: 1
     })
-    if (endElement && endElement.type === ElementType.SEPARATOR) {
-      if (
-        endElement.dashArray &&
-        endElement.dashArray.join() === payload.join()
-      ) {
-        return
-      }
+    const separatorUpdate = applySeparatorDashArray(endElement, payload)
+    if (separatorUpdate !== 'not-separator') {
+      if (separatorUpdate === 'unchanged') return
       curIndex = endIndex
-      endElement.dashArray = payload
     } else {
-      const newElement: IElement = {
-        value: WRAP,
-        type: ElementType.SEPARATOR,
-        dashArray: payload
-      }
+      const newElement = createSeparatorElement(payload)
       // 从行头增加分割线
       formatElementContext(elementList, [newElement], startIndex, {
         editorOptions: this.options
@@ -218,7 +179,12 @@ export class CommandAdaptMedia extends CommandAdaptTable {
         elementList,
         anchor: 'start'
       })
-      if (startIndex !== 0 && startElement?.value === ZERO) {
+      if (
+        shouldReplaceParagraphStartWithSeparator({
+          startIndex,
+          startElement
+        })
+      ) {
         this.draw.spliceElementList(elementList, startIndex, 1, [newElement])
         curIndex = startIndex - 1
       } else {
@@ -237,12 +203,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     if (this.isCommandDisabled()) return
     const activeControl = this.control.getActiveControl()
     if (activeControl) return
-    this.insertElementList([
-      {
-        type: ElementType.PAGE_BREAK,
-        value: WRAP
-      }
-    ])
+    this.insertElementList([createPageBreakElement()])
   }
 
   /** 添加或更新文档水印配置。 */
@@ -250,19 +211,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
     const options = this.draw.getOptions()
-    const { type, color, size, opacity, font, gap, width, height, numberType } =
-      defaultWatermarkOption
-    options.watermark.data = payload.data
-    options.watermark.type = payload.type || type
-    options.watermark.width = payload.width || width
-    options.watermark.height = payload.height || height
-    options.watermark.color = payload.color || color
-    options.watermark.size = payload.size || size
-    options.watermark.opacity = payload.opacity || opacity
-    options.watermark.font = payload.font || font
-    options.watermark.repeat = !!payload.repeat
-    options.watermark.numberType = payload.numberType || numberType
-    options.watermark.gap = payload.gap || gap
+    applyWatermarkOptions(options, payload)
     this.draw.render({
       isSetCursor: false,
       isSubmitHistory: false,
@@ -276,8 +225,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
     const options = this.draw.getOptions()
-    if (options.watermark && options.watermark.data) {
-      options.watermark = { ...defaultWatermarkOption }
+    if (resetWatermarkOptions(options)) {
       this.draw.render({
         isSetCursor: false,
         isSubmitHistory: false,
@@ -293,21 +241,14 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     const { startIndex, endIndex } = this.getRange()
     if (!~startIndex && !~endIndex) return null
     const imageId = payload.id || getUUID()
-    this.insertElementList([
-      {
-        ...payload,
-        id: imageId,
-        type: ElementType.IMAGE
-      }
-    ])
+    this.insertElementList([createCommandImageElement(payload, imageId)])
     return imageId
   }
 
   /** 替换当前图片元素的资源信息。 */
   public replaceImageElement(payload: string) {
     const element = this.draw.getTargetResolver().resolveRangeElement()
-    if (!element || element.type !== ElementType.IMAGE) return
-    element.value = payload
+    if (!replaceImageElementValue(element, payload)) return
     this.draw.render({
       isSetCursor: false
     })
@@ -316,34 +257,19 @@ export class CommandAdaptMedia extends CommandAdaptTable {
   /** 将当前图片元素保存为本地图片文件。 */
   public saveAsImageElement() {
     const element = this.draw.getTargetResolver().resolveRangeElement()
-    if (!element || element.type !== ElementType.IMAGE) return
-    downloadFile(element.value, `${element.id!}.png`)
+    saveImageElement(element)
   }
 
   /** 切换当前图片元素的显示方式。 */
   public changeImageDisplay(element: IElement, display: ImageDisplay) {
-    if (element.imgDisplay === display) return
-    element.imgDisplay = display
     const { startIndex, endIndex } = this.getRange()
-    if (
-      display === ImageDisplay.SURROUND ||
-      display === ImageDisplay.TIGHT ||
-      display === ImageDisplay.FLOAT_TOP ||
-      display === ImageDisplay.FLOAT_BOTTOM
-    ) {
-      const positionList = this.coordinate.getPositionList()
-      const {
-        pageNo,
-        coordinate: { leftTop }
-      } = positionList[startIndex]
-      element.imgFloatPosition = {
-        pageNo,
-        x: leftTop[0],
-        y: leftTop[1]
-      }
-    } else {
-      delete element.imgFloatPosition
-    }
+    const isChanged = applyImageDisplayChange({
+      element,
+      display,
+      startIndex,
+      positionList: this.coordinate.getPositionList()
+    })
+    if (!isChanged) return
     this.draw.getComponents().previewer.clearResizer()
     this.draw.render({
       isSetCursor: true,

@@ -1,20 +1,33 @@
 import { PUNCTUATION_LIST, ZERO } from '../../../dataset/constant/Common'
-import { FlexDirection, ImageDisplay } from '../../../dataset/enum/Common'
-import {
-  ControlComponent,
-  ControlIndentation
-} from '../../../dataset/enum/Control'
-import { ElementType } from '../../../dataset/enum/Element'
 import { WordBreak } from '../../../dataset/enum/Editor'
-import { RowFlex } from '../../../dataset/enum/Row'
 import { IComputeRowListPayload } from '../../../interface/Draw'
 import { IElement } from '../../../interface/Element'
 import { IRow, IRowElement } from '../../../interface/Row'
-import { deleteSurroundElementList, getIsBlockElement } from '../../../utils/element'
+import { deleteSurroundElementList } from '../../../utils/element'
+import { isBlockElement } from '../../modules/block/layout/BlockElementLayout'
+import { shouldBreakBeforeColumnCheckable } from '../../modules/control/layout/CheckableControlElementLayout'
+import {
+  consumeMinWidthControlLayout,
+  resolveValueStartIndentOffset
+} from '../../modules/control/layout/ControlRowLayoutPolicy'
+import { isInlineImageElement } from '../../modules/image/layout/InlineImageElementLayout'
+import { shouldUseImageOffset } from '../../modules/image/position/ImagePositionPolicy'
+import { isPageBreakElement } from '../../modules/page-break/layout/PageBreakElementLayout'
+import {
+  isPlainTextElement,
+  shouldApplyRowFlexSpacing,
+  shouldBreakAtZeroParagraphElement
+} from '../../modules/paragraph/layout/ParagraphRowLayoutPolicy'
+import { isSeparatorElement } from '../../modules/separator/layout/SeparatorElementLayout'
+import { TableLayoutEngine } from '../../modules/table/layout/engine/TableLayoutEngine'
+import {
+  isInlineTableElement,
+  shouldBreakAtTableBoundary
+} from '../../modules/table/layout/TableRowLayoutPolicy'
 import type { Draw } from '../Draw'
 import { InlineElementLayout } from './InlineElementLayout'
-import { TableLayoutEngine } from './TableLayoutEngine'
 
+/** 行偏移snapshot类型，用于约束内部流程中传递的数据结构。 */
 type IRowOffsetSnapshot = Pick<
   IRow,
   'offsetX' | 'rowFlexOffsetX' | 'rightOffsetX' | 'isList' | 'listIndex'
@@ -31,6 +44,7 @@ export class RowLayoutEngine {
   /** 表格布局引擎。 */
   private tableLayoutEngine: TableLayoutEngine
 
+  /** 初始化 RowLayoutEngine 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {
     this.inlineElementLayout = new InlineElementLayout(draw)
     this.tableLayoutEngine = new TableLayoutEngine(
@@ -120,32 +134,28 @@ export class RowLayoutEngine {
 
       // 表格与普通行内元素统一在这里完成测量，避免后续行布局逻辑分叉。
       const metrics =
-        element.type === ElementType.TABLE
-          ? this.tableLayoutEngine.measure({
-              element,
-              elementList,
-              index: i,
-              rowMargin,
-              isPagingPageMode,
-              scale,
-              tdPadding: this.draw.getOptions().table.tdPadding
-            })
-          : this.inlineElementLayout.measure({
-              ctx,
-              element,
-              rowList,
-              availableWidth,
-              rowMargin,
-              scale,
-              defaultSize,
-              defaultTabWidth
-            })
+        this.tableLayoutEngine.measureIfTable({
+          element,
+          elementList,
+          index: i,
+          rowMargin,
+          isPagingPageMode,
+          scale,
+          tdPadding: this.draw.getOptions().table.tdPadding
+        }) ||
+        this.inlineElementLayout.measure({
+          ctx,
+          element,
+          rowList,
+          availableWidth,
+          rowMargin,
+          scale,
+          defaultSize,
+          defaultTabWidth
+        })
 
       const ascent =
-        !element.hide &&
-        ((element.imgDisplay !== ImageDisplay.INLINE &&
-          element.type === ElementType.IMAGE) ||
-          element.type === ElementType.LATEX)
+        shouldUseImageOffset(element)
           ? metrics.height + rowMargin
           : metrics.boundingBoxAscent + rowMargin
       const height =
@@ -159,31 +169,24 @@ export class RowLayoutEngine {
       rowElement.left = 0
       rowElement.style = this.draw.getElementFont(element, scale)
 
-      if (rowElement.control?.minWidth) {
-        if (rowElement.controlComponent) {
-          controlRealWidth += metrics.width
-        }
-        if (rowElement.controlComponent === ControlComponent.POSTFIX) {
-          this.draw.getControl().setMinWidthControlInfo({
-            row: curRow,
-            rowElement,
-            availableWidth,
-            controlRealWidth
-          })
-          controlRealWidth = 0
-        }
-      }
+      controlRealWidth = consumeMinWidthControlLayout({
+        draw: this.draw,
+        row: curRow,
+        rowElement,
+        availableWidth,
+        controlRealWidth
+      })
 
       const preElement = elementList[i - 1]
       let curRowWidth = curRow.width + metrics.width
-      const isInlineTable = element.type === ElementType.TABLE && element.tableDisplay === 'inline'
-      const isPreInlineTable =
-        preElement?.type === ElementType.TABLE && preElement.tableDisplay === 'inline'
+      const isInlineTable = isInlineTableElement(element)
+      const isPreInlineTable = isInlineTableElement(preElement)
 
       const isCodeblockElement =
         element.extension === 'codeblock' ||
         (typeof element.extension === 'object' &&
           element.extension !== null &&
+          /** codeblock开关，用于控制当前流程的判断分支。 */
           (element.extension as { codeblock?: boolean }).codeblock === true)
       const wordBreak = isCodeblockElement
         ? WordBreak.BREAK_ALL
@@ -191,8 +194,8 @@ export class RowLayoutEngine {
 
       if (wordBreak === WordBreak.BREAK_WORD) {
         if (
-          (!preElement?.type || preElement?.type === ElementType.TEXT) &&
-          (!element.type || element.type === ElementType.TEXT)
+          isPlainTextElement(preElement) &&
+          isPlainTextElement(element)
         ) {
           const word = `${preElement?.value || ''}${element.value}`
           if (this.draw.getWordLikeReg().test(word)) {
@@ -244,20 +247,21 @@ export class RowLayoutEngine {
       x += metrics.width
 
       const isForceBreak =
-        element.type === ElementType.SEPARATOR ||
-        (element.type === ElementType.TABLE && !isInlineTable) ||
-        (preElement?.type === ElementType.TABLE && !isPreInlineTable) ||
-        preElement?.type === ElementType.BLOCK ||
-        element.type === ElementType.BLOCK ||
-        preElement?.imgDisplay === ImageDisplay.INLINE ||
-        element.imgDisplay === ImageDisplay.INLINE ||
+        isSeparatorElement(element) ||
+        shouldBreakAtTableBoundary({
+          element,
+          preElement,
+          isInlineTable,
+          isPreInlineTable
+        }) ||
+        isBlockElement(preElement) ||
+        isBlockElement(element) ||
+        isInlineImageElement(preElement) ||
+        isInlineImageElement(element) ||
         preElement?.listId !== element.listId ||
         (preElement?.areaId !== element.areaId && !element.area?.hide) ||
-        (element.control?.flexDirection === FlexDirection.COLUMN &&
-          (element.controlComponent === ControlComponent.CHECKBOX ||
-            element.controlComponent === ControlComponent.RADIO) &&
-          preElement?.controlComponent === ControlComponent.VALUE) ||
-        (i !== 0 && element.value === ZERO && !element.area?.hide)
+        shouldBreakBeforeColumnCheckable({ element, preElement }) ||
+        (i !== 0 && shouldBreakAtZeroParagraphElement(element))
       const isHangingPunctuation =
         !isFromTable &&
         wordBreak === WordBreak.BREAK_WORD &&
@@ -277,7 +281,7 @@ export class RowLayoutEngine {
           ascent,
           rowIndex: curRow.rowIndex + 1,
           rowFlex: elementList[i]?.rowFlex || elementList[i + 1]?.rowFlex,
-          isPageBreak: element.type === ElementType.PAGE_BREAK
+          isPageBreak: isPageBreakElement(element)
         }
         this.applyWrappedRowOffset({
           row,
@@ -286,25 +290,13 @@ export class RowLayoutEngine {
           scale
         })
 
-        if (
-          rowElement.controlComponent !== ControlComponent.PREFIX &&
-          rowElement.control?.indentation === ControlIndentation.VALUE_START
-        ) {
-          const preStartIndex = curRow.elementList.findIndex(
-            el =>
-              el.controlId === rowElement.controlId &&
-              el.controlComponent !== ControlComponent.PREFIX
-          )
-          if (~preStartIndex) {
-            const preRowPositionList = this.draw.getCoordinate().computeRowPosition({
-              row: curRow,
-              innerWidth: this.draw.getInnerWidth()
-            })
-            const valueStartPosition = preRowPositionList[preStartIndex]
-            if (valueStartPosition) {
-              row.offsetX = valueStartPosition.coordinate.leftTop[0]
-            }
-          }
+        const valueStartOffsetX = resolveValueStartIndentOffset({
+          draw: this.draw,
+          row: curRow,
+          rowElement
+        })
+        if (valueStartOffsetX !== null) {
+          row.offsetX = valueStartOffsetX
         }
 
         if (element.listId) {
@@ -325,7 +317,7 @@ export class RowLayoutEngine {
         curRow.width += metrics.width
         if (
           i === 0 &&
-          (getIsBlockElement(elementList[1]) || !!elementList[1]?.areaId)
+          (isBlockElement(elementList[1]) || !!elementList[1]?.areaId)
         ) {
           curRow.height = defaultBasicRowMarginHeight
           curRow.ascent = defaultBasicRowMarginHeight
@@ -338,12 +330,7 @@ export class RowLayoutEngine {
 
       if (isWrap || i === elementList.length - 1) {
         curRow.isWidthNotEnough = isWidthNotEnough && !isForceBreak
-        if (
-          !curRow.isSurround &&
-          (preElement?.rowFlex === RowFlex.JUSTIFY ||
-            (preElement?.rowFlex === RowFlex.ALIGNMENT &&
-              curRow.isWidthNotEnough))
-        ) {
+        if (shouldApplyRowFlexSpacing({ row: curRow, preElement })) {
           const rowElementList =
             curRow.elementList[0]?.value === ZERO
               ? curRow.elementList.slice(1)
@@ -366,7 +353,7 @@ export class RowLayoutEngine {
           !isFromTable &&
           pageHeight &&
           (y - startY + mainOuterHeight + height > pageHeight ||
-            element.type === ElementType.PAGE_BREAK)
+            isPageBreakElement(element))
         ) {
           y = startY
           deleteSurroundElementList(surroundElementList, pageNo)
@@ -441,10 +428,14 @@ export class RowLayoutEngine {
   }
 
   private applyRowOffset(payload: {
+    /** 行布局对象，保存当前行的元素和坐标信息。 */
     row: IRow
+    /** 文档元素对象，承载文本、控件、表格或媒体信息。 */
     element: IElement
     isParagraphFirstContentElement: boolean
+    /** 列表样式偏移x数值，用于当前布局、统计或索引计算。 */
     listStyleOffsetX: number
+    /** 缩放比例，用于把文档尺寸映射到显示尺寸。 */
     scale: number
   }) {
     const { row, element, isParagraphFirstContentElement, listStyleOffsetX, scale } =
@@ -477,9 +468,13 @@ export class RowLayoutEngine {
   }
 
   private applyWrappedRowOffset(payload: {
+    /** 行布局对象，保存当前行的元素和坐标信息。 */
     row: IRow
+    /** 文档元素对象，承载文本、控件、表格或媒体信息。 */
     element: IElement
+    /** 列表样式偏移x数值，用于当前布局、统计或索引计算。 */
     listStyleOffsetX: number
+    /** 缩放比例，用于把文档尺寸映射到显示尺寸。 */
     scale: number
   }) {
     const { row, element, listStyleOffsetX, scale } = payload
@@ -502,6 +497,7 @@ export class RowLayoutEngine {
     }
   }
 
+  /** 恢复 Row Offset Snapshot 对应的快照状态。 */
   private restoreRowOffsetSnapshot(
     row: IRow,
     snapshot: IRowOffsetSnapshot
@@ -524,11 +520,16 @@ export class RowLayoutEngine {
    * 如果不预置前序计数，跨页列表在输入后会从 1 重新编号。
    */
   private createInitialListIndexState(payload: {
+    /** 文档元素列表，按文档顺序保存参与处理的元素。 */
     elementList: IElement[]
+    /** 来源起始索引，用于定位对应元素、行或片段。 */
     sourceStartIndex: number
+    /** 是否来源于表格，用于选择表格内专用排版路径。 */
     isFromTable: boolean
   }): {
+    /** 列表id，用于关联对应业务对象。 */
     listId?: string
+    /** 列表索引map，用于按键快速查找对应数据。 */
     listIndexMap: Map<string, number>
   } {
     const listIndexMap = new Map<string, number>()

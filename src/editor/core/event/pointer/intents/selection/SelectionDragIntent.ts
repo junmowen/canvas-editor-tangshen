@@ -1,10 +1,14 @@
 import { CanvasEvent } from '../../../CanvasEvent'
-import { resolveSelectionDragRange } from '../../../utils/resolveSelectionDragRange'
+import { resolveSelectionDragRange } from '../../../../range/selection/resolveSelectionDragRange'
+import { resolveTablePointerHit } from '../../../../modules/table/hittest/resolveTablePointerHit'
+import { disposeTableTool } from '../../../../modules/table/interaction/TableToolEffect'
+import { isTableCrossRowColSelectionRange } from '../../../../modules/table/selection/resolveTablePointerSelection'
 import { renderSelectionDrag } from '../../effects/PointerRenderEffect'
-import { disposeTableTool } from '../../effects/TableToolEffect'
 
 export function runSelectionDragIntent(payload: {
+  /** 宿主容器节点，用于承载编辑器或渲染表面。 */
   host: CanvasEvent
+  /** 原始 DOM 事件对象，用于读取指针、键盘或剪贴板信息。 */
   evt: MouseEvent
 }): boolean {
   const { host, evt } = payload
@@ -21,7 +25,8 @@ export function runSelectionDragIntent(payload: {
   draw.setPageNo(pagePoint.pageNo)
   const coordinate = draw.getCoordinate()
   const rangeManager = components.range
-  const hitTestResult = components.tableHitTestService.resolve({
+  const hitTestResult = resolveTablePointerHit({
+    draw,
     x: pagePoint.x,
     y: pagePoint.y,
     pageNo: pagePoint.pageNo,
@@ -48,15 +53,7 @@ export function runSelectionDragIntent(payload: {
     return true
   }
 
-  rangeManager.setRange(
-    selectionUpdate.range.startIndex,
-    selectionUpdate.range.endIndex,
-    selectionUpdate.range.tableId,
-    selectionUpdate.range.startTdIndex,
-    selectionUpdate.range.endTdIndex,
-    selectionUpdate.range.startTrIndex,
-    selectionUpdate.range.endTrIndex
-  )
+  rangeManager.replaceRange(selectionUpdate.range)
   if (selectionUpdate.positionContext) {
     coordinate.setPositionContext(selectionUpdate.positionContext)
   }
@@ -64,12 +61,8 @@ export function runSelectionDragIntent(payload: {
     disposeTableTool(draw)
   }
 
-  const isCrossRowColSelection = !!(
-    selectionUpdate.range.tableId &&
-    selectionUpdate.range.startTdIndex !== undefined &&
-    selectionUpdate.range.endTdIndex !== undefined &&
-    selectionUpdate.range.startTrIndex !== undefined &&
-    selectionUpdate.range.endTrIndex !== undefined
+  const isCrossRowColSelection = isTableCrossRowColSelectionRange(
+    selectionUpdate.range
   )
   renderSelectionDrag({ draw, isCrossRowColSelection })
   session.lastPointerCoordinates = coordinates

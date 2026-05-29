@@ -1,0 +1,89 @@
+import { EDITOR_PREFIX } from '../../../../../dataset/constant/Editor'
+import { BlockType } from '../../../../../dataset/enum/Block'
+import { IRowElement } from '../../../../../interface/Row'
+import { Draw } from '../../../../draw/Draw'
+import { BlockParticle } from '../BlockParticle'
+import { HtmlBlock } from './HtmlBlock'
+import { IFrameBlock } from './IFrameBlock'
+import { SvgBlock } from './SvgBlock'
+import { VideoBlock } from './VideoBlock'
+
+export class BaseBlock {
+  /** Draw 门面实例，用于访问编辑器布局、渲染、数据和组件服务。 */
+  private draw: Draw
+  /** 当前处理的元素数据。 */
+  private element: IRowElement
+  /** 当前块元素配置数据。 */
+  private block: HtmlBlock | IFrameBlock | SvgBlock | VideoBlock | null
+  private blockContainer: HTMLDivElement
+  private blockItem: HTMLDivElement
+  /** 当前对象所属页码。 */
+  private pageNo = -1
+
+  /** 初始化 BaseBlock 实例并注入运行依赖。 */
+  constructor(blockParticle: BlockParticle, element: IRowElement) {
+    this.draw = blockParticle.getDraw()
+    this.blockContainer = blockParticle.getBlockContainer()
+    this.element = element
+    this.block = null
+    this.blockItem = this._createBlockItem()
+    this.blockContainer.append(this.blockItem)
+  }
+
+  public getBlockElement(): IRowElement {
+    return this.element
+  }
+
+  public getPageNo(): number {
+    return this.pageNo
+  }
+
+  /** 创建blockitem，组装后续流程需要的对象或 DOM 结构。 */
+  private _createBlockItem(): HTMLDivElement {
+    const blockItem = document.createElement('div')
+    blockItem.classList.add(`${EDITOR_PREFIX}-block-item`)
+    if (this.draw.isReadonly() || this.draw.isPrintMode()) {
+      blockItem.classList.add(`${EDITOR_PREFIX}-block-item__disabled`)
+    }
+    return blockItem
+  }
+
+  public render() {
+    const block = this.element.block!
+    if (block.type === BlockType.IFRAME) {
+      this.block = new IFrameBlock(this.element, this.draw)
+      this.block.render(this.blockItem)
+    } else if (block.type === BlockType.VIDEO) {
+      this.block = new VideoBlock(this.element)
+      this.block.render(this.blockItem)
+    } else if (block.type === BlockType.SVG) {
+      this.block = new SvgBlock(this.element)
+      this.block.render(this.blockItem)
+    } else if (block.type === BlockType.HTML) {
+      this.block = new HtmlBlock(this.element)
+      this.block.render(this.blockItem)
+    }
+  }
+
+  public setClientRects(pageNo: number, x: number, y: number) {
+    this.pageNo = pageNo
+    const preY = this.draw.getPageCanvasHost().getPageTop(pageNo)
+    // 尺寸
+    const { metrics } = this.element
+    this.blockItem.style.width = `${metrics.width}px`
+    this.blockItem.style.height = `${metrics.height}px`
+    // 位置
+    this.blockItem.style.left = `${x}px`
+    this.blockItem.style.top = `${preY + y}px`
+  }
+
+  /** 移除当前项，清理对应的 DOM 或运行态记录。 */
+  public remove() {
+    this.blockItem.remove()
+  }
+
+  public syncIframeSrcdocFromDom(): boolean {
+    if (!(this.block instanceof IFrameBlock)) return false
+    return this.block.syncSrcdocFromDom()
+  }
+}

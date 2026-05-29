@@ -3,6 +3,7 @@ import { IElement } from '../../interface/Element'
 import { ITd } from '../../interface/table/Td'
 import { IControlStyle } from '../../interface/Control'
 
+// editor element style attr 属性白名单，用于复制、压缩或继承元素上下文。
 export const EDITOR_ELEMENT_STYLE_ATTR: Array<keyof IElement> = [
   'bold',
   'color',
@@ -24,6 +25,7 @@ export const EDITOR_ELEMENT_STYLE_ATTR: Array<keyof IElement> = [
   'textCombine'
 ]
 
+// editor row attr 属性白名单，用于复制、压缩或继承元素上下文。
 export const EDITOR_ROW_ATTR: Array<keyof IElement> = [
   'rowFlex',
   'rowMargin',
@@ -33,6 +35,7 @@ export const EDITOR_ROW_ATTR: Array<keyof IElement> = [
   'rowHangingIndent'
 ]
 
+// editor element copy attr 属性白名单，用于复制、压缩或继承元素上下文。
 export const EDITOR_ELEMENT_COPY_ATTR: Array<keyof IElement> = [
   'type',
   'font',
@@ -69,6 +72,7 @@ export const EDITOR_ELEMENT_COPY_ATTR: Array<keyof IElement> = [
   'textCombine'
 ]
 
+// editor element zip attr 属性白名单，用于复制、压缩或继承元素上下文。
 export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
   'id',
   'type',
@@ -153,6 +157,7 @@ export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
   'hide'
 ]
 
+// table td zip attr 属性白名单，用于复制、压缩或继承元素上下文。
 export const TABLE_TD_ZIP_ATTR: Array<keyof ITd> = [
   'conceptId',
   'extension',
@@ -168,18 +173,21 @@ export const TABLE_TD_ZIP_ATTR: Array<keyof ITd> = [
   'deletable'
 ]
 
+// table context attr 属性白名单，用于复制、压缩或继承元素上下文。
 export const TABLE_CONTEXT_ATTR: Array<keyof IElement> = [
   'tdId',
   'trId',
   'tableId'
 ]
 
+// title context attr 属性白名单，用于复制、压缩或继承元素上下文。
 export const TITLE_CONTEXT_ATTR: Array<keyof IElement> = [
   'level',
   'titleId',
   'title'
 ]
 
+// list context attr 属性白名单，用于复制、压缩或继承元素上下文。
 export const LIST_CONTEXT_ATTR: Array<keyof IElement> = [
   'listId',
   'listType',
@@ -189,6 +197,7 @@ export const LIST_CONTEXT_ATTR: Array<keyof IElement> = [
   'listSymbol'
 ]
 
+// control context attr 属性白名单，用于复制、压缩或继承元素上下文。
 export const CONTROL_CONTEXT_ATTR: Array<keyof IElement> = [
   'control',
   'controlId',
@@ -196,6 +205,7 @@ export const CONTROL_CONTEXT_ATTR: Array<keyof IElement> = [
   'controlComponent'
 ]
 
+// control style attr 属性白名单，用于复制、压缩或继承元素上下文。
 export const CONTROL_STYLE_ATTR: Array<keyof IControlStyle> = [
   'font',
   'size',
@@ -207,8 +217,10 @@ export const CONTROL_STYLE_ATTR: Array<keyof IControlStyle> = [
   'strikeout'
 ]
 
+// area context attr 属性白名单，用于复制、压缩或继承元素上下文。
 export const AREA_CONTEXT_ATTR: Array<keyof IElement> = ['areaId', 'area']
 
+// editor element context attr 属性白名单，用于复制、压缩或继承元素上下文。
 export const EDITOR_ELEMENT_CONTEXT_ATTR: Array<keyof IElement> = [
   ...TABLE_CONTEXT_ATTR,
   ...TITLE_CONTEXT_ATTR,
@@ -216,6 +228,7 @@ export const EDITOR_ELEMENT_CONTEXT_ATTR: Array<keyof IElement> = [
   ...AREA_CONTEXT_ATTR
 ]
 
+// textlike element type 类型集合，用于快速判断元素类别。
 export const TEXTLIKE_ELEMENT_TYPE: ElementType[] = [
   ElementType.TEXT,
   ElementType.HYPERLINK,
@@ -225,11 +238,13 @@ export const TEXTLIKE_ELEMENT_TYPE: ElementType[] = [
   ElementType.DATE
 ]
 
+// image element type 类型集合，用于快速判断元素类别。
 export const IMAGE_ELEMENT_TYPE: ElementType[] = [
   ElementType.IMAGE,
   ElementType.LATEX
 ]
 
+// block element type 类型集合，用于快速判断元素类别。
 export const BLOCK_ELEMENT_TYPE: ElementType[] = [
   ElementType.BLOCK,
   ElementType.PAGE_BREAK,
@@ -237,8 +252,10 @@ export const BLOCK_ELEMENT_TYPE: ElementType[] = [
   ElementType.TABLE
 ]
 
+// inline node name 节点名集合，用于 HTML 转换时判断内联节点。
 export const INLINE_NODE_NAME: string[] = ['HR', 'TABLE', 'UL', 'OL']
 
+// virtual element type 类型集合，用于快速判断元素类别。
 export const VIRTUAL_ELEMENT_TYPE: ElementType[] = [
   ElementType.TITLE,
   ElementType.LIST

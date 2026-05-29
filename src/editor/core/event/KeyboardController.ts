@@ -8,8 +8,10 @@ import { runKeyboardDeletionIntent } from './keyboard/intents/KeyboardDeletionIn
 import { runTabIntent } from './keyboard/intents/TabIntent'
 
 export class KeyboardController {
+  /** 初始化 KeyboardController 实例并注入运行依赖。 */
   constructor(private readonly host: CanvasEvent) {}
 
+  /** 处理键盘按下事件，执行快捷键、输入或控件拦截逻辑。 */
   public keydown(evt: KeyboardEvent) {
     if (this.host.isComposing) return
     const draw = this.host.getDraw()

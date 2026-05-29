@@ -1,7 +1,4 @@
-import { ElementType, ListStyle } from '../..'
 import { ZERO } from '../../dataset/constant/Common'
-import { ImageDisplay } from '../../dataset/enum/Common'
-import { ControlComponent } from '../../dataset/enum/Control'
 import { EditorZone } from '../../dataset/enum/Editor'
 import { IElementPosition } from '../../interface/Element'
 import {
@@ -13,23 +10,50 @@ import {
   createCollapsedLeftCursorPosition,
   resolvePointerBoundaryAtPosition
 } from './utils/resolvePointerBoundaryAtPosition'
+import {
+  isCheckboxHitElement,
+  isElementInControl,
+  isRadioHitElement
+} from '../modules/control/hittest/ControlHitTest'
+import {
+  getBackFloatImageHitDisplays,
+  getFrontFloatImageHitDisplays,
+  isFloatImageHitCandidate,
+  isImageDirectHitElement,
+  isPointInFloatImageElement
+} from '../modules/image/hittest/ImageHitTestPolicy'
+import {
+  resolveListCheckboxHeadHit,
+  resolveListCheckboxHeadStartX,
+  resolveListCheckboxTabHit
+} from '../modules/list/hittest/ListCheckboxHitTestPolicy'
+import { resolveTableFloatImageHit } from '../modules/table/hittest/resolveTableFloatImageHit'
 import type { Position } from './Position'
 
+/** 位置内部访问契约，用于在拆分模块间共享受控能力。 */
 type PositionInternal = Record<string, any>
 
+/** 页面行band类型，用于约束内部流程中传递的数据结构。 */
 type TPageRowBand = {
+  /** 行号，用于定位页面内的目标行。 */
   rowNo: number
+  /** 上侧偏移或边距，用于计算区域边界。 */
   top: number
+  /** 下侧偏移或边距，用于计算区域边界。 */
   bottom: number
+  /** 起始位置，用于描述范围、拖拽或扫描的入口。 */
   start: number
+  /** 结束数值，用于当前布局、统计或索引计算。 */
   end: number
 }
 
 type TPointerHitResult = ICurrentPosition & {
+  /** 命中目标索引，用于定位指针事件落点对应的元素。 */
   hitTargetIndex?: number
 }
 
 declare module './Position' {
+  /** 位置契约，用于约束内部流程中传递的数据结构。 */
   interface Position {
     getPositionByXY(payload: IGetPositionByXYPayload): ICurrentPosition
     getFloatPositionByXY(
@@ -108,7 +132,7 @@ const positionHitTestMethods = {
     // 这层命中需要早于正文字符盒，否则会被正文文字错误吞掉。
     const floatTopPosition = this.getFloatPositionByXY({
       ...payload,
-      imgDisplays: [ImageDisplay.FLOAT_TOP, ImageDisplay.SURROUND]
+      imgDisplays: getFrontFloatImageHitDisplays()
     })
     if (floatTopPosition) return floatTopPosition
     const directHitStart = activeRowBand?.start ?? 0
@@ -135,10 +159,7 @@ const positionHitTestMethods = {
       if (!element) {
         continue
       }
-      if (
-        element.type === ElementType.IMAGE ||
-        element.type === ElementType.LATEX
-      ) {
+      if (isImageDirectHitElement(element)) {
         return {
           index,
           hitTargetIndex: index,
@@ -146,10 +167,7 @@ const positionHitTestMethods = {
           isImage: true
         }
       }
-      if (
-        element.type === ElementType.CHECKBOX ||
-        element.controlComponent === ControlComponent.CHECKBOX
-      ) {
+      if (isCheckboxHitElement(element)) {
         return {
           index,
           hitTargetIndex: index,
@@ -157,36 +175,14 @@ const positionHitTestMethods = {
           isCheckbox: true
         }
       }
-      if (
-        element.type === ElementType.TAB &&
-        element.listStyle === ListStyle.CHECKBOX
-      ) {
-        let searchCursor = cursor - 1
-        while (searchCursor > 0) {
-          const searchElement = elementList[searchCursor]
-          if (!searchElement) {
-            searchCursor--
-            continue
-          }
-          if (
-            searchElement.value === ZERO &&
-            searchElement.listStyle === ListStyle.CHECKBOX
-          ) {
-            break
-          }
-          searchCursor--
-        }
-        return {
-          index: positionList[searchCursor]?.index ?? searchCursor,
-          hitTargetIndex: positionList[searchCursor]?.index ?? searchCursor,
-          isDirectHit: true,
-          isCheckbox: true
-        }
-      }
-      if (
-        element.type === ElementType.RADIO ||
-        element.controlComponent === ControlComponent.RADIO
-      ) {
+      const listCheckboxTabHit = resolveListCheckboxTabHit({
+        element,
+        cursor,
+        elementList,
+        positionList
+      })
+      if (listCheckboxTabHit) return listCheckboxTabHit
+      if (isRadioHitElement(element)) {
         return {
           index,
           hitTargetIndex: index,
@@ -207,7 +203,7 @@ const positionHitTestMethods = {
         isDirectHit: true,
         hitTargetIndex: index,
         index: boundaryIndex,
-        isControl: !!element.controlId
+        isControl: isElementInControl(element)
       }
       return directHitPosition
     }
@@ -215,7 +211,7 @@ const positionHitTestMethods = {
     // 这类元素优先级低于正文 direct-hit，但高于行带/页边界兜底。
     const floatBottomPosition = this.getFloatPositionByXY({
       ...payload,
-      imgDisplays: [ImageDisplay.FLOAT_BOTTOM]
+      imgDisplays: getBackFloatImageHitDisplays()
     })
     if (floatBottomPosition) return floatBottomPosition
     // 第四层：页内行带兜底。
@@ -230,10 +226,11 @@ const positionHitTestMethods = {
       const tailPosition = positionList[tailIndex]
       if (headElement && headPosition && tailPosition) {
         let curPositionIndex = -1
-        const headStartX =
-          headElement.listStyle === ListStyle.CHECKBOX
-            ? this.draw.getMargins()[3]
-            : headPosition.coordinate.leftTop[0]
+        const headStartX = resolveListCheckboxHeadStartX({
+          headElement,
+          defaultStartX: headPosition.coordinate.leftTop[0],
+          leftMargin: this.draw.getMargins()[3]
+        })
         if (x < headStartX) {
           const lineStartBoundaryIndex =
             headPosition.value === ZERO
@@ -247,25 +244,29 @@ const positionHitTestMethods = {
               lineStartBoundaryIndex
             ),
             isLeftSideBlank: true,
-            isControl: !!resolveLogicalControlElement(lineStartBoundaryIndex)?.controlId
-          }
-        } else if (
-          headElement.listStyle === ListStyle.CHECKBOX &&
-          x < headPosition.coordinate.leftTop[0]
-        ) {
-          activeRowBandPosition = {
-            index: headPosition.index,
-            isDirectHit: true,
-            isCheckbox: true
+            isControl: isElementInControl(
+              resolveLogicalControlElement(lineStartBoundaryIndex)
+            )
           }
         } else {
-          curPositionIndex = tailPosition.index
+          const listCheckboxHeadHit = resolveListCheckboxHeadHit({
+            headElement,
+            headPosition,
+            x
+          })
+          if (listCheckboxHeadHit) {
+            activeRowBandPosition = listCheckboxHeadHit
+          } else {
+            curPositionIndex = tailPosition.index
+          }
         }
 
         if (!activeRowBandPosition && curPositionIndex >= 0) {
           activeRowBandPosition = {
             index: curPositionIndex,
-            isControl: !!resolveLogicalControlElement(curPositionIndex)?.controlId
+            isControl: isElementInControl(
+              resolveLogicalControlElement(curPositionIndex)
+            )
           }
         }
       }
@@ -374,48 +375,20 @@ const positionHitTestMethods = {
     const currentZone = this.draw.getZone().getZone()
     const { scale } = this.options
     for (let f = 0; f < this.floatPositionList.length; f++) {
-      const {
-        position,
-        element,
-        isTable,
-        index,
-        trIndex,
-        tdIndex,
-        tdValueIndex,
-        zone: floatElementZone,
-        pageNo
-      } = this.floatPositionList[f]
+      const floatPosition = this.floatPositionList[f]
+      const { position, element, zone: floatElementZone, pageNo } = floatPosition
       if (
         currentPageNo === pageNo &&
-        element.type === ElementType.IMAGE &&
-        element.imgDisplay &&
-        payload.imgDisplays.includes(element.imgDisplay) &&
+        isFloatImageHitCandidate({
+          element,
+          imgDisplays: payload.imgDisplays
+        }) &&
         (!floatElementZone || floatElementZone === currentZone)
       ) {
-        const imgFloatPosition = element.imgFloatPosition!
-        const imgFloatPositionX = imgFloatPosition.x * scale
-        const imgFloatPositionY = imgFloatPosition.y * scale
-        const elementWidth = element.width! * scale
-        const elementHeight = element.height! * scale
-        if (
-          x >= imgFloatPositionX &&
-          x <= imgFloatPositionX + elementWidth &&
-          y >= imgFloatPositionY &&
-          y <= imgFloatPositionY + elementHeight
-        ) {
-          if (isTable) {
-            return {
-              index: index!,
-              isDirectHit: true,
-              isImage: true,
-              isTable,
-              trIndex,
-              tdIndex,
-              tdValueIndex,
-              tdId: element.tdId,
-              trId: element.trId,
-              tableId: element.tableId
-            }
+        if (isPointInFloatImageElement({ element, x, y, scale })) {
+          const tableFloatHit = resolveTableFloatImageHit(floatPosition)
+          if (tableFloatHit) {
+            return tableFloatHit
           }
           return {
             index: position.index,
@@ -428,6 +401,7 @@ const positionHitTestMethods = {
   }
 }
 
+/** 安装位置命中testmethods，把拆分方法挂载到目标原型。 */
 export function installPositionHitTestMethods(PositionClass: typeof Position) {
   Object.assign(PositionClass.prototype, positionHitTestMethods)
 }

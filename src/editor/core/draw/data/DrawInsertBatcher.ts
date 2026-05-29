@@ -1,5 +1,5 @@
-import { ElementType } from '../../../dataset/enum/Element'
 import { IElement } from '../../../interface/Element'
+import { isPlainTextElement } from '../../modules/paragraph/layout/ParagraphRowLayoutPolicy'
 
 /** 大批量粘贴异步提交阈值，避免一次输入态 chunk 同步测量数百页。 */
 export const ASYNC_INSERT_THRESHOLD = 1000
@@ -30,6 +30,7 @@ export function getRawInsertWeight(elementList: IElement[]) {
 /** 创建原始插入批次，既限制元素数，也限制单批文本量。 */
 export function createRawInsertBatchList(elementList: IElement[]) {
   const batchList: IElement[][] = []
+  // 初始化 current Batch 列表。
   let currentBatch: IElement[] = []
   let currentTextSize = 0
 
@@ -57,7 +58,7 @@ export function createRawInsertBatchList(elementList: IElement[]) {
   for (let index = 0; index < elementList.length; index++) {
     const element = elementList[index]
     if (
-      (!element.type || element.type === ElementType.TEXT) &&
+      isPlainTextElement(element) &&
       element.value?.length > ASYNC_INSERT_BATCH_TEXT_SIZE
     ) {
       pushCurrentBatch()

@@ -1,0 +1,262 @@
+import { CURSOR_AGENT_OFFSET_HEIGHT } from '../../../dataset/constant/Cursor'
+import { EDITOR_PREFIX } from '../../../dataset/constant/Editor'
+import { MoveDirection } from '../../../dataset/enum/Observer'
+import { DeepRequired } from '../../../interface/Common'
+import { ICursorOption } from '../../../interface/Cursor'
+import { IEditorOption } from '../../../interface/Editor'
+import { IElementPosition } from '../../../interface/Element'
+import { findScrollContainer } from '../../../utils'
+import { isMobile } from '../../../utils/ua'
+import { Draw } from '../../draw/Draw'
+import { EditorClipboardController } from '../../event/EditorClipboardController'
+import { EditorInputController } from '../../event/EditorInputController'
+import type { DrawCoordinateService } from '../../draw/coordinate/DrawCoordinateService'
+import { CursorAgent } from './CursorAgent'
+
+/** 绘制光标选项，用于约束调用方可传入的可选配置。 */
+export type IDrawCursorOption = ICursorOption & {
+  /** 是否显示光标，用于控制光标可见状态。 */
+  isShow?: boolean
+  /** 是否闪烁光标，用于控制光标动画状态。 */
+  isBlink?: boolean
+  /** 编辑器是否聚焦，用于决定光标和输入处理状态。 */
+  isFocus?: boolean
+}
+
+/** 移动光标to可见选项，用于约束调用方可传入的可选配置。 */
+export interface IMoveCursorToVisibleOption {
+  /** 移动或遍历方向，用于决定下一步查找顺序。 */
+  direction: MoveDirection
+  /** 光标坐标信息，用于渲染插入点或处理命中。 */
+  cursorPosition: IElementPosition
+}
+
+export class Cursor {
+  private readonly ANIMATION_CLASS = `${EDITOR_PREFIX}-cursor--animation`
+
+  /** Draw 门面实例，用于访问编辑器布局、渲染、数据和组件服务。 */
+  private draw: Draw
+  /** 编辑器根容器，承载浮层、光标或交互节点。 */
+  private container: HTMLDivElement
+  /** 编辑器选项快照，读取页面尺寸、样式和功能开关。 */
+  private options: DeepRequired<IEditorOption>
+  /** 坐标服务，用于读取元素位置、浮动元素和光标坐标。 */
+  private coordinate: DrawCoordinateService
+  private cursorDom: HTMLDivElement
+  /** Cursor Agent 实例，负责光标显示、移动或输入代理。 */
+  private cursorAgent: CursorAgent
+  private blinkTimeout: number | null
+
+  /** 初始化 Cursor 实例并注入运行依赖。 */
+  constructor(
+    draw: Draw,
+    inputController: EditorInputController,
+    clipboardController: EditorClipboardController
+  ) {
+    this.draw = draw
+    this.container = draw.getPageCanvasHost().getContainer()
+    this.coordinate = draw.getCoordinate()
+    this.options = draw.getOptions()
+
+    this.cursorDom = document.createElement('div')
+    this.cursorDom.classList.add(`${EDITOR_PREFIX}-cursor`)
+    this.container.append(this.cursorDom)
+    this.cursorAgent = new CursorAgent(draw, inputController, clipboardController)
+    this.blinkTimeout = null
+  }
+
+  public getCursorDom(): HTMLDivElement {
+    return this.cursorDom
+  }
+
+  public getAgentDom(): HTMLTextAreaElement {
+    return this.cursorAgent.getAgentCursorDom()
+  }
+
+  public getAgentIsActive(): boolean {
+    return this.getAgentDom() === document.activeElement
+  }
+
+  public getAgentDomValue(): string {
+    return this.getAgentDom().value
+  }
+
+  public clearAgentDomValue() {
+    this.getAgentDom().value = ''
+  }
+
+  private _blinkStart() {
+    this.cursorDom.classList.add(this.ANIMATION_CLASS)
+  }
+
+  private _blinkStop() {
+    this.cursorDom.classList.remove(this.ANIMATION_CLASS)
+  }
+
+  /** 更新blinktimeout，同步内部状态并触发必要的界面刷新。 */
+  private _setBlinkTimeout() {
+    this._clearBlinkTimeout()
+    this.blinkTimeout = window.setTimeout(() => {
+      this._blinkStart()
+    }, 500)
+  }
+
+  /** 清理blinktimeout，释放缓存或移除旧的界面状态。 */
+  private _clearBlinkTimeout() {
+    if (this.blinkTimeout) {
+      this._blinkStop()
+      window.clearTimeout(this.blinkTimeout)
+      this.blinkTimeout = null
+    }
+  }
+
+  public focus() {
+    // 移动端只读模式禁用聚焦避免唤起输入法，web端允许聚焦避免事件无法捕获
+    if (isMobile && this.draw.isReadonly()) return
+    const agentCursorDom = this.cursorAgent.getAgentCursorDom()
+    // 光标不聚焦时重新定位
+    if (document.activeElement !== agentCursorDom) {
+      agentCursorDom.focus()
+      agentCursorDom.setSelectionRange(0, 0)
+    }
+  }
+
+  public drawCursor(payload?: IDrawCursorOption) {
+    const cursorPosition = this.coordinate.getCursorPosition()
+    if (!cursorPosition) return
+    const { scale, cursor } = this.options
+    const {
+      color,
+      width,
+      isShow = true,
+      isBlink = true,
+      isFocus = true
+    } = { ...cursor, ...payload }
+    // 光标位置
+    const {
+      metrics,
+      coordinate: { leftTop, rightTop },
+      ascent,
+      pageNo
+    } = cursorPosition
+    const zoneManager = this.draw.getZone()
+    const curPageNo = zoneManager.isMainActive()
+      ? pageNo
+      : this.draw.getPageNo()
+    const pageTop = this.draw.getPageCanvasHost().getPageTop(curPageNo)
+    // 默认偏移高度
+    const defaultOffsetHeight = CURSOR_AGENT_OFFSET_HEIGHT * scale
+    // 增加1/4字体大小（最小为defaultOffsetHeight即默认偏移高度）
+    const increaseHeight = Math.min(metrics.height / 4, defaultOffsetHeight)
+    const cursorHeight = metrics.height + increaseHeight * 2
+    const agentCursorDom = this.cursorAgent.getAgentCursorDom()
+    if (isFocus) {
+      setTimeout(() => {
+        this.focus()
+      })
+    }
+    // fillText位置 + 文字基线到底部距离 - 模拟光标偏移量
+    const descent =
+      metrics.boundingBoxDescent < 0 ? 0 : metrics.boundingBoxDescent
+    const cursorTop =
+      leftTop[1] + ascent + descent - (cursorHeight - increaseHeight) + pageTop
+    const pageRelativeCursorTop =
+      leftTop[1] + ascent + descent - (cursorHeight - increaseHeight)
+    const cursorLeft = rightTop[0]
+    const overlayHost = this.draw.getPageCanvasHost().getPageOverlayHost(curPageNo)
+    if (overlayHost && this.cursorDom.parentElement !== overlayHost) {
+      overlayHost.append(this.cursorDom)
+    } else if (!overlayHost && this.cursorDom.parentElement !== this.container) {
+      this.container.append(this.cursorDom)
+    }
+    agentCursorDom.style.left = `${cursorLeft}px`
+    agentCursorDom.style.top = `${
+      cursorTop + cursorHeight - defaultOffsetHeight
+    }px`
+    // 模拟光标显示
+    if (!isShow) {
+      this.recoveryCursor()
+      return
+    }
+    const isReadonly = this.draw.isReadonly()
+    this.cursorDom.style.width = `${width * scale}px`
+    this.cursorDom.style.backgroundColor = color
+    this.cursorDom.style.left = `${cursorLeft}px`
+    this.cursorDom.style.top = `${
+      overlayHost ? pageRelativeCursorTop : cursorTop
+    }px`
+    this.cursorDom.style.display = isReadonly ? 'none' : 'block'
+    this.cursorDom.style.height = `${cursorHeight}px`
+    if (isBlink) {
+      this._setBlinkTimeout()
+    } else {
+      this._clearBlinkTimeout()
+    }
+  }
+
+  public recoveryCursor() {
+    this.cursorDom.style.display = 'none'
+    this._clearBlinkTimeout()
+  }
+
+  public moveCursorToVisible(payload: IMoveCursorToVisibleOption) {
+    const { cursorPosition, direction } = payload
+    if (!cursorPosition || !direction) return
+    const {
+      pageNo,
+      coordinate: { leftTop, leftBottom }
+    } = cursorPosition
+    // 当前页面距离滚动容器顶部距离
+    const prePageY =
+      this.draw.getPageCanvasHost().getPageTop(pageNo) +
+      this.container.getBoundingClientRect().top
+    // 向上移动时：以顶部距离为准，向下移动时：以底部位置为准
+    const isUp = direction === MoveDirection.UP
+    const x = leftBottom[0]
+    const y = isUp ? leftTop[1] + prePageY : leftBottom[1] + prePageY
+    // 查找滚动容器，如果是滚动容器是document，则限制范围为当前窗口
+    const scrollContainer = findScrollContainer(this.container)
+    const rect = {
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0
+    }
+    if (scrollContainer === document.documentElement) {
+      rect.right = window.innerWidth
+      rect.bottom = window.innerHeight
+    } else {
+      const { left, right, top, bottom } =
+        scrollContainer.getBoundingClientRect()
+      rect.left = left
+      rect.right = right
+      rect.top = top
+      rect.bottom = bottom
+    }
+    // 可视范围根据参数调整
+    const { maskMargin } = this.options
+    rect.top += maskMargin[0]
+    rect.bottom -= maskMargin[2]
+    // 不在可视范围时，移动滚动条到合适位置
+    if (
+      !(x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom)
+    ) {
+      const { scrollLeft, scrollTop } = scrollContainer
+      const nextScrollTop = isUp
+        ? scrollTop - (rect.top - y)
+        : scrollTop + y - rect.bottom
+      if (
+        scrollContainer === document.documentElement ||
+        scrollContainer === document.body
+      ) {
+        document.documentElement.scrollTop = nextScrollTop
+        document.body.scrollTop = nextScrollTop
+        window.scrollTo(scrollLeft, nextScrollTop)
+      } else {
+        scrollContainer.scrollLeft = scrollLeft
+        scrollContainer.scrollTop = nextScrollTop
+        scrollContainer.scrollTo(scrollLeft, nextScrollTop)
+      }
+    }
+  }
+}

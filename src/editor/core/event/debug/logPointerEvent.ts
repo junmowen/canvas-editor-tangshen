@@ -2,16 +2,21 @@ import { ICurrentPosition } from '../../../interface/Position'
 import { Draw } from '../../draw/Draw'
 import { CanvasEvent } from '../CanvasEvent'
 
+/** pointerdebug事件类型，用于约束内部流程中传递的数据结构。 */
 export type TPointerDebugEvent = MouseEvent | WheelEvent | DragEvent
 
 declare global {
+  /** 窗口契约，用于约束内部流程中传递的数据结构。 */
   interface Window {
+    /** 画布编辑器pointerdebuglogs列表，保存同类数据的有序集合。 */
     __canvasEditorPointerDebugLogs?: Array<ReturnType<typeof resolvePointerDebugPayload>>
   }
 }
 
+/** loggedpointerobject契约，用于约束内部流程中传递的数据结构。 */
 interface ILoggedPointerObject {
   kind: 'table' | 'image' | 'checkbox' | 'radio' | 'control' | 'text' | 'unknown'
+  /** 位置数据，用于描述元素、光标或浮层所在坐标。 */
   position: ICurrentPosition | null
 }
 

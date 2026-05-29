@@ -2,13 +2,15 @@ import { MouseEventButton } from '../../../dataset/enum/Event'
 import { TEXTLIKE_ELEMENT_TYPE } from '../../../dataset/constant/Element'
 import { deepClone } from '../../../utils'
 import { CanvasEvent } from '../CanvasEvent'
+import { isElementInControl } from '../../modules/control/hittest/ControlHitTest'
+import { hasListSelectionContext } from '../../modules/list/interaction/ListSelectionPolicy'
 import { debugMousedown } from '../debug/mousedown'
 import { captureDragSnapshot } from '../pointer/intents/drag-drop/CaptureDragSnapshotIntent'
 import { applyPointerPositionContext } from '../pointer/utils/applyPointerPositionContext'
-import { resolveRowDragHandleAtPoint } from '../pointer/row-drag/RowDragHandle'
-import { resolveSelectionStartState } from '../utils/resolveSelectionStartState'
+import { resolveRowDragHandleAtPoint } from '../../modules/row-drag/RowDragHandle'
+import { resolveSelectionStartState } from '../../range/selection/resolveSelectionStartState'
 import { runSelectionStartIntent } from '../pointer/intents/selection/SelectionStartIntent'
-import { resolvePositionAtIndex } from '../utils/resolvePositionAtIndex'
+import { resolvePositionAtIndex } from '../../position/utils/resolvePositionAtIndex'
 
 /**
  * 处理鼠标按下事件。
@@ -36,9 +38,9 @@ export function mousedown(evt: MouseEvent, host: CanvasEvent) {
       selectedElementList.every(
         element =>
           (!element.type || TEXTLIKE_ELEMENT_TYPE.includes(element.type)) &&
-          !element.controlId
+          !isElementInControl(element)
       )
-    const isListSelection = selectedElementList.some(element => element.listId)
+    const isListSelection = hasListSelectionContext(selectedElementList)
 
     if (
       evt.button === MouseEventButton.RIGHT &&

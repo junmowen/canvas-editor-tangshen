@@ -1,3 +1,4 @@
+/* 超链接提示与操作浮层样式。 */
 .ce-hyperlink-popup {
   background: #fff;
   box-shadow: 0 2px 12px 0 rgb(98 107 132 / 20%);
@@ -10,6 +11,7 @@
   display: none;
 }
 
+/* 超链接提示与操作浮层样式。 */
 .ce-hyperlink-popup a {
   min-width: 100px;
   max-width: 300px;

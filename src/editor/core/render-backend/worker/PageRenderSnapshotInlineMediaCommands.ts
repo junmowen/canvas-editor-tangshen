@@ -6,6 +6,7 @@ import { PageRenderSnapshotInlineMarkerCommands } from './PageRenderSnapshotInli
 
 /** Inline media commands for normal images and LaTeX SVG paths. */
 export abstract class PageRenderSnapshotInlineMediaCommands extends PageRenderSnapshotInlineMarkerCommands {
+  /** 写入图片command，追加后续渲染需要的命令数据。 */
   protected pushImageCommand(
     commandList: IWorkerPaintCommand[],
     element: IRowElement,

@@ -5,9 +5,13 @@
  * startIndex / endIndex 则用于实际内容切片。
  */
 export interface IResolvedSelectionContentRange {
+  /** 锚点起始索引，用于还原选区拖拽前的左边界。 */
   anchorStartIndex: number
+  /** 锚点结束索引，用于还原选区拖拽前的右边界。 */
   anchorEndIndex: number
+  /** 起始元素索引，用于确定处理范围的左边界。 */
   startIndex: number
+  /** 结束元素索引，用于确定处理范围的右边界。 */
   endIndex: number
 }
 

@@ -4,8 +4,11 @@ import { IEditorOption } from '../interface/Editor'
 import { IElement } from '../interface/Element'
 import { createDomFromElementList, zipElementList } from './element'
 
+/** clipboard数据契约，用于约束内部流程中传递的数据结构。 */
 export interface IClipboardData {
+  /** 文本内容，用于剪贴板、输入或公式节点。 */
   text: string
+  /** 文档元素列表，按文档顺序保存参与处理的元素。 */
   elementList: IElement[]
 }
 
@@ -28,13 +31,16 @@ export function removeClipboardData() {
   localStorage.removeItem(EDITOR_CLIPBOARD)
 }
 
+/** 写入clipboarditem，把数据提交到目标存储或剪贴板。 */
 export function writeClipboardItem(
   text: string,
   html: string,
   elementList: IElement[]
 ) {
   if (!text && !html && !elementList.length) return
+  // 创建 plain Text 实例。
   const plainText = new Blob([text], { type: 'text/plain' })
+  // 创建 html Text 实例。
   const htmlText = new Blob([html], { type: 'text/html' })
   if (window.ClipboardItem) {
     // @ts-ignore
@@ -66,6 +72,7 @@ export function writeClipboardItem(
   setClipboardData({ text, elementList })
 }
 
+/** 写入元素列表，把数据提交到目标存储或剪贴板。 */
 export function writeElementList(
   elementList: IElement[],
   options: DeepRequired<IEditorOption>

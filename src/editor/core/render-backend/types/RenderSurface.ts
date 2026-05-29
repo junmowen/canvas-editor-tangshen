@@ -1,6 +1,6 @@
 import { RenderLayer } from './RenderLayer'
 
-/** 单个渲染 surface，描述某一页某一层实际绑定的渲染资源。 */
+/** 渲染渲染面契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderSurface {
   /** 页码，和 PageCanvasHost 中的 page wrapper 下标保持一致。 */
   pageNo: number
@@ -24,7 +24,7 @@ export interface IRenderSurface {
   mounted: boolean
 }
 
-/** 单页 surface 状态，第一阶段只包含 base 和 overlay 两层。 */
+/** 渲染渲染面页面state契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderSurfacePageState {
   /** 当前页基础正文层 surface。 */
   base?: IRenderSurface

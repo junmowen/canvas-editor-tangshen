@@ -2,6 +2,7 @@ import { IDrawOption } from '../../../interface/Draw'
 import type { Draw } from '../Draw'
 
 export class DrawPostRenderEffects {
+  /** 初始化 DrawPostRenderEffects 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
   public run(

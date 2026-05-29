@@ -1,8 +1,8 @@
 import { IPasteOption } from '../../../interface/Event'
 import { removeClipboardData } from '../../../utils/clipboard'
+import { pasteImageFile } from '../../modules/image/clipboard/pasteImageFile'
 import { CanvasEvent } from '../CanvasEvent'
 import { pasteHtml } from './pasteHtml'
-import { pasteImageFile } from './pasteImageFile'
 import {
   canRunPaste,
   getClipboardImageType,
@@ -45,7 +45,7 @@ export async function pasteByClipboardApi(
     const type = getClipboardImageType(item.types)
     if (type) {
       const imageBlob = await item.getType(type)
-      pasteImageFile(host, imageBlob)
+      pasteImageFile(host.getDraw(), imageBlob)
     }
   }
 }

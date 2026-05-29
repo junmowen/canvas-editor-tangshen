@@ -1,7 +1,6 @@
 import { IElement, IElementPosition } from '../../../../interface/Element'
 import { IRow } from '../../../../interface/Row'
 
-/** 页级 chunk 窗口 rebalance 结果。 */
 export interface IPageChunkRebalanceResult {
   /** 窗口起始元素索引。 */
   startIndex: number

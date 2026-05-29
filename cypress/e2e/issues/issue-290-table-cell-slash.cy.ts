@@ -93,7 +93,7 @@ function countDarkPixelsInRegion(
 
 describe('issue #290 table cell slash', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
     cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
 

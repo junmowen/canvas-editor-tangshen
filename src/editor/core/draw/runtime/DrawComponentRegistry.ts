@@ -1,55 +1,55 @@
-import { Cursor } from '../../cursor/Cursor'
+import { Cursor } from '../../runtime/cursor/Cursor'
 import { CanvasEvent } from '../../event/CanvasEvent'
 import { GlobalEvent } from '../../event/GlobalEvent'
-import { HistoryManager } from '../../history/HistoryManager'
+import { HistoryManager } from '../../runtime/history/HistoryManager'
 import { Position } from '../../position/Position'
 import { RangeManager } from '../../range/RangeManager'
-import { Background } from '../frame/Background'
-import { Highlight } from '../richtext/Highlight'
-import { Margin } from '../frame/Margin'
-import { Search } from '../interactive/Search'
-import { Strikeout } from '../richtext/Strikeout'
-import { Underline } from '../richtext/Underline'
-import { ImageParticle } from '../particle/ImageParticle'
-import { LaTexParticle } from '../particle/latex/LaTexParticle'
+import { Background } from '../../modules/background/runtime/Background'
+import { Highlight } from '../../modules/richtext/runtime/Highlight'
+import { Margin } from '../../modules/page-setup/runtime/Margin'
+import { Search } from '../../modules/search/runtime/Search'
+import { Strikeout } from '../../modules/richtext/runtime/Strikeout'
+import { Underline } from '../../modules/richtext/runtime/Underline'
+import { ImageParticle } from '../../modules/image/particle/ImageParticle'
+import { LaTexParticle } from '../../modules/image/particle/latex/LaTexParticle'
 import { TextParticle } from '../particle/TextParticle'
-import { PageNumber } from '../frame/PageNumber'
-import { ScrollObserver } from '../../observer/ScrollObserver'
-import { SelectionObserver } from '../../observer/SelectionObserver'
-import { TableParticle } from '../particle/table/TableParticle'
-import { TableTool } from '../particle/table/TableTool'
-import { HyperlinkParticle } from '../particle/HyperlinkParticle'
-import { Header } from '../frame/Header'
-import { SuperscriptParticle } from '../particle/SuperscriptParticle'
-import { SubscriptParticle } from '../particle/SubscriptParticle'
-import { SeparatorParticle } from '../particle/SeparatorParticle'
-import { PageBreakParticle } from '../particle/PageBreakParticle'
-import { Watermark } from '../frame/Watermark'
-import { Control } from '../control/Control'
-import { CheckboxParticle } from '../particle/CheckboxParticle'
-import { RadioParticle } from '../particle/RadioParticle'
-import { WorkerManager } from '../../worker/WorkerManager'
-import { Previewer } from '../particle/previewer/Previewer'
-import { DateParticle } from '../particle/date/DateParticle'
-import { BlockParticle } from '../particle/block/BlockParticle'
-import { I18n } from '../../i18n/I18n'
-import { ImageObserver } from '../../observer/ImageObserver'
-import { Zone } from '../../zone/Zone'
-import { Footer } from '../frame/Footer'
-import { ListParticle } from '../particle/ListParticle'
-import { Placeholder } from '../frame/Placeholder'
-import { Group } from '../interactive/Group'
+import { PageNumber } from '../../modules/page-number/runtime/PageNumber'
+import { ScrollObserver } from '../../runtime/observer/ScrollObserver'
+import { SelectionObserver } from '../../runtime/observer/SelectionObserver'
+import { TableParticle } from '../../modules/table/particle/TableParticle'
+import { TableTool } from '../../modules/table/particle/TableTool'
+import { HyperlinkParticle } from '../../modules/inline/particle/HyperlinkParticle'
+import { Header } from '../../modules/header/runtime/Header'
+import { SuperscriptParticle } from '../../modules/richtext/particle/SuperscriptParticle'
+import { SubscriptParticle } from '../../modules/richtext/particle/SubscriptParticle'
+import { SeparatorParticle } from '../../modules/separator/particle/SeparatorParticle'
+import { PageBreakParticle } from '../../modules/page-break/particle/PageBreakParticle'
+import { Watermark } from '../../modules/watermark/runtime/Watermark'
+import { Control } from '../../modules/control/runtime/Control'
+import { CheckboxParticle } from '../../modules/control/particle/CheckboxParticle'
+import { RadioParticle } from '../../modules/control/particle/RadioParticle'
+import { WorkerManager } from '../../runtime/worker/WorkerManager'
+import { Previewer } from '../../modules/image/particle/previewer/Previewer'
+import { DateParticle } from '../../modules/inline/particle/date/DateParticle'
+import { BlockParticle } from '../../modules/block/particle/BlockParticle'
+import { I18n } from '../../extension/i18n/I18n'
+import { ImageObserver } from '../../runtime/observer/ImageObserver'
+import { Zone } from '../../runtime/zone/Zone'
+import { Footer } from '../../modules/footer/runtime/Footer'
+import { ListParticle } from '../../modules/list/particle/ListParticle'
+import { Placeholder } from '../../modules/placeholder/runtime/Placeholder'
+import { Group } from '../../modules/group/runtime/Group'
 import { LineBreakParticle } from '../particle/LineBreakParticle'
-import { MouseObserver } from '../../observer/MouseObserver'
-import { LineNumber } from '../frame/LineNumber'
-import { PageBorder } from '../frame/PageBorder'
-import { Actuator } from '../../actuator/Actuator'
-import { TableHitTestService } from '../../table/hittest/TableHitTestService'
-import { TableNavigationService } from '../../table/navigation/TableNavigationService'
+import { MouseObserver } from '../../runtime/observer/MouseObserver'
+import { LineNumber } from '../../modules/line-number/runtime/LineNumber'
+import { PageBorder } from '../../modules/page-setup/runtime/PageBorder'
+import { Actuator } from '../../runtime/actuator/Actuator'
+import { TableHitTestService } from '../../modules/table/hittest/TableHitTestService'
+import { TableNavigationService } from '../../modules/table/navigation/TableNavigationService'
 import type { Draw } from '../Draw'
-import { Badge } from '../frame/Badge'
-import { Area } from '../interactive/Area'
-import { TableOperate } from '../particle/table/TableOperate'
+import { Badge } from '../../modules/badge/runtime/Badge'
+import { Area } from '../../modules/area/runtime/Area'
+import { TableOperate } from '../../modules/table/particle/TableOperate'
 import { IEditorData } from '../../../interface/Editor'
 
 /**
@@ -375,7 +375,7 @@ export class DrawComponentRegistry {
     this.strikeout = new Strikeout(draw)
     this.highlight = new Highlight(draw)
 
-    // Previewer 需要在 GlobalEvent 之前初始化，因为 GlobalEvent 会直接持有它。
+    // 图片预览器需要在 GlobalEvent 之前初始化，外部点击清理会通过组件注册表访问它。
     this.previewer = new Previewer(draw)
 
     // 图片粒子需要 bootstrap，是因为 GlobalEvent / 某些拖拽链路会在构造期用到它。
@@ -448,12 +448,8 @@ export class DrawComponentRegistry {
     this.canvasEvent.register()
     this.globalEvent = new GlobalEvent(draw, this.canvasEvent, {
       range: this.range,
-      previewer: this.previewer,
       tableTool: this.tableTool,
-      hyperlinkParticle: this.hyperlinkParticle,
-      control: this.control,
-      dateParticle: this.dateParticle,
-      imageParticle: this.imageParticle
+      control: this.control
     })
     // GlobalEvent 负责 document/window 级别事件，最后再注册。
     this.globalEvent.register()

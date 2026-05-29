@@ -103,8 +103,11 @@ export class ChunkRuntimePatcher {
 
   /** 只替换当前 chunk 的布局元素切片，避免每次输入重新 flatMap 整篇文档。 */
   private patchLayoutElementList(payload: {
+    /** 文档元素列表，按文档顺序保存参与处理的元素。 */
     elementList: IElement[]
+    /** 起始元素索引，用于确定处理范围的左边界。 */
     startIndex: number
+    /** 删除数量，用于描述从起点移除的元素个数。 */
     deleteCount: number
   }) {
     const layoutElementList = this.draw.getObjectResolver().getLayoutMainElementList()
@@ -121,11 +124,17 @@ export class ChunkRuntimePatcher {
 
   /** 写回主 positionList 的当前 chunk 范围。 */
   private patchPositionList(payload: {
+    /** 布局位置列表，保存元素分页后的坐标结果。 */
     positionList: IElementPosition[]
+    /** 起始元素索引，用于确定处理范围的左边界。 */
     startIndex: number
+    /** 删除数量，用于描述从起点移除的元素个数。 */
     deleteCount: number
+    /** 页码，用于定位分页结果中的目标页面。 */
     pageNo: number
+    /** 高度变化量，用于描述布局重排前后的差值。 */
     heightDelta: number
+    /** 行偏移量，用于描述表格或布局变更后的行号变化。 */
     rowDelta: number
   }) {
     const positionList = this.draw.getCoordinate().getPositionList()
@@ -162,11 +171,17 @@ export class ChunkRuntimePatcher {
 
   /** 修正 patch 范围之后的 position.index，保证点击、选区和后续输入读取正确逻辑索引。 */
   private shiftPositionsAfterPatch(payload: {
+    /** 布局位置列表，保存元素分页后的坐标结果。 */
     positionList: IElementPosition[]
+    /** 起始偏移量，用于在文本或表格片段内定位范围起点。 */
     startOffset: number
+    /** 索引偏移量，用于把局部变更同步到后续元素。 */
     indexDelta: number
+    /** 页码，用于定位分页结果中的目标页面。 */
     pageNo: number
+    /** 高度变化量，用于描述布局重排前后的差值。 */
     heightDelta: number
+    /** 行偏移量，用于描述表格或布局变更后的行号变化。 */
     rowDelta: number
   }) {
     if (!payload.indexDelta && !payload.rowDelta && !payload.heightDelta) {
@@ -192,11 +207,17 @@ export class ChunkRuntimePatcher {
 
   /** 修正 patch 范围之后的行起点、行号和纵坐标，避免段落后续行仍停留在旧布局。 */
   private shiftRowsAfterPatch(payload: {
+    /** 行列表，保存排版后的行结构。 */
     rowList: IRow[]
+    /** 起始行偏移数值，用于当前布局、统计或索引计算。 */
     startRowOffset: number
+    /** 索引偏移量，用于把局部变更同步到后续元素。 */
     indexDelta: number
+    /** 行偏移量，用于描述表格或布局变更后的行号变化。 */
     rowDelta: number
+    /** 高度变化量，用于描述布局重排前后的差值。 */
     heightDelta: number
+    /** 页码，用于定位分页结果中的目标页面。 */
     pageNo: number
   }) {
     if (!payload.indexDelta && !payload.rowDelta && !payload.heightDelta) {
@@ -223,9 +244,13 @@ export class ChunkRuntimePatcher {
 
   /** 把 chunk 的 rowIndex / rowNo 对齐到当前页的旧起点。 */
   private shiftMeasuredRowsByPageIndex(payload: {
+    /** 行列表，保存排版后的行结构。 */
     rowList: IRow[]
+    /** 起始元素索引，用于确定处理范围的左边界。 */
     startIndex: number
+    /** 起始行索引，用于限定表格或页面行处理范围。 */
     startRowIndex: number
+    /** 起始页面行no，用于定位对应页、行或序号。 */
     startPageRowNo: number
   }) {
     return payload.rowList.map((row, index) => ({
@@ -239,7 +264,9 @@ export class ChunkRuntimePatcher {
 
   /** 把 chunk 的 position 行号对齐到当前页的旧起点。 */
   private shiftMeasuredPositionsByPageIndex(payload: {
+    /** 布局位置列表，保存元素分页后的坐标结果。 */
     positionList: IElementPosition[]
+    /** 起始页面行no，用于定位对应页、行或序号。 */
     startPageRowNo: number
   }) {
     let currentRowNo = payload.startPageRowNo - 1

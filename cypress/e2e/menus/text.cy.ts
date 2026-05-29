@@ -20,7 +20,7 @@ function findPlainTextRun(editor: Editor, target: string): number {
 
 describe('菜单-文本处理', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
 
     cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })

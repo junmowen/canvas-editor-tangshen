@@ -4,7 +4,7 @@ import type { IRenderSurface } from '../types/RenderSurface'
 import type { IRenderTask } from '../types/RenderTask'
 import type { WorkerRenderScheduler } from '../worker/WorkerRenderScheduler'
 
-/** OffscreenCanvas 渲染引擎配置。 */
+/** offscreen画布渲染engine选项契约，用于约束内部流程中传递的数据结构。 */
 export interface IOffscreenCanvasRenderEngineOptions {
   /** 是否启用 OffscreenCanvas 任务处理，默认关闭以保持主渲染链路稳定。 */
   enabled?: boolean

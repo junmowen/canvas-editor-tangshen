@@ -10,14 +10,14 @@
 
 复跑失败：
 
-```text
+```txt
 AssertionError: expected 0 to be above 0
 at cypress/e2e/issues/issue-1053-table-cell-border.cy.ts:1325:32
 ```
 
 截图：
 
-```text
+```txt
 cypress/screenshots/issue-1053-table-cell-border.cy.ts/issue #1053 table cell border settings -- places later table fragments below a header bottom separator (failed).png
 ```
 

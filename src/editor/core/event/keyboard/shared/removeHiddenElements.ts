@@ -1,5 +1,6 @@
 import { CanvasEvent } from '../../CanvasEvent'
-import { resolvePositionAtIndex } from '../../utils/resolvePositionAtIndex'
+import { resolvePositionAtIndex } from '../../../position/utils/resolvePositionAtIndex'
+import { removeHiddenControlAtIndex } from '../../../modules/control/interaction/removeHiddenControlAtIndex'
 
 export function removeHiddenElements(
   host: CanvasEvent,
@@ -26,8 +27,13 @@ export function removeHiddenElements(
   while (direction === 'prev' ? index > 0 : index < elementList.length) {
     const currentElement = elementList[index]
     let newIndex: number | null = null
-    if (currentElement.controlId) {
-      newIndex = components.control.removeControl(index)
+    const controlRemoval = removeHiddenControlAtIndex({
+      control: components.control,
+      element: currentElement,
+      index
+    })
+    if (controlRemoval.isControl) {
+      newIndex = controlRemoval.newIndex
       if (direction === 'prev' && newIndex !== null) {
         index = newIndex
       }

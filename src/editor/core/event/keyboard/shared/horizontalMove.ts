@@ -1,12 +1,12 @@
 import { LocationPosition } from '../../../../dataset/enum/Common'
-import { ControlComponent } from '../../../../dataset/enum/Control'
-import { EditorMode } from '../../../../dataset/enum/Editor'
-import { MoveDirection } from '../../../../dataset/enum/Observer'
 import { getNonHideElementIndex } from '../../../../utils/element'
 import { isMod } from '../../../../utils/hotkey'
+import { resolveHiddenControlHorizontalMove } from '../../../modules/control/navigation/resolveHiddenControlHorizontalMove'
+import { tryNavigateFormControlBoundary } from '../../../modules/control/navigation/tryNavigateFormControlBoundary'
+import { resolveTableHorizontalKeyboardMove } from '../../../modules/table/navigation/resolveTableHorizontalKeyboardMove'
 import { CanvasEvent } from '../../CanvasEvent'
-import { applyTableToolState } from './applyTableToolState'
 
+/** horizontaldirection，限定移动、遍历或绘制时允许的方向取值。 */
 type THorizontalDirection = 'prev' | 'next'
 
 export function runHorizontalMove(
@@ -18,7 +18,6 @@ export function runHorizontalMove(
   const components = draw.getComponents()
   if (draw.isReadonly()) return
 
-  const tableNavigationService = components.tableNavigationService
   const coordinate = draw.getCoordinate()
   const cursorPosition = coordinate.getCursorPosition()
   if (!cursorPosition) return
@@ -37,25 +36,20 @@ export function runHorizontalMove(
     return
   }
 
-  const control = components.control
   if (
-    draw.getMode() === EditorMode.FORM &&
-    control.getActiveControl() &&
-    ((direction === 'prev' &&
-      (elementList[index]?.controlComponent === ControlComponent.PREFIX ||
-        elementList[index]?.controlComponent === ControlComponent.PRE_TEXT)) ||
-      (direction === 'next' &&
-        (elementList[index + 1]?.controlComponent === ControlComponent.POSTFIX ||
-          elementList[index + 1]?.controlComponent === ControlComponent.POST_TEXT)))
-  ) {
-    control.initNextControl({
-      direction: direction === 'prev' ? MoveDirection.UP : MoveDirection.DOWN
+    tryNavigateFormControlBoundary({
+      draw,
+      elementList,
+      index,
+      direction
     })
+  ) {
     return
   }
 
   let moveCount = 1
   if (isMod(evt)) {
+    // 字母字符匹配正则，用于识别词级选择中的普通字符。
     const LETTER_REG = draw.getLetterReg()
     const moveStartIndex =
       evt.shiftKey && !isCollapsed && startIndex === cursorPosition.index
@@ -98,20 +92,16 @@ export function runHorizontalMove(
   }
 
   if (!evt.shiftKey) {
-    const navigationResult =
-      tableNavigationService.resolveHorizontalBoundaryNavigation({
-        positionContext,
-        range: rangeManager.getEditBoundaryRange(),
-        direction
-      })
-    if (navigationResult?.nextPositionContext) {
-      coordinate.setPositionContext(navigationResult.nextPositionContext)
-      anchorStartIndex = navigationResult.nextIndex
+    const tableNavigation = resolveTableHorizontalKeyboardMove({
+      draw,
+      direction
+    })
+    if (tableNavigation) {
+      anchorStartIndex = tableNavigation.nextIndex
       anchorEndIndex = anchorStartIndex
-      if (navigationResult.disposeTableTool && direction === 'next') {
-        elementList = draw.getObjectResolver().getElementList()
+      if (tableNavigation.shouldRefreshElementList && tableNavigation.elementList) {
+        elementList = tableNavigation.elementList
       }
-      applyTableToolState(draw, !!navigationResult.disposeTableTool)
     }
   }
 
@@ -125,8 +115,24 @@ export function runHorizontalMove(
 
   const newElementList = draw.getObjectResolver().getElementList()
   const location = direction === 'next' ? LocationPosition.AFTER : undefined
-  anchorStartIndex = getNonHideElementIndex(newElementList, anchorStartIndex, location)
-  anchorEndIndex = getNonHideElementIndex(newElementList, anchorEndIndex, location)
+  const hiddenControlMoveIndex = resolveHiddenControlHorizontalMove({
+    elementList: newElementList,
+    startIndex,
+    endIndex,
+    direction
+  })
+  if (hiddenControlMoveIndex !== null) {
+    rangeManager.setRange(hiddenControlMoveIndex, hiddenControlMoveIndex)
+    coordinate.setPositionContext({
+      ...coordinate.getPositionContext()
+    })
+    components.control.initControl()
+    evt.preventDefault()
+    return
+  } else {
+    anchorStartIndex = getNonHideElementIndex(newElementList, anchorStartIndex, location)
+    anchorEndIndex = getNonHideElementIndex(newElementList, anchorEndIndex, location)
+  }
   rangeManager.setRange(anchorStartIndex, anchorEndIndex)
   coordinate.setPositionContext({
     ...coordinate.getPositionContext()

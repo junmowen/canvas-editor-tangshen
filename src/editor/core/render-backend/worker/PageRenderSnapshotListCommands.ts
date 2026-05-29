@@ -1,16 +1,17 @@
 
 import { ulStyleMapping } from '../../../dataset/constant/List'
 import { ZERO } from '../../../dataset/constant/Common'
-import { ElementType } from '../../../dataset/enum/Element'
 import { ListStyle, ListType, UlStyle } from '../../../dataset/enum/List'
 import { IDrawPagePayload } from '../../../interface/Draw'
 import { IElementPosition } from '../../../interface/Element'
 import { IRowElement } from '../../../interface/Row'
+import { isWorkerSnapshotListMarkerTab } from '../../modules/list/render/WorkerSnapshotListMarkerPolicy'
 import { IWorkerPaintCommand } from './WorkerRenderProtocol'
 import { PageRenderSnapshotInlineControlCommands } from './PageRenderSnapshotInlineControlCommands'
 
 /** Ordered, unordered and checkbox list marker command generation. */
 export abstract class PageRenderSnapshotListCommands extends PageRenderSnapshotInlineControlCommands {
+  /** 写入列表markercommands，追加后续渲染需要的命令数据。 */
   protected pushListMarkerCommands(
     commandList: IWorkerPaintCommand[],
     row: IDrawPagePayload['rowList'][number],
@@ -30,7 +31,7 @@ export abstract class PageRenderSnapshotListCommands extends PageRenderSnapshotI
     let tabWidth = 0
     for (let i = 1; i < row.elementList.length; i++) {
       const element = row.elementList[i]
-      if (element?.type !== ElementType.TAB) break
+      if (!isWorkerSnapshotListMarkerTab(element)) break
       tabWidth += defaultTabWidth * scale
     }
     const startX = rowStartPosition.coordinate.leftTop[0]

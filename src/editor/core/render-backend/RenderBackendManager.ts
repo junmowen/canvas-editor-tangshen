@@ -3,7 +3,7 @@ import { IRenderSurface } from './types/RenderSurface'
 import { IRenderTask, RenderTaskPriority, RenderTaskReason } from './types/RenderTask'
 import { RenderLayer } from './types/RenderLayer'
 
-/** 渲染后端能力状态。 */
+/** 渲染backendcapability契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderBackendCapability {
   /** 渲染后端名称。 */
   name: string
@@ -11,10 +11,11 @@ export interface IRenderBackendCapability {
   supported?: boolean
   /** 当前是否启用该后端处理任务。 */
   enabled?: boolean
+  /** 索引签名，描述动态键值的访问结构。 */
   [key: string]: unknown
 }
 
-/** 单个渲染后端耗时统计。 */
+/** 渲染backenddurationstats契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderBackendDurationStats {
   /** 后端累计渲染次数。 */
   count: number
@@ -26,7 +27,7 @@ export interface IRenderBackendDurationStats {
   maxDuration: number
 }
 
-/** 单个后端执行失败记录。 */
+/** 渲染backendfailurerecord契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderBackendFailureRecord {
   /** 失败的后端名称。 */
   backendName: string
@@ -36,7 +37,7 @@ export interface IRenderBackendFailureRecord {
   duration: number
 }
 
-/** 近期渲染调度样本。 */
+/** 渲染backendrecentsample契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderBackendRecentSample {
   /** 任务所属页码。 */
   pageNo: number
@@ -60,7 +61,7 @@ export interface IRenderBackendRecentSample {
   timestamp: number
 }
 
-/** 单页单层最近一次渲染引擎状态。 */
+/** 渲染backend页面enginestats契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderBackendPageEngineStats {
   /** 任务所属页码。 */
   pageNo: number
@@ -92,7 +93,7 @@ export interface IRenderBackendPageEngineStats {
   fallbackCount: number
 }
 
-/** 渲染任务维度统计。 */
+/** 渲染taskstats契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderTaskStats {
   /** 按 layer 分组的调度次数。 */
   dispatchCountByLayer: Partial<Record<RenderLayer, number>>
@@ -108,7 +109,7 @@ export interface IRenderTaskStats {
   renderCountByPriority: Partial<Record<RenderTaskPriority, number>>
 }
 
-/** 近期渲染窗口统计，用于观察滚动或编辑后的短时间性能。 */
+/** 渲染backendrecent窗口stats契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderBackendRecentWindowStats {
   /** 近期窗口最多保留的样本数。 */
   windowSize: number
@@ -140,7 +141,6 @@ export interface IRenderBackendRecentWindowStats {
   taskStats: IRenderTaskStats
 }
 
-/** 单次渲染调度结果。 */
 export interface IRenderBackendDispatchResult {
   /** 是否找到并执行了可用后端。 */
   rendered: boolean
@@ -156,7 +156,7 @@ export interface IRenderBackendDispatchResult {
   reason?: string
 }
 
-/** 渲染后端调度统计。 */
+/** 渲染backendmanagerstats契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderBackendManagerStats {
   /** 累计调度次数。 */
   dispatchCount: number

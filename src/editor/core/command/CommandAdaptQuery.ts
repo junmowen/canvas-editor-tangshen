@@ -90,9 +90,13 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
 
   /** 解析选区上下文的起止位置信息。 */
   private resolveRangeContextPositions(payload: {
+    /** 选区是否折叠，用于区分光标和范围选择。 */
     isCollapsed: boolean
+    /** 起始元素索引，用于确定处理范围的左边界。 */
     startIndex: number
+    /** 结束元素索引，用于确定处理范围的右边界。 */
     endIndex: number
+    /** 光标坐标信息，用于渲染插入点或处理命中。 */
     cursorPosition: IElementPosition | null
   }) {
     // 统一解析 rangeContext 里的首尾位置和选区位置列表。
@@ -136,12 +140,15 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
   /** 生成选区上下文的页面矩形信息。 */
   private createRangeContextRects(payload: {
     selectionPositionList: IElementPosition[] | null
+    /** 光标坐标信息，用于渲染插入点或处理命中。 */
     cursorPosition: IElementPosition | null
+    /** 结束元素索引，用于确定处理范围的右边界。 */
     endIndex: number
   }): RangeRect[] | null {
     // rangeRects 是公开上下文里最容易膨胀的一块：
     // 非闭合选区按行聚合，闭合光标退化成 0 宽矩形。
     const { selectionPositionList, cursorPosition, endIndex } = payload
+    // 初始化 range Rects 列表。
     const rangeRects: RangeRect[] = []
     const height = this.draw.getOriginalHeight()
     const pageGap = this.draw.getOriginalPageGap()
@@ -199,9 +206,13 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
 
   /** 解析选区上下文所属标题信息。 */
   private resolveRangeContextTitleInfo(payload: {
+    /** 文档元素列表，按文档顺序保存参与处理的元素。 */
     elementList: IElement[]
+    /** 布局位置列表，保存元素分页后的坐标结果。 */
     positionList: IElementPosition[]
+    /** 选区是否折叠，用于区分光标和范围选择。 */
     isCollapsed: boolean
+    /** 起始元素索引，用于确定处理范围的左边界。 */
     startIndex: number
   }) {
     // 标题上下文按“向前回溯到当前标题块起点”的方式解析，

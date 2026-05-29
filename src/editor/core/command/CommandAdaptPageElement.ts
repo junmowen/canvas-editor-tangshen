@@ -7,7 +7,6 @@ import {
   TABLE_CONTEXT_ATTR
 } from '../../dataset/constant/Element'
 import { EditorZone, PageMode, PaperDirection } from '../../dataset/enum/Editor'
-import { ElementType } from '../../dataset/enum/Element'
 import { ICatalog } from '../../interface/Catalog'
 import { IRemoveControlOption } from '../../interface/Control'
 import { IAppendElementListOption } from '../../interface/Draw'
@@ -33,6 +32,8 @@ import {
   findCommandElementList,
   walkCommandElementList
 } from './CommandElementTraversal'
+import { shouldKeepListContextForElement } from '../modules/list/command/ListElementQueryPolicy'
+import { shouldKeepTitleContextForElement } from '../modules/title/command/TitleElementQueryPolicy'
 
 /**
  * 页面与元素命令适配模块，负责页面设置、元素 CRUD、目录和文档工具类命令。
@@ -131,7 +132,9 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
     const { id, conceptId } = payload
     if (!id && !conceptId) return
     const updateElementInfoList: {
+      /** 文档元素列表，按文档顺序保存参与处理的元素。 */
       elementList: IElement[]
+      /** 元素索引，用于定位文档列表中的目标元素。 */
       index: number
     }[] = []
     function getElementInfoById(elementList: IElement[]) {
@@ -164,8 +167,11 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
     // 更新内容
     if (!updateElementInfoList.length) return
     const updateRangeInfoList: {
+      /** 文档元素列表，按文档顺序保存参与处理的元素。 */
       elementList: IElement[]
+      /** 起始元素索引，用于确定处理范围的左边界。 */
       startIndex: number
+      /** 结束元素索引，用于确定处理范围的右边界。 */
       endIndex: number
     }[] = []
     for (let i = 0; i < updateElementInfoList.length; i++) {
@@ -186,6 +192,7 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
       // 重新格式化元素
       const oldElement = elementList[startIndex]
       if (!oldElement) continue
+      // 初始化 new Element 列表。
       const newElement = [
         pickElementAttr(
           {
@@ -255,6 +262,7 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
   /** 按元素 ID 查找文档元素。 */
   public getElementById(payload: IGetElementByIdOption): IElement[] {
     const { id, conceptId } = payload
+    // 初始化 result 列表。
     const result: IElement[] = []
     if (!id && !conceptId) return result
     const getElement = (elementList: IElement[]) => {
@@ -269,12 +277,12 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
             return
           }
           const matchedElement = deepClone(element)
-          if (id && matchedElement.type !== ElementType.LIST) {
+          if (id && !shouldKeepListContextForElement(matchedElement)) {
             LIST_CONTEXT_ATTR.forEach(attr => {
               delete matchedElement[attr]
             })
           }
-          if (id && matchedElement.type !== ElementType.TITLE) {
+          if (id && !shouldKeepTitleContextForElement(matchedElement)) {
             TITLE_CONTEXT_ATTR.forEach(attr => {
               delete matchedElement[attr]
             })

@@ -6,6 +6,7 @@ import { PageRenderSnapshotTableCellCommands } from './PageRenderSnapshotTableCe
 
 /** Table command entry point used by inline row rendering. */
 export abstract class PageRenderSnapshotTableCommands extends PageRenderSnapshotTableCellCommands {
+  /** 写入表格commands，追加后续渲染需要的命令数据。 */
   protected pushTableCommands(
     commandList: IWorkerPaintCommand[],
     table: IElement | ITableFragmentDescriptor,

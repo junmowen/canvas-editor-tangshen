@@ -1,6 +1,4 @@
 import { RangeManagerState } from './RangeManagerState'
-import { ZERO } from '../../dataset/constant/Common'
-import { EditorContext } from '../../dataset/enum/Editor'
 import { IElement, IElementPosition } from '../../interface/Element'
 import {
   IRange,
@@ -8,6 +6,12 @@ import {
   RangeRowArray,
   RangeRowMap
 } from '../../interface/Range'
+import { getSearchKeywordRangeList } from '../modules/search/range/SearchRangeQuery'
+import {
+  isParagraphEndBoundary,
+  isParagraphStartBoundary,
+  shouldExtendCollapsedParagraphEnd
+} from '../modules/paragraph/selection/ParagraphBoundaryPolicy'
 
 /**
  * RangeManager 查询模块，负责行、段落、表格、关键词和命中范围等派生信息。
@@ -24,6 +28,7 @@ export class RangeManagerQuery extends RangeManagerState {
     if (!this.isValidPositionElementRange(activeRange, positionList, elementList)) {
       return null
     }
+    // 创建 range Row 实例。
     const rangeRow: RangeRowMap = new Map()
     for (let p = startIndex; p < endIndex + 1; p++) {
       const { pageNo, rowNo } = positionList[p]
@@ -50,6 +55,7 @@ export class RangeManagerQuery extends RangeManagerState {
     if (!this.isValidPositionElementRange(activeRange, positionList, elementList)) {
       return null
     }
+    // 创建 range Row 实例。
     const rangeRow: RangeRowArray = new Map()
 
     let start = startIndex
@@ -67,11 +73,7 @@ export class RangeManagerQuery extends RangeManagerState {
         rowArray.unshift(rowNo)
       }
       const preElement = elementList[start - 1]
-      if (
-        (element.value === ZERO && !element.listWrap) ||
-        element.listId !== preElement?.listId ||
-        element.titleId !== preElement?.titleId
-      ) {
+      if (isParagraphStartBoundary(element, preElement)) {
         break
       }
       start--
@@ -103,7 +105,7 @@ export class RangeManagerQuery extends RangeManagerState {
     const startElement = this.draw.getTargetResolver().resolveRangeElement({
       elementList
     })
-    if (isCollapsed && startElement?.value === ZERO) {
+    if (shouldExtendCollapsedParagraphEnd({ isCollapsed, startElement })) {
       end += 1
     }
     while (end < positionList.length && end < elementList.length) {
@@ -111,11 +113,7 @@ export class RangeManagerQuery extends RangeManagerState {
       const element = elementList[end]
       if (!position || !element) break
       const nextElement = elementList[end + 1]
-      if (
-        (element.value === ZERO && !element.listWrap) ||
-        element.listId !== nextElement?.listId ||
-        element.titleId !== nextElement?.titleId
-      ) {
+      if (isParagraphEndBoundary(element, nextElement)) {
         break
       }
       const { pageNo, rowNo } = position
@@ -280,34 +278,6 @@ export class RangeManagerQuery extends RangeManagerState {
 
   /** 获取关键词在文档中的 range 列表。 */
   public getKeywordRangeList(payload: string): IRange[] {
-    const searchMatchList = this.draw
-      .getSearch()
-      .getMatchList(payload, this.draw.getObjectResolver().getOriginalElementList())
-    const searchRangeMap: Map<string, IRange> = new Map()
-    for (const searchMatch of searchMatchList) {
-      const searchRange = searchRangeMap.get(searchMatch.groupId)
-      if (searchRange) {
-        searchRange.endIndex += 1
-      } else {
-        const { type, groupId, tableId, index, tdIndex, trIndex } = searchMatch
-        const range: IRange = {
-          startIndex: index,
-          endIndex: index
-        }
-        if (type === EditorContext.TABLE) {
-          range.tableId = tableId
-          range.startTdIndex = tdIndex
-          range.endTdIndex = tdIndex
-          range.startTrIndex = trIndex
-          range.endTrIndex = trIndex
-        }
-        searchRangeMap.set(groupId, range)
-      }
-    }
-    const rangeList: IRange[] = []
-    searchRangeMap.forEach(searchRange => {
-      rangeList.push(searchRange)
-    })
-    return rangeList
+    return getSearchKeywordRangeList(this.draw, payload)
   }
 }

@@ -1,18 +1,27 @@
-import { ZERO } from '../../../dataset/constant/Common'
-import { TEXTLIKE_ELEMENT_TYPE } from '../../../dataset/constant/Element'
-import { PUNCTUATION_REG } from '../../../dataset/constant/Regular'
-import { BlockType } from '../../../dataset/enum/Block'
-import { ControlComponent } from '../../../dataset/enum/Control'
 import { EditorMode, EditorZone } from '../../../dataset/enum/Editor'
-import { ElementType } from '../../../dataset/enum/Element'
-import { RowFlex } from '../../../dataset/enum/Row'
-import { ImageDisplay } from '../../../dataset/enum/Common'
 import { IDrawRowPayload } from '../../../interface/Draw'
 import { IElement } from '../../../interface/Element'
 import { ITableFragmentDescriptor } from '../../../interface/table/TableFragment'
-import { renderRowDragHandle } from '../../event/pointer/row-drag/RowDragHandle'
+import { BlockRowRenderer } from '../../modules/block/render/BlockRowRenderer'
+import { CheckableControlRenderer } from '../../modules/control/render/CheckableControlRenderer'
+import { RowControlBorderRenderer } from '../../modules/control/render/RowControlBorderRenderer'
+import { RowGroupRenderer } from '../../modules/group/render/RowGroupRenderer'
+import { InlineImageRenderer } from '../../modules/image/render/InlineImageRenderer'
+import { LaTexRowRenderer } from '../../modules/image/render/LaTexRowRenderer'
+import { InlineRowElementRenderer } from '../../modules/inline/render/InlineRowElementRenderer'
+import { ListRowMarkerRenderer } from '../../modules/list/render/ListRowMarkerRenderer'
+import { PageBreakRowRenderer } from '../../modules/page-break/render/PageBreakRowRenderer'
+import { LineBreakMarkerRenderer } from '../../modules/paragraph/render/LineBreakMarkerRenderer'
+import { ParagraphTextRunRenderer } from '../../modules/paragraph/render/ParagraphTextRunRenderer'
+import { RowHighlightRenderer } from '../../modules/richtext/render/RowHighlightRenderer'
+import { ScriptRowRenderer } from '../../modules/richtext/render/ScriptRowRenderer'
+import { RowTextDecorationRenderer } from '../../modules/richtext/render/RowTextDecorationRenderer'
+import { renderRowDragHandle } from '../../modules/row-drag/RowDragHandle'
+import { SeparatorRowRenderer } from '../../modules/separator/render/SeparatorRowRenderer'
+import { TableRowElementRenderer } from '../../modules/table/render/TableRowElementRenderer'
+import { RowSelectionRenderer } from '../../range/selection/RowSelectionRenderer'
 import type { Draw } from '../Draw'
-import { RowTableRenderHelper } from './RowTableRenderHelper'
+import { RowTableRenderHelper } from '../../modules/table/render/RowTableRenderHelper'
 
 /**
  * 行渲染器。
@@ -20,10 +29,46 @@ import { RowTableRenderHelper } from './RowTableRenderHelper'
  * 负责绘制单行文本、选区高亮以及相关位置信息。
  */
 export class RowRenderer {
+  /** 只读表格渲染helper依赖，集中处理当前流程的辅助逻辑。 */
   private readonly tableRenderHelper: RowTableRenderHelper
+  private readonly blockRowRenderer: BlockRowRenderer
+  private readonly checkableControlRenderer: CheckableControlRenderer
+  private readonly rowControlBorderRenderer: RowControlBorderRenderer
+  private readonly rowGroupRenderer: RowGroupRenderer
+  private readonly inlineImageRenderer: InlineImageRenderer
+  private readonly laTexRowRenderer: LaTexRowRenderer
+  private readonly inlineRowElementRenderer: InlineRowElementRenderer
+  private readonly listRowMarkerRenderer: ListRowMarkerRenderer
+  private readonly pageBreakRowRenderer: PageBreakRowRenderer
+  private readonly lineBreakMarkerRenderer: LineBreakMarkerRenderer
+  private readonly paragraphTextRunRenderer: ParagraphTextRunRenderer
+  private readonly rowHighlightRenderer: RowHighlightRenderer
+  private readonly scriptRowRenderer: ScriptRowRenderer
+  private readonly rowTextDecorationRenderer: RowTextDecorationRenderer
+  private readonly separatorRowRenderer: SeparatorRowRenderer
+  private readonly tableRowElementRenderer: TableRowElementRenderer
+  private readonly rowSelectionRenderer: RowSelectionRenderer
 
+  /** 初始化 RowRenderer 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {
     this.tableRenderHelper = new RowTableRenderHelper(draw)
+    this.blockRowRenderer = new BlockRowRenderer()
+    this.checkableControlRenderer = new CheckableControlRenderer()
+    this.rowControlBorderRenderer = new RowControlBorderRenderer()
+    this.rowGroupRenderer = new RowGroupRenderer(draw)
+    this.inlineImageRenderer = new InlineImageRenderer()
+    this.laTexRowRenderer = new LaTexRowRenderer()
+    this.inlineRowElementRenderer = new InlineRowElementRenderer()
+    this.listRowMarkerRenderer = new ListRowMarkerRenderer()
+    this.pageBreakRowRenderer = new PageBreakRowRenderer()
+    this.lineBreakMarkerRenderer = new LineBreakMarkerRenderer()
+    this.paragraphTextRunRenderer = new ParagraphTextRunRenderer()
+    this.rowHighlightRenderer = new RowHighlightRenderer(draw)
+    this.scriptRowRenderer = new ScriptRowRenderer()
+    this.rowTextDecorationRenderer = new RowTextDecorationRenderer()
+    this.separatorRowRenderer = new SeparatorRowRenderer()
+    this.tableRowElementRenderer = new TableRowElementRenderer()
+    this.rowSelectionRenderer = new RowSelectionRenderer(draw, this.tableRenderHelper)
   }
 
   private forEachRowPositionSlice(
@@ -33,7 +78,7 @@ export class RowRenderer {
       rowPositionList: IDrawRowPayload['positionList']
     ) => void
   ) {
-    // 把“rowList + positionList”统一按行切片，避免 drawHighlight / drawSelection / drawRow
+    // 把“rowList + positionList”统一按行切片，避免行级流程重复维护 offset。
     // 各自维护一份 rowPositionOffset 循环。
     let rowPositionOffset = 0
     for (let i = 0; i < payload.rowList.length; i++) {
@@ -90,165 +135,40 @@ export class RowRenderer {
     )
   }
 
-  /**
-   * 根据选区范围绘制当前行的高亮背景。
-   */
-  private drawHighlight(
-    ctx: CanvasRenderingContext2D,
-    payload: IDrawRowPayload
-  ) {
-    const { elementList } = payload
-    const draw = this.draw
-    const marginHeight = draw.getDefaultBasicRowMarginHeight()
-    const highlightMarginHeight = draw.getServices().metricsService.getHighlightMarginHeight()
-    const highlight = draw.getComponents().highlight
-    const control = draw.getControl()
-    const sourceElementList = payload.tableCellContext
-      ? elementList
-      : draw.getObjectResolver().getOriginalMainElementList()
-    this.forEachRowPositionSlice(payload, (curRow, rowPositionList) => {
-      for (let j = 0; j < curRow.elementList.length; j++) {
-        const element = curRow.elementList[j]
-        const preElement = curRow.elementList[j - 1]
-        const controlHighlightIndex = curRow.startIndex + j
-        const sourceElement = sourceElementList[controlHighlightIndex]
-        const preSourceElement = sourceElementList[controlHighlightIndex - 1]
-        const controlHighlight =
-          elementList[controlHighlightIndex]
-            ? control.getControlHighlight(elementList, controlHighlightIndex)
-            : undefined
-        const activeHighlight =
-          element.highlight || sourceElement?.highlight || controlHighlight
-        const preHighlight =
-          preElement?.highlight || preSourceElement?.highlight
-        if (activeHighlight) {
-          if (
-            preHighlight &&
-            preHighlight !== activeHighlight
-          ) {
-            highlight.render(ctx)
-          }
-          const rowPosition = rowPositionList[j]
-          if (!rowPosition) {
-            continue
-          }
-          const {
-            coordinate: {
-              leftTop: [x, y],
-              rightTop: [rightX],
-              leftBottom: [, bottomY]
-            }
-          } = rowPosition
-          const offsetX = element.left || 0
-          const elementWidth = element.metrics?.width || rightX - x
-          const rowHeight = curRow.height || bottomY - y
-          highlight.recordFillInfo(
-            ctx,
-            x - offsetX,
-            y + marginHeight - highlightMarginHeight,
-            elementWidth + offsetX,
-            rowHeight - 2 * marginHeight + 2 * highlightMarginHeight,
-            activeHighlight
-          )
-        } else if (preHighlight) {
-          highlight.render(ctx)
-        }
-      }
-      highlight.render(ctx)
-    })
-  }
-
-  private renderSelectionRange(
-    ctx: CanvasRenderingContext2D,
-    payload: IDrawRowPayload,
-    effectiveRangeStartIndex: number,
-    effectiveRangeEndIndex: number,
-    rangeMinWidth: number
-  ) {
-    // 普通字符级选区矩形绘制统一收在这里，
-    // drawSelection 主体只保留“选择哪条路径”的编排。
-    const { elementList, startIndex } = payload
-    const rangeManager = this.draw.getRange()
-    let index = startIndex
-    this.forEachRowPositionSlice(payload, (curRow, rowPositionList) => {
-      for (let j = 0; j < curRow.elementList.length; j++) {
-        const element = curRow.elementList[j]
-        const metrics = element.metrics
-        const rowPosition = rowPositionList[j]
-        if (!rowPosition) {
-          index++
-          continue
-        }
-        const {
-          coordinate: {
-            leftTop: [x, y]
-          }
-        } = rowPosition
-        if (effectiveRangeStartIndex <= index && index <= effectiveRangeEndIndex) {
-          if (element.value !== ZERO) {
-            let rangeWidth = metrics.width
-            if (rangeWidth === 0 && curRow.elementList.length === 1) {
-              rangeWidth = rangeMinWidth
-            }
-            rangeManager.render(ctx, x, y, rangeWidth, curRow.height)
-          } else if (effectiveRangeStartIndex === index) {
-            const nextElement = elementList[effectiveRangeStartIndex + 1]
-            if (nextElement && nextElement.value === ZERO) {
-              rangeManager.render(
-                ctx,
-                x + metrics.width,
-                y,
-                rangeMinWidth,
-                curRow.height
-              )
-            }
-          }
-        }
-        index++
-      }
-    })
-  }
-
-  private drawSpaceMarker(
-    ctx: CanvasRenderingContext2D,
-    element: IDrawRowPayload['rowList'][number]['elementList'][number],
-    rowPosition: IDrawRowPayload['positionList'][number],
-    options: ReturnType<Draw['getOptions']>
-  ) {
-    const leftTop = rowPosition.coordinate.leftTop
-    const markerX = leftTop[0] + element.metrics.width / 2
-    const markerY = leftTop[1] + rowPosition.lineHeight / 2
-    const markerRadius = Math.max(
-      1,
-      Math.round(options.lineBreak.lineWidth * options.scale * 1.25)
-    )
-    ctx.save()
-    ctx.fillStyle = options.lineBreak.color
-    ctx.beginPath()
-    ctx.arc(markerX, markerY, markerRadius, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.restore()
-  }
-
   private renderRowElement(payload: {
+    /** Canvas 2D 上下文，用于执行当前绘制指令。 */
     ctx: CanvasRenderingContext2D
+    /** cur行，用于保存或定位表格行结构。 */
     curRow: IDrawRowPayload['rowList'][number]
+    /** 文档元素对象，承载文本、控件、表格或媒体信息。 */
     element: IDrawRowPayload['rowList'][number]['elementList'][number]
+    /** pre元素，用于定位或修改对应文档节点。 */
     preElement: IDrawRowPayload['rowList'][number]['elementList'][number] | undefined
+    /** 行位置，用于描述布局或命中的空间范围。 */
     rowPosition: IDrawRowPayload['positionList'][number]
+    /** 元素索引，用于定位文档列表中的目标元素。 */
     index: number
+    /** 页码，用于定位分页结果中的目标页面。 */
     pageNo: number
+    /** 是否绘制换行符，用于控制格式标记显示。 */
     isDrawLineBreak: boolean
+    /** 是否打印mode，用于控制当前流程的判断分支。 */
     isPrintMode: boolean
+    /** 是否设计模式，用于显示编辑辅助标记。 */
     isDesignMode: boolean
+    /** 是否导出绘制，用于关闭运行期副作用并保持输出稳定。 */
     isExport?: boolean
+    /** 模式标识，用于选择当前处理分支。 */
     mode: EditorMode
+    /** 操作配置项，用于调整当前流程的可选行为。 */
     options: ReturnType<Draw['getOptions']>
     textParticle: ReturnType<Draw['getTextParticle']>
+    /** 控件配置对象，描述当前控件的行为和取值规则。 */
     control: ReturnType<Draw['getControl']>
+    /** 是否下划线，用于设置文字装饰样式。 */
     underline: ReturnType<Draw['getComponents']>['underline']
+    /** 是否删除线，用于设置文字装饰样式。 */
     strikeout: ReturnType<Draw['getComponents']>['strikeout']
-    groupParticle: ReturnType<Draw['getGroup']>
     tableParticle: ReturnType<Draw['getTableParticle']>
     lineBreakParticle: ReturnType<Draw['getComponents']>['lineBreakParticle']
     imageParticle: ReturnType<Draw['getImageParticle']>
@@ -261,11 +181,16 @@ export class RowRenderer {
     checkboxParticle: ReturnType<Draw['getCheckboxParticle']>
     radioParticle: ReturnType<Draw['getRadioParticle']>
     blockParticle: ReturnType<Draw['getBlockParticle']>
+    /** 读取元素字号，作为行内测量的基础尺寸。 */
     getElementSize: (el: IElement) => number
     getElementFont: Draw['getElementFont']
+    /** 读取元素行距，参与行盒高度计算。 */
     getElementRowMargin: (el: IElement) => number
+    /** 当前表格范围元素，用于定位或修改对应文档节点。 */
     currentTableRangeElement: IElement | ITableFragmentDescriptor | null
+    /** 是否跨行列选择，用于判断表格选区形态。 */
     isCrossRowCol: boolean
+    /** 区域实例，用于处理编辑器浮层、提示或交互热区。 */
     zone?: EditorZone
   }): IElement | ITableFragmentDescriptor | null {
     // drawRow 主循环的逐元素分发都收在这里，
@@ -288,7 +213,6 @@ export class RowRenderer {
       control,
       underline,
       strikeout,
-      groupParticle,
       tableParticle,
       lineBreakParticle,
       imageParticle,
@@ -308,8 +232,6 @@ export class RowRenderer {
       isCrossRowCol,
       zone
     } = payload
-    const tableFragment =
-      element.type === ElementType.TABLE ? curRow.tableFragment : undefined
     const metrics = element.metrics
     const {
       ascent: offsetY,
@@ -321,333 +243,159 @@ export class RowRenderer {
 
     if ((element.hide || element.control?.hide || element.area?.hide) && !isDesignMode) {
       textParticle.complete()
-    } else if (element.type === ElementType.IMAGE) {
+    } else if (this.inlineImageRenderer.canRender(element)) {
       textParticle.complete()
-      if (
-        element.imgDisplay !== ImageDisplay.SURROUND &&
-        element.imgDisplay !== ImageDisplay.TIGHT &&
-        element.imgDisplay !== ImageDisplay.FLOAT_TOP &&
-        element.imgDisplay !== ImageDisplay.FLOAT_BOTTOM
-      ) {
-        imageParticle.render(ctx, element, x, y + offsetY, {
-          isExport
-        })
-      }
-    } else if (element.type === ElementType.LATEX) {
-      textParticle.complete()
-      laTexParticle.render(ctx, element, x, y + offsetY)
-    } else if (element.type === ElementType.TABLE) {
-      if (isCrossRowCol) {
-        nextTableRangeElement = tableFragment || element
-      }
-      tableParticle.render(
+      this.inlineImageRenderer.render(ctx, element, x, y + offsetY, imageParticle, {
+        isExport
+      })
+    } else if (this.laTexRowRenderer.canRender(element)) {
+      this.laTexRowRenderer.render(
         ctx,
-        (tableFragment || element) as unknown as IElement,
+        element,
         x,
-        y
+        y + offsetY,
+        textParticle,
+        laTexParticle
       )
-    } else if (element.type === ElementType.HYPERLINK) {
-      textParticle.complete()
-      hyperlinkParticle.render(ctx, element, x, y + offsetY)
-    } else if (element.type === ElementType.DATE) {
-      const nextElement = curRow.elementList[index + 1]
-      if (!preElement || preElement.dateId !== element.dateId) {
-        textParticle.complete()
-      }
-      textParticle.record(ctx, element, x, y + offsetY)
-      if (!nextElement || nextElement.dateId !== element.dateId) {
-        textParticle.complete()
-      }
-    } else if (element.type === ElementType.SUPERSCRIPT) {
-      textParticle.complete()
-      superscriptParticle.render(ctx, element, x, y + offsetY)
-    } else if (element.type === ElementType.SUBSCRIPT) {
-      underline.render(ctx)
-      textParticle.complete()
-      subscriptParticle.render(ctx, element, x, y + offsetY)
-    } else if (element.type === ElementType.SEPARATOR) {
-      separatorParticle.render(ctx, element, x, y, zone)
-    } else if (element.type === ElementType.PAGE_BREAK) {
-      if (mode !== EditorMode.CLEAN && !isPrintMode) {
-        pageBreakParticle.render(ctx, element, x, y)
-      }
-    } else if (
-      element.type === ElementType.CHECKBOX ||
-      element.controlComponent === ControlComponent.CHECKBOX
-    ) {
-      textParticle.complete()
-      checkboxParticle.render({
+    } else if (this.tableRowElementRenderer.canRender(element)) {
+      nextTableRangeElement = this.tableRowElementRenderer.render({
         ctx,
+        curRow,
+        element,
+        x,
+        y,
+        currentTableRangeElement: nextTableRangeElement,
+        isCrossRowCol,
+        tableParticle
+      })
+    } else if (this.inlineRowElementRenderer.canRender(element)) {
+      this.inlineRowElementRenderer.render({
+        ctx,
+        curRow,
+        element,
+        preElement,
         x,
         y: y + offsetY,
         index,
-        row: curRow
+        textParticle,
+        hyperlinkParticle
       })
-    } else if (
-      element.type === ElementType.RADIO ||
-      element.controlComponent === ControlComponent.RADIO
-    ) {
-      textParticle.complete()
-      radioParticle.render({
+    } else if (this.scriptRowRenderer.canRender(element)) {
+      this.scriptRowRenderer.render({
         ctx,
+        element,
+        x,
+        y: y + offsetY,
+        textParticle,
+        underline,
+        superscriptParticle,
+        subscriptParticle
+      })
+    } else if (this.separatorRowRenderer.canRender(element)) {
+      this.separatorRowRenderer.render(ctx, element, x, y, zone, separatorParticle)
+    } else if (this.pageBreakRowRenderer.canRender(element)) {
+      this.pageBreakRowRenderer.render(
+        ctx,
+        element,
+        x,
+        y,
+        mode,
+        isPrintMode,
+        pageBreakParticle
+      )
+    } else if (this.checkableControlRenderer.isCheckable(element)) {
+      textParticle.complete()
+      this.checkableControlRenderer.render({
+        ctx,
+        element,
         x,
         y: y + offsetY,
         index,
-        row: curRow
+        row: curRow,
+        checkboxParticle,
+        radioParticle
       })
-    } else if (element.type === ElementType.TAB) {
-      textParticle.complete()
-    } else if (
-      element.rowFlex === RowFlex.ALIGNMENT ||
-      element.rowFlex === RowFlex.JUSTIFY
-    ) {
-      textParticle.record(ctx, element, x, y + offsetY)
-      textParticle.complete()
-    } else if (element.type === ElementType.BLOCK) {
-      textParticle.complete()
-      if (isExport) {
-        this.renderBlockExportFallback(ctx, element, x, y + offsetY)
-      } else {
-        blockParticle.render(pageNo, element, x, y + offsetY)
-      }
+    } else if (this.blockRowRenderer.canRender(element)) {
+      this.blockRowRenderer.render({
+        ctx,
+        pageNo,
+        element,
+        x,
+        y: y + offsetY,
+        isExport,
+        textParticle,
+        blockParticle
+      })
     } else {
-      if (element.left) {
-        textParticle.complete()
-      }
-      if (element.trackChange) {
-        // 修订元素先刷新文本批次，确保不同修订颜色不会和普通文本合批。
-        textParticle.complete()
-        ctx.save()
-        ctx.fillStyle =
-          element.trackChange.color ||
-          (element.trackChange.type === 'insert'
-            ? options.trackChange.insertColor
-            : options.trackChange.deleteColor)
-      }
-      textParticle.record(ctx, element, x, y + offsetY)
-      if (
-        (element.value === ' ' || element.value === '\u00A0') &&
-        mode !== EditorMode.CLEAN &&
-        !isPrintMode &&
-        rowPosition
-      ) {
-        this.drawSpaceMarker(ctx, element, rowPosition, options)
-      }
-      if (element.width || element.letterSpacing || PUNCTUATION_REG.test(element.value)) {
-        textParticle.complete()
-      }
-      if (element.trackChange) {
-        textParticle.complete()
-        ctx.restore()
-      }
-    }
-
-    if (
-      isDrawLineBreak &&
-      !isPrintMode &&
-      mode !== EditorMode.CLEAN &&
-      !curRow.isWidthNotEnough &&
-      index === curRow.elementList.length - 1
-    ) {
-      lineBreakParticle.render(ctx, element, x, y + curRow.height / 2)
-    }
-
-    if (element.control?.border) {
-      if (
-        preElement?.control?.border &&
-        preElement.controlId !== element.controlId
-      ) {
-        control.drawBorder(ctx)
-      }
-      const rowMargin = getElementRowMargin(element)
-      control.recordBorderInfo(
-        x,
-        y + rowMargin,
-        element.metrics.width,
-        curRow.height - 2 * rowMargin
-      )
-    } else if (preElement?.control?.border) {
-      control.drawBorder(ctx)
-    }
-
-    if (element.underline || element.control?.underline) {
-      if (
-        preElement?.type === ElementType.SUBSCRIPT &&
-        element.type !== ElementType.SUBSCRIPT
-      ) {
-        underline.render(ctx)
-      }
-      const rowMargin = getElementRowMargin(element)
-      const offsetLineX = element.left || 0
-      let offsetLineY = 0
-      if (element.type === ElementType.SUBSCRIPT) {
-        offsetLineY = subscriptParticle.getOffsetY(element)
-      }
-      const color = element.control?.underline
-        ? options.underlineColor
-        : element.color
-      underline.recordFillInfo(
+      this.paragraphTextRunRenderer.render({
         ctx,
-        x - offsetLineX,
-        y + curRow.height - rowMargin + offsetLineY,
-        metrics.width + offsetLineX,
-        0,
-        color,
-        element.textDecoration?.style
-      )
-    } else if (preElement?.underline || preElement?.control?.underline) {
-      underline.render(ctx)
+        element,
+        rowPosition,
+        x,
+        y: y + offsetY,
+        mode,
+        isPrintMode,
+        options,
+        textParticle
+      })
     }
 
-    if (element.strikeout) {
-      if (!element.type || TEXTLIKE_ELEMENT_TYPE.includes(element.type)) {
-        if (
-          preElement &&
-          ((preElement.type === ElementType.SUBSCRIPT &&
-            element.type !== ElementType.SUBSCRIPT) ||
-            (preElement.type === ElementType.SUPERSCRIPT &&
-              element.type !== ElementType.SUPERSCRIPT) ||
-            getElementSize(preElement) !== getElementSize(element))
-        ) {
-          strikeout.render(ctx)
-        }
-        const standardMetrics = textParticle.measureBasisWord(
-          ctx,
-          getElementFont(element)
-        )
-        let adjustY =
-          y +
-          offsetY +
-          standardMetrics.actualBoundingBoxDescent * options.scale -
-          metrics.height / 2
-        if (element.type === ElementType.SUBSCRIPT) {
-          adjustY += subscriptParticle.getOffsetY(element)
-        } else if (element.type === ElementType.SUPERSCRIPT) {
-          adjustY += superscriptParticle.getOffsetY(element)
-        }
-        strikeout.recordFillInfo(ctx, x, adjustY, metrics.width)
-      }
-    } else if (preElement?.strikeout) {
-      strikeout.render(ctx)
-    }
+    this.lineBreakMarkerRenderer.render({
+      ctx,
+      curRow,
+      element,
+      x,
+      y,
+      index,
+      isDrawLineBreak,
+      isPrintMode,
+      mode,
+      lineBreakParticle
+    })
 
-    if (!options.group.disabled && element.groupIds) {
-      groupParticle.recordFillInfo(element, x, y, metrics.width, curRow.height)
-    }
+    this.rowControlBorderRenderer.render({
+      ctx,
+      element,
+      preElement,
+      x,
+      y,
+      rowHeight: curRow.height,
+      control,
+      getElementRowMargin
+    })
+    this.rowTextDecorationRenderer.render({
+      ctx,
+      element,
+      preElement,
+      x,
+      y,
+      offsetY,
+      rowHeight: curRow.height,
+      options,
+      textParticle,
+      underline,
+      strikeout,
+      subscriptParticle,
+      superscriptParticle,
+      getElementSize,
+      getElementFont,
+      getElementRowMargin
+    })
+
+    this.rowGroupRenderer.record({
+      element,
+      x,
+      y,
+      width: metrics.width,
+      rowHeight: curRow.height,
+      options
+    })
 
     return nextTableRangeElement
   }
 
-  /**
-   * 仅绘制选区矩形层。
-   */
-  public drawSelection(ctx: CanvasRenderingContext2D, payload: IDrawRowPayload) {
-    // 选区绘制分成两条主路径：
-    // 1. 跨行列选择按 cell bounds；
-    // 2. 普通字符选择按字符盒范围。
-    const rangeManager = this.draw.getRange()
-    const rangeMinWidth = this.draw.getOptions().rangeMinWidth
-    const {
-      elementList,
-      zone,
-      tableCellContext
-    } = payload
-    const {
-      isCrossRowCol,
-      zone: rangeZone,
-      startIndex: rangeStartIndex,
-      endIndex: rangeEndIndex
-    } = rangeManager.getEditBoundaryRange()
-    if (
-      isCrossRowCol &&
-      !this.tableRenderHelper.renderCrossRowColSelection(ctx, payload, rangeZone)
-    ) {
-      return
-    }
-    const skipCurrentLayerSelection = !!(
-      !tableCellContext &&
-      this.draw.getCoordinate().getPositionContext().isTable &&
-      !isCrossRowCol
-    )
-    const renderSelectionRange =
-      !skipCurrentLayerSelection &&
-      !isCrossRowCol &&
-      rangeStartIndex !== rangeEndIndex
-        ? rangeManager.getRenderSelectionRange({
-            elementList,
-            tableCellContext
-          })
-        : null
-    if (renderSelectionRange && rangeZone === zone) {
-      const effectiveRangeStartIndex =
-        renderSelectionRange.startIndex ?? rangeStartIndex
-      const effectiveRangeEndIndex =
-        renderSelectionRange.endIndex ?? rangeEndIndex
-      this.renderSelectionRange(
-        ctx,
-        payload,
-        effectiveRangeStartIndex,
-        effectiveRangeEndIndex,
-        rangeMinWidth
-      )
-    }
-
-    this.tableRenderHelper.forEachCellPayload(payload, tableCellPayload => {
-      this.drawSelection(ctx, {
-        ...tableCellPayload,
-        selectionCtx: ctx
-      })
-    })
-  }
-
-  /** 导出时不挂载 DOM/SVG block host，改为在图片中固化一个稳定占位框。 */
-  private renderBlockExportFallback(
-    ctx: CanvasRenderingContext2D,
-    element: IDrawRowPayload['rowList'][number]['elementList'][number],
-    x: number,
-    y: number
-  ) {
-    const metrics = element.metrics
-    const width = Math.max(1, metrics?.width || element.width || 1)
-    const height = Math.max(1, metrics?.height || element.height || 1)
-    const svgRasterImage = element.block?.svgBlock?.rasterImage
-    if (element.block?.type === BlockType.SVG && svgRasterImage?.complete) {
-      ctx.drawImage(svgRasterImage, x, y, width, height)
-      return
-    }
-    const fallbackText = this.getBlockExportFallbackText(element)
-    ctx.save()
-    ctx.fillStyle = '#f7f7f7'
-    ctx.strokeStyle = '#d0d0d0'
-    ctx.lineWidth = 1
-    ctx.fillRect(x, y, width, height)
-    ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, width - 1), Math.max(0, height - 1))
-    ctx.fillStyle = '#666666'
-    ctx.font = '12px sans-serif'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(fallbackText, x + 8, y + height / 2)
-    ctx.restore()
-  }
-
-  /** 获取外部 block 导出时的稳定 Canvas2D 文本摘要。 */
-  private getBlockExportFallbackText(
-    element: IDrawRowPayload['rowList'][number]['elementList'][number]
-  ): string {
-    if (element.block?.type === BlockType.HTML) {
-      const text = element.block.htmlBlock?.text || this.extractTextFromHtml(
-        element.block.htmlBlock?.html || ''
-      )
-      return text ? text.slice(0, 80) : 'HTML block'
-    }
-    return 'Embedded block'
-  }
-
-  /** 从 HTML 片段中提取可导出的纯文本摘要，不依赖运行时 DOM host。 */
-  private extractTextFromHtml(html: string): string {
-    if (!html) return ''
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(html, 'text/html')
-    return (doc.body.textContent || '').replace(/\s+/g, ' ').trim()
+  public renderSelection(ctx: CanvasRenderingContext2D, payload: IDrawRowPayload) {
+    this.rowSelectionRenderer.render(ctx, payload)
   }
 
   /**
@@ -668,7 +416,6 @@ export class RowRenderer {
     const components = this.draw.getComponents()
     const underline = components.underline
     const strikeout = components.strikeout
-    const groupParticle = this.draw.getGroup()
     const tableParticle = this.draw.getTableParticle()
     const listParticle = this.draw.getListParticle()
     const lineBreakParticle = components.lineBreakParticle
@@ -706,8 +453,11 @@ export class RowRenderer {
       rangeManager.getEditBoundaryRange()
     const isCrossRowCol = !!rawIsCrossRowCol
     const tableRangePaintQueue: Array<{
+      /** 表格范围元素，用于描述表格选区覆盖的文档元素。 */
       tableRangeElement: IElement | ITableFragmentDescriptor
+      /** 横坐标，用于定位画布或页面内的位置。 */
       x: number
+      /** 纵坐标，用于定位画布或页面内的位置。 */
       y: number
     }> = []
 
@@ -719,8 +469,8 @@ export class RowRenderer {
         !!payload.tableCellContext && rowPositionList[0]?.rowNo === 0
       )
     })
-    this.drawHighlight(ctx, payload)
-    this.drawSelection(selectionCtx, payload)
+    this.rowHighlightRenderer.render(ctx, payload)
+    this.renderSelection(selectionCtx, payload)
 
     let rowPositionOffset = 0
     for (let i = 0; i < rowList.length; i++) {
@@ -758,7 +508,6 @@ export class RowRenderer {
           control,
           underline,
           strikeout,
-          groupParticle,
           tableParticle,
           lineBreakParticle,
           imageParticle,
@@ -780,11 +529,12 @@ export class RowRenderer {
         })
       }
 
-      if (curRow.isList) {
-        if (rowStartPosition) {
-          listParticle.drawListStyle(ctx, curRow, rowStartPosition)
-        }
-      }
+      this.listRowMarkerRenderer.render(
+        ctx,
+        curRow,
+        rowStartPosition,
+        listParticle
+      )
       renderRowDragHandle({
         ctx,
         draw: this.draw,
@@ -795,10 +545,9 @@ export class RowRenderer {
       })
 
       textParticle.complete()
-      control.drawBorder(ctx)
-      underline.render(ctx)
-      strikeout.render(ctx)
-      groupParticle.render(ctx)
+      this.rowControlBorderRenderer.flush(ctx, control)
+      this.rowTextDecorationRenderer.flush(ctx, underline, strikeout)
+      this.rowGroupRenderer.flush(ctx)
       this.tableRenderHelper.drawFragmentCellTopBorder(
         ctx,
         payload,

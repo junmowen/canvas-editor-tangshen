@@ -1,6 +1,6 @@
 describe('#1399 CONTROL backspace', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
     cy.get('canvas').first().as('canvas').should('have.length', 1)
   })
 
@@ -59,7 +59,9 @@ describe('#1399 CONTROL backspace', () => {
         ]
       })
 
-      const elementList = editor.draw.getOriginalMainElementList()
+      const elementList = editor.draw
+        .getObjectResolver()
+        .getOriginalMainElementList()
       const controlStart = elementList.findIndex(
         (element: any) => element.controlId
       )

@@ -2,165 +2,317 @@ import { CommandAdapt } from './CommandAdapt'
 
 // 通过CommandAdapt中转避免直接暴露编辑器上下文
 export class Command {
+  /** 对外暴露的mode命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeMode: CommandAdapt['mode']
+  /** 对外暴露的cut命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeCut: CommandAdapt['cut']
+  /** 对外暴露的copy命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeCopy: CommandAdapt['copy']
+  /** 对外暴露的paste命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePaste: CommandAdapt['paste']
+  /** 对外暴露的select all命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSelectAll: CommandAdapt['selectAll']
+  /** 对外暴露的backspace命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeBackspace: CommandAdapt['backspace']
+  /** 对外暴露的set range命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetRange: CommandAdapt['setRange']
+  /** 对外暴露的replace range命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeReplaceRange: CommandAdapt['replaceRange']
+  /** 对外暴露的set position context命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetPositionContext: CommandAdapt['setPositionContext']
+  /** 对外暴露的force update命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeForceUpdate: CommandAdapt['forceUpdate']
+  /** 对外暴露的blur命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeBlur: CommandAdapt['blur']
+  /** 对外暴露的undo命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeUndo: CommandAdapt['undo']
+  /** 对外暴露的redo命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRedo: CommandAdapt['redo']
+  /** 对外暴露的disable history命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeDisableHistory: CommandAdapt['disableHistory']
+  /** 对外暴露的enable history命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeEnableHistory: CommandAdapt['enableHistory']
+  /** 对外暴露的painter命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePainter: CommandAdapt['painter']
+  /** 对外暴露的apply painter style命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeApplyPainterStyle: CommandAdapt['applyPainterStyle']
+  /** 对外暴露的format命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeFormat: CommandAdapt['format']
+  /** 对外暴露的font命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeFont: CommandAdapt['font']
+  /** 对外暴露的size命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSize: CommandAdapt['size']
+  /** 对外暴露的size add命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSizeAdd: CommandAdapt['sizeAdd']
+  /** 对外暴露的size minus命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSizeMinus: CommandAdapt['sizeMinus']
+  /** 对外暴露的bold命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeBold: CommandAdapt['bold']
+  /** 对外暴露的italic命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeItalic: CommandAdapt['italic']
+  /** 对外暴露的underline命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeUnderline: CommandAdapt['underline']
+  /** 对外暴露的strikeout命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeStrikeout: CommandAdapt['strikeout']
+  /** 对外暴露的superscript命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSuperscript: CommandAdapt['superscript']
+  /** 对外暴露的subscript命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSubscript: CommandAdapt['subscript']
+  /** 对外暴露的color命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeColor: CommandAdapt['color']
+  /** 对外暴露的highlight命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeHighlight: CommandAdapt['highlight']
+  /** 对外暴露的title命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeTitle: CommandAdapt['title']
+  /** 对外暴露的list命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeList: CommandAdapt['list']
+  /** 对外暴露的row flex命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRowFlex: CommandAdapt['rowFlex']
+  /** 对外暴露的row margin命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRowMargin: CommandAdapt['rowMargin']
+  /** 对外暴露的row indent命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRowIndent: CommandAdapt['rowIndent']
+  /** 对外暴露的row indent left命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRowIndentLeft: CommandAdapt['rowIndentLeft']
+  /** 对外暴露的row indent right命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRowIndentRight: CommandAdapt['rowIndentRight']
+  /** 对外暴露的row hanging indent命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRowHangingIndent: CommandAdapt['rowHangingIndent']
+  /** 对外暴露的page number continue命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePageNumberContinue: CommandAdapt['pageNumberContinue']
+  /** 对外暴露的page number restart命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePageNumberRestart: CommandAdapt['pageNumberRestart']
+  /** 对外暴露的page number range命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePageNumberRange: CommandAdapt['pageNumberRange']
+  /** 对外暴露的insert table命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeInsertTable: CommandAdapt['insertTable']
+  /** 对外暴露的insert table top row命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeInsertTableTopRow: CommandAdapt['insertTableTopRow']
+  /** 对外暴露的insert table bottom row命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeInsertTableBottomRow: CommandAdapt['insertTableBottomRow']
+  /** 对外暴露的insert table left col命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeInsertTableLeftCol: CommandAdapt['insertTableLeftCol']
+  /** 对外暴露的insert table right col命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeInsertTableRightCol: CommandAdapt['insertTableRightCol']
+  /** 对外暴露的delete table row命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeDeleteTableRow: CommandAdapt['deleteTableRow']
+  /** 对外暴露的delete table col命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeDeleteTableCol: CommandAdapt['deleteTableCol']
+  /** 对外暴露的delete table命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeDeleteTable: CommandAdapt['deleteTable']
+  /** 对外暴露的merge table cell命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeMergeTableCell: CommandAdapt['mergeTableCell']
+  /** 对外暴露的cancel merge table cell命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeCancelMergeTableCell: CommandAdapt['cancelMergeTableCell']
+  /** 对外暴露的split vertical table cell命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSplitVerticalTableCell: CommandAdapt['splitVerticalTableCell']
+  /** 对外暴露的split horizontal table cell命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSplitHorizontalTableCell: CommandAdapt['splitHorizontalTableCell']
+  /** 对外暴露的table td vertical align命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeTableTdVerticalAlign: CommandAdapt['tableTdVerticalAlign']
+  /** 对外暴露的table border type命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeTableBorderType: CommandAdapt['tableBorderType']
+  /** 对外暴露的table border color命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeTableBorderColor: CommandAdapt['tableBorderColor']
+  /** 对外暴露的table border width命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeTableBorderWidth: CommandAdapt['tableBorderWidth']
+  /** 对外暴露的table td border type命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeTableTdBorderType: CommandAdapt['tableTdBorderType']
+  /** 对外暴露的table td border color命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeTableTdBorderColor: CommandAdapt['tableTdBorderColor']
+  /** 对外暴露的table td border width命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeTableTdBorderWidth: CommandAdapt['tableTdBorderWidth']
+  /** 对外暴露的table td slash type命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeTableTdSlashType: CommandAdapt['tableTdSlashType']
+  /** 对外暴露的table td background color命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeTableTdBackgroundColor: CommandAdapt['tableTdBackgroundColor']
+  /** 对外暴露的auto fit table命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeAutoFitTable: CommandAdapt['autoFitTable']
+  /** 对外暴露的table select all命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeTableSelectAll: CommandAdapt['tableSelectAll']
+  /** 对外暴露的image命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeImage: CommandAdapt['image']
+  /** 对外暴露的hyperlink命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeHyperlink: CommandAdapt['hyperlink']
+  /** 对外暴露的delete hyperlink命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeDeleteHyperlink: CommandAdapt['deleteHyperlink']
+  /** 对外暴露的cancel hyperlink命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeCancelHyperlink: CommandAdapt['cancelHyperlink']
+  /** 对外暴露的edit hyperlink命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeEditHyperlink: CommandAdapt['editHyperlink']
+  /** 对外暴露的separator命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSeparator: CommandAdapt['separator']
+  /** 对外暴露的page break命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePageBreak: CommandAdapt['pageBreak']
+  /** 对外暴露的add watermark命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeAddWatermark: CommandAdapt['addWatermark']
+  /** 对外暴露的delete watermark命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeDeleteWatermark: CommandAdapt['deleteWatermark']
+  /** 对外暴露的search命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSearch: CommandAdapt['search']
+  /** 对外暴露的search navigate pre命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSearchNavigatePre: CommandAdapt['searchNavigatePre']
+  /** 对外暴露的search navigate next命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSearchNavigateNext: CommandAdapt['searchNavigateNext']
+  /** 对外暴露的replace命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeReplace: CommandAdapt['replace']
+  /** 对外暴露的print命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePrint: CommandAdapt['print']
+  /** 对外暴露的replace image element命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeReplaceImageElement: CommandAdapt['replaceImageElement']
+  /** 对外暴露的save as image element命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSaveAsImageElement: CommandAdapt['saveAsImageElement']
+  /** 对外暴露的change image display命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeChangeImageDisplay: CommandAdapt['changeImageDisplay']
+  /** 对外暴露的page mode命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePageMode: CommandAdapt['pageMode']
+  /** 对外暴露的page scale命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePageScale: CommandAdapt['pageScale']
+  /** 对外暴露的page scale recovery命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePageScaleRecovery: CommandAdapt['pageScaleRecovery']
+  /** 对外暴露的page scale minus命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePageScaleMinus: CommandAdapt['pageScaleMinus']
+  /** 对外暴露的page scale add命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePageScaleAdd: CommandAdapt['pageScaleAdd']
+  /** 对外暴露的paper size命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePaperSize: CommandAdapt['paperSize']
+  /** 对外暴露的paper direction命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePaperDirection: CommandAdapt['paperDirection']
+  /** 对外暴露的set paper margin命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetPaperMargin: CommandAdapt['setPaperMargin']
+  /** 对外暴露的set main badge命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetMainBadge: CommandAdapt['setMainBadge']
+  /** 对外暴露的set area badge命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetAreaBadge: CommandAdapt['setAreaBadge']
+  /** 对外暴露的insert element list命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeInsertElementList: CommandAdapt['insertElementList']
+  /** 对外暴露的insert area命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeInsertArea: CommandAdapt['insertArea']
+  /** 对外暴露的delete area命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeDeleteArea: CommandAdapt['deleteArea']
+  /** 对外暴露的set area value命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetAreaValue: CommandAdapt['setAreaValue']
+  /** 对外暴露的set area properties命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetAreaProperties: CommandAdapt['setAreaProperties']
+  /** 对外暴露的location area命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeLocationArea: CommandAdapt['locationArea']
+  /** 对外暴露的append element list命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeAppendElementList: CommandAdapt['appendElementList']
+  /** 对外暴露的update element by id命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeUpdateElementById: CommandAdapt['updateElementById']
+  /** 对外暴露的delete element by id命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeDeleteElementById: CommandAdapt['deleteElementById']
+  /** 对外暴露的set value命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetValue: CommandAdapt['setValue']
+  /** 对外暴露的remove control命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRemoveControl: CommandAdapt['removeControl']
+  /** 对外暴露的translate命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeTranslate: CommandAdapt['translate']
+  /** 对外暴露的set locale命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetLocale: CommandAdapt['setLocale']
+  /** 对外暴露的location catalog命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeLocationCatalog: CommandAdapt['locationCatalog']
+  /** 对外暴露的word tool命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeWordTool: CommandAdapt['wordTool']
+  /** 对外暴露的set html命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetHTML: CommandAdapt['setHTML']
+  /** 对外暴露的set group命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetGroup: CommandAdapt['setGroup']
+  /** 对外暴露的delete group命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeDeleteGroup: CommandAdapt['deleteGroup']
+  /** 对外暴露的location group命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeLocationGroup: CommandAdapt['locationGroup']
+  /** 对外暴露的set zone命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetZone: CommandAdapt['setZone']
+  /** 对外暴露的compute element list height命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeComputeElementListHeight: CommandAdapt['computeElementListHeight']
+  /** 对外暴露的set control value命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetControlValue: CommandAdapt['setControlValue']
+  /** 对外暴露的set control value list命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetControlValueList: CommandAdapt['setControlValueList']
+  /** 对外暴露的set control extension命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetControlExtension: CommandAdapt['setControlExtension']
+  /** 对外暴露的set control extension list命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetControlExtensionList: CommandAdapt['setControlExtensionList']
+  /** 对外暴露的set control properties命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetControlProperties: CommandAdapt['setControlProperties']
+  /** 对外暴露的set control properties list命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetControlPropertiesList: CommandAdapt['setControlPropertiesList']
+  /** 对外暴露的set control highlight命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetControlHighlight: CommandAdapt['setControlHighlight']
+  /** 对外暴露的location control命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeLocationControl: CommandAdapt['locationControl']
+  /** 对外暴露的insert control命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeInsertControl: CommandAdapt['insertControl']
+  /** 对外暴露的update options命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeUpdateOptions: CommandAdapt['updateOptions']
+  /** 对外暴露的set track change命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetTrackChange: CommandAdapt['setTrackChange']
+  /** 对外暴露的accept track change命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeAcceptTrackChange: CommandAdapt['acceptTrackChange']
+  /** 对外暴露的reject track change命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRejectTrackChange: CommandAdapt['rejectTrackChange']
+  /** 对外暴露的accept all track change命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeAcceptAllTrackChange: CommandAdapt['acceptAllTrackChange']
+  /** 对外暴露的reject all track change命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRejectAllTrackChange: CommandAdapt['rejectAllTrackChange']
+  /** 对外暴露的insert title命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeInsertTitle: CommandAdapt['insertTitle']
+  /** 对外暴露的focus命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeFocus: CommandAdapt['focus']
+  /** 对外暴露的 catalog 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getCatalog: CommandAdapt['getCatalog']
   public getImage: CommandAdapt['getImage']
+  /** 对外暴露的 options 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getOptions: CommandAdapt['getOptions']
+  /** 对外暴露的 value 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getValue: CommandAdapt['getValue']
+  /** 对外暴露的 value async 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getValueAsync: CommandAdapt['getValueAsync']
+  /** 对外暴露的 area value 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getAreaValue: CommandAdapt['getAreaValue']
+  /** 对外暴露的 html 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getHTML: CommandAdapt['getHTML']
+  /** 对外暴露的纯文本查询入口，内部代理到 CommandAdapt 实现。 */
   public getText: CommandAdapt['getText']
   public getWordCount: CommandAdapt['getWordCount']
+  /** 对外暴露的 cursor position 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getCursorPosition: CommandAdapt['getCursorPosition']
+  /** 对外暴露的 range 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getRange: CommandAdapt['getRange']
+  /** 对外暴露的选区文本查询入口，内部代理到 CommandAdapt 实现。 */
   public getRangeText: CommandAdapt['getRangeText']
+  /** 对外暴露的 range context 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getRangeContext: CommandAdapt['getRangeContext']
+  /** 对外暴露的 range row 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getRangeRow: CommandAdapt['getRangeRow']
+  /** 对外暴露的 range paragraph 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getRangeParagraph: CommandAdapt['getRangeParagraph']
   public getKeywordRangeList: CommandAdapt['getKeywordRangeList']
+  /** 对外暴露的 keyword context 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getKeywordContext: CommandAdapt['getKeywordContext']
+  /** 对外暴露的 paper margin 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getPaperMargin: CommandAdapt['getPaperMargin']
+  /** 对外暴露的 search navigate info 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getSearchNavigateInfo: CommandAdapt['getSearchNavigateInfo']
+  /** 对外暴露的语言标识查询入口，内部代理到 CommandAdapt 实现。 */
   public getLocale: CommandAdapt['getLocale']
+  /** 对外暴露的 group ids 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getGroupIds: CommandAdapt['getGroupIds']
   public getGroupRectList: CommandAdapt['getGroupRectList']
+  /** 对外暴露的 control value 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getControlValue: CommandAdapt['getControlValue']
   public getControlList: CommandAdapt['getControlList']
   public getContainer: CommandAdapt['getContainer']
+  /** 对外暴露的 title value 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getTitleValue: CommandAdapt['getTitleValue']
+  /** 对外暴露的 position context by event 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getPositionContextByEvent: CommandAdapt['getPositionContextByEvent']
+  /** 对外暴露的元素 id 查询入口，内部代理到 CommandAdapt 实现。 */
   public getElementById: CommandAdapt['getElementById']
   public getTrackChangeList: CommandAdapt['getTrackChangeList']
 
+  /** 初始化 Command 实例并注入运行依赖。 */
   constructor(adapt: CommandAdapt) {
     // 全局命令
     this.executeMode = adapt.mode.bind(adapt)

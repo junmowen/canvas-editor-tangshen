@@ -12,7 +12,7 @@ import {
   IRenderSurfacePageState
 } from './types/RenderSurface'
 
-/** surface 尺寸指标来源，由 PageCanvasHost 注入当前页面度量。 */
+/** 渲染渲染面metrics契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderSurfaceMetrics {
   /** 获取页面 CSS 逻辑宽度。 */
   getWidth(): number
@@ -24,7 +24,7 @@ export interface IRenderSurfaceMetrics {
   getPagePixelRatio(): number
 }
 
-/** 挂载页面 surface 的参数。 */
+/** 渲染渲染面mount选项契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderSurfaceMountOptions {
   /** 目标页码。 */
   pageNo: number
@@ -32,7 +32,7 @@ export interface IRenderSurfaceMountOptions {
   pageWrapper: HTMLDivElement
 }
 
-/** 创建临时 surface 的参数。 */
+/** 渲染渲染面创建选项契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderSurfaceCreateOptions {
   /** 目标页码。 */
   pageNo: number
@@ -48,7 +48,7 @@ export interface IRenderSurfaceCreateOptions {
   mounted?: boolean
 }
 
-/** bitmap 缓存写入选项。 */
+/** 渲染渲染面位图缓存选项契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderSurfaceBitmapCacheOptions {
   /** 当前内容版本，通常来自本轮布局快照版本。 */
   contentVersion?: number
@@ -56,13 +56,13 @@ export interface IRenderSurfaceBitmapCacheOptions {
   source?: BitmapCacheSource
 }
 
-/** bitmap 缓存合成选项。 */
+/** 渲染渲染面位图compose选项契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderSurfaceBitmapComposeOptions {
   /** 期望合成的内容版本，和缓存写入版本不一致时拒绝合成。 */
   contentVersion?: number
 }
 
-/** 调整页面 surface 尺寸的参数。 */
+/** 渲染渲染面resize选项契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderSurfaceResizeOptions {
   /** 目标页码。 */
   pageNo: number
@@ -82,7 +82,7 @@ export interface IRenderSurfaceResizeOptions {
   overlayHost: HTMLDivElement
 }
 
-/** surface 管理器统计信息。 */
+/** 渲染渲染面managerstats契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderSurfaceManagerStats {
   /** 当前页面槽位数量。 */
   pageCount: number
@@ -549,12 +549,19 @@ export class RenderSurfaceManager {
 
   /** 创建指定页和层的 surface，并从 canvas 池申请实际资源。 */
   private createSurface(payload: {
+    /** 页码，用于定位分页结果中的目标页面。 */
     pageNo: number
+    /** 渲染图层标识，用于区分页背景、正文和浮层。 */
     layer: RenderLayer
+    /** 宿主容器节点，用于承载编辑器或渲染表面。 */
     host: HTMLElement
+    /** 宽度尺寸，使用编辑器内部像素单位。 */
     width: number
+    /** 高度尺寸，使用编辑器内部像素单位。 */
     height: number
+    /** 设备像素比，用于将 CSS 尺寸换算为画布像素。 */
     dpr: number
+    /** mounted开关，用于控制当前流程的判断分支。 */
     mounted: boolean
   }): IRenderSurface {
     const { pageNo, layer, host, width, height, dpr, mounted } = payload

@@ -45,8 +45,11 @@ export class ChunkLayoutStats {
   public record(
     result: IChunkLayoutPatchResult,
     duration?: {
+      /** guardduration数值，用于当前布局、统计或索引计算。 */
       guardDuration?: number
+      /** measureduration数值，用于当前布局、统计或索引计算。 */
       measureDuration?: number
+      /** 补丁duration数值，用于当前布局、统计或索引计算。 */
       patchDuration?: number
     }
   ) {
@@ -78,26 +81,46 @@ export class ChunkLayoutStats {
 
   /** 合并页级 rebalance 统计，保持 chunkLayout 一个出口。 */
   public mergePageRebalanceStats(stats: {
+    /** sync补丁count，用于统计当前场景的发生次数。 */
     syncPatchCount: number
+    /** async补丁count，用于统计当前场景的发生次数。 */
     asyncPatchCount: number
+    /** schedulecount，用于统计当前场景的发生次数。 */
     scheduleCount: number
+    /** boundarypropagatecount，用于统计当前场景的发生次数。 */
     boundaryPropagateCount: number
+    /** 最大待处理页面count，用于统计当前场景的发生次数。 */
     maxPendingPageCount: number
+    /** 待处理页面count，用于统计当前场景的发生次数。 */
     pendingPageCount: number
+    /** lastasync页面no，用于定位对应页、行或序号。 */
     lastAsyncPageNo: number | null
+    /** 脏区范围plancount，用于统计当前场景的发生次数。 */
     dirtyRangePlanCount: number
+    /** 脏区范围last起始页面no，用于定位对应页、行或序号。 */
     dirtyRangeLastStartPageNo: number | null
+    /** 脏区范围last结束页面no，用于定位对应页、行或序号。 */
     dirtyRangeLastEndPageNo: number | null
+    /** 脏区范围last页面count，用于统计当前场景的发生次数。 */
     dirtyRangeLastPageCount: number
+    /** 脏区范围lastreason文本，用于标识、展示或匹配当前对象。 */
     dirtyRangeLastReason: string | null
+    /** 脏区范围lastincludes表格范围，用于描述布局或命中的空间范围。 */
     dirtyRangeLastIncludesTableRange: boolean
+    /** 脏区范围最大页面count，用于统计当前场景的发生次数。 */
     dirtyRangeMaxPageCount: number
+    /** 脏区范围missactualcount，用于统计当前场景的发生次数。 */
     dirtyRangeMissActualCount: number
+    /** 脏区范围lastmissingactual页面count，用于统计当前场景的发生次数。 */
     dirtyRangeLastMissingActualPageCount: number
     dirtyRangeLastMissingActualPageNoList: number[]
+    /** 脏区范围lastactual起始页面no，用于定位对应页、行或序号。 */
     dirtyRangeLastActualStartPageNo: number | null
+    /** 脏区范围lastactual结束页面no，用于定位对应页、行或序号。 */
     dirtyRangeLastActualEndPageNo: number | null
+    /** 脏区范围scheduletakeovercount，用于统计当前场景的发生次数。 */
     dirtyRangeScheduleTakeoverCount: number
+    /** 脏区范围schedule降级count，用于统计当前场景的发生次数。 */
     dirtyRangeScheduleFallbackCount: number
   }): IChunkLayoutPipelineStats {
     return {

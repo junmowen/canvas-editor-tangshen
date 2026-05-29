@@ -1,3 +1,4 @@
+/** 表单控件类型，决定控件值读取、渲染和交互方式。 */
 export enum ControlType {
   TEXT = 'text',
   SELECT = 'select',
@@ -7,6 +8,7 @@ export enum ControlType {
   NUMBER = 'number'
 }
 
+/** 控件组成片段类型，用于识别前后缀、占位符和值域等子元素。 */
 export enum ControlComponent {
   PREFIX = 'prefix',
   POSTFIX = 'postfix',

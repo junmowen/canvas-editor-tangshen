@@ -1,10 +1,15 @@
-import { ZERO } from '../../../../dataset/constant/Common'
+import {
+  handleBackspaceControlDeletion
+} from '../../../modules/control/interaction/handleControlDeletion'
+import { isRangeControlDeletionDisabled } from '../../../modules/control/policy/ControlDeletionPolicy'
+import { applyTableToolState } from '../../../modules/table/interaction/applyTableToolState'
+import { resolveTableBackspaceAtStart } from '../../../modules/table/navigation/resolveTableBackspaceAtStart'
+import { clearCrossRowColSelection } from '../../../modules/table/selection/clearCrossRowColSelection'
+import { tryUnsetListOnBackspaceAtStart } from '../../../modules/list/interaction/ListKeyboardInteraction'
+import { inheritRowFlexOnCollapsedZeroBackspace } from '../../../modules/paragraph/interaction/ParagraphBackspaceInteraction'
 import { CanvasEvent } from '../../CanvasEvent'
-import { applyTableToolState } from '../shared/applyTableToolState'
-import { clearCrossRowColSelection } from '../shared/clearCrossRowColSelection'
 import { finalizeCollapsedCursorMove } from '../shared/finalizeCollapsedCursorMove'
 import { finalizeDeletion } from '../shared/finalizeDeletion'
-import { handleControlDeletion } from '../shared/handleControlDeletion'
 import { removeHiddenElements } from '../shared/removeHiddenElements'
 
 export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
@@ -17,7 +22,6 @@ export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
     removeHiddenElements(host, 'prev')
   }
   const control = components.control
-  const tableNavigationService = components.tableNavigationService
   const { startIndex, endIndex, isCrossRowCol } =
     rangeManager.getEditBoundaryRange()
   let curIndex: number | null
@@ -30,16 +34,14 @@ export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
     editIndex = startIndex + 1
   } else {
     if (
-      control.getIsRangeControlDeletionDisabled({
+      isRangeControlDeletionDisabled(control, {
         range: rangeManager.getEditBoundaryRange()
       })
     ) {
       evt.preventDefault()
       return
     }
-    curIndex = handleControlDeletion(control, evt, () =>
-      !!(control.getActiveControl() && control.getIsRangeCanCaptureEvent())
-    )
+    curIndex = handleBackspaceControlDeletion(control, evt)
     if (curIndex === null) {
       const cursorPosition = draw.getCoordinate().getCursorPosition()
       if (!cursorPosition) return
@@ -49,44 +51,39 @@ export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
       if (isCollapsed && index === 0) {
         const firstElement = elementList[index]
         const positionContext = draw.getCoordinate().getPositionContext()
-        if (positionContext.isTable && firstElement.tableId) {
-          const navigationResult = tableNavigationService.resolveBackspaceNavigation({
-            positionContext
+        const tableBackspace = resolveTableBackspaceAtStart({
+          draw,
+          firstElement,
+          positionContext
+        })
+        if (tableBackspace) {
+          if (tableBackspace.shouldRemoveFirstElement) {
+            draw.spliceElementList(elementList, 0, 1)
+          }
+          draw.getCoordinate().setPositionContext(
+            tableBackspace.nextPositionContext
+          )
+          finalizeCollapsedCursorMove({
+            draw,
+            curIndex: tableBackspace.nextIndex
           })
-          if (navigationResult) {
-            if (firstElement.value !== ZERO) {
-              draw.spliceElementList(elementList, 0, 1)
-            }
-            draw.getCoordinate().setPositionContext(
-              navigationResult.nextPositionContext
-            )
-            finalizeCollapsedCursorMove({
-              draw,
-              curIndex: navigationResult.nextIndex
-            })
-            applyTableToolState(draw, false)
-            evt.preventDefault()
-            return
-          }
+          applyTableToolState(draw, false)
+          evt.preventDefault()
+          return
         }
-        if (firstElement.value === ZERO) {
-          if (firstElement.listId) {
-            draw.getListParticle().unsetList()
-          }
+        if (tryUnsetListOnBackspaceAtStart({ draw, firstElement })) {
           evt.preventDefault()
           return
         }
       }
       const startElement = elementList[startIndex]
-      if (isCollapsed && startElement.rowFlex && startElement.value === ZERO) {
-        const rowFlexElementList = rangeManager.getRangeRowElementList()
-        if (rowFlexElementList) {
-          const preElement = elementList[startIndex - 1]
-          rowFlexElementList.forEach(element => {
-            element.rowFlex = preElement?.rowFlex
-          })
-        }
-      }
+      inheritRowFlexOnCollapsedZeroBackspace({
+        isCollapsed,
+        startElement,
+        elementList,
+        startIndex,
+        rowElementList: rangeManager.getRangeRowElementList()
+      })
       if (!isCollapsed) {
         draw.spliceElementList(
           elementList,

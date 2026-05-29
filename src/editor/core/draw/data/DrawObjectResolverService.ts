@@ -12,6 +12,7 @@ import type { Draw } from '../Draw'
  * 避免这些解析逻辑继续散落在各个业务模块里。
  */
 export class DrawObjectResolverService {
+  /** 初始化 DrawObjectResolverService 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
   public getHeaderElementList(): IElement[] {
@@ -104,7 +105,9 @@ export class DrawObjectResolverService {
       EditorZone.FOOTER
     ]
   ): Array<{
+    /** 区域实例，用于处理编辑器浮层、提示或交互热区。 */
     zone: EditorZone
+    /** 文档元素列表，按文档顺序保存参与处理的元素。 */
     elementList: IElement[]
   }> {
     return zoneOrder.map(zone => ({

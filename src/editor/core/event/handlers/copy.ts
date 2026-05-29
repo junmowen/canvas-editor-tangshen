@@ -1,12 +1,12 @@
-import { ElementType } from '../../../dataset/enum/Element'
 import { IElement } from '../../../interface/Element'
 import { ICopyOption } from '../../../interface/Event'
-import { ITr } from '../../../interface/table/Tr'
 import { writeElementList } from '../../../utils/clipboard'
-import { getTextFromElementList, zipElementList } from '../../../utils/element'
-import { IOverrideResult } from '../../override/Override'
+import { getTextFromElementList } from '../../../utils/element'
+import { IOverrideResult } from '../../extension/override/Override'
+import { resolveTableCopyElementList } from '../../modules/table/interaction/resolveTableCopyElementList'
 import { CanvasEvent } from '../CanvasEvent'
 
+/** 处理复制操作，把当前选区内容写入剪贴板。 */
 export function copy(host: CanvasEvent, options?: ICopyOption) {
   const draw = host.getDraw()
   // 自定义粘贴事件
@@ -21,40 +21,7 @@ export function copy(host: CanvasEvent, options?: ICopyOption) {
   let copyElementList: IElement[] | null = null
   const range = rangeManager.getEditBoundaryRange()
   if (range.isCrossRowCol) {
-    // 原始表格信息
-    const tableElement = rangeManager.getRangeTableElement()
-    if (!tableElement) return
-    // 选区行列信息
-    const rowCol = draw.getTableParticle().getRangeRowCol()
-    if (!rowCol) return
-    // 构造表格
-    const copyTableElement: IElement = {
-      type: ElementType.TABLE,
-      value: '',
-      colgroup: [],
-      trList: []
-    }
-    const firstRow = rowCol[0]
-    const colStartIndex = firstRow[0].colIndex!
-    const lastCol = firstRow[firstRow.length - 1]
-    const colEndIndex = lastCol.colIndex! + lastCol.colspan - 1
-    for (let c = colStartIndex; c <= colEndIndex; c++) {
-      copyTableElement.colgroup!.push(tableElement.colgroup![c])
-    }
-    for (let r = 0; r < rowCol.length; r++) {
-      const row = rowCol[r]
-      const tr = tableElement.trList![row[0].rowIndex!]
-      const coptTr: ITr = {
-        tdList: [],
-        height: tr.height,
-        minHeight: tr.minHeight
-      }
-      for (let c = 0; c < row.length; c++) {
-        coptTr.tdList.push(row[c])
-      }
-      copyTableElement.trList!.push(coptTr)
-    }
-    copyElementList = zipElementList([copyTableElement])
+    copyElementList = resolveTableCopyElementList(draw)
   } else {
     copyElementList = rangeManager.getIsCollapsed()
       ? rangeManager.getRangeRowElementList()

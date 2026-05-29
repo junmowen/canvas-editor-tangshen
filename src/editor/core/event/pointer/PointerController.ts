@@ -22,6 +22,7 @@ import { wheel } from '../handlers/wheel'
  * 这样后续新增点击、拖拽、右键或滚轮能力时，只需要改对应事件模块。
  */
 export class PointerController {
+  /** 初始化 PointerController 实例并注入运行依赖。 */
   constructor(private readonly host: CanvasEvent) {}
 
   /** 分发鼠标移动事件。 */

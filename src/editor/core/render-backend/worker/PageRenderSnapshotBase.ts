@@ -1,12 +1,12 @@
 
-import { ElementType } from '../../../dataset/enum/Element'
-import { ImageDisplay } from '../../../dataset/enum/Common'
 import { IElement } from '../../../interface/Element'
 import { IRowElement } from '../../../interface/Row'
+import { isWorkerSnapshotFloatingImage } from '../../modules/image/render/WorkerSnapshotImageRenderPolicy'
 import type { Draw } from '../../draw/Draw'
 
 /** Shared state and utilities for worker page snapshot command builders. */
 export abstract class PageRenderSnapshotBase {
+  /** 初始化 PageRenderSnapshotBase 实例并注入运行依赖。 */
   protected constructor(protected readonly draw: Draw) {}
 
   protected getActiveGroupIds(): string[] {
@@ -21,12 +21,7 @@ export abstract class PageRenderSnapshotBase {
   }
 
   protected isFloatingImage(element: IElement): boolean {
-    return Boolean(
-      element.type === ElementType.IMAGE &&
-        (element.imgDisplay === ImageDisplay.SURROUND ||
-          element.imgDisplay === ImageDisplay.FLOAT_TOP ||
-          element.imgDisplay === ImageDisplay.FLOAT_BOTTOM)
-    )
+    return isWorkerSnapshotFloatingImage(element)
   }
 
 

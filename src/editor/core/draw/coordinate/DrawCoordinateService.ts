@@ -20,6 +20,7 @@ import type { Draw } from '../Draw'
  * 层的坐标能力收口到一个稳定门面上，方便后续逐步替换直接调用点。
  */
 export class DrawCoordinateService {
+  /** 初始化 DrawCoordinateService 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
   public getPointerCoordinates(
@@ -94,20 +95,24 @@ export class DrawCoordinateService {
     this.draw.getInternalPosition().setCursorLogicalIndex(index)
   }
 
+  /** 计算 Position List 对应的布局或状态。 */
   public computePositionList() {
     this.draw.getInternalPosition().computePositionList()
   }
 
+  /** 计算 Position List From Page 对应的布局或状态。 */
   public computePositionListFromPage(startPageNo: number) {
     this.draw.getInternalPosition().computePositionListFromPage(startPageNo)
   }
 
+  /** 计算 Page Row Position 对应的布局或状态。 */
   public computePageRowPosition(
     payload: IComputePageRowPositionPayload
   ): IComputePageRowPositionResult {
     return this.draw.getInternalPosition().computePageRowPosition(payload)
   }
 
+  /** 计算 Row Position 对应的布局或状态。 */
   public computeRowPosition(
     payload: IComputeRowPositionPayload
   ): IElementPosition[] {

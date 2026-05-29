@@ -9,6 +9,7 @@ import { PageRenderSnapshotInlineMediaCommands } from './PageRenderSnapshotInlin
 
 /** Inline checkbox and radio command generation. */
 export abstract class PageRenderSnapshotInlineControlCommands extends PageRenderSnapshotInlineMediaCommands {
+  /** 写入复选框commands，追加后续渲染需要的命令数据。 */
   protected pushCheckboxCommands(
     commandList: IWorkerPaintCommand[],
     row: IDrawPagePayload['rowList'][number],

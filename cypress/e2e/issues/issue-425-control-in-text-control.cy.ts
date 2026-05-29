@@ -42,7 +42,7 @@ function getNestedControlValueList(editor: Editor) {
 
 describe('issue #425 - control inserted in text control value', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
     cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
 

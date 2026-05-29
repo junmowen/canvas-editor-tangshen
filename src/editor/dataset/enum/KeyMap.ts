@@ -1,3 +1,4 @@
+/** 键盘事件 key 值集合，用于统一快捷键和键盘意图判断。 */
 export enum KeyMap {
   Delete = 'Delete',
   Backspace = 'Backspace',

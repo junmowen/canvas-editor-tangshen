@@ -1,3 +1,4 @@
+/* 页眉页脚等编辑区域提示样式。 */
 .ce-zone-indicator>div {
   padding: 3px 6px;
   color: #000000;
@@ -7,6 +8,7 @@
   transform-origin: 0 0;
 }
 
+/* 页眉页脚等编辑区域提示样式。 */
 .ce-zone-indicator-border__top,
 .ce-zone-indicator-border__bottom,
 .ce-zone-indicator-border__left,
@@ -16,23 +18,28 @@
   z-index: 0;
 }
 
+/* 页眉页脚等编辑区域提示样式。 */
 .ce-zone-indicator-border__top {
   border-top: 2px dashed rgb(238, 238, 238);
 }
 
+/* 页眉页脚等编辑区域提示样式。 */
 .ce-zone-indicator-border__bottom {
   border-top: 2px dashed rgb(238, 238, 238);
   width: 100%;
 }
 
+/* 页眉页脚等编辑区域提示样式。 */
 .ce-zone-indicator-border__left {
   border-left: 2px dashed rgb(238, 238, 238);
 }
 
+/* 页眉页脚等编辑区域提示样式。 */
 .ce-zone-indicator-border__right {
   border-right: 2px dashed rgb(238, 238, 238);
 }
 
+/* 页眉页脚等编辑区域提示样式。 */
 .ce-zone-tip {
   display: none;
   align-items: center;
@@ -51,10 +58,12 @@
   transform: translate(10px, 10px);
 }
 
+/* 页眉页脚等编辑区域提示样式。 */
 .ce-zone-tip.show {
   display: flex;
 }
 
+/* 页眉页脚等编辑区域提示样式。 */
 .ce-zone-tip span {
   color: #ffffff;
   font-size: 12px;

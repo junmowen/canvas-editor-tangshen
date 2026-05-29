@@ -3,7 +3,7 @@ import { INLINE_NODE_NAME, TEXTLIKE_ELEMENT_TYPE } from '../dataset/constant/Ele
 import { listStyleCSSMapping, listTypeElementMapping } from '../dataset/constant/List'
 import { START_LINE_BREAK_REG } from '../dataset/constant/Regular'
 import { titleNodeNameMapping, titleOrderNumberMapping } from '../dataset/constant/Title'
-import { IFrameBlock } from '../core/draw/particle/block/modules/IFrameBlock'
+import { IFrameBlock } from '../core/modules/block/particle/modules/IFrameBlock'
 import { BlockType } from '../dataset/enum/Block'
 import { ImageDisplay } from '../dataset/enum/Common'
 import { ControlComponent, ControlType } from '../dataset/enum/Control'
@@ -132,12 +132,19 @@ export function splitListElement(
   return listElementListMap
 }
 
+/** 元素列表分组行flex契约，用于约束内部流程中传递的数据结构。 */
 export interface IElementListGroupRowFlex {
+  /** 行剩余弹性空间，用于分配两端对齐或缩进补偿。 */
   rowFlex: RowFlex | null
+  /** 行左缩进，用于计算段落左侧排版边界。 */
   rowIndentLeft: number | null
+  /** 行右缩进，用于计算段落右侧排版边界。 */
   rowIndentRight: number | null
+  /** 行缩进值，用于计算段落文本起点。 */
   rowIndent: number | null
+  /** 行悬挂缩进，用于计算首行外的文本起点。 */
   rowHangingIndent: number | null
+  /** 业务数据载荷，供当前操作读取或提交。 */
   data: IElement[]
 }
 
@@ -619,7 +626,9 @@ function getHasExplicitTextColor(node: HTMLElement): boolean {
   return false
 }
 
+/** 获取元素列表byhtml选项，用于约束调用方可传入的可选配置。 */
 export interface IGetElementListByHTMLOption {
+  /** 内部可用宽度，用于排版时扣除边距或缩进。 */
   innerWidth: number
 }
 
@@ -910,6 +919,7 @@ export function getElementListByHTML(
   const clipboardDom = document.createElement('div')
   clipboardDom.innerHTML = htmlText
   document.body.appendChild(clipboardDom)
+  // 初始化 delete Nodes 列表。
   const deleteNodes: ChildNode[] = []
   clipboardDom.childNodes.forEach(child => {
     if (child.nodeType !== 1 && !child.textContent?.trim()) {

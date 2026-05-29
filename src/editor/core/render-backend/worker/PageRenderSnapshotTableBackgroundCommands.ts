@@ -5,6 +5,7 @@ import { PageRenderSnapshotBase } from './PageRenderSnapshotBase'
 
 /** Table cell background command generation. */
 export abstract class PageRenderSnapshotTableBackgroundCommands extends PageRenderSnapshotBase {
+  /** 写入表格背景commands，追加后续渲染需要的命令数据。 */
   protected pushTableBackgroundCommands(
     commandList: IWorkerPaintCommand[],
     table: IElement | ITableFragmentDescriptor,

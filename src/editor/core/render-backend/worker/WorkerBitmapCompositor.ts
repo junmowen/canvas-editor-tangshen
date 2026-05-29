@@ -1,9 +1,10 @@
 import { IRenderSurface } from '../types/RenderSurface'
 import { IWorkerRenderSuccessResult } from './WorkerRenderProtocol'
 
-/** worker bitmap 合成结果。 */
 export interface IWorkerBitmapComposeResult {
+  /** composed开关，用于控制当前流程的判断分支。 */
   composed: boolean
+  /** rejectreason文本，用于标识、展示或匹配当前对象。 */
   rejectReason?: string
 }
 
@@ -14,7 +15,9 @@ export class WorkerBitmapCompositor {
     surface: IRenderSurface,
     result: IWorkerRenderSuccessResult,
     expected: {
+      /** 布局版本号，用于判断缓存位置是否过期。 */
       layoutVersion: number
+      /** 基准视觉版本，用于判断渲染快照是否仍然有效。 */
       baseVisualVersion: number
     }
   ): IWorkerBitmapComposeResult {
@@ -44,7 +47,9 @@ export class WorkerBitmapCompositor {
     surface: IRenderSurface,
     result: IWorkerRenderSuccessResult,
     expected: {
+      /** 布局版本号，用于判断缓存位置是否过期。 */
       layoutVersion: number
+      /** 基准视觉版本，用于判断渲染快照是否仍然有效。 */
       baseVisualVersion: number
     }
   ): string {

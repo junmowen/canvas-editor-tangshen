@@ -1,11 +1,12 @@
-import { ElementType, IEditorOption, IElement, RenderMode } from '../../..'
-import {
-  PUNCTUATION_LIST,
-  METRICS_BASIS_TEXT
-} from '../../../dataset/constant/Common'
+import { IEditorOption, IElement, RenderMode } from '../../..'
+import { METRICS_BASIS_TEXT } from '../../../dataset/constant/Common'
 import { DeepRequired } from '../../../interface/Common'
 import { IRowElement } from '../../../interface/Row'
 import { ITextMetrics } from '../../../interface/Text'
+import {
+  isParagraphPunctuationElement,
+  isParagraphWordMeasureElement
+} from '../../modules/paragraph/layout/ParagraphTextMeasurePolicy'
 import { Draw } from '../Draw'
 
 /**
@@ -127,8 +128,10 @@ export class TextParticle {
     while (i < elementList.length) {
       const element = elementList[i]
       if (
-        (element.type && element.type !== ElementType.TEXT) ||
-        !LETTER_REG.test(element.value)
+        !isParagraphWordMeasureElement({
+          element,
+          letterReg: LETTER_REG
+        })
       ) {
         endElement = element
         break
@@ -155,7 +158,7 @@ export class TextParticle {
     element: IElement
   ): number {
     // 如果不是标点符号，返回 0
-    if (!element || !PUNCTUATION_LIST.includes(element.value)) return 0
+    if (!isParagraphPunctuationElement(element)) return 0
     // 返回标点符号宽度
     return this.measureText(ctx, element).width
   }

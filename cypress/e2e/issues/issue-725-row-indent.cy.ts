@@ -16,7 +16,7 @@ function getTextRows(editor: Editor) {
 
 describe('issue #725 paragraph row indentation', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
     cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
 

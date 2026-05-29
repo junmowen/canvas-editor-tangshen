@@ -54,7 +54,7 @@ function tr(tdList: ReturnType<typeof cell>[], height = 24) {
 
 describe('issue #390 dynamic table data boundary', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
     cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
 

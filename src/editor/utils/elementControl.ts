@@ -6,16 +6,27 @@ import { IEditorOption } from '../interface/Editor'
 import { IElement } from '../interface/Element'
 import { splitText } from '.'
 
+/** append控件值设置文本调用载荷，聚合执行该操作所需的输入数据。 */
 interface IAppendControlValueSetTextPayload {
+  /** 文档元素列表，按文档顺序保存参与处理的元素。 */
   elementList: IElement[]
+  /** 插入索引，用于定位新元素写入位置。 */
   insertIndex: number
+  /** 取值样式索引，用于定位控件值应继承的样式来源。 */
   valueStyleIndex: number
+  /** 取值样式列表，保存控件各值对应的样式配置。 */
   valueStyleList: IElement[]
+  /** 当前值，用于保存控件、输入或配置的实际内容。 */
   value: string
+  /** 间距值，用于控制元素之间的空白距离。 */
   gap?: number
+  /** 控件标识，用于关联同一控件的开始、值和结束元素。 */
   controlId: string
+  /** 控件配置对象，描述当前控件的行为和取值规则。 */
   control?: IElement['control']
+  /** 控件上下文，保存控件边界、值域和嵌套关系。 */
   controlContext: Partial<IElement>
+  /** 控件显式样式，用于覆盖从正文继承的样式。 */
   controlExplicitStyle: Partial<IElement>
 }
 

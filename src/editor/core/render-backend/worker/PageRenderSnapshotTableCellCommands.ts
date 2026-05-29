@@ -13,10 +13,12 @@ export abstract class PageRenderSnapshotTableCellCommands extends PageRenderSnap
     positionList: IElementPosition[],
     alpha: number,
     options?: {
+      /** 绘制行break开关，用于控制当前流程的判断分支。 */
       drawLineBreak?: boolean
     }
   ): void
 
+  /** 写入片段上侧边框command，追加后续渲染需要的命令数据。 */
   protected pushFragmentTopBorderCommand(
     commandList: IWorkerPaintCommand[],
     table: ITableFragmentDescriptor,

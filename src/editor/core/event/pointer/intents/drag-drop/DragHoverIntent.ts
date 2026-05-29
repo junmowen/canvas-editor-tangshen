@@ -1,11 +1,12 @@
-import { ImageDisplay } from '../../../../../dataset/enum/Common'
-import { ElementType } from '../../../../../dataset/enum/Element'
 import { CanvasEvent } from '../../../CanvasEvent'
-import { resolveRowDragDropTarget } from '../../row-drag/RowDragDrop'
+import { resolveRowDragDropTarget } from '../../../../modules/row-drag/RowDragDrop'
 import { drawDragCursor } from '../../effects/DragEffect'
+import { dragFloatingImageOnHover } from '../../../../modules/image/interaction/ImageDragInteraction'
 
 export function runDragHoverIntent(payload: {
+  /** 宿主容器节点，用于承载编辑器或渲染表面。 */
   host: CanvasEvent
+  /** 原始 DOM 事件对象，用于读取指针、键盘或剪贴板信息。 */
   evt: MouseEvent
 }): boolean {
   const { host, evt } = payload
@@ -71,17 +72,12 @@ export function runDragHoverIntent(payload: {
   const cacheStartIndex = session.dragSnapshot.range?.startIndex
   if (cacheStartIndex) {
     const dragElement = session.dragSnapshot.elementList![cacheStartIndex]
-    if (
-      dragElement?.type === ElementType.IMAGE &&
-      (dragElement.imgDisplay === ImageDisplay.SURROUND ||
-        dragElement.imgDisplay === ImageDisplay.FLOAT_TOP ||
-        dragElement.imgDisplay === ImageDisplay.FLOAT_BOTTOM)
-    ) {
-      components.previewer.clearResizer()
-      components.imageParticle.dragFloatImage(
-        coordinates.deltaViewport.x,
-        coordinates.deltaViewport.y
-      )
+    if (dragFloatingImageOnHover({
+      draw,
+      element: dragElement,
+      deltaX: coordinates.deltaViewport.x,
+      deltaY: coordinates.deltaViewport.y
+    })) {
       host.dragover(evt)
       session.isAllowDrop = true
       session.lastPointerCoordinates = coordinates

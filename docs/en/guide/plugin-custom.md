@@ -8,10 +8,10 @@ Official plugin: https://github.com/Hufe921/canvas-editor-plugin
 
 ```javascript
 export function myPlugin(editor: Editor, options?: Option) {
-  // 1. update，see more：src/plugins/copy
+  // 1. update，see more：src/demo/plugins/copy
   editor.command.updateFunction = () => {}
 
-  // 2. add，see more：src/plugins/markdown
+  // 2. add，see more：src/demo/plugins/markdown
   editor.command.addFunction = () => {}
 
   // 3. listener, eventbus, shortcut, contextmenu, override...

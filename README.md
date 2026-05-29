@@ -83,7 +83,7 @@ new Editor(document.querySelector('.canvas-editor'), {
 
 ## Snapshot
 
-![image](https://github.com/Hufe921/canvas-editor/blob/main/src/assets/snapshots/main_v0.9.35.png)
+![image](https://github.com/Hufe921/canvas-editor/blob/main/src/demo/assets/snapshots/main_v0.9.35.png)
 
 ## Install
 
@@ -92,6 +92,21 @@ new Editor(document.querySelector('.canvas-editor'), {
 ## Dev
 
 `npm run dev`
+
+## Project Structure
+
+- [Project structure](./docs/project-structure.md)
+- [Encoding rules](./docs/encoding-rules.md)
+- [Docs index](./docs/README.md)
+- [Source boundary](./src/README.md)
+- [Editor core boundary](./src/editor/README.md)
+- [Demo boundary](./src/demo/README.md)
+- [Shared components boundary](./src/components/README.md)
+- [Guide index](./docs/guide/)
+- [Cypress index](./cypress/README.md)
+- [Cypress E2E index](./cypress/e2e/README.md)
+- [Cypress fixtures index](./cypress/fixtures/README.md)
+- [Scripts index](./scripts/README.md)
 
 ## Build
 

@@ -1,3 +1,4 @@
+/* 下拉控件弹层与选项样式。 */
 .ce-select-control-popup {
   max-width: 160px;
   min-width: 69px;
@@ -13,6 +14,7 @@
   overflow-y: auto;
 }
 
+/* 下拉控件弹层与选项样式。 */
 .ce-select-control-popup ul {
   list-style: none;
   padding: 3px 0;
@@ -20,6 +22,7 @@
   box-sizing: border-box;
 }
 
+/* 下拉控件弹层与选项样式。 */
 .ce-select-control-popup ul li {
   font-size: 13px;
   padding: 0 20px;
@@ -34,10 +37,12 @@
   cursor: pointer;
 }
 
+/* 下拉控件弹层与选项样式。 */
 .ce-select-control-popup ul li:hover {
   background-color: #EEF2FD;
 }
 
+/* 下拉控件弹层与选项样式。 */
 .ce-select-control-popup ul li.active {
   color: var(--COLOR-HOVER, #5175f4);
   font-weight: 700;

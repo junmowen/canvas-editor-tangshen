@@ -1,7 +1,9 @@
+// 右键菜单名称占位符，用于动态替换菜单文案。
 export const NAME_PLACEHOLDER = {
   SELECTED_TEXT: '%s'
 }
 
+// 内置右键菜单 key 映射，用于识别系统菜单项。
 export const INTERNAL_CONTEXT_MENU_KEY = {
   GLOBAL: {
     CUT: 'globalCut',

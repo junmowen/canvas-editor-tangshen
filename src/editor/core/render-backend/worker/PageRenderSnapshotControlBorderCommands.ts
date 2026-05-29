@@ -7,6 +7,7 @@ import { PageRenderSnapshotTextDecorationCommands } from './PageRenderSnapshotTe
 
 /** Text-control border accumulation across inline fragments. */
 export abstract class PageRenderSnapshotControlBorderCommands extends PageRenderSnapshotTextDecorationCommands {
+  /** 记录控件边框command，把当前命中结果写入缓存或统计。 */
   protected recordControlBorderCommand(
     commandList: IWorkerPaintCommand[],
     borderState: { x: number; y: number; width: number; height: number },

@@ -1,73 +1,37 @@
-import { ImageDisplay } from '../../../../../dataset/enum/Common'
-import { EditorMode } from '../../../../../dataset/enum/Editor'
-import { ElementType } from '../../../../../dataset/enum/Element'
-import { IPreviewerDrawOption } from '../../../../../interface/Previewer'
+import { resolveDisabledControlCursorIndex } from '../../../../modules/control/selection/resolveDisabledControlCursorIndex'
 import { CanvasEvent } from '../../../CanvasEvent'
 import { captureDragSnapshot } from '../drag-drop/CaptureDragSnapshotIntent'
 import {
   applyCheckboxToggle,
   applyRadioToggle,
-  applyValueLinkedControlToggle
-} from '../controls/ControlToggleIntent'
-import {
-  applyDateEffect,
-  applyHyperlinkEffect,
-  clearDateEffect,
-  clearHyperlinkEffect,
-  emitImageMousedownEffect
-} from '../../effects/PointerAuxiliaryEffect'
-import {
-  clearPreviewerResizer,
-  hideCursorForPreviewer,
-  showImageResizer
-} from '../../effects/PreviewerEffect'
-import {
-  renderSelectionStart
-} from '../../effects/PointerRenderEffect'
+  applyValueLinkedControlToggle,
+  canToggleFormControl,
+  renderBeforeFormControlToggle
+} from '../../../../modules/control/interaction/ControlToggleInteraction'
+import { handleImageSelectionStart } from '../../../../modules/image/interaction/handleImageSelectionStart'
+import { applyInlinePointerEffects } from '../../../../modules/inline/interaction/applyInlinePointerEffects'
+import { renderSelectionStart } from '../../effects/PointerRenderEffect'
 import {
   disposeTableTool,
   renderTableToolIfNeeded
-} from '../../effects/TableToolEffect'
-import { resolvePositionAtIndex } from '../../../utils/resolvePositionAtIndex'
-
-function resolveDisabledControlCursorIndex(
-  elementList: any[],
-  targetElementIndex: number
-) {
-  const targetElement = elementList[targetElementIndex]
-  const controlId = targetElement?.controlId
-  if (!controlId) return targetElementIndex
-
-  let controlStartIndex = targetElementIndex
-  while (
-    controlStartIndex > 0 &&
-    elementList[controlStartIndex - 1]?.controlId === controlId
-  ) {
-    controlStartIndex--
-  }
-
-  let controlEndIndex = targetElementIndex
-  while (
-    controlEndIndex + 1 < elementList.length &&
-    elementList[controlEndIndex + 1]?.controlId === controlId
-  ) {
-    controlEndIndex++
-  }
-
-  if (controlStartIndex > 0) {
-    return controlStartIndex - 1
-  }
-  if (controlEndIndex + 1 < elementList.length) {
-    return controlEndIndex + 1
-  }
-  return targetElementIndex
-}
+} from '../../../../modules/table/interaction/TableToolEffect'
+import { resolveTableShiftSelectionBoundary } from '../../../../modules/table/selection/resolveTablePointerSelection'
+import {
+  resolveTableAwarePointerIndex,
+  resolveTableAwarePointerTargetIndex
+} from '../../../../modules/table/selection/resolveTablePointerIndex'
+import { resolvePositionAtIndex } from '../../../../position/utils/resolvePositionAtIndex'
 
 export function runSelectionStartIntent(payload: {
+  /** 宿主容器节点，用于承载编辑器或渲染表面。 */
   host: CanvasEvent
+  /** 原始 DOM 事件对象，用于读取指针、键盘或剪贴板信息。 */
   evt: MouseEvent
+  /** 旧命中单元格标识，用于判断表格选区是否跨单元格变化。 */
   oldPositionContextTdId?: string
+  /** 是否只读，用于阻止内容修改。 */
   isReadonly: boolean
+  /** 位置命中结果，保存指针坐标解析后的索引和上下文。 */
   positionResult: any
 }) {
   const { host, evt, oldPositionContextTdId, isReadonly, positionResult } = payload
@@ -75,13 +39,11 @@ export function runSelectionStartIntent(payload: {
   const components = draw.getComponents()
   const coordinate = draw.getCoordinate()
   const rangeManager = components.range
-  const { index, isDirectHit, isCheckbox, isRadio, isImage, isTable, tdValueIndex } =
+  const { isDirectHit, isCheckbox, isRadio, isImage, isTable } =
     positionResult
   const elementList = draw.getObjectResolver().getElementList()
-  const curIndex = isTable ? tdValueIndex! : index
-  const targetElementIndex = isTable
-    ? tdValueIndex!
-    : (positionResult.hitTargetIndex ?? index)
+  const curIndex = resolveTableAwarePointerIndex(positionResult)
+  const targetElementIndex = resolveTableAwarePointerTargetIndex(positionResult)
   const targetPosition = resolvePositionAtIndex(draw, targetElementIndex)
   const curElement = elementList[targetElementIndex]
   const isDirectHitImage = !!(isDirectHit && isImage)
@@ -91,25 +53,27 @@ export function runSelectionStartIntent(payload: {
   const resolvedCursorIndex = isDisabledControl
     ? resolveDisabledControlCursorIndex(elementList, targetElementIndex)
     : curIndex
-  const canToggleFormControl =
-    draw.getMode() === EditorMode.FORM &&
-    (isDirectHitCheckbox || isDirectHitRadio)
+  const isFormControlToggleAllowed = canToggleFormControl({
+    draw,
+    isDirectHitCheckbox,
+    isDirectHitRadio
+  })
 
   if (~resolvedCursorIndex) {
     let startIndex = resolvedCursorIndex
     let endIndex = resolvedCursorIndex
     if (evt.shiftKey) {
       const { startIndex: oldStartIndex } = rangeManager.getEditBoundaryRange()
-      if (~oldStartIndex) {
-        const newPositionContext = coordinate.getPositionContext()
-        if (newPositionContext.tdId === oldPositionContextTdId) {
-          if (curIndex > oldStartIndex) {
-            startIndex = oldStartIndex
-          } else {
-            endIndex = oldStartIndex
-          }
-        }
-      }
+      const shiftBoundary = resolveTableShiftSelectionBoundary({
+        positionContext: coordinate.getPositionContext(),
+        oldPositionContextTdId,
+        curIndex,
+        oldStartIndex,
+        startIndex,
+        endIndex
+      })
+      startIndex = shiftBoundary.startIndex
+      endIndex = shiftBoundary.endIndex
     }
 
     rangeManager.setRange(startIndex, endIndex)
@@ -121,27 +85,11 @@ export function runSelectionStartIntent(payload: {
         : positionResult.cursorPosition || resolvePositionAtIndex(draw, curIndex)
     coordinate.setCursorPosition(nextCursorPosition)
 
-    if (isDirectHitCheckbox && (!isReadonly || canToggleFormControl)) {
-      if (draw.getMode() === EditorMode.FORM) {
-        draw.render({
-          curIndex,
-          isSetCursor: false,
-          isCompute: false,
-          isSubmitHistory: false,
-          pageRenderScope: 'visible'
-        })
-      }
+    if (isDirectHitCheckbox && (!isReadonly || isFormControlToggleAllowed)) {
+      renderBeforeFormControlToggle({ draw, curIndex })
       applyCheckboxToggle({ draw, element: curElement })
-    } else if (isDirectHitRadio && (!isReadonly || canToggleFormControl)) {
-      if (draw.getMode() === EditorMode.FORM) {
-        draw.render({
-          curIndex,
-          isSetCursor: false,
-          isCompute: false,
-          isSubmitHistory: false,
-          pageRenderScope: 'visible'
-        })
-      }
+    } else if (isDirectHitRadio && (!isReadonly || isFormControlToggleAllowed)) {
+      renderBeforeFormControlToggle({ draw, curIndex })
       applyRadioToggle({ draw, element: curElement })
     } else {
       const isHandledLinkedControl = applyValueLinkedControlToggle({
@@ -161,50 +109,24 @@ export function runSelectionStartIntent(payload: {
     }
   }
 
-  clearPreviewerResizer(draw)
-  if (isDirectHitImage) {
-    const previewerDrawOption: IPreviewerDrawOption = {
-      dragDisable:
-        isReadonly || (!curElement.controlId && draw.getMode() === EditorMode.FORM)
-    }
-    if (curElement.type === ElementType.LATEX) {
-      previewerDrawOption.mime = 'svg'
-      previewerDrawOption.srcKey = 'laTexSVG'
-    }
-    showImageResizer({
-      draw,
-      element: curElement,
-      position: targetPosition,
-      options: previewerDrawOption
-    })
-    hideCursorForPreviewer(draw)
-    captureDragSnapshot(host)
-    if (
-      curElement.imgDisplay === ImageDisplay.SURROUND ||
-      curElement.imgDisplay === ImageDisplay.FLOAT_TOP ||
-      curElement.imgDisplay === ImageDisplay.FLOAT_BOTTOM
-    ) {
-      components.imageParticle.createFloatImage(curElement)
-    }
-    emitImageMousedownEffect({ draw, evt, element: curElement })
-  }
+  handleImageSelectionStart({
+    draw,
+    evt,
+    element: curElement,
+    position: targetPosition,
+    isReadonly,
+    isDirectHitImage,
+    captureDragSnapshot: () => captureDragSnapshot(host)
+  })
 
   disposeTableTool(draw)
   renderTableToolIfNeeded({ draw, isTable, isReadonly })
 
-  clearHyperlinkEffect(draw)
-  applyHyperlinkEffect({
+  applyInlinePointerEffects({
     draw,
     evt,
     element: curElement,
-    position: targetPosition!
-  })
-
-  clearDateEffect(draw)
-  applyDateEffect({
-    draw,
-    element: curElement,
-    position: targetPosition!,
+    position: targetPosition,
     isReadonly
   })
 }

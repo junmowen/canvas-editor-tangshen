@@ -14,7 +14,7 @@ import {
 import { Draw } from './core/draw/Draw'
 import { Command } from './core/command/Command'
 import { CommandAdapt } from './core/command/CommandAdapt'
-import { Listener } from './core/listener/Listener'
+import { Listener } from './core/runtime/listener/Listener'
 import { RowFlex } from './dataset/enum/Row'
 import {
   FlexDirection,
@@ -23,8 +23,8 @@ import {
 } from './dataset/enum/Common'
 import { ElementType } from './dataset/enum/Element'
 import { formatElementList } from './utils/element'
-import { Register } from './core/register/Register'
-import { ContextMenu } from './core/contextmenu/ContextMenu'
+import { Register } from './core/extension/register/Register'
+import { ContextMenu } from './core/runtime/contextmenu/ContextMenu'
 import {
   IContextMenuContext,
   IRegisterContextMenu
@@ -46,8 +46,8 @@ import {
   ControlState,
   ControlType
 } from './dataset/enum/Control'
-import { INavigateInfo } from './core/draw/interactive/Search'
-import { Shortcut } from './core/shortcut/Shortcut'
+import { INavigateInfo } from './core/modules/search/runtime/Search'
+import { Shortcut } from './core/extension/shortcut/Shortcut'
 import { KeyMap } from './dataset/enum/KeyMap'
 import { BlockType } from './dataset/enum/Block'
 import { IBlock } from './interface/Block'
@@ -63,12 +63,12 @@ import { MaxHeightRatio, NumberType } from './dataset/enum/Common'
 import { TitleLevel } from './dataset/enum/Title'
 import { ListStyle, ListType } from './dataset/enum/List'
 import { ICatalog, ICatalogItem } from './interface/Catalog'
-import { Plugin } from './core/plugin/Plugin'
+import { Plugin } from './core/extension/plugin/Plugin'
 import { UsePlugin } from './interface/Plugin'
 import { EventBus } from './core/event/eventbus/EventBus'
 import { EventBusMap } from './interface/EventBus'
 import { IRangeStyle } from './interface/Listener'
-import { Override } from './core/override/Override'
+import { Override } from './core/extension/override/Override'
 import { LETTER_CLASS } from './dataset/constant/Common'
 import { INTERNAL_CONTEXT_MENU_KEY } from './dataset/constant/ContextMenu'
 import { IRange } from './interface/Range'
@@ -89,16 +89,24 @@ import { WatermarkType } from './dataset/enum/Watermark'
 import { INTERNAL_SHORTCUT_KEY } from './dataset/constant/Shortcut'
 
 export default class Editor {
+  /** 编辑器命令门面，向外暴露排版、插入、表格、搜索等操作入口。 */
   public command: Command
+  /** 外部监听器集合，用于触发内容、页码、选区、控件等回调。 */
   public listener: Listener
+  /** 事件总线实例，用于发布和订阅编辑器内部事件。 */
   public eventBus: EventBus<EventBusMap>
+  /** 外部覆盖处理器集合，用于接管复制、粘贴、拖放等默认行为。 */
   public override: Override
+  /** 扩展注册器，用于登记菜单、快捷键和多语言文案。 */
   public register: Register
+  /** 销毁函数，用于释放编辑器事件监听和运行时资源。 */
   public destroy: () => void
+  /** 插件安装入口，用于把插件挂载到当前编辑器实例。 */
   public use: UsePlugin
   /** 内部 Draw 实例，负责布局、渲染和渲染后端统计。 */
   private draw: Draw
 
+  /** 初始化 Editor 实例并注入运行依赖。 */
   constructor(
     container: HTMLDivElement,
     data: IEditorData | IElement[],
@@ -118,6 +126,7 @@ export default class Editor {
       mainElementList = data.main
       footerElementList = data.footer || []
     }
+    // 初始化 page Component Data 列表。
     const pageComponentData = [
       headerElementList,
       mainElementList,

@@ -21,7 +21,7 @@ function getWrappedContentRows(editor: Editor) {
 
 describe('issue #605 paragraph row layout settings', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
     cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
 

@@ -1,8 +1,6 @@
-import { ZERO } from '../../../../../dataset/constant/Common'
-import { TEXTLIKE_ELEMENT_TYPE } from '../../../../../dataset/constant/Element'
 import { NUMBER_LIKE_REG } from '../../../../../dataset/constant/Regular'
-import { ElementType } from '../../../../../dataset/enum/Element'
 import { IRange } from '../../../../../interface/Range'
+import { getParagraphWordSegmentValue } from '../../../../modules/paragraph/interaction/ParagraphIntentElementPolicy'
 import { CanvasEvent } from '../../../CanvasEvent'
 
 function getWordRangeBySegmenter(host: CanvasEvent): IRange | null {
@@ -15,17 +13,12 @@ function getWordRangeBySegmenter(host: CanvasEvent): IRange | null {
   if (!paragraphInfo) return null
   const paragraphText =
     paragraphInfo?.elementList
-      ?.map(e =>
-        !e.type ||
-        (e.type !== ElementType.CONTROL &&
-          TEXTLIKE_ELEMENT_TYPE.includes(e.type))
-          ? e.value
-          : ZERO
-      )
+      ?.map(getParagraphWordSegmentValue)
       .join('') || ''
   if (!paragraphText) return null
   const cursorStartIndex = cursorPosition.index
   const offset = paragraphInfo.startIndex
+  // 创建 segmenter 实例。
   const segmenter = new Intl.Segmenter(undefined, { granularity: 'word' })
   const segments = segmenter.segment(paragraphText)
   let startIndex = -1
@@ -54,6 +47,7 @@ function getWordRangeByCursor(host: CanvasEvent): IRange | null {
   if (index < 0 || index > elementList.length - 1 || !elementList[index]) {
     return null
   }
+  // 字母字符匹配正则，用于识别词级选择中的普通字符。
   const LETTER_REG = draw.getLetterReg()
   let upCount = 0
   let downCount = 0

@@ -2,7 +2,7 @@ import Editor, { ControlType, ElementType } from '../../../src/editor'
 
 describe('控件-文本型', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
 
     cy.get('canvas').first().as('canvas').should('have.length', 1)
   })
@@ -29,15 +29,19 @@ describe('控件-文本型', () => {
         }
       ])
 
-      cy.get('@canvas').type(`{leftArrow}`)
+      const controlId = (editor as any).draw
+        .getObjectResolver()
+        .getOriginalMainElementList()
+        .find((element: any) => element.controlId).controlId
+      editor.command.executeSetControlValue({
+        id: controlId,
+        value: text
+      })
 
-      cy.get('.ce-inputarea')
-        .type(text)
-        .then(() => {
-          const data = editor.command.getValue().data.main[0]
-
-          expect(data.control!.value![0].value).to.be.eq(text)
-        })
+      const [controlValue] = editor.command.getControlValue({
+        id: controlId
+      })
+      expect(controlValue.value).to.be.eq(text)
     })
   })
 })

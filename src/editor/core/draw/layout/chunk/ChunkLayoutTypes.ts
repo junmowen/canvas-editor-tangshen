@@ -2,7 +2,6 @@ import { IElement, IElementPosition } from '../../../../interface/Element'
 import { IRow } from '../../../../interface/Row'
 import { IDocumentChunk } from '../ChunkDataTypes'
 
-/** chunk 布局补丁执行结果。 */
 export interface IChunkLayoutPatchResult {
   /** 是否成功写回运行时布局。 */
   patched: boolean
@@ -18,7 +17,7 @@ export interface IChunkLayoutPatchResult {
   reason?: string
 }
 
-/** chunk 布局管线统计。 */
+/** 分块布局pipelinestats契约，用于约束内部流程中传递的数据结构。 */
 export interface IChunkLayoutPipelineStats {
   /** 尝试 patch 次数。 */
   attemptCount: number
@@ -86,7 +85,7 @@ export interface IChunkLayoutPipelineStats {
   dirtyRangeScheduleFallbackCount: number
 }
 
-/** chunk patch 前的上下文，负责把命中判断和后续测量输入解耦。 */
+/** 分块布局补丁上下文，汇总流程中需要共享的定位、状态和依赖。 */
 export interface IChunkLayoutPatchContext {
   /** 命中的文档 chunk。 */
   chunk: IDocumentChunk
@@ -112,7 +111,6 @@ export interface IChunkLayoutPatchContext {
   innerWidth: number
 }
 
-/** chunk 局部测量结果。 */
 export interface IChunkLayoutMeasureResult {
   /** 当前 chunk 的真实元素列表，运行时元素切片只能以它为准。 */
   elementList: IElement[]

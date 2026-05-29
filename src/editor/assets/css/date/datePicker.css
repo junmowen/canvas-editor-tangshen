@@ -1,3 +1,4 @@
+/* 日期选择器弹层容器。 */
 .ce-date-container {
   display: none;
   width: 300px;
@@ -15,18 +16,22 @@
   box-shadow: 0 2px 12px 0 rgb(0 0 0 / 10%);
 }
 
+/* 日期选择器弹层容器。 */
 .ce-date-container.active {
   display: block;
 }
 
+/* 日期选择器视图切换容器。 */
 .ce-date-wrap {
   display: none;
 }
 
+/* 日期选择器视图切换容器。 */
 .ce-date-wrap.active {
   display: block;
 }
 
+/* 日期选择器标题与年月切换区域。 */
 .ce-date-title {
   display: flex;
   justify-content: center;
@@ -36,39 +41,48 @@
   font-size: 16px;
 }
 
+/* 日期选择器标题与年月切换区域。 */
 .ce-date-title>span {
   display: inline-block;
 }
 
+/* 日期选择器标题与年月切换区域。 */
 .ce-date-title>span:not(.ce-date-title__now) {
   font-family: cursive;
   cursor: pointer;
 }
 
+/* 日期选择器标题与年月切换区域。 */
 .ce-date-title>span:not(.ce-date-title__now):hover {
   color: #5175F4;
 }
 
+/* 日期选择器标题与年月切换区域。 */
 .ce-date-title .ce-date-title__pre-year {
   width: 15%;
 }
 
+/* 日期选择器标题与年月切换区域。 */
 .ce-date-title .ce-date-title__pre-month {
   width: 15%;
 }
 
+/* 日期选择器标题与年月切换区域。 */
 .ce-date-title .ce-date-title__now {
   width: 40%;
 }
 
+/* 日期选择器标题与年月切换区域。 */
 .ce-date-title .ce-date-title__next-year {
   width: 15%;
 }
 
+/* 日期选择器标题与年月切换区域。 */
 .ce-date-title .ce-date-title__next-month {
   width: 15%;
 }
 
+/* 日期选择器星期标题行。 */
 .ce-date-week {
   width: 100%;
   display: flex;
@@ -78,6 +92,7 @@
   border-bottom: 1px solid #e4e7ed;
 }
 
+/* 日期选择器星期标题行。 */
 .ce-date-week>span {
   list-style: none;
   width: calc(100%/7);
@@ -86,6 +101,7 @@
   font-size: 14px;
 }
 
+/* 日期选择器日期网格。 */
 .ce-date-day {
   width: 100%;
   display: flex;
@@ -94,10 +110,12 @@
   margin-top: 5px;
 }
 
+/* 日期选择器日期网格。 */
 .ce-date-day.ce-date-day--grid {
   padding-top: 5px;
 }
 
+/* 日期选择器日期网格。 */
 .ce-date-day>div {
   width: calc(100%/7);
   height: 40px;
@@ -109,58 +127,70 @@
   border-radius: 4px;
 }
 
+/* 日期选择器日期网格。 */
 .ce-date-day.ce-date-day--grid>div {
   width: 25%;
 }
 
+/* 日期选择器日期网格。 */
 .ce-date-day>div:hover {
   color: #5175F4;
   opacity: .8;
 }
 
+/* 日期选择器日期网格。 */
 .ce-date-day>div.active {
   color: #5175F4;
   font-weight: 700;
 }
 
+/* 日期选择器日期网格。 */
 .ce-date-day>div.disable {
   color: #c0c4cc;
 }
 
+/* 日期选择器日期网格。 */
 .ce-date-day>div.select {
   color: #fff;
   background-color: #5175F4;
 }
 
+/* 时间选择器滚动列和选中态样式。 */
 .ce-time-wrap {
   display: none;
   padding: 10px;
   height: 286px;
 }
 
+/* 时间选择器滚动列和选中态样式。 */
 .ce-time-wrap ::-webkit-scrollbar {
   width: 0;
 }
 
+/* 时间选择器滚动列和选中态样式。 */
 .ce-time-wrap.active {
   display: flex;
 }
 
+/* 时间选择器滚动列和选中态样式。 */
 .ce-time-wrap li {
   list-style: none;
 }
 
+/* 时间选择器滚动列和选中态样式。 */
 .ce-time-wrap>li {
   width: 33.3%;
   height: 100%;
   text-align: center;
 }
 
+/* 时间选择器滚动列和选中态样式。 */
 .ce-time-wrap>li>span {
   transform: translateY(-5px);
   display: inline-block;
 }
 
+/* 时间选择器滚动列和选中态样式。 */
 .ce-time-wrap>li>ol {
   height: calc(100% - 20px);
   overflow-y: auto;
@@ -168,29 +198,35 @@
   position: relative;
 }
 
+/* 时间选择器滚动列和选中态样式。 */
 .ce-time-wrap>li:first-child>ol {
   border-right: 0;
 }
 
+/* 时间选择器滚动列和选中态样式。 */
 .ce-time-wrap>li:last-child>ol {
   border-left: 0;
 }
 
+/* 时间选择器滚动列和选中态样式。 */
 .ce-time-wrap>li>ol>li {
   line-height: 30px;
   cursor: pointer;
   transition: all .3s;
 }
 
+/* 时间选择器滚动列和选中态样式。 */
 .ce-time-wrap>li>ol>li:hover {
   background-color: #eaeaea;
 }
 
+/* 时间选择器滚动列和选中态样式。 */
 .ce-time-wrap>li>ol>li.active {
   color: #ffffff;
   background: #5175F4;
 }
 
+/* 日期选择器底部操作区。 */
 .ce-date-menu {
   width: 100%;
   height: 28px;
@@ -202,6 +238,7 @@
   border-top: 1px solid #e4e7ed;
 }
 
+/* 日期选择器底部操作区。 */
 .ce-date-menu button {
   display: inline-block;
   line-height: 1;
@@ -224,11 +261,13 @@
   margin-left: 10px;
 }
 
+/* 日期选择器底部操作区。 */
 .ce-date-menu button:hover {
   color: #5175F4;
   border-color: #5175F4;
 }
 
+/* 日期选择器底部操作区。 */
 .ce-date-menu button.ce-date-menu__time {
   border: 1px solid transparent;
   position: absolute;
@@ -236,6 +275,7 @@
   margin-left: 0;
 }
 
+/* 日期选择器底部操作区。 */
 .ce-date-menu button.ce-date-menu__time:hover {
   color: #5175F4;
 }

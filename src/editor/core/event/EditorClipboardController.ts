@@ -1,10 +1,11 @@
 import { IPasteOption } from '../../interface/Event'
+import { pasteImageFile } from '../modules/image/clipboard/pasteImageFile'
 import { CanvasEvent } from './CanvasEvent'
 import { pasteByClipboardApi } from './clipboard/pasteByClipboardApi'
 import { pasteByClipboardEvent } from './clipboard/pasteByClipboardEvent'
-import { pasteImageFile } from './clipboard/pasteImageFile'
 
 export class EditorClipboardController {
+  /** 初始化 EditorClipboardController 实例并注入运行依赖。 */
   constructor(private readonly host: CanvasEvent) {}
 
   public pasteByEvent(evt: ClipboardEvent) {
@@ -16,6 +17,6 @@ export class EditorClipboardController {
   }
 
   public pasteImage(file: File | Blob) {
-    pasteImageFile(this.host, file)
+    pasteImageFile(this.host.getDraw(), file)
   }
 }

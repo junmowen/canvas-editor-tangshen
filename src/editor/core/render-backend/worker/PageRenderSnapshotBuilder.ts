@@ -1,6 +1,9 @@
 
 import { IDrawPagePayload } from '../../../interface/Draw'
-import { ImageDisplay } from '../../../dataset/enum/Common'
+import {
+  getWorkerSnapshotBottomFloatImageLayerList,
+  getWorkerSnapshotTopFloatImageLayerList
+} from '../../modules/image/render/WorkerSnapshotImageRenderPolicy'
 import type { Draw } from '../../draw/Draw'
 import { RenderLayer } from '../types/RenderLayer'
 import { IRenderSurface } from '../types/RenderSurface'
@@ -10,14 +13,16 @@ import {
 } from './WorkerRenderProtocol'
 import { PageRenderSnapshotValidator } from './PageRenderSnapshotValidator'
 
-/** 快照构建参数。 */
+/** build后台线程页面snapshot调用载荷，聚合执行该操作所需的输入数据。 */
 export interface IBuildWorkerPageSnapshotPayload {
+  /** 任务标识，用于关联异步渲染请求和响应。 */
   jobId: number
   pagePayload: IDrawPagePayload
 }
 
 /** worker 快照构建器，只输出可结构化克隆的数据。 */
 export class PageRenderSnapshotBuilder extends PageRenderSnapshotValidator {
+  /** 初始化 PageRenderSnapshotBuilder 实例并注入运行依赖。 */
   public constructor(draw: Draw) {
     super(draw)
   }
@@ -72,14 +77,17 @@ export class PageRenderSnapshotBuilder extends PageRenderSnapshotValidator {
       ...this.buildBackgroundCommands(pageNo),
       ...this.buildMarginCommands(),
       ...this.buildAreaCommands(pageNo),
-      ...this.buildFloatingImageCommands(pageNo, [ImageDisplay.FLOAT_BOTTOM]),
+      ...this.buildFloatingImageCommands(
+        pageNo,
+        getWorkerSnapshotBottomFloatImageLayerList()
+      ),
       ...this.buildMainTextCommands(pagePayload),
       ...this.buildPlaceholderCommands(),
       ...this.buildPagingFrameCommands(pagePayload),
-      ...this.buildFloatingImageCommands(pageNo, [
-        ImageDisplay.FLOAT_TOP,
-        ImageDisplay.SURROUND
-      ]),
+      ...this.buildFloatingImageCommands(
+        pageNo,
+        getWorkerSnapshotTopFloatImageLayerList()
+      ),
       ...this.buildLineNumberCommands(pagePayload),
       ...this.buildPageBorderCommands(),
       ...this.buildBadgeCommands(pagePayload),

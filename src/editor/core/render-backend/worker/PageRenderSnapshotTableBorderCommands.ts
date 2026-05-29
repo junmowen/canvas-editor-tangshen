@@ -10,6 +10,7 @@ import { PageRenderSnapshotTableCellBorderCommands } from './PageRenderSnapshotT
 
 /** Table external and internal border traversal. */
 export abstract class PageRenderSnapshotTableBorderCommands extends PageRenderSnapshotTableCellBorderCommands {
+  /** 写入表格边框commands，追加后续渲染需要的命令数据。 */
   protected pushTableBorderCommands(
     commandList: IWorkerPaintCommand[],
     table: IElement | ITableFragmentDescriptor,

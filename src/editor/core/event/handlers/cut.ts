@@ -1,7 +1,9 @@
 import { writeElementList } from '../../../utils/clipboard'
+import { cutActiveControl } from '../../modules/control/interaction/cutActiveControl'
 import { CanvasEvent } from '../CanvasEvent'
-import { resolvePositionAtIndex } from '../utils/resolvePositionAtIndex'
+import { resolvePositionAtIndex } from '../../position/utils/resolvePositionAtIndex'
 
+/** 处理剪切操作，复制选区内容后删除原文档范围。 */
 export function cut(host: CanvasEvent) {
   const draw = host.getDraw()
   const components = draw.getComponents()
@@ -41,9 +43,9 @@ export function cut(host: CanvasEvent) {
   writeElementList(elementList.slice(start + 1, end + 1), options)
   const control = components.control
   let curIndex: number
-  if (control.getActiveControl() && control.getIsRangeWithinControl()) {
-    curIndex = control.cut()
-    control.emitControlContentChange()
+  const activeControlCutIndex = cutActiveControl(control)
+  if (activeControlCutIndex !== null) {
+    curIndex = activeControlCutIndex
   } else {
     draw.spliceElementList(elementList, start + 1, end - start)
     curIndex = start

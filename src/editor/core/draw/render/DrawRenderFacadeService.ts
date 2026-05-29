@@ -1,9 +1,9 @@
 import { IDrawOption } from '../../../interface/Draw'
-import { ITableLayoutSnapshot } from '../../table/layout/TableLayoutSnapshotTypes'
+import { ITableLayoutSnapshot } from '../../modules/table/layout/TableLayoutSnapshotTypes'
 import type { Draw } from '../Draw'
 import { DrawRenderFinalizeService } from './DrawRenderFinalizeService'
 import { DrawRenderSurfaceInvalidator } from './DrawRenderSurfaceInvalidator'
-import { TableTypingRenderHelper } from './TableTypingRenderHelper'
+import { TableTypingRenderHelper } from '../../modules/table/render/TableTypingRenderHelper'
 import { TypingPatchCoordinator } from './TypingPatchCoordinator'
 
 /** Draw 渲染门面服务，统一编排排版、画布刷新、光标恢复和历史提交。 */
@@ -155,14 +155,23 @@ export class DrawRenderFacadeService {
 
   /** 输入态 chunk 管线渲染，不再调度 idle 整篇 layout 回放。 */
   private renderTypingChunkPipeline(payload: {
+    /** 当前元素索引，用于记录遍历或命中过程的位置。 */
     curIndex?: number
+    /** 编辑索引，用于定位本次修改发生的位置。 */
     editIndex?: number
+    /** 已插入数量，用于累加本次写入的元素个数。 */
     insertedCount: number
+    /** 是否跳过输入预览，用于直接进入稳定的布局刷新路径。 */
     isSkipTypingPreview: boolean
+    /** 是否提交历史记录，用于控制本次变更是否可撤销。 */
     isSubmitHistory: boolean
+    /** 是否同步设置光标，用于控制操作完成后的焦点位置。 */
     isSetCursor: boolean
+    /** 是否首次渲染，用于区分初始化和增量刷新。 */
     isFirstRender: boolean
+    /** 是否初始化阶段，用于区分首次构建和后续更新。 */
     isInit: boolean
+    /** 是否来自历史记录，用于区分撤销重做和普通编辑。 */
     isSourceHistory: boolean
   }) {
     const {
@@ -251,12 +260,19 @@ export class DrawRenderFacadeService {
 
   /** 输入态正确性回退：当页级传播后方存在表格时，先同步完整 layout 保证父子 chunk 一致。 */
   private renderTypingFullLayoutFallback(payload: {
+    /** 当前元素索引，用于记录遍历或命中过程的位置。 */
     curIndex?: number
+    /** 是否提交历史记录，用于控制本次变更是否可撤销。 */
     isSubmitHistory: boolean
+    /** 是否同步设置光标，用于控制操作完成后的焦点位置。 */
     isSetCursor: boolean
+    /** 是否首次渲染，用于区分初始化和增量刷新。 */
     isFirstRender: boolean
+    /** 是否初始化阶段，用于区分首次构建和后续更新。 */
     isInit: boolean
+    /** 是否来自历史记录，用于区分撤销重做和普通编辑。 */
     isSourceHistory: boolean
+    /** 旧分页数量，用于判断分页变化范围。 */
     oldPageSize: number
   }) {
     const {
@@ -306,12 +322,19 @@ export class DrawRenderFacadeService {
 
   /** 表格输入态渲染：先恢复原表格分页器作为唯一布局真相。 */
   private renderTypingTableCellChunkPipeline(payload: {
+    /** 当前元素索引，用于记录遍历或命中过程的位置。 */
     curIndex?: number
+    /** 编辑索引，用于定位本次修改发生的位置。 */
     editIndex?: number
+    /** 已插入数量，用于累加本次写入的元素个数。 */
     insertedCount: number
+    /** 是否提交历史记录，用于控制本次变更是否可撤销。 */
     isSubmitHistory: boolean
+    /** 是否首次渲染，用于区分初始化和增量刷新。 */
     isFirstRender: boolean
+    /** 是否初始化阶段，用于区分首次构建和后续更新。 */
     isInit: boolean
+    /** 是否来自历史记录，用于区分撤销重做和普通编辑。 */
     isSourceHistory: boolean
   }) {
     const {

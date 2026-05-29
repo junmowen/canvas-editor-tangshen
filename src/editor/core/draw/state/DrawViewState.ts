@@ -1,16 +1,19 @@
 import { DeepRequired } from '../../../interface/Common'
 import { EventBusMap } from '../../../interface/EventBus'
 import { IEditorOption } from '../../../interface/Editor'
-import { Listener } from '../../listener/Listener'
+import { Listener } from '../../runtime/listener/Listener'
 import { EventBus } from '../../event/eventbus/EventBus'
 
 export class DrawViewState {
+  /** 当前对象所属页码。 */
   private pageNo = 0
   private renderCount = 0
   private pagePixelRatio: number | null = null
   private visiblePageNoList: number[] = []
+  /** 当前视口交叉页码，用于同步可见页和当前页状态。 */
   private intersectionPageNo = 0
 
+  /** 初始化 DrawViewState 实例并注入运行依赖。 */
   constructor(
     private readonly listener: Listener,
     private readonly eventBus: EventBus<EventBusMap>,

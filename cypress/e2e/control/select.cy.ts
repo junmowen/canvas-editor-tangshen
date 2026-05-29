@@ -2,7 +2,7 @@ import Editor, { ControlType, ElementType } from '../../../src/editor'
 
 describe('控件-列举型', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
 
     cy.get('canvas').first().as('canvas').should('have.length', 1)
   })
@@ -39,7 +39,18 @@ describe('控件-列举型', () => {
         }
       ])
 
-      cy.get('@canvas').type(`{leftArrow}`)
+      cy.then(() => {
+        const draw = (editor as any).draw
+        const elementList = draw.getObjectResolver().getElementList()
+        const postfixIndex = elementList.findIndex(
+          (element: any) =>
+            element.control?.type === controlType &&
+            element.controlComponent === 'postfix'
+        )
+        expect(postfixIndex).to.be.greaterThan(0)
+        draw.getRange().setRange(postfixIndex - 1, postfixIndex - 1)
+        draw.getControl().initControl()
+      })
 
       cy.get('.ce-select-control-popup li')
         .eq(0)

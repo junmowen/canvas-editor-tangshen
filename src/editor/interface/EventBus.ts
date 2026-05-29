@@ -17,6 +17,7 @@ import {
   IZoneChange
 } from './Listener'
 
+/** 事件busmap，描述事件名、键名或索引到处理数据的映射关系。 */
 export interface EventBusMap {
   rangeStyleChange: IRangeStyleChange
   visiblePageNoListChange: IVisiblePageNoListChange

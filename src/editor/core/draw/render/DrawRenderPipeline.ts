@@ -2,6 +2,7 @@ import { IDrawOption } from '../../../interface/Draw'
 import type { Draw } from '../Draw'
 
 export class DrawRenderPipeline {
+  /** 初始化 DrawRenderPipeline 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
   public render(payload: Required<Pick<IDrawOption, 'isLazy' | 'pageRenderScope'>>) {
@@ -23,6 +24,7 @@ export class DrawRenderPipeline {
     this.draw.getServices().pageRenderer.immediateRender()
   }
 
+  /** 清理脏区state，释放缓存或移除旧的界面状态。 */
   private _clearDirtyState(options?: { keepVisiblePagesDirty?: boolean }) {
     if (!options?.keepVisiblePagesDirty) {
       this.draw.getServices().renderInvalidationManager.clearVisiblePagesDirty()

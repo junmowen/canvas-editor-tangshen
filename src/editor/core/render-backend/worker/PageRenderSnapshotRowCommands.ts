@@ -1,9 +1,11 @@
 
-import { ElementType } from '../../../dataset/enum/Element'
-import { EditorMode, EditorZone } from '../../../dataset/enum/Editor'
-import { ImageDisplay } from '../../../dataset/enum/Common'
+import { EditorMode } from '../../../dataset/enum/Editor'
 import { IDrawPagePayload } from '../../../interface/Draw'
 import { IElementPosition } from '../../../interface/Element'
+import {
+  resolveWorkerSnapshotFloatingImageRect,
+  type TWorkerSnapshotImageLayer
+} from '../../modules/image/render/WorkerSnapshotImageRenderPolicy'
 import { IWorkerPaintCommand } from './WorkerRenderProtocol'
 import { PageRenderSnapshotRowElementCommands } from './PageRenderSnapshotRowElementCommands'
 
@@ -31,6 +33,7 @@ export abstract class PageRenderSnapshotRowCommands extends PageRenderSnapshotRo
     positionList: IElementPosition[],
     alpha: number,
     options: {
+      /** 绘制行break开关，用于控制当前流程的判断分支。 */
       drawLineBreak?: boolean
     } = {}
   ) {
@@ -104,7 +107,7 @@ export abstract class PageRenderSnapshotRowCommands extends PageRenderSnapshotRo
 
   protected buildFloatingImageCommands(
     pageNo: number,
-    imgDisplays: ImageDisplay[]
+    imageLayerList: TWorkerSnapshotImageLayer[]
   ): IWorkerPaintCommand[] {
     const { scale } = this.draw.getRuntime().getOptions()
     const commandList: IWorkerPaintCommand[] = []
@@ -112,24 +115,17 @@ export abstract class PageRenderSnapshotRowCommands extends PageRenderSnapshotRo
     for (let i = 0; i < floatPositionList.length; i++) {
       const floatPosition = floatPositionList[i]
       const element = floatPosition.element
-      if (
-        (pageNo === floatPosition.pageNo ||
-          floatPosition.zone === EditorZone.HEADER ||
-          floatPosition.zone === EditorZone.FOOTER) &&
-        element.type === ElementType.IMAGE &&
-        element.imgDisplay &&
-        imgDisplays.includes(element.imgDisplay) &&
-        element.imgFloatPosition
-      ) {
+      const rect = resolveWorkerSnapshotFloatingImageRect({
+        pageNo,
+        floatPosition,
+        imageLayerList,
+        scale
+      })
+      if (rect) {
         commandList.push({
           type: 'drawImage',
           src: element.value,
-          rect: {
-            x: element.imgFloatPosition.x * scale,
-            y: element.imgFloatPosition.y * scale,
-            width: element.width! * scale,
-            height: element.height! * scale
-          }
+          rect
         })
       }
     }

@@ -2,6 +2,7 @@ import { IPageNumber } from '../../interface/PageNumber'
 import { NumberType } from '../enum/Common'
 import { RowFlex } from '../enum/Row'
 
+// 页码格式占位符映射，用于替换当前页和总页数。
 export const FORMAT_PLACEHOLDER = {
   PAGE_NO: '{pageNo}',
   PAGE_COUNT: '{pageCount}'

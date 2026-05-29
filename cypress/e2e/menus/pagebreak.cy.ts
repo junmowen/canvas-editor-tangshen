@@ -2,7 +2,7 @@ import Editor from '../../../src/editor'
 
 describe('菜单-分页符', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
 
     cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })

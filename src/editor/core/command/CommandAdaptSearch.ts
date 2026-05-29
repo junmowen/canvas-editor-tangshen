@@ -2,7 +2,7 @@ import { CommandAdaptMedia } from './CommandAdaptMedia'
 import { EditorMode } from '../../dataset/enum/Editor'
 import { IReplaceOption, ISearchOption } from '../../interface/Search'
 import { printImageBase64 } from '../../utils/print'
-import { INavigateInfo } from '../draw/interactive/Search'
+import { INavigateInfo } from '../modules/search/runtime/Search'
 
 /**
  * 搜索替换命令适配模块，负责全文搜索、结果导航和替换命令。
@@ -50,6 +50,7 @@ export class CommandAdaptSearch extends CommandAdaptMedia {
     this.draw.getSearch().replace(payload, option)
   }
 
+  /** 打印当前项，生成打印或导出需要的内容。 */
   public async print() {
     const { scale, printPixelRatio, paperDirection, width, height } =
       this.options

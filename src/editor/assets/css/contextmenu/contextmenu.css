@@ -1,3 +1,4 @@
+/* 右键菜单外层定位容器。 */
 .ce-contextmenu-container {
   z-index: 9;
   position: fixed;
@@ -11,11 +12,13 @@
   border-radius: 2px;
 }
 
+/* 右键菜单内容列表及子菜单样式。 */
 .ce-contextmenu-content {
   display: flex;
   flex-direction: column;
 }
 
+/* 右键菜单内容列表及子菜单样式。 */
 .ce-contextmenu-content .ce-contextmenu-sub-item::after {
   position: absolute;
   content: "";
@@ -25,6 +28,7 @@
   background: url(../../images/submenu-dropdown.svg);
 }
 
+/* 右键菜单内容列表及子菜单样式。 */
 .ce-contextmenu-content .ce-contextmenu-item {
   min-width: 140px;
   padding: 0 32px 0 16px;
@@ -36,10 +40,12 @@
   cursor: pointer;
 }
 
+/* 右键菜单内容列表及子菜单样式。 */
 .ce-contextmenu-content .ce-contextmenu-item.hover {
   background: rgba(25, 55, 88, .04);
 }
 
+/* 右键菜单内容列表及子菜单样式。 */
 .ce-contextmenu-content .ce-contextmenu-item span {
   max-width: 300px;
   font-size: 12px;
@@ -49,6 +55,7 @@
   text-overflow: ellipsis;
 }
 
+/* 右键菜单内容列表及子菜单样式。 */
 .ce-contextmenu-content .ce-contextmenu-item span.ce-shortcut {
   color: #767c85;
   height: 30px;
@@ -58,6 +65,7 @@
   margin-left: 20px;
 }
 
+/* 右键菜单内容列表及子菜单样式。 */
 .ce-contextmenu-content .ce-contextmenu-item i {
   width: 16px;
   height: 16px;
@@ -69,128 +77,159 @@
   margin-right: 8px;
 }
 
+/* 右键菜单分隔线。 */
 .ce-contextmenu-divider {
   background-color: #e2e6ed;
   margin: 4px 16px;
   height: 1px;
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-print {
   background-image: url(../../../assets/images/print.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-image {
   background-image: url(../../../assets/images/image.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-image-change {
   background-image: url(../../../assets/images/image-change.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-insert-row-col {
   background-image: url(../../../assets/images/insert-row-col.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-insert-top-row {
   background-image: url(../../../assets/images/insert-top-row.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-insert-bottom-row {
   background-image: url(../../../assets/images/insert-bottom-row.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-insert-left-col {
   background-image: url(../../../assets/images/insert-left-col.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-insert-right-col {
   background-image: url(../../../assets/images/insert-right-col.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-delete-row-col {
   background-image: url(../../../assets/images/delete-row-col.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-delete-row {
   background-image: url(../../../assets/images/delete-row.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-delete-col {
   background-image: url(../../../assets/images/delete-col.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-delete-table {
   background-image: url(../../../assets/images/delete-table.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-merge-cell {
   background-image: url(../../../assets/images/merge-cell.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-merge-cancel-cell {
   background-image: url(../../../assets/images/merge-cancel-cell.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-vertical-align {
   background-image: url(../../../assets/images/vertical-align.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-vertical-align-top {
   background-image: url(../../../assets/images/vertical-align-top.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-vertical-align-middle {
   background-image: url(../../../assets/images/vertical-align-middle.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-vertical-align-bottom {
   background-image: url(../../../assets/images/vertical-align-bottom.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-border-all {
   background-image: url(../../../assets/images/table-border-all.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-border-empty {
   background-image: url(../../../assets/images/table-border-empty.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-border-dash {
   background-image: url(../../../assets/images/table-border-dash.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-border-external {
   background-image: url(../../../assets/images/table-border-external.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-border-internal {
   background-image: url(../../../assets/images/table-border-internal.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-border-td {
   background-image: url(../../../assets/images/table-border-td.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-border-td-top {
   background-image: url(../../../assets/images/table-border-td-top.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-border-td-left {
   background-image: url(../../../assets/images/table-border-td-left.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-border-td-bottom {
   background-image: url(../../../assets/images/table-border-td-bottom.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-border-td-right {
   background-image: url(../../../assets/images/table-border-td-right.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-border-td-forward {
   background-image: url(../../../assets/images/table-border-td-forward.svg);
 }
 
+/* 右键菜单图标资源样式。 */
 .ce-contextmenu-border-td-back {
   background-image: url(../../../assets/images/table-border-td-back.svg);
 }

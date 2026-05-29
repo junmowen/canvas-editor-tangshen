@@ -1,5 +1,4 @@
 import { ZERO } from '../../../dataset/constant/Common'
-import { ElementType } from '../../../dataset/enum/Element'
 import { ISetTrackChangeOption } from '../../../interface/Command'
 import {
   IElement,
@@ -8,8 +7,15 @@ import {
   TrackChangeType
 } from '../../../interface/Element'
 import { deepClone, getUUID } from '../../../utils'
-import { forEachTableCell } from '../../table/utils/TableCellTraversal'
+import {
+  forEachTrackChangeTableCell,
+  forEachTrackChangeTableFragmentPosition,
+  getTrackChangeTableRowCount,
+  hasTrackChangeTableElement,
+  isTrackChangeContainerElement
+} from '../../modules/table/track-change/TableTrackChangePolicy'
 import type { Draw } from '../Draw'
+/** trackchangerecord契约，用于约束内部流程中传递的数据结构。 */
 export interface ITrackChangeRecord {
   /** 同一次修订操作的唯一标识。 */
   id: string
@@ -25,6 +31,7 @@ export interface ITrackChangeRecord {
   rectList: ITrackChangeRect[]
 }
 
+/** trackchangerect，描述选区、元素或页面中的矩形区域。 */
 export interface ITrackChangeRect {
   /** 页码，从 0 开始。 */
   pageNo: number
@@ -50,9 +57,12 @@ export interface ITrackChangeRect {
 export class TrackChangeService {
   /** 连续输入或连续删除停顿超过该时间后，视为一次编辑动作结束。 */
   private static readonly EDIT_SESSION_IDLE_MS = 800
+  /** active Track Change 回调入口，用于通知外部或响应对应事件。 */
   private activeTrackChange: ITrackChange | null = null
+  /** 留痕编辑会话定时器，用于在输入停顿后结束当前修订批次。 */
   private activeTrackChangeTimer: ReturnType<typeof setTimeout> | null = null
 
+  /** 初始化 TrackChangeService 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
   /** 当前是否开启修订留痕。 */
@@ -245,7 +255,7 @@ export class TrackChangeService {
       footerCount: footerElementList.length,
       recordCount: recordMap.size,
       tableRecordCount: recordList.filter(record =>
-        record.elementList.some(element => element.type === ElementType.TABLE)
+        hasTrackChangeTableElement(record.elementList)
       ).length,
       emptyRectRecordCount: recordList.filter(record => !record.rectList.length)
         .length,
@@ -312,17 +322,15 @@ export class TrackChangeService {
         isChanged = true
         continue
       }
-      if (element.type === ElementType.TABLE && element.trList) {
-        forEachTableCell({
-          tableElement: element,
-          tableIndex: index,
-          visitor: ({ td }) => {
-            if (this.resolveElementList(td.value, isAccept, match)) {
-              isChanged = true
-            }
+      forEachTrackChangeTableCell({
+        element,
+        elementIndex: index,
+        visitor: ({ td }) => {
+          if (this.resolveElementList(td.value, isAccept, match)) {
+            isChanged = true
           }
-        })
-      }
+        }
+      })
       if (element.valueList?.length) {
         if (this.resolveElementList(element.valueList, isAccept, match)) {
           isChanged = true
@@ -342,7 +350,7 @@ export class TrackChangeService {
   ) {
     elementList.forEach((element, elementIndex) => {
       const change = element.trackChange
-      if (element.type === ElementType.TABLE || element.valueList?.length) {
+      if (isTrackChangeContainerElement(element)) {
         console.log('[track-change] collect element', {
           elementType: element.type,
           elementId: element.id,
@@ -351,7 +359,7 @@ export class TrackChangeService {
           changeId: change?.id || '',
           changeType: change?.type || '',
           childCount: element.valueList?.length || 0,
-          tableRowCount: element.type === ElementType.TABLE ? element.trList?.length || 0 : 0
+          tableRowCount: getTrackChangeTableRowCount(element)
         })
       }
       if (change) {
@@ -384,28 +392,26 @@ export class TrackChangeService {
           trackChangeMap.set(change.id, change)
         }
       }
-      if (element.type === ElementType.TABLE && element.trList) {
-        forEachTableCell({
-          tableElement: element,
-          tableIndex: elementIndex,
-          visitor: ({ td }) => {
-            this.collectRecordList(
-              td.value,
-              recordMap,
-              collectedElementKeySet,
-              elementTrackChangeIdMap,
-              trackChangeMap
-            )
-            this.collectRecordListFromPositionList(
-              td.positionList || [],
-              recordMap,
-              collectedElementKeySet,
-              elementTrackChangeIdMap,
-              trackChangeMap
-            )
-          }
-        })
-      }
+      forEachTrackChangeTableCell({
+        element,
+        elementIndex,
+        visitor: ({ td }) => {
+          this.collectRecordList(
+            td.value,
+            recordMap,
+            collectedElementKeySet,
+            elementTrackChangeIdMap,
+            trackChangeMap
+          )
+          this.collectRecordListFromPositionList(
+            td.positionList || [],
+            recordMap,
+            collectedElementKeySet,
+            elementTrackChangeIdMap,
+            trackChangeMap
+          )
+        }
+      })
       if (element.valueList?.length) {
         this.collectRecordList(
           element.valueList,
@@ -556,34 +562,32 @@ export class TrackChangeService {
     trackChangeMap: Map<string, ITrackChange>
   ) {
     elementList.forEach((element, elementIndex) => {
-      if (element.type === ElementType.TABLE && element.trList) {
-        forEachTableCell({
-          tableElement: element,
-          tableIndex: elementIndex,
-          visitor: ({ td }) => {
-            this.collectPositionRectList(
-              td.positionList || [],
-              recordMap,
-              collectedRectKeySet,
-              elementTrackChangeIdMap,
-              trackChangeMap
-            )
-            this.collectTableCellFallbackRectList(
-              td.value || [],
-              td.positionList || [],
-              recordMap,
-              collectedRectKeySet
-            )
-            this.collectElementPositionRectList(
-              td.value || [],
-              recordMap,
-              collectedRectKeySet,
-              elementTrackChangeIdMap,
-              trackChangeMap
-            )
-          }
-        })
-      }
+      forEachTrackChangeTableCell({
+        element,
+        elementIndex,
+        visitor: ({ td }) => {
+          this.collectPositionRectList(
+            td.positionList || [],
+            recordMap,
+            collectedRectKeySet,
+            elementTrackChangeIdMap,
+            trackChangeMap
+          )
+          this.collectTableCellFallbackRectList(
+            td.value || [],
+            td.positionList || [],
+            recordMap,
+            collectedRectKeySet
+          )
+          this.collectElementPositionRectList(
+            td.value || [],
+            recordMap,
+            collectedRectKeySet,
+            elementTrackChangeIdMap,
+            trackChangeMap
+          )
+        }
+      })
       if (element.valueList?.length) {
         this.collectElementPositionRectList(
           element.valueList,
@@ -645,15 +649,13 @@ export class TrackChangeService {
       if (element.trackChange) {
         changeIdSet.add(element.trackChange.id)
       }
-      if (element.type === ElementType.TABLE && element.trList) {
-        forEachTableCell({
-          tableElement: element,
-          tableIndex: elementIndex,
-          visitor: ({ td }) => {
-            this.collectElementTrackChangeIdSet(td.value || [], changeIdSet)
-          }
-        })
-      }
+      forEachTrackChangeTableCell({
+        element,
+        elementIndex,
+        visitor: ({ td }) => {
+          this.collectElementTrackChangeIdSet(td.value || [], changeIdSet)
+        }
+      })
       if (element.valueList?.length) {
         this.collectElementTrackChangeIdSet(element.valueList, changeIdSet)
       }
@@ -665,46 +667,32 @@ export class TrackChangeService {
     recordMap: Map<string, ITrackChangeRecord>,
     collectedRectKeySet: Set<string>
   ) {
-    this.draw.getPageRowList().forEach((rowList, pageNo) => {
-      rowList.forEach(row => {
-        const tableFragment = row.tableFragment
-        if (!tableFragment?.trList?.length) return
-        tableFragment.trList.forEach(tr => {
-          tr.tdList.forEach(td => {
-            const positionList = td.positionList || []
-            if (!td.rowList?.length || !positionList.length) return
-            let positionIndex = 0
-            td.rowList.forEach(tdRow => {
-              tdRow.elementList.forEach(element => {
-                const position = positionList[positionIndex]
-                positionIndex++
-                const change = element.trackChange
-                if (!change || !position) return
-                const record = recordMap.get(change.id)
-                if (!record) return
-                const rect = this.createTrackChangeRect(position, pageNo)
-                const rectKey = [
-                  change.id,
-                  rect.pageNo,
-                  rect.x,
-                  rect.y,
-                  rect.width,
-                  rect.height
-                ].join(':')
-                if (collectedRectKeySet.has(rectKey)) return
-                collectedRectKeySet.add(rectKey)
-                record.rectList.push(rect)
-                console.log('[track-change] table fragment row rect', {
-                  changeId: change.id,
-                  pageNo,
-                  value: element.value,
-                  rect
-                })
-              })
-            })
-          })
+    forEachTrackChangeTableFragmentPosition({
+      pageRowList: this.draw.getPageRowList(),
+      visitor: ({ pageNo, element, position }) => {
+        const change = element.trackChange
+        if (!change) return
+        const record = recordMap.get(change.id)
+        if (!record) return
+        const rect = this.createTrackChangeRect(position, pageNo)
+        const rectKey = [
+          change.id,
+          rect.pageNo,
+          rect.x,
+          rect.y,
+          rect.width,
+          rect.height
+        ].join(':')
+        if (collectedRectKeySet.has(rectKey)) return
+        collectedRectKeySet.add(rectKey)
+        record.rectList.push(rect)
+        console.log('[track-change] table fragment row rect', {
+          changeId: change.id,
+          pageNo,
+          value: element.value,
+          rect
         })
-      })
+      }
     })
   }
 
@@ -760,19 +748,17 @@ export class TrackChangeService {
   /** 给元素及其子内容写入同一个修订批次标记。 */
   private markElementAndChildren(element: IElement, trackChange: ITrackChange) {
     element.trackChange = { ...trackChange }
-    if (element.type === ElementType.TABLE && element.trList) {
-      forEachTableCell({
-        tableElement: element,
-        tableIndex: -1,
-        visitor: ({ td }) => {
-          td.value.forEach(tdElement => {
-            if (tdElement.value !== ZERO) {
-              this.markElementAndChildren(tdElement, trackChange)
-            }
-          })
-        }
-      })
-    }
+    forEachTrackChangeTableCell({
+      element,
+      elementIndex: -1,
+      visitor: ({ td }) => {
+        td.value.forEach(tdElement => {
+          if (tdElement.value !== ZERO) {
+            this.markElementAndChildren(tdElement, trackChange)
+          }
+        })
+      }
+    })
     element.valueList?.forEach(child => {
       if (child.value !== ZERO) {
         this.markElementAndChildren(child, trackChange)

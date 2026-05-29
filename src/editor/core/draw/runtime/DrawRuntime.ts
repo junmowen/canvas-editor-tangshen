@@ -2,7 +2,7 @@ import { DeepRequired } from '../../../interface/Common'
 import { IEditorData, IEditorOption } from '../../../interface/Editor'
 import { IElement, IElementStyle } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
-import { ITableLayoutSnapshot } from '../../table/layout/TableLayoutSnapshotTypes'
+import { ITableLayoutSnapshot } from '../../modules/table/layout/TableLayoutSnapshotTypes'
 import { EditorMode } from '../../../dataset/enum/Editor'
 import { IPainterOption } from '../../../interface/Draw'
 import { deepClone } from '../../../utils'
@@ -164,9 +164,13 @@ export class DrawRuntime {
    * 用来避免在 `Draw` 上分散写入多个字段。
    */
   public replaceLayoutState(payload: {
+    /** 行列表，保存排版后的行结构。 */
     rowList: IRow[]
+    /** 页面行列表，保存当前页排版后的行信息。 */
     pageRowList: IRow[][]
+    /** 布局元素列表，保存参与本轮排版的元素序列。 */
     layoutElementList: IElement[]
+    /** 表格布局snapshotversion数值，用于当前布局、统计或索引计算。 */
     tableLayoutSnapshotVersion: number
     tableLayoutSnapshot: ITableLayoutSnapshot | null
   }) {

@@ -8,27 +8,38 @@ import { IElement } from '../../../interface/Element'
 import { IRangeElementStyle } from '../../../interface/Range'
 import { splitText } from '../../../utils'
 import { formatElementContext } from '../../../utils/element'
+import { insertIntoActiveControl } from '../../modules/control/interaction/insertIntoActiveControl'
+import { hasActiveControlEditing } from '../../modules/control/policy/ControlInputPolicy'
 import { Draw } from '../../draw/Draw'
-import { isEditorDisabled } from '../../utils/editorState'
+import { isEditorDisabled } from '../../shared/utils/editorState'
 import { InputBuffer, IInputAction } from './InputBuffer'
 import { IncrementalRenderScheduler } from './IncrementalRenderScheduler'
 
+/** compositioninfo契约，用于约束内部流程中传递的数据结构。 */
 export interface ICompositionInfo {
+  /** 文档元素列表，按文档顺序保存参与处理的元素。 */
   elementList?: IElement[]
+  /** 起始元素索引，用于确定处理范围的左边界。 */
   startIndex: number
+  /** 结束元素索引，用于确定处理范围的右边界。 */
   endIndex: number
+  /** 当前值，用于保存控件、输入或配置的实际内容。 */
   value: string
+  /** 默认样式配置，用于在元素缺省时提供基础显示效果。 */
   defaultStyle: IRangeElementStyle | null
 }
 
 export class FastInputProcessor {
+  /** 快速输入缓冲区，用于合并连续输入字符并减少重排次数。 */
   private inputBuffer: InputBuffer
   private renderScheduler: IncrementalRenderScheduler
   private isComposing = false
+  /** IME 组合输入状态，记录组合文本和范围以避免重复提交。 */
   private compositionInfo: ICompositionInfo | null = null
   private lastCompositionCommit: { value: string; timestamp: number } | null =
     null
 
+  /** 初始化 FastInputProcessor 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {
     this.inputBuffer = new InputBuffer()
     this.renderScheduler = new IncrementalRenderScheduler(draw)
@@ -117,6 +128,7 @@ export class FastInputProcessor {
     cursor.clearAgentDomValue()
   }
 
+  /** 清理当前项，释放缓存或移除旧的界面状态。 */
   public clear(): void {
     this.inputBuffer.clear()
     this.renderScheduler.clear()
@@ -157,11 +169,11 @@ export class FastInputProcessor {
 
     let curIndex: number
 
-    if (control.getActiveControl() && control.getIsRangeWithinControl()) {
-      curIndex = control.setValue(inputData)
-      if (!this.isComposing) {
-        control.emitControlContentChange()
-      }
+    const controlInputIndex = insertIntoActiveControl(control, inputData, {
+      isEmitChange: !this.isComposing
+    })
+    if (controlInputIndex !== null) {
+      curIndex = controlInputIndex
     } else {
       const start = action.startIndex + 1
       if (action.startIndex !== action.endIndex) {
@@ -184,7 +196,7 @@ export class FastInputProcessor {
 
       const shouldUseLayoutPatch =
         !this.isComposing &&
-        !control.getActiveControl() &&
+        !hasActiveControlEditing(control) &&
         this.draw.getZone().isMainActive() &&
         this.draw.getIsPagingMode() &&
         action.startIndex === action.endIndex &&
@@ -233,6 +245,7 @@ export class FastInputProcessor {
     endIndex: number,
     defaultStyle: IRangeElementStyle | null
   ): IElement[] {
+    // 需要继承文本样式的元素类型集合，避免输入时复制不应继承的结构属性。
     const { TEXT, HYPERLINK, SUBSCRIPT, SUPERSCRIPT, DATE, TAB } = ElementType
     const isDesignMode = this.draw.isDesignMode()
 

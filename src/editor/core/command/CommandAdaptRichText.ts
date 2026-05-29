@@ -2,7 +2,6 @@ import { CommandAdaptCore } from './CommandAdaptCore'
 import { ZERO } from '../../dataset/constant/Common'
 import { EDITOR_ELEMENT_STYLE_ATTR } from '../../dataset/constant/Element'
 import { titleSizeMapping } from '../../dataset/constant/Title'
-import { ElementType } from '../../dataset/enum/Element'
 import { ElementStyleKey } from '../../dataset/enum/ElementStyle'
 import { ListStyle, ListType } from '../../dataset/enum/List'
 import { RowFlex } from '../../dataset/enum/Row'
@@ -13,6 +12,10 @@ import { ITextDecoration } from '../../interface/Text'
 import { getUUID, isObjectEqual } from '../../utils'
 import { isTextLikeElement } from '../../utils/element'
 import { IRichtextOption } from '../../interface/Command'
+import {
+  toggleSubscriptSelection,
+  toggleSuperscriptSelection
+} from '../modules/richtext/command/ScriptCommandPolicy'
 
 /**
  * 富文本命令适配模块，负责文字样式、段落样式、标题、列表和页码相关命令。
@@ -420,27 +423,7 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     if (this.isCommandDisabled(options)) return
     const selection = this.range.getSelectionElementList()
     if (!selection) return
-    const superscriptIndex = selection.findIndex(
-      s => s.type === ElementType.SUPERSCRIPT
-    )
-    selection.forEach(el => {
-      // 取消上标
-      if (~superscriptIndex) {
-        if (el.type === ElementType.SUPERSCRIPT) {
-          el.type = ElementType.TEXT
-          delete el.actualSize
-        }
-      } else {
-        // 设置上标
-        if (
-          !el.type ||
-          el.type === ElementType.TEXT ||
-          el.type === ElementType.SUBSCRIPT
-        ) {
-          el.type = ElementType.SUPERSCRIPT
-        }
-      }
-    })
+    toggleSuperscriptSelection(selection)
     this.draw.render({ isSetCursor: false })
   }
 
@@ -449,27 +432,7 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     if (this.isCommandDisabled(options)) return
     const selection = this.range.getSelectionElementList()
     if (!selection) return
-    const subscriptIndex = selection.findIndex(
-      s => s.type === ElementType.SUBSCRIPT
-    )
-    selection.forEach(el => {
-      // 取消下标
-      if (~subscriptIndex) {
-        if (el.type === ElementType.SUBSCRIPT) {
-          el.type = ElementType.TEXT
-          delete el.actualSize
-        }
-      } else {
-        // 设置下标
-        if (
-          !el.type ||
-          el.type === ElementType.TEXT ||
-          el.type === ElementType.SUPERSCRIPT
-        ) {
-          el.type = ElementType.SUBSCRIPT
-        }
-      }
-    })
+    toggleSubscriptSelection(selection)
     this.draw.render({ isSetCursor: false })
   }
 
@@ -729,7 +692,9 @@ export class CommandAdaptRichText extends CommandAdaptCore {
 
   /** 设置页码从指定编号重新开始。 */
   public pageNumberRestart(payload: {
+    /** 起始页码，用于限定跨页范围的左边界。 */
     startPageNo?: number
+    /** 来源页码，用于描述迁移或重排前所在页面。 */
     fromPageNo?: number
   }) {
     this.updateOptions({
@@ -743,7 +708,9 @@ export class CommandAdaptRichText extends CommandAdaptCore {
 
   /** 设置页码应用范围。 */
   public pageNumberRange(payload: {
+    /** 来源页码，用于描述迁移或重排前所在页面。 */
     fromPageNo?: number
+    /** 最大页面no，用于定位对应页、行或序号。 */
     maxPageNo?: number | null
   }) {
     this.updateOptions({

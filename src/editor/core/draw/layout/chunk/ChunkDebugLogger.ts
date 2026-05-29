@@ -1,5 +1,7 @@
 declare global {
+  /** 窗口契约，用于约束内部流程中传递的数据结构。 */
   interface Window {
+    /** 全局分块布局调试开关，控制是否输出 chunk 级诊断信息。 */
     __CANVAS_EDITOR_CHUNK_DEBUG__?: boolean
   }
 }

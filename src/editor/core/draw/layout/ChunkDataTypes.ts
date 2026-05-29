@@ -1,22 +1,22 @@
-/** chunk 所属的数据域。 */
+/** 分块scope类型，用于约束内部流程中传递的数据结构。 */
 export type TChunkScope = 'document' | 'table' | 'table-cell'
 
-/** 主文档 chunk 类型，当前优先按页切块，缺少分页结果时回退到段落 / 硬切片。 */
+/** document分块kind类型，用于约束内部流程中传递的数据结构。 */
 export type TDocumentChunkKind = 'page' | 'paragraph' | 'hard-slice'
 
-/** 表格单元格子 chunk 类型，当前以单元格行和超长硬切片为主。 */
+/** 表格单元格分块kind类型，用于约束内部流程中传递的数据结构。 */
 export type TTableCellChunkKind = 'cell-row' | 'hard-slice'
 
-/** 表格父子 chunk 的通用类型。 */
+/** 表格分块kind类型，用于约束内部流程中传递的数据结构。 */
 export type TTableChunkKind = 'table' | 'table-fragment' | 'table-cell'
 
-/** 所有 chunk 类型的并集，供调试和父子关系引用。 */
+/** 分块kind类型，用于约束内部流程中传递的数据结构。 */
 export type TChunkKind =
   | TDocumentChunkKind
   | TTableCellChunkKind
   | TTableChunkKind
 
-/** chunk 的元素索引范围，闭区间。 */
+/** 分块索引范围契约，用于约束内部流程中传递的数据结构。 */
 export interface IChunkIndexRange {
   /** chunk 起始元素索引，闭区间。 */
   startIndex: number
@@ -26,7 +26,7 @@ export interface IChunkIndexRange {
   elementCount: number
 }
 
-/** chunk 的页码覆盖范围。 */
+/** 分块页面范围契约，用于约束内部流程中传递的数据结构。 */
 export interface IChunkPageRange {
   /** chunk 代表的单页页码；跨页或未知时为 null。 */
   pageNo: number | null
@@ -38,7 +38,7 @@ export interface IChunkPageRange {
   pageCount: number
 }
 
-/** chunk 在行列表中的运行时覆盖范围。 */
+/** 分块行范围契约，用于约束内部流程中传递的数据结构。 */
 export interface IChunkRowRange {
   /** chunk 在所属页或单元格内的起始行号。 */
   startRowNo: number | null
@@ -50,7 +50,7 @@ export interface IChunkRowRange {
   endRowIndex: number | null
 }
 
-/** 子 chunk 引用，避免父节点直接复制完整子节点造成循环结构。 */
+/** 分块childref契约，用于约束内部流程中传递的数据结构。 */
 export interface IChunkChildRef {
   /** 子 chunk 所属数据域。 */
   scope: TChunkScope
@@ -66,7 +66,7 @@ export interface IChunkChildRef {
   endIndex: number
 }
 
-/** chunk 父子关系字段。 */
+/** 分块relation契约，用于约束内部流程中传递的数据结构。 */
 export interface IChunkRelation {
   /** 当前 chunk 是否是另一个 chunk 的子元素。 */
   isChild: boolean
@@ -80,13 +80,13 @@ export interface IChunkRelation {
   childChunkList: IChunkChildRef[]
 }
 
-/** chunk 脏标记。 */
+/** 分块脏区state契约，用于约束内部流程中传递的数据结构。 */
 export interface IChunkDirtyState {
   /** chunk 是否被最近的编辑命中。 */
   dirty: boolean
 }
 
-/** 主文档 chunk 描述，作为后续段落级布局和视口虚拟化的基础索引。 */
+/** document分块契约，用于约束内部流程中传递的数据结构。 */
 export interface IDocumentChunk
   extends IChunkIndexRange,
     IChunkPageRange,
@@ -100,7 +100,7 @@ export interface IDocumentChunk
   kind: TDocumentChunkKind
 }
 
-/** 表格 fragment 在页 chunk 中的覆盖范围。 */
+/** 表格分块片段范围契约，用于约束内部流程中传递的数据结构。 */
 export interface ITableChunkFragmentRange extends IChunkRowRange {
   /** 当前范围是否是表格 chunk 的子元素。 */
   isChild: true
@@ -122,7 +122,7 @@ export interface ITableChunkFragmentRange extends IChunkRowRange {
   endRowIndex: number
 }
 
-/** 表格单元格子 chunk 在页 chunk 中的覆盖范围。 */
+/** 表格分块单元格范围契约，用于约束内部流程中传递的数据结构。 */
 export interface ITableChunkCellRange {
   /** 当前范围是否是表格 fragment / 表格 chunk 的子元素。 */
   isChild: true
@@ -150,7 +150,7 @@ export interface ITableChunkCellRange {
   endRowNo: number | null
 }
 
-/** 逻辑表格 chunk 在页 chunk 体系中的父范围。 */
+/** 表格分块范围契约，用于约束内部流程中传递的数据结构。 */
 export interface ITableChunkRange extends IChunkRelation {
   /** 逻辑表格 id。 */
   logicalTableId: string
@@ -176,7 +176,7 @@ export interface ITableChunkRange extends IChunkRelation {
   cellRangeList: ITableChunkCellRange[]
 }
 
-/** 表格单元格子 chunk 描述，索引空间只属于当前 td.value。 */
+/** 表格单元格分块契约，用于约束内部流程中传递的数据结构。 */
 export interface ITableCellChunk
   extends IChunkIndexRange,
     IChunkPageRange,
@@ -214,7 +214,7 @@ export interface ITableCellChunk
   fragmentTdId: string | null
 }
 
-/** 文档 chunk 统计，用于观察商业级分块布局的落地基础。 */
+/** document分块索引stats契约，用于约束内部流程中传递的数据结构。 */
 export interface IDocumentChunkIndexStats {
   /** 当前索引版本，每次重建递增。 */
   version: number
@@ -252,7 +252,7 @@ export interface IDocumentChunkIndexStats {
   layoutCacheHitRate: number
 }
 
-/** chunk 布局缓存读写参数。 */
+/** document分块布局缓存调用载荷，聚合执行该操作所需的输入数据。 */
 export interface IDocumentChunkLayoutCachePayload {
   /** chunk 描述。 */
   chunk: IDocumentChunk
@@ -270,7 +270,7 @@ export interface IDocumentChunkLayoutCachePayload {
   innerWidth: number
 }
 
-/** 表格单元格子 chunk 统计，用于观察大单元格输入是否还在整格重排。 */
+/** 表格单元格分块索引stats契约，用于约束内部流程中传递的数据结构。 */
 export interface ITableCellChunkIndexStats {
   /** 当前索引版本，每次重建递增。 */
   version: number
@@ -300,7 +300,7 @@ export interface ITableCellChunkIndexStats {
   lastLookupHit: boolean
 }
 
-/** 表格 chunk 范围索引统计，用于观察父子 chunk 范围是否稳定。 */
+/** 表格分块范围索引stats契约，用于约束内部流程中传递的数据结构。 */
 export interface ITableChunkRangeIndexStats {
   /** 当前索引版本，每次重建递增。 */
   version: number

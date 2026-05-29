@@ -10,6 +10,7 @@ import { PageRenderSnapshotTableBackgroundCommands } from './PageRenderSnapshotT
 
 /** Per-cell table border commands such as slashes and explicit td borders. */
 export abstract class PageRenderSnapshotTableCellBorderCommands extends PageRenderSnapshotTableBackgroundCommands {
+  /** 写入表格slashcommands，追加后续渲染需要的命令数据。 */
   protected pushTableSlashCommands(
     commandList: IWorkerPaintCommand[],
     td: ITd,
@@ -50,6 +51,7 @@ export abstract class PageRenderSnapshotTableCellBorderCommands extends PageRend
     })
   }
 
+  /** 写入explicittd边框commands，追加后续渲染需要的命令数据。 */
   protected pushExplicitTdBorderCommands(
     commandList: IWorkerPaintCommand[],
     td: ITd,

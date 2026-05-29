@@ -87,7 +87,9 @@ export function isSameElementExceptValue(
   }
   return true
 }
+/** pick元素选项，用于约束调用方可传入的可选配置。 */
 interface IPickElementOption {
+  /** 额外提取属性列表，用于扩展元素克隆或格式提取范围。 */
   extraPickAttrs?: Array<keyof IElement>
 }
 export function pickElementAttr(
@@ -95,6 +97,7 @@ export function pickElementAttr(
   option: IPickElementOption = {}
 ): IElement {
   const { extraPickAttrs } = option
+  // 初始化 zip Attrs 列表。
   const zipAttrs = [...EDITOR_ELEMENT_ZIP_ATTR]
   if (extraPickAttrs) {
     zipAttrs.push(...extraPickAttrs)
@@ -111,9 +114,13 @@ export function pickElementAttr(
   return element
 }
 
+/** zip元素列表选项，用于约束调用方可传入的可选配置。 */
 interface IZipElementListOption {
+  /** 额外提取属性列表，用于扩展元素克隆或格式提取范围。 */
   extraPickAttrs?: Array<keyof IElement>
+  /** 是否按区域分类，用于把正文、页眉和页脚元素分开处理。 */
   isClassifyArea?: boolean
+  /** 是否克隆元素，用于避免直接修改原始数据。 */
   isClone?: boolean
 }
 export function zipElementList(
@@ -122,6 +129,7 @@ export function zipElementList(
 ): IElement[] {
   const { extraPickAttrs, isClassifyArea = false, isClone = true } = options
   const elementList = isClone ? deepClone(payload) : payload
+  // 初始化 zip Element List Data 列表。
   const zipElementListData: IElement[] = []
   let e = 0
   while (e < elementList.length) {

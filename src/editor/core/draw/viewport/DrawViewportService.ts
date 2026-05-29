@@ -5,17 +5,22 @@ import type { Draw } from '../Draw'
 
 export class DrawViewportService {
   private lazyRenderIntersectionObserver: IntersectionObserver | null = null
+  /** 指针坐标服务，负责把浏览器坐标换算为页面坐标。 */
   private readonly pointerCoordinateService: PointerCoordinateService
   /** 下一次 visible 渲染必须额外覆盖的页码，用于清理布局迁移后的旧页残影。 */
   private readonly pendingExtraRenderPageNoSet = new Set<number>()
 
+  /** 初始化 DrawViewportService 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {
     this.pointerCoordinateService = new PointerCoordinateService(draw)
   }
 
   public refreshVisibleOverlay(options?: {
+    /** 是否选区脏区，用于控制当前流程的判断分支。 */
     isSelectionDirty?: boolean
+    /** 是否搜索脏区，用于控制当前流程的判断分支。 */
     isSearchDirty?: boolean
+    /** 是否控件脏区，用于控制当前流程的判断分支。 */
     isControlDirty?: boolean
   }) {
     this.draw.getServices().renderInvalidationManager.markVisiblePagesDirty()

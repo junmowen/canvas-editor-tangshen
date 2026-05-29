@@ -2,9 +2,9 @@ import {
   getIsClipboardContainFile,
   removeClipboardData
 } from '../../../utils/clipboard'
+import { pasteImageFile } from '../../modules/image/clipboard/pasteImageFile'
 import { CanvasEvent } from '../CanvasEvent'
 import { pasteHtml } from './pasteHtml'
-import { pasteImageFile } from './pasteImageFile'
 import {
   canRunPaste,
   getClipboardImageType,
@@ -49,7 +49,7 @@ export function pasteByClipboardEvent(host: CanvasEvent, evt: ClipboardEvent) {
     } else if (item.kind === 'file' && getClipboardImageType([item.type])) {
       const file = item.getAsFile()
       if (file) {
-        pasteImageFile(host, file)
+        pasteImageFile(host.getDraw(), file)
       }
     }
   }

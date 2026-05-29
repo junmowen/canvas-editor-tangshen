@@ -8,6 +8,7 @@ import { PageRenderSnapshotRowDecorations } from './PageRenderSnapshotRowDecorat
 
 /** Inline marker commands for separators, line breaks and page breaks. */
 export abstract class PageRenderSnapshotInlineMarkerCommands extends PageRenderSnapshotRowDecorations {
+  /** 写入separatorcommand，追加后续渲染需要的命令数据。 */
   protected pushSeparatorCommand(
     commandList: IWorkerPaintCommand[],
     element: IRowElement,

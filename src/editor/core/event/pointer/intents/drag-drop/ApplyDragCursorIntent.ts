@@ -1,19 +1,21 @@
-import { ImageDisplay } from '../../../../../dataset/enum/Common'
-import { ElementType } from '../../../../../dataset/enum/Element'
 import { CanvasEvent } from '../../../CanvasEvent'
 import { drawDragCursor } from '../../effects/DragEffect'
-import { resolvePositionAtIndex } from '../../../utils/resolvePositionAtIndex'
+import { resolvePositionAtIndex } from '../../../../position/utils/resolvePositionAtIndex'
+import { resolveTableAwarePointerIndex } from '../../../../modules/table/selection/resolveTablePointerIndex'
+import { shouldSkipDragCursorForFloatingImage } from '../../../../modules/image/interaction/ImageDragInteraction'
 
 export function applyDragCursorIntent(payload: {
+  /** 宿主容器节点，用于承载编辑器或渲染表面。 */
   host: CanvasEvent
+  /** 命中位置上下文，连接元素索引、行列和区域信息。 */
   positionContext: any
 }) {
   const { host, positionContext } = payload
   const draw = host.getDraw()
   const session = host.getPointerSession()
   const coordinate = draw.getCoordinate()
-  const { isTable, tdValueIndex, index } = positionContext
-  const curIndex = isTable ? tdValueIndex! : index
+  const { index } = positionContext
+  const curIndex = resolveTableAwarePointerIndex(positionContext)
   if (~index) {
     const rangeManager = draw.getComponents().range
     rangeManager.setRange(curIndex, curIndex)
@@ -25,12 +27,10 @@ export function applyDragCursorIntent(payload: {
   if (dragFloatImageDisabled) {
     const dragElement =
       session.dragSnapshot.elementList?.[session.dragSnapshot.range!.startIndex]
-    if (
-      dragElement?.type === ElementType.IMAGE &&
-      (dragElement.imgDisplay === ImageDisplay.FLOAT_TOP ||
-        dragElement.imgDisplay === ImageDisplay.FLOAT_BOTTOM ||
-        dragElement.imgDisplay === ImageDisplay.SURROUND)
-    ) {
+    if (shouldSkipDragCursorForFloatingImage({
+      dragFloatImageDisabled,
+      element: dragElement
+    })) {
       return
     }
   }

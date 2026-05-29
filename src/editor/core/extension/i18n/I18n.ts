@@ -1,0 +1,54 @@
+import { ILang } from '../../../interface/i18n/I18n'
+import zhCN from './lang/zh-CN.json'
+import en from './lang/en.json'
+import { mergeObject } from '../../../utils'
+import { DeepPartial } from '../../../interface/Common'
+
+export class I18n {
+  /** 当前语言标识。 */
+  private currentLocale: string
+
+  /** lang Map 映射缓存，用于按 key 快速定位对应数据。 */
+  private langMap: Map<string, ILang> = new Map([
+    ['zhCN', zhCN],
+    ['en', en]
+  ])
+
+  /** 初始化 I18n 实例并注入运行依赖。 */
+  constructor(locale: string) {
+    this.currentLocale = locale
+  }
+
+  public registerLangMap(locale: string, lang: DeepPartial<ILang>) {
+    const sourceLang = this.langMap.get(locale)
+    this.langMap.set(locale, <ILang>mergeObject(sourceLang || zhCN, lang))
+  }
+
+  public getLocale(): string {
+    return this.currentLocale
+  }
+
+  public setLocale(locale: string) {
+    this.currentLocale = locale
+  }
+
+  public getLang(): ILang {
+    return this.langMap.get(this.currentLocale) || zhCN
+  }
+
+  public t(path: string): string {
+    const keyList = path.split('.')
+    let value = ''
+    let item = this.getLang()
+    for (let k = 0; k < keyList.length; k++) {
+      const key = keyList[k]
+      const currentValue = Reflect.get(item, key)
+      if (currentValue) {
+        value = item = currentValue
+      } else {
+        return ''
+      }
+    }
+    return value
+  }
+}

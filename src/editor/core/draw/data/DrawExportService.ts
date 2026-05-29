@@ -2,6 +2,7 @@ import { EditorMode, PageMode } from '../../../dataset/enum/Editor'
 import { IEditorData } from '../../../interface/Editor'
 import { IDrawPagePayload } from '../../../interface/Draw'
 import { deepClone } from '../../../utils'
+import { preloadExportBackgroundIfNeeded } from '../../modules/background/export/BackgroundExportPreloadPolicy'
 import { RenderLayer } from '../../render-backend'
 import type { Draw } from '../Draw'
 
@@ -32,6 +33,7 @@ export class DrawExportService {
     this.draw.replacePrintModeData(printModeData)
     // 深度克隆打印模式数据
     const clonePrintModeData = deepClone(printModeData)
+    // 初始化 editor Data Keys 列表。
     const editorDataKeys: (keyof IEditorData)[] = ['header', 'main', 'footer']
     // 遍历所有区域，过滤掉辅助元素（如占位符等不适合打印的内容）
     editorDataKeys.forEach(key => {
@@ -70,7 +72,9 @@ export class DrawExportService {
    * @returns 各页的 dataURL 数组
    */
   public async getDataURL(payload: {
+    /** 像素比例，用于导出或渲染时控制清晰度。 */
     pixelRatio?: number
+    /** 模式标识，用于选择当前处理分支。 */
     mode?: EditorMode
   } = {}): Promise<string[]> {
     // 确定导出模式：使用传入参数或当前编辑器模式
@@ -95,16 +99,7 @@ export class DrawExportService {
       const layoutResult = this.draw.getServices().layoutPipeline.compute()
       // 等待所有图片加载完成
       await this.draw.getComponents().imageObserver.allSettled()
-      const { background } = this.draw.getRuntime().getOptions()
-      if (
-        background.image &&
-        !(
-          exportMode === EditorMode.PRINT &&
-          this.draw.getRuntime().getOptions().modeRule.print.backgroundDisabled
-        )
-      ) {
-        await this.draw.getBackground().preloadImage()
-      }
+      await preloadExportBackgroundIfNeeded(this.draw, exportMode)
 
       const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
       const elementList = this.draw.getObjectResolver().getLayoutMainElementList()

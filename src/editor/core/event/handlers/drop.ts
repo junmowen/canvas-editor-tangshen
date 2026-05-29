@@ -1,5 +1,5 @@
 import { debugDrop } from '../debug/drop'
-import { IOverrideResult } from '../../override/Override'
+import { IOverrideResult } from '../../extension/override/Override'
 import { CanvasEvent } from '../CanvasEvent'
 
 /**

@@ -36,8 +36,11 @@ export function getAnchorElement(
     : anchorElement
 }
 
+/** format元素上下文选项，用于约束调用方可传入的可选配置。 */
 export interface IFormatElementContextOption {
+  /** 是否在换行时强制断开，用于控制行布局边界。 */
   isBreakWhenWrap?: boolean
+  /** 编辑器配置项，用于读取全局排版和交互规则。 */
   editorOptions?: DeepRequired<IEditorOption>
 }
 
@@ -74,6 +77,7 @@ export function formatElementContext(
       isBreakWarped ||
       (!copyElement.listId && targetElement.type === ElementType.LIST)
     ) {
+      // 初始化 clone Attr 列表。
       const cloneAttr = [
         ...TABLE_CONTEXT_ATTR,
         ...EDITOR_ROW_ATTR,
@@ -81,6 +85,7 @@ export function formatElementContext(
       ]
       cloneProperty<IElement>(cloneAttr, copyElement, targetElement)
       targetElement.valueList?.forEach(valueItem => {
+        // 初始化 value Clone Attr 列表。
         const valueCloneAttr = [
           ...TABLE_CONTEXT_ATTR,
           ...EDITOR_ROW_ATTR,
@@ -101,6 +106,7 @@ export function formatElementContext(
         options
       )
     }
+    // 初始化 clone Attr 列表。
     const cloneAttr = [
       ...TABLE_CONTEXT_ATTR,
       ...TITLE_CONTEXT_ATTR.filter(attr => targetElement[attr] === undefined),

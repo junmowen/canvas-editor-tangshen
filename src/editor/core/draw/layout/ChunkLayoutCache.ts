@@ -3,7 +3,7 @@ import { IRow } from '../../../interface/Row'
 import type { Draw } from '../Draw'
 import { IDocumentChunkLayoutCachePayload } from './ChunkDataTypes'
 
-/** chunk 布局缓存条目。 */
+/** 分块布局缓存entry契约，用于约束内部流程中传递的数据结构。 */
 export interface IChunkLayoutCacheEntry {
   /** 缓存 key。 */
   key: string
@@ -17,7 +17,7 @@ export interface IChunkLayoutCacheEntry {
   height: number
 }
 
-/** chunk 布局缓存统计。 */
+/** 分块布局缓存stats契约，用于约束内部流程中传递的数据结构。 */
 export interface IChunkLayoutCacheStats {
   /** chunk 布局缓存条目数。 */
   layoutCacheCount: number
@@ -75,8 +75,11 @@ export class ChunkLayoutCache {
   /** 写入 chunk 布局缓存。 */
   public set(
     payload: IDocumentChunkLayoutCachePayload & {
+      /** 行列表，保存排版后的行结构。 */
       rowList: IRow[]
+      /** 布局位置列表，保存元素分页后的坐标结果。 */
       positionList: IElementPosition[]
+      /** 高度尺寸，使用编辑器内部像素单位。 */
       height: number
     }
   ) {

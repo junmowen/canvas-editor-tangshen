@@ -15,9 +15,13 @@ export abstract class PageRenderSnapshotPageDecorationCommands extends PageRende
     const margins = this.draw.getMargins()
     const width = this.draw.getWidth()
     const height = this.draw.getHeight()
+    // 初始化 left Top Point 列表。
     const leftTopPoint: [number, number] = [margins[3], margins[0]]
+    // 初始化 right Top Point 列表。
     const rightTopPoint: [number, number] = [width - margins[1], margins[0]]
+    // 初始化 left Bottom Point 列表。
     const leftBottomPoint: [number, number] = [margins[3], height - margins[2]]
+    // 初始化 right Bottom Point 列表。
     const rightBottomPoint: [number, number] = [
       width - margins[1],
       height - margins[2]

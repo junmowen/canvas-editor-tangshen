@@ -6,6 +6,7 @@ import { PageRenderSnapshotTextStyleCommands } from './PageRenderSnapshotTextSty
 
 /** Row highlight and group background command generation. */
 export abstract class PageRenderSnapshotRowBackgroundCommands extends PageRenderSnapshotTextStyleCommands {
+  /** 写入行分组commands，追加后续渲染需要的命令数据。 */
   protected pushRowGroupCommands(
     commandList: IWorkerPaintCommand[],
     row: IDrawPagePayload['rowList'][number],
@@ -58,6 +59,7 @@ export abstract class PageRenderSnapshotRowBackgroundCommands extends PageRender
     })
   }
 
+  /** 写入行highlightcommands，追加后续渲染需要的命令数据。 */
   protected pushRowHighlightCommands(
     commandList: IWorkerPaintCommand[],
     row: IDrawPagePayload['rowList'][number],

@@ -30,11 +30,16 @@ function convertPxToPaperSize(width: number, height: number) {
   }
 }
 
+/** 打印图片base64选项，用于约束调用方可传入的可选配置。 */
 export interface IPrintImageBase64Option {
+  /** 宽度尺寸，使用编辑器内部像素单位。 */
   width: number
+  /** 高度尺寸，使用编辑器内部像素单位。 */
   height: number
+  /** 移动或遍历方向，用于决定下一步查找顺序。 */
   direction?: PaperDirection
 }
+/** 打印图片base64，生成打印或导出需要的内容。 */
 export function printImageBase64(
   base64List: string[],
   options: IPrintImageBase64Option

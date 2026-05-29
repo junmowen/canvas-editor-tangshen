@@ -1,12 +1,12 @@
-import { TableSelectionProjectionService } from './TableSelectionProjectionService'
+import { TableSelectionProjectionService } from '../modules/table/selection/TableSelectionProjectionService'
 import { IEditorOption } from '../../interface/Editor'
 import { IElementPosition } from '../../interface/Element'
 import { EventBusMap } from '../../interface/EventBus'
 import { IRange, IRangeElementStyle } from '../../interface/Range'
 import { Draw } from '../draw/Draw'
 import { EventBus } from '../event/eventbus/EventBus'
-import { HistoryManager } from '../history/HistoryManager'
-import { Listener } from '../listener/Listener'
+import { HistoryManager } from '../runtime/history/HistoryManager'
+import { Listener } from '../runtime/listener/Listener'
 import type { DrawCoordinateService } from '../draw/coordinate/DrawCoordinateService'
 
 /**

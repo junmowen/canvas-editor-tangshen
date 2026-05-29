@@ -1,11 +1,14 @@
 
-import { TEXTLIKE_ELEMENT_TYPE } from '../../../dataset/constant/Element'
 import { METRICS_BASIS_TEXT } from '../../../dataset/constant/Common'
-import { ElementType } from '../../../dataset/enum/Element'
 import { TextDecorationStyle } from '../../../dataset/enum/Text'
 import { IDrawPagePayload } from '../../../interface/Draw'
 import { IElementPosition } from '../../../interface/Element'
 import { IRowElement } from '../../../interface/Row'
+import {
+  isWorkerSnapshotStrikeoutTextElement,
+  shouldOffsetWorkerSnapshotSubscriptDecoration,
+  shouldUseWorkerSnapshotHyperlinkUnderline
+} from '../../modules/richtext/render/WorkerSnapshotTextStylePolicy'
 import {
   IWorkerPaintCommand,
   IWorkerStrokeSegment
@@ -14,6 +17,7 @@ import { PageRenderSnapshotRowBackgroundCommands } from './PageRenderSnapshotRow
 
 /** Underline, wavy underline and strikeout command generation. */
 export abstract class PageRenderSnapshotTextDecorationCommands extends PageRenderSnapshotRowBackgroundCommands {
+  /** 写入文本decorationcommands，追加后续渲染需要的命令数据。 */
   protected pushTextDecorationCommands(
     commandList: IWorkerPaintCommand[],
     row: IDrawPagePayload['rowList'][number],
@@ -30,7 +34,7 @@ export abstract class PageRenderSnapshotTextDecorationCommands extends PageRende
     } = rowPosition
     const metrics = element.metrics
     const isHyperlinkDefaultUnderline =
-      element.type === ElementType.HYPERLINK && element.underline !== false
+      shouldUseWorkerSnapshotHyperlinkUnderline(element)
     if (
       element.underline ||
       element.control?.underline ||
@@ -40,7 +44,7 @@ export abstract class PageRenderSnapshotTextDecorationCommands extends PageRende
         this.draw.getServices().metricsService.getElementRowMargin(element)
       const offsetLineX = element.left || 0
       const offsetLineY =
-        element.type === ElementType.SUBSCRIPT
+        shouldOffsetWorkerSnapshotSubscriptDecoration(element)
           ? this.resolveInlineTextOffsetY(element)
           : 0
       const underlineColor = element.control?.underline
@@ -58,7 +62,7 @@ export abstract class PageRenderSnapshotTextDecorationCommands extends PageRende
     }
     if (
       element.strikeout &&
-      (!element.type || TEXTLIKE_ELEMENT_TYPE.includes(element.type))
+      isWorkerSnapshotStrikeoutTextElement(element)
     ) {
       const { scale, strikeoutColor } = this.draw.getRuntime().getOptions()
       const standardMetrics = this.measureTextMetrics(
@@ -150,8 +154,10 @@ export abstract class PageRenderSnapshotTextDecorationCommands extends PageRende
     const baselineY = startY + 2 * amplitude
     const segmentList: IWorkerStrokeSegment[] = []
     const end = Math.max(1, Math.ceil(width))
+    // 初始化 prev Point 列表。
     let prevPoint: [number, number] = [startX, baselineY]
     for (let i = 1; i <= end; i++) {
+      // 初始化 point 列表。
       const point: [number, number] = [
         startX + Math.min(i, width),
         baselineY + amplitude * Math.sin(frequency * i)

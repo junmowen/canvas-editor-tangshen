@@ -6,7 +6,7 @@ import type {
 } from '../../../interface/Element'
 import type { IRenderSurface } from './RenderSurface'
 
-/** 渲染任务原因，用于后续让后端管理器选择合适引擎。 */
+/** 渲染taskreason类型，用于约束内部流程中传递的数据结构。 */
 export type RenderTaskReason =
   | 'layout'
   | 'base-visible'
@@ -16,20 +16,20 @@ export type RenderTaskReason =
   | 'export'
   | 'measure'
 
-/** 渲染任务优先级，用于后续区分同步、动画帧、空闲和 worker 调度。 */
+/** 渲染taskpriority类型，用于约束内部流程中传递的数据结构。 */
 export type RenderTaskPriority =
   | 'sync'
   | 'animation-frame'
   | 'idle'
   | 'worker'
 
-/** 渲染任务执行器，第一阶段用于把现有 Canvas2D 绘制逻辑接入后端调度。 */
+/** 渲染taskexecutor类型，用于约束内部流程中传递的数据结构。 */
 export type RenderTaskExecutor = (
   surface: IRenderSurface,
   task: IRenderTask
 ) => void
 
-/** WebGL 图片任务输入。 */
+/** webgl图片渲染task调用载荷，聚合执行该操作所需的输入数据。 */
 export interface IWebGLImageRenderTaskPayload {
   /** 图片源，主线程 WebGL 任务可直接消费 DOM image / bitmap / canvas。 */
   source: TexImageSource
@@ -49,7 +49,7 @@ export interface IWebGLImageRenderTaskPayload {
   rotation?: number
 }
 
-/** 渲染任务描述，后续会替代直接操作 ctx 的调用方式。 */
+/** 渲染task契约，用于约束内部流程中传递的数据结构。 */
 export interface IRenderTask {
   /** 目标页码。 */
   pageNo: number

@@ -3,9 +3,14 @@ import { debugDblclick } from '../debug/dblclick'
 import { applyPointerPositionContext } from '../pointer/utils/applyPointerPositionContext'
 import { resolvePointerHitIntent } from '../pointer/intents/ResolvePointerHitIntent'
 import { resolveWordRangeIntent } from '../pointer/intents/selection/SelectionWordRangeIntent'
-import { resolveTableCellDblclickIntent } from '../pointer/intents/table/TableCellMultiClickIntent'
+import {
+  resolveTableCellDblclickIntent,
+  resolveTableCellDblclickSelectionRange
+} from '../../modules/table/interaction/resolveTableCellDblclickIntent'
 import { renderSelectionRange } from '../pointer/effects/PointerRenderEffect'
-import { resolvePositionAtIndex } from '../utils/resolvePositionAtIndex'
+import { resolvePositionAtIndex } from '../../position/utils/resolvePositionAtIndex'
+import { resolveTableAwarePointerIndex } from '../../modules/table/selection/resolveTablePointerIndex'
+import { renderImagePreviewForDblclick } from '../../modules/image/interaction/handleImageSelectionStart'
 
 /**
  * 处理双击事件。
@@ -15,7 +20,6 @@ import { resolvePositionAtIndex } from '../utils/resolvePositionAtIndex'
 export function dblclick(host: CanvasEvent, evt: MouseEvent): void {
   debugDblclick(evt, host)
   const draw = host.getDraw()
-  const components = draw.getComponents()
   const session = host.getPointerSession()
   const hit = resolvePointerHitIntent({ host, evt })
   if (!hit) return
@@ -28,14 +32,13 @@ export function dblclick(host: CanvasEvent, evt: MouseEvent): void {
   const cursorIndex =
     boundary?.hitTargetIndex ??
     boundary?.absoluteIndex ??
-    (positionContext.isTable ? positionContext.tdValueIndex! : positionContext.index)
+    resolveTableAwarePointerIndex(positionContext)
   if (positionContext.cursorPosition) {
     draw.getCoordinate().setCursorPosition(positionContext.cursorPosition)
   } else if (~cursorIndex) {
     draw.getCoordinate().setCursorPosition(resolvePositionAtIndex(draw, cursorIndex))
   }
-  if (positionContext.isImage && positionContext.isDirectHit) {
-    components.previewer.render()
+  if (renderImagePreviewForDblclick({ draw, positionContext })) {
     return
   }
   if (draw.getIsPagingMode() && !~positionContext.index && positionContext.zone) {
@@ -56,7 +59,8 @@ export function dblclick(host: CanvasEvent, evt: MouseEvent): void {
       session.multiClick.tableCellClickResetTimer = null
     }
     const tableDblclick = resolveTableCellDblclickIntent({
-      host,
+      draw,
+      session,
       positionContext,
       pageNo: Number(pagePoint.pageIndex)
     })
@@ -71,46 +75,16 @@ export function dblclick(host: CanvasEvent, evt: MouseEvent): void {
       }
       return
     }
-    const logicalTableIndex =
-      tableDblclick.activeSlice?.logicalTableIndex ??
-      (tableDblclick.tableCellDblclickInfo.logicalTableId
-        ? draw
-            .getTargetResolver()
-            .resolveLogicalTableById(
-              tableDblclick.tableCellDblclickInfo.logicalTableId
-            )?.index
-        : null)
-    const logicalTrIndex =
-      tableDblclick.tableCellDblclickInfo.logicalTrIndex ??
-      tableDblclick.tableCellDblclickInfo.trIndex
-    const logicalTdIndex =
-      tableDblclick.tableCellDblclickInfo.logicalTdIndex ??
-      tableDblclick.tableCellDblclickInfo.tdIndex
-    const td =
-      logicalTableIndex !== null && logicalTableIndex !== undefined && ~logicalTableIndex
-        ? draw.getTargetResolver().resolveOriginalTableTdByIndex({
-            tableIndex: logicalTableIndex,
-            trIndex: logicalTrIndex!,
-            tdIndex: logicalTdIndex!
-          })?.td
-        : null
-    if (!td?.value?.length) return
-    const cellSliceList = draw
-      .getTargetResolver()
-      .getCellSlicesByCellKey(tableDblclick.tableCellDblclickInfo.cellKey)
-    const startIndex = cellSliceList.length
-      ? Math.min(...cellSliceList.map(slice => slice.absoluteStart))
-      : 0
-    const endIndex = cellSliceList.length
-      ? Math.max(...cellSliceList.map(slice => slice.absoluteEnd)) - 1
-      : td.value.length - 1
+    const selectionRange = resolveTableCellDblclickSelectionRange({
+      draw,
+      tableDblclick
+    })
+    if (!selectionRange) return
     renderSelectionRange({
       draw,
-      startIndex,
-      endIndex,
-      tableId:
-        tableDblclick.tableCellDblclickInfo.logicalTableId ||
-        tableDblclick.tableCellDblclickInfo.tableId
+      startIndex: selectionRange.startIndex,
+      endIndex: selectionRange.endIndex,
+      tableId: selectionRange.tableId
     })
     return
   }

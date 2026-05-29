@@ -12,6 +12,12 @@ hero:
       text: 开始
       link: /guide/start.html
     - theme: alt
+      text: 文档索引
+      link: /guide/
+    - theme: alt
+      text: 项目结构
+      link: /project-structure
+    - theme: alt
       text: 在 GitHub 上查看
       link: https://github.com/Hufe921/canvas-editor
 

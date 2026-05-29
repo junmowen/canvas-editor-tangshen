@@ -12,6 +12,7 @@ export class PageBitmapCacheController {
   /** base bitmap 缓存写入延迟，给连续输入留出合并窗口。 */
   private readonly baseBitmapCacheDelay = 160
 
+  /** 初始化 PageBitmapCacheController 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
   /**

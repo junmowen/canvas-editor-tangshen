@@ -1,164 +1,47 @@
-import { ImageDisplay } from '../../../dataset/enum/Common'
 import { EditorMode, EditorZone, PageMode } from '../../../dataset/enum/Editor'
-import { ElementType } from '../../../dataset/enum/Element'
 import { IDrawFloatPayload, IDrawPagePayload } from '../../../interface/Draw'
+import { PageAreaRenderer } from '../../modules/area/render/PageAreaRenderer'
+import { PageBackgroundRenderer } from '../../modules/background/render/PageBackgroundRenderer'
+import { BlockRenderLifecycle } from '../../modules/block/render/BlockRenderLifecycle'
+import { PageControlHighlightRenderer } from '../../modules/control/render/PageControlHighlightRenderer'
+import { FloatImageRenderer } from '../../modules/image/render/FloatImageRenderer'
+import { PageFrameRenderer } from '../../modules/page-setup/render/PageFrameRenderer'
+import { PageMarginIndicatorRenderer } from '../../modules/page-setup/render/PageMarginIndicatorRenderer'
+import { PagePlaceholderRenderer } from '../../modules/placeholder/render/PagePlaceholderRenderer'
+import { PageSearchRenderer } from '../../modules/search/render/PageSearchRenderer'
 import { IRenderSurface } from '../../render-backend'
 import type { Draw } from '../Draw'
 
 /** 单页 base surface 的实际内容绘制器。 */
 export class PageContentPainter {
-  constructor(private readonly draw: Draw) {}
+  private readonly pageBackgroundRenderer: PageBackgroundRenderer
+  private readonly pageAreaRenderer: PageAreaRenderer
+  private readonly blockRenderLifecycle: BlockRenderLifecycle
+  private readonly pageControlHighlightRenderer: PageControlHighlightRenderer
+  /** 浮动图片渲染器，封装图片展示模式和 zone 过滤。 */
+  private readonly floatImageRenderer: FloatImageRenderer
+  /** 页面框架渲染器，封装页边距、页眉页脚和水印等编排。 */
+  private readonly pageFrameRenderer: PageFrameRenderer
+  private readonly pageMarginIndicatorRenderer: PageMarginIndicatorRenderer
+  private readonly pagePlaceholderRenderer: PagePlaceholderRenderer
+  private readonly pageSearchRenderer: PageSearchRenderer
+
+  /** 初始化 PageContentPainter 实例并注入运行依赖。 */
+  constructor(private readonly draw: Draw) {
+    this.pageBackgroundRenderer = new PageBackgroundRenderer(draw)
+    this.pageAreaRenderer = new PageAreaRenderer(draw)
+    this.blockRenderLifecycle = new BlockRenderLifecycle(draw)
+    this.pageControlHighlightRenderer = new PageControlHighlightRenderer(draw)
+    this.floatImageRenderer = new FloatImageRenderer(draw)
+    this.pageFrameRenderer = new PageFrameRenderer(draw)
+    this.pageMarginIndicatorRenderer = new PageMarginIndicatorRenderer(draw)
+    this.pagePlaceholderRenderer = new PagePlaceholderRenderer(draw)
+    this.pageSearchRenderer = new PageSearchRenderer(draw)
+  }
 
   /** 绘制当前页的浮动图片与浮动元素。 */
   public drawFloat(ctx: CanvasRenderingContext2D, payload: IDrawFloatPayload) {
-    const { scale } = this.draw.getOptions()
-    const floatPositionList = this.draw.getCoordinate().getFloatPositionList()
-    const {
-      imgDisplays,
-      pageNo,
-      zoneList,
-      includeHeaderFooter = !zoneList
-    } = payload
-    for (let e = 0; e < floatPositionList.length; e++) {
-      const floatPosition = floatPositionList[e]
-      const element = floatPosition.element
-      const shouldRenderByZone = zoneList
-        ? zoneList.includes(floatPosition.zone!)
-        : pageNo === floatPosition.pageNo ||
-          (includeHeaderFooter &&
-            (floatPosition.zone === EditorZone.HEADER ||
-              floatPosition.zone === EditorZone.FOOTER))
-      if (
-        shouldRenderByZone &&
-        element.imgDisplay &&
-        imgDisplays.includes(element.imgDisplay) &&
-        element.type === ElementType.IMAGE
-      ) {
-        const imgFloatPosition = element.imgFloatPosition!
-        this.draw.getImageParticle().render(
-          ctx,
-          element,
-          imgFloatPosition.x * scale,
-          imgFloatPosition.y * scale,
-          {
-            isExport: payload.isExport
-          }
-        )
-      }
-    }
-  }
-
-  private renderHeaderFooterFloatList(
-    ctx: CanvasRenderingContext2D,
-    payload: IDrawPagePayload,
-    imgDisplays: ImageDisplay[]
-  ) {
-    this.drawFloat(ctx, {
-      pageNo: payload.pageNo,
-      imgDisplays,
-      zoneList: [EditorZone.HEADER, EditorZone.FOOTER],
-      isExport: payload.isExport
-    })
-  }
-
-  private getVisibleSegmentRange(surface: IRenderSurface, offsetY: number) {
-    const pageHeight = this.draw.getHeight()
-    const surfaceHeight = surface.height || surface.canvas.clientHeight || pageHeight
-    const pageCount = Math.max(
-      1,
-      Math.ceil(this.draw.getPageCanvasHost().getPageHeight(surface.pageNo) / pageHeight)
-    )
-    const start = Math.max(0, Math.floor(offsetY / pageHeight))
-    const end = Math.min(
-      pageCount - 1,
-      Math.floor((offsetY + surfaceHeight - 1) / pageHeight)
-    )
-    return { start, end, pageHeight }
-  }
-
-  private renderPagedFrame(
-    ctx: CanvasRenderingContext2D,
-    payload: IDrawPagePayload
-  ) {
-    const {
-      header,
-      footer,
-      pageNumber,
-      lineNumber,
-      pageBorder
-    } = this.draw.getOptions()
-    const isPrintMode = this.draw.getMode() === EditorMode.PRINT
-
-    if (!isPrintMode) {
-      this.draw.getMargin().render(ctx, payload.pageNo)
-    }
-    if (!header.disabled) {
-      this.draw.getHeader().render(ctx, payload.pageNo)
-    }
-    if (!pageNumber.disabled) {
-      this.draw.getComponents().pageNumber.render(ctx, payload.pageNo)
-    }
-    if (!footer.disabled) {
-      this.draw.getFooter().render(ctx, payload.pageNo)
-    }
-    if (!lineNumber.disabled) {
-      this.draw.getComponents().lineNumber.render(ctx, payload.pageNo)
-    }
-    if (!pageBorder.disabled) {
-      this.draw.getPageBorder().render(ctx, payload.pageNo)
-    }
-    this.draw.getBadge().render(ctx, payload.pageNo)
-    if (this.draw.getOptions().watermark.data) {
-      this.draw.getWaterMark().render(ctx, payload.pageNo)
-    }
-  }
-
-  private renderContinuousFrame(
-    ctx: CanvasRenderingContext2D,
-    payload: IDrawPagePayload,
-    surface: IRenderSurface,
-    offsetY: number
-  ) {
-    const { header, footer, pageBorder } = this.draw.getOptions()
-    const isPrintMode = this.draw.getMode() === EditorMode.PRINT
-    const { start, end, pageHeight } = this.getVisibleSegmentRange(surface, offsetY)
-    const totalHeight = this.draw
-      .getPageCanvasHost()
-      .getPageHeight(payload.pageNo)
-
-    if (!isPrintMode) {
-      this.draw.getMargin().render(ctx, payload.pageNo, totalHeight)
-    }
-    this.renderHeaderFooterFloatList(ctx, payload, [ImageDisplay.FLOAT_BOTTOM])
-    if (!header.disabled) {
-      this.draw.getHeader().render(ctx, payload.pageNo)
-    }
-    if (!footer.disabled) {
-      this.draw.getFooter().render(ctx, payload.pageNo, {
-        pageHeight: totalHeight
-      })
-    }
-    this.renderHeaderFooterFloatList(ctx, payload, [
-      ImageDisplay.FLOAT_TOP,
-      ImageDisplay.SURROUND,
-      ImageDisplay.TIGHT
-    ])
-    if (!pageBorder.disabled) {
-      this.draw.getPageBorder().render(ctx, payload.pageNo, totalHeight)
-    }
-    this.draw.getBadge().render(ctx, payload.pageNo)
-    for (let segmentIndex = start; segmentIndex <= end; segmentIndex++) {
-      const segmentTop = segmentIndex * pageHeight
-      ctx.save()
-      ctx.translate(0, segmentTop)
-      try {
-        if (this.draw.getOptions().watermark.data) {
-          this.draw.getWaterMark().render(ctx, segmentIndex)
-        }
-      } finally {
-        ctx.restore()
-      }
-    }
+    this.floatImageRenderer.drawFloat(ctx, payload)
   }
 
   /**
@@ -174,7 +57,7 @@ export class PageContentPainter {
       Math.max(canvas.width, this.draw.getWidth()),
       Math.max(canvas.height, this.draw.getHeight())
     )
-    this.draw.getBlockParticle().clear()
+    this.blockRenderLifecycle.clearRuntimeHosts()
   }
 
   /**
@@ -186,6 +69,7 @@ export class PageContentPainter {
     payload: IDrawPagePayload,
     surface: IRenderSurface,
     selectionCtx: CanvasRenderingContext2D | null = null,
+    /** 纵向偏移量，用于调整绘制或命中位置。 */
     options: { offsetY?: number } = {}
   ) {
     const { elementList, positionList, rowList, pageNo } = payload
@@ -207,22 +91,24 @@ export class PageContentPainter {
     }
     try {
       ctx.globalAlpha = !this.draw.getZone().isMainActive() ? inactiveAlpha : 1
-      this.draw.getBackground().render(ctx, pageNo)
-      if (!isPrintMode) {
-        this.draw.getArea().render(ctx, pageNo)
-      }
-      if (!isPrintMode && pageMode !== PageMode.CONTINUITY) {
-        this.draw.getMargin().render(ctx, pageNo)
-      }
-      this.drawFloat(ctx, {
+      this.pageBackgroundRenderer.render(ctx, pageNo)
+      this.pageAreaRenderer.render(ctx, pageNo, isPrintMode)
+      this.pageMarginIndicatorRenderer.render(
+        ctx,
         pageNo,
-        imgDisplays: [ImageDisplay.FLOAT_BOTTOM],
+        pageMode,
+        isPrintMode
+      )
+      this.floatImageRenderer.drawPageBottomFloatLayer(ctx, {
+        pageNo,
         includeHeaderFooter: pageMode !== PageMode.CONTINUITY,
         isExport: payload.isExport
       })
-      if (!isPrintMode) {
-        this.draw.getControl().renderHighlightList(selectionCtx || ctx, pageNo)
-      }
+      this.pageControlHighlightRenderer.render(
+        selectionCtx || ctx,
+        pageNo,
+        isPrintMode
+      )
       // 行绘制只消费当前页切片后的位置列表，
       // 不再让 RowRenderer 自己在整份 positionList 上做 pageNo 过滤。
       const pagePositionList =
@@ -242,24 +128,22 @@ export class PageContentPainter {
         zone: EditorZone.MAIN
       })
       if (pageMode !== PageMode.CONTINUITY) {
-        this.renderPagedFrame(ctx, payload)
+        this.pageFrameRenderer.renderPagedFrame(ctx, payload)
       }
-      this.drawFloat(ctx, {
+      this.floatImageRenderer.drawPageTopFloatLayer(ctx, {
         pageNo,
-        imgDisplays: [ImageDisplay.FLOAT_TOP, ImageDisplay.SURROUND, ImageDisplay.TIGHT],
         includeHeaderFooter: pageMode !== PageMode.CONTINUITY,
         isExport: payload.isExport
       })
-      if (!isPrintMode && this.draw.getSearch().getSearchKeyword()) {
-        this.draw.getSearch().render(selectionCtx || ctx, pageNo)
-      }
-      if (
-        this.draw.getObjectResolver().getIsOriginalMainPlaceholderAvailable()
-      ) {
-        this.draw.getComponents().placeholder.render(ctx)
-      }
+      this.pageSearchRenderer.render(selectionCtx || ctx, pageNo, isPrintMode)
+      this.pagePlaceholderRenderer.render(ctx)
       if (pageMode === PageMode.CONTINUITY) {
-        this.renderContinuousFrame(ctx, payload, surface, offsetY)
+        this.pageFrameRenderer.renderContinuousFrame(
+          ctx,
+          payload,
+          surface,
+          offsetY
+        )
       }
     } finally {
       ctx.restore()

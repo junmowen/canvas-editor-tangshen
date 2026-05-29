@@ -11,7 +11,7 @@
 
 复跑失败：
 
-```text
+```txt
 TypeError: draw.getPage is not a function
 at cypress/e2e/issues/issue-inline-table-label.cy.ts:390:34
 at cypress/e2e/issues/issue-inline-table-label.cy.ts:493:24
@@ -19,7 +19,7 @@ at cypress/e2e/issues/issue-inline-table-label.cy.ts:493:24
 
 截图：
 
-```text
+```txt
 cypress/screenshots/issue-inline-table-label.cy.ts/inline table label layout -- does not highlight another inline table with the same row and column indexes (failed).png
 cypress/screenshots/issue-inline-table-label.cy.ts/inline table label layout -- draws inline table range from the table origin instead of the row origin (failed).png
 ```

@@ -79,7 +79,7 @@ function clickPagePoint(editor: Editor, point: { pageNo: number; x: number; y: n
 
 describe('tab indentation scenarios', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
     cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
 

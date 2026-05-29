@@ -1,3 +1,4 @@
+/** 文档元素类型，决定元素参与布局、渲染和编辑时使用的处理分支。 */
 export enum ElementType {
   TEXT = 'text',
   IMAGE = 'image',

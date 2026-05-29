@@ -34,6 +34,7 @@ export interface IDocumentTextStore<TElement extends IElement = IElement> {
   resetStats(): void
 }
 
+/** document文本storeoperationtype，限定当前数据可使用的类型标识。 */
 export type TDocumentTextStoreOperationType =
   | 'splice'
   | 'insert'
@@ -42,6 +43,7 @@ export type TDocumentTextStoreOperationType =
   | 'external-splice'
   | 'external-replace-all'
 
+/** document文本storeoperation契约，用于约束内部流程中传递的数据结构。 */
 export interface IDocumentTextStoreOperation {
   /** 操作类型。external-* 表示仍由旧数组链路直接完成写入。 */
   type: TDocumentTextStoreOperationType
@@ -67,6 +69,7 @@ export interface IDocumentTextStoreOperation {
   lengthAfter?: number
 }
 
+/** document文本storestats契约，用于约束内部流程中传递的数据结构。 */
 export interface IDocumentTextStoreStats {
   /** 当前 store 实现类型。 */
   type: 'array'
@@ -175,15 +178,18 @@ export class ArrayDocumentTextStore<TElement extends IElement = IElement>
   /** 最近一次 mirror 重放或快照刷新的原因。 */
   private mirrorLastReplayReason: string | null = null
 
+  /** 初始化 ArrayDocumentTextStore 实例并注入运行依赖。 */
   constructor(elementList: TElement[]) {
     this.elementList = elementList
     this.refreshMirrorFromTruth('initialize')
   }
 
+  /** 读取 version 属性值。 */
   public get version() {
     return this.versionValue
   }
 
+  /** 读取 length 属性值。 */
   public get length() {
     return this.elementList.length
   }
@@ -265,6 +271,7 @@ export class ArrayDocumentTextStore<TElement extends IElement = IElement>
     })
   }
 
+  /** 记录外部mutation，把当前命中结果写入缓存或统计。 */
   public recordExternalMutation(operation: IDocumentTextStoreOperation) {
     this.versionValue++
     this.externalMutationCount++
@@ -298,6 +305,7 @@ export class ArrayDocumentTextStore<TElement extends IElement = IElement>
     }
   }
 
+  /** 重置 Stats 对应的状态。 */
   public resetStats() {
     this.operationCount = 0
     this.externalMutationCount = 0
@@ -352,8 +360,11 @@ export class ArrayDocumentTextStore<TElement extends IElement = IElement>
 
   /** 尝试按操作日志增量重放 mirror。 */
   private tryReplayMirrorOperation(operation: IDocumentTextStoreOperation): {
+    /** 是否已回放，用于文档文本镜像调试统计。 */
     isReplayed: boolean
+    /** 是否已跳过，用于记录镜像回放中未执行的操作。 */
     isSkipped: boolean
+    /** 原因说明，用于记录降级、跳过或失败的触发条件。 */
     reason: string
   } {
     if (operation.type === 'replace-all') {

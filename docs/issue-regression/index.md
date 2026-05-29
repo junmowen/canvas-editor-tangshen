@@ -18,6 +18,7 @@
 - [cypress-coverage.md](./cypress-coverage.md)：现有 `cypress/e2e/issues` spec 到 GitHub issue 的映射。
 - [regression-run-2026-05-19.md](./regression-run-2026-05-19.md)：本次回归执行记录。
 - [problems/](./problems/)：回归失败项的开发跟踪文档。
+- [data/README.md](./data/README.md)：原始快照和机器可读数据说明。
 - `data/issues-all.json`：全量 issue 原始快照。
 - `data/issue-comments-all.json`：全量 issue comment 快照，已过滤 PR comments。
 - `data/cypress-issue-coverage.json`：机器可读覆盖关系。

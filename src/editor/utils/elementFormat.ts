@@ -1,5 +1,5 @@
 import { deepClone, getUUID, pickObject, splitText } from '.'
-import { LaTexParticle } from '../core/draw/particle/latex/LaTexParticle'
+import { LaTexParticle } from '../core/modules/image/particle/latex/LaTexParticle'
 import { ZERO } from '../dataset/constant/Common'
 import {
   CONTROL_STYLE_ATTR,
@@ -28,6 +28,7 @@ import { isTextLikeElement } from './elementLayout'
  * 负责把外部输入的元素补齐为编辑器内部规范结构，包括表格、控件、区域、列表、图片、LaTeX 等。
  */
 export function unzipElementList(elementList: IElement[]): IElement[] {
+  // 初始化 result 列表。
   const result: IElement[] = []
   for (let v = 0; v < elementList.length; v++) {
     const valueItem = elementList[v]
@@ -39,11 +40,17 @@ export function unzipElementList(elementList: IElement[]): IElement[] {
   return result
 }
 
+/** format元素列表选项，用于约束调用方可传入的可选配置。 */
 interface IFormatElementListOption {
+  /** 是否处理首个元素，用于控制格式继承的起点。 */
   isHandleFirstElement?: boolean // 根据上下文确定首字符处理逻辑（处理首字符补偿）
+  /** 是否强制补偿样式，用于处理控件边界样式继承。 */
   isForceCompensation?: boolean // 强制补偿字符
+  /** 是否来源于控件值，用于区分正文元素和控件内部元素。 */
   isFromControlValue?: boolean // 控件值内部格式化
+  /** 父控件标识，用于维护嵌套控件归属关系。 */
   parentControlId?: string // 父级控件值上下文
+  /** 编辑器配置项，用于读取全局排版和交互规则。 */
   editorOptions: DeepRequired<IEditorOption>
 }
 

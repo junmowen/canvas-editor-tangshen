@@ -1,6 +1,8 @@
 import { RangeManagerQuery } from './RangeManagerQuery'
 import { ZERO } from '../../dataset/constant/Common'
-import { ControlComponent } from '../../dataset/enum/Control'
+import { syncActiveControlForRange } from '../modules/control/interaction/syncActiveControlForRange'
+import { isControlRangeInputAllowed } from '../modules/control/policy/ControlInputPolicy'
+import { shrinkControlRangeBoundary } from '../modules/control/selection/shrinkControlRangeBoundary'
 import { IControlContext } from '../../interface/Control'
 import { IElement } from '../../interface/Element'
 import { IRange } from '../../interface/Range'
@@ -26,34 +28,21 @@ export class RangeManagerEdit extends RangeManagerQuery {
     if (!startElement) {
       return false
     }
-    if (startIndex === endIndex) {
-      const nextElement = targetResolver.resolveRangeElement({
-        elementList,
-        anchor: 'start',
-        offset: 1
-      })
-      return (
-        (startElement.controlComponent !== ControlComponent.PRE_TEXT ||
-          nextElement?.controlComponent !== ControlComponent.PRE_TEXT) &&
-        startElement.controlComponent !== ControlComponent.POST_TEXT
-      )
-    }
-    if (!endElement) {
-      return false
-    }
-    // 选区前后不是控件 || 选区前不是控件或是后缀&&选区后不是控件或是后缀 || 选区在控件内
-    return (
-      (!startElement.controlId && !endElement.controlId) ||
-      ((!startElement.controlId ||
-        startElement.controlComponent === ControlComponent.POSTFIX) &&
-        (!endElement.controlId ||
-          endElement.controlComponent === ControlComponent.POSTFIX)) ||
-      (!!startElement.controlId &&
-        endElement.controlId === startElement.controlId &&
-        endElement.controlComponent !== ControlComponent.PRE_TEXT &&
-        endElement.controlComponent !== ControlComponent.POST_TEXT &&
-        endElement.controlComponent !== ControlComponent.POSTFIX)
-    )
+    const nextElement =
+      startIndex === endIndex
+        ? targetResolver.resolveRangeElement({
+            elementList,
+            anchor: 'start',
+            offset: 1
+          })
+        : undefined
+    return isControlRangeInputAllowed({
+      startIndex,
+      endIndex,
+      startElement,
+      endElement,
+      nextElement
+    })
   }
 
   /** 写入新的编辑范围并同步控件激活状态。 */
@@ -94,16 +83,7 @@ export class RangeManagerEdit extends RangeManagerQuery {
       this.setDefaultStyle(null)
     }
     this.range.zone = this.draw.getZone().getZone()
-    // 激活控件
-    const control = this.draw.getControl()
-    if (~startIndex && ~endIndex) {
-      const element = this.draw.getTargetResolver().resolveRangeElement()
-      if (element?.controlId) {
-        control.initControl()
-        return
-      }
-    }
-    control.destroyControl()
+    syncActiveControlForRange({ draw: this.draw, startIndex, endIndex })
   }
 
   /** 用给定 range 替换当前编辑范围。 */
@@ -208,88 +188,12 @@ export class RangeManagerEdit extends RangeManagerQuery {
       }
     )
     if (!startElement || !endElement) return
-    if (startIndex === endIndex) {
-      if (startElement.controlComponent === ControlComponent.PLACEHOLDER) {
-        // 找到第一个placeholder字符
-        let index = startIndex - 1
-        while (index > 0) {
-          const preElement = elementList[index]
-          if (
-            preElement.controlId !== startElement.controlId ||
-            preElement.controlComponent === ControlComponent.PREFIX ||
-            preElement.controlComponent === ControlComponent.PRE_TEXT
-          ) {
-            range.startIndex = index
-            range.endIndex = index
-            break
-          }
-          index--
-        }
-      }
-    } else {
-      // 首、尾为占位符时，收缩到最后一个前缀字符后
-      if (
-        startElement.controlComponent === ControlComponent.PLACEHOLDER ||
-        endElement.controlComponent === ControlComponent.PLACEHOLDER
-      ) {
-        let index = endIndex - 1
-        while (index > 0) {
-          const preElement = elementList[index]
-          if (
-            preElement.controlId !== endElement.controlId ||
-            preElement.controlComponent === ControlComponent.PREFIX ||
-            preElement.controlComponent === ControlComponent.PRE_TEXT
-          ) {
-            range.startIndex = index
-            range.endIndex = index
-            return
-          }
-          index--
-        }
-      }
-      // 向右查找到第一个Value
-      if (startElement.controlComponent === ControlComponent.PREFIX) {
-        let index = startIndex + 1
-        while (index < elementList.length) {
-          const nextElement = elementList[index]
-          if (
-            nextElement.controlId !== startElement.controlId ||
-            nextElement.controlComponent === ControlComponent.VALUE
-          ) {
-            range.startIndex = index - 1
-            break
-          } else if (
-            nextElement.controlComponent === ControlComponent.PLACEHOLDER
-          ) {
-            range.startIndex = index - 1
-            range.endIndex = index - 1
-            return
-          }
-          index++
-        }
-      }
-      // 向左查找到第一个Value
-      if (endElement.controlComponent !== ControlComponent.VALUE) {
-        let index = startIndex - 1
-        while (index > 0) {
-          const preElement = elementList[index]
-          if (
-            preElement.controlId !== startElement.controlId ||
-            preElement.controlComponent === ControlComponent.VALUE
-          ) {
-            range.startIndex = index
-            break
-          } else if (
-            preElement.controlComponent === ControlComponent.PLACEHOLDER
-          ) {
-            range.startIndex = index
-            range.endIndex = index
-            return
-          }
-          index--
-        }
-      }
-    }
+    shrinkControlRangeBoundary({
+      elementList,
+      range,
+      startElement,
+      endElement
+    })
   }
 
   /** 在画布上渲染选区背景矩形。 */

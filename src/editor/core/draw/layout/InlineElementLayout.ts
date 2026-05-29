@@ -1,11 +1,13 @@
 import { ZERO } from '../../../dataset/constant/Common'
-import { ImageDisplay } from '../../../dataset/enum/Common'
-import { BlockType } from '../../../dataset/enum/Block'
-import { ControlComponent } from '../../../dataset/enum/Control'
-import { ElementType } from '../../../dataset/enum/Element'
 import { IElement, IElementMetrics } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
-import { convertStringToBase64 } from '../../../utils'
+import { BlockElementLayout } from '../../modules/block/layout/BlockElementLayout'
+import { CheckableControlElementLayout } from '../../modules/control/layout/CheckableControlElementLayout'
+import { InlineImageElementLayout } from '../../modules/image/layout/InlineImageElementLayout'
+import { PageBreakElementLayout } from '../../modules/page-break/layout/PageBreakElementLayout'
+import { TabElementLayout } from '../../modules/paragraph/layout/TabElementLayout'
+import { ScriptElementLayout } from '../../modules/richtext/layout/ScriptElementLayout'
+import { SeparatorElementLayout } from '../../modules/separator/layout/SeparatorElementLayout'
 import type { Draw } from '../Draw'
 
 /**
@@ -36,12 +38,24 @@ interface IMeasureInlineElementPayload {
  * 负责测量图片、分隔符、控件与普通文本等单个元素的尺寸。
  */
 export class InlineElementLayout {
+  private readonly blockElementLayout: BlockElementLayout
+  private readonly checkableControlElementLayout: CheckableControlElementLayout
+  private readonly inlineImageElementLayout = new InlineImageElementLayout()
+  private readonly pageBreakElementLayout = new PageBreakElementLayout()
+  private readonly scriptElementLayout = new ScriptElementLayout()
+  private readonly separatorElementLayout: SeparatorElementLayout
+  private readonly tabElementLayout = new TabElementLayout()
+
   /**
    * 构造函数。
    *
    * @param draw - Draw 门面对象，用于访问编辑器选项和方法
    */
-  constructor(private readonly draw: Draw) {}
+  constructor(private readonly draw: Draw) {
+    this.blockElementLayout = new BlockElementLayout(draw)
+    this.checkableControlElementLayout = new CheckableControlElementLayout(draw)
+    this.separatorElementLayout = new SeparatorElementLayout(draw)
+  }
 
   /**
    * 测量单个行内元素的尺寸信息。
@@ -81,122 +95,59 @@ export class InlineElementLayout {
       return metrics
     }
 
-    // 处理图片和 LaTeX 元素
-    if (
-      element.type === ElementType.IMAGE ||
-      element.type === ElementType.LATEX
-    ) {
-      // 浮动图片不占用行内空间
-      if (
-        element.imgDisplay === ImageDisplay.SURROUND ||
-        element.imgDisplay === ImageDisplay.TIGHT ||
-        element.imgDisplay === ImageDisplay.FLOAT_TOP ||
-        element.imgDisplay === ImageDisplay.FLOAT_BOTTOM
-      ) {
-        metrics.width = 0
-        metrics.height = 0
-        metrics.boundingBoxDescent = 0
-      } else {
-        // 处理自适应宽度的图片
-        const elementWidth = element.width! * scale
-        const elementHeight = element.height! * scale
-        if (elementWidth > availableWidth) {
-          // 计算自适应高度
-          const adaptiveHeight = (elementHeight * availableWidth) / elementWidth
-          metrics.width = availableWidth
-          metrics.height = adaptiveHeight
-          metrics.boundingBoxDescent = adaptiveHeight
-        } else {
-          metrics.width = elementWidth
-          metrics.height = elementHeight
-          metrics.boundingBoxDescent = elementHeight
-        }
-      }
-      metrics.boundingBoxAscent = 0
+    if (this.inlineImageElementLayout.measure({
+      element,
+      metrics,
+      availableWidth,
+      scale
+    })) {
+      return metrics
+    }
+    if (this.separatorElementLayout.measure({
+      element,
+      metrics,
+      availableWidth,
+      rowMargin,
+      scale
+    })) {
+      return metrics
+    }
+    if (this.pageBreakElementLayout.measure({
+      element,
+      metrics,
+      availableWidth,
+      scale,
+      defaultSize
+    })) {
+      return metrics
+    }
+    if (this.checkableControlElementLayout.measure({
+      element,
+      metrics,
+      scale
+    })) {
+      return metrics
+    }
+    if (this.tabElementLayout.measure({
+      element,
+      metrics,
+      scale,
+      defaultSize,
+      defaultTabWidth
+    })) {
+      return metrics
+    }
+    if (this.blockElementLayout.measure({
+      element,
+      metrics,
+      availableWidth,
+      scale
+    })) {
       return metrics
     }
 
-    // 处理分隔符元素
-    if (element.type === ElementType.SEPARATOR) {
-      const {
-        separator: { lineWidth }
-      } = this.draw.getOptions()
-      // 分隔符占满可用宽度
-      element.width = availableWidth / scale
-      metrics.width = availableWidth
-      metrics.height = lineWidth * scale
-      metrics.boundingBoxAscent = -rowMargin
-      metrics.boundingBoxDescent = -rowMargin + metrics.height
-      return metrics
-    }
-
-    // 处理分页符元素
-    if (element.type === ElementType.PAGE_BREAK) {
-      element.width = availableWidth / scale
-      metrics.width = availableWidth
-      metrics.height = defaultSize
-      return metrics
-    }
-
-    // 处理单选框元素
-    if (
-      element.type === ElementType.RADIO ||
-      element.controlComponent === ControlComponent.RADIO
-    ) {
-      const { width, height, gap } = this.draw.getOptions().radio
-      const elementWidth = width + gap * 2
-      element.width = elementWidth
-      metrics.width = elementWidth * scale
-      metrics.height = height * scale
-      return metrics
-    }
-
-    // 处理复选框元素
-    if (
-      element.type === ElementType.CHECKBOX ||
-      element.controlComponent === ControlComponent.CHECKBOX
-    ) {
-      const { width, height, gap } = this.draw.getOptions().checkbox
-      const elementWidth = width + gap * 2
-      element.width = elementWidth
-      metrics.width = elementWidth * scale
-      metrics.height = height * scale
-      return metrics
-    }
-
-    // 处理制表符元素
-    if (element.type === ElementType.TAB) {
-      metrics.width = defaultTabWidth * scale
-      metrics.height = defaultSize * scale
-      metrics.boundingBoxDescent = 0
-      metrics.boundingBoxAscent = metrics.height
-      return metrics
-    }
-
-    // 处理块级元素
-    if (element.type === ElementType.BLOCK) {
-      if (!element.width) {
-        metrics.width = availableWidth
-      } else {
-        const elementWidth = element.width * scale
-        metrics.width = Math.min(elementWidth, availableWidth)
-      }
-      metrics.height = element.height! * scale
-      metrics.boundingBoxDescent = metrics.height
-      metrics.boundingBoxAscent = 0
-      this.preloadSvgBlockRasterImage(element)
-      return metrics
-    }
-
-    // 处理文本元素（包括上标、下标）
     const size = element.size || defaultSize
-    if (
-      element.type === ElementType.SUPERSCRIPT ||
-      element.type === ElementType.SUBSCRIPT
-    ) {
-      // 上标和下标使用较小的字号
-      element.actualSize = Math.ceil(size * 0.6)
-    }
+    this.scriptElementLayout.applyActualSize(element, defaultSize)
     metrics.height = (element.actualSize || size) * scale
     // 设置字体（缓存避免频繁触发 DOM setter）
     const font = this.draw.getElementFont(element)
@@ -218,13 +169,7 @@ export class InlineElementLayout {
         : fontMetrics.actualBoundingBoxAscent) * scale
     metrics.boundingBoxDescent =
       fontMetrics.actualBoundingBoxDescent * scale
-    // 上标向上偏移
-    if (element.type === ElementType.SUPERSCRIPT) {
-      metrics.boundingBoxAscent += metrics.height / 2
-    } else if (element.type === ElementType.SUBSCRIPT) {
-      // 下标向下偏移
-      metrics.boundingBoxDescent += metrics.height / 2
-    }
+    this.scriptElementLayout.adjustMetrics(element, metrics)
     return metrics
   }
 
@@ -242,21 +187,4 @@ export class InlineElementLayout {
     }
   }
 
-  /** Preload SVG block as an image so export can synchronously rasterize it into Canvas2D. */
-  private preloadSvgBlockRasterImage(element: IElement) {
-    const svgBlock = element.block?.svgBlock
-    if (element.block?.type !== BlockType.SVG || !svgBlock?.svg || svgBlock.rasterImage) {
-      return
-    }
-    const image = new Image()
-    const loadPromise = new Promise((resolve, reject) => {
-      image.onload = () => {
-        svgBlock.rasterImage = image
-        resolve(element)
-      }
-      image.onerror = reject
-    })
-    image.src = `data:image/svg+xml;base64,${convertStringToBase64(svgBlock.svg)}`
-    this.draw.getComponents().imageObserver.add(loadPromise)
-  }
 }

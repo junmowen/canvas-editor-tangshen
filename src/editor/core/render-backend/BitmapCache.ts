@@ -1,6 +1,6 @@
 import { RenderLayer } from './types/RenderLayer'
 
-/** bitmap 缓存键参数。 */
+/** 位图缓存key调用载荷，聚合执行该操作所需的输入数据。 */
 export interface IBitmapCacheKeyPayload {
   /** 缓存所属页码。 */
   pageNo: number
@@ -8,10 +8,10 @@ export interface IBitmapCacheKeyPayload {
   layer: RenderLayer
 }
 
-/** base bitmap 缓存来源，用于区分同步重绘和 worker 结果写入。 */
+/** 位图缓存来源类型，用于约束内部流程中传递的数据结构。 */
 export type BitmapCacheSource = 'canvas-2d-render' | 'worker-render'
 
-/** bitmap 缓存写入参数。 */
+/** 位图缓存设置调用载荷，聚合执行该操作所需的输入数据。 */
 export interface IBitmapCacheSetPayload extends IBitmapCacheKeyPayload {
   /** 缓存的 ImageBitmap 对象。 */
   bitmap: ImageBitmap
@@ -27,7 +27,7 @@ export interface IBitmapCacheSetPayload extends IBitmapCacheKeyPayload {
   source?: BitmapCacheSource
 }
 
-/** bitmap 缓存项。 */
+/** 位图缓存item契约，用于约束内部流程中传递的数据结构。 */
 export interface IBitmapCacheItem extends IBitmapCacheSetPayload {
   /** 缓存创建时间，用于后续 LRU 淘汰。 */
   createdAt: number
@@ -35,7 +35,7 @@ export interface IBitmapCacheItem extends IBitmapCacheSetPayload {
   lastAccessedAt: number
 }
 
-/** bitmap 合成被拒绝的原因。 */
+/** 位图缓存composerejectreason类型，用于约束内部流程中传递的数据结构。 */
 export type BitmapCacheComposeRejectReason =
   | 'page-no'
   | 'layer'
@@ -44,7 +44,7 @@ export type BitmapCacheComposeRejectReason =
   | 'content-version'
   | 'bitmap-size'
 
-/** bitmap 缓存操作类型，用于近期窗口统计。 */
+/** 位图缓存operation类型，用于约束内部流程中传递的数据结构。 */
 export type BitmapCacheOperation =
   | 'set'
   | 'hit'
@@ -55,7 +55,7 @@ export type BitmapCacheOperation =
   | 'compose-reject'
   | 'evict'
 
-/** bitmap 缓存近期操作样本。 */
+/** 位图缓存recentsample契约，用于约束内部流程中传递的数据结构。 */
 export interface IBitmapCacheRecentSample {
   /** 操作类型。 */
   operation: BitmapCacheOperation
@@ -71,7 +71,7 @@ export interface IBitmapCacheRecentSample {
   timestamp: number
 }
 
-/** bitmap 缓存近期窗口统计。 */
+/** 位图缓存recent窗口stats契约，用于约束内部流程中传递的数据结构。 */
 export interface IBitmapCacheRecentWindowStats {
   /** 近期窗口最多保留的样本数。 */
   windowSize: number
@@ -101,7 +101,7 @@ export interface IBitmapCacheRecentWindowStats {
   composeRejectReasonMap: Partial<Record<BitmapCacheComposeRejectReason, number>>
 }
 
-/** bitmap 缓存统计信息。 */
+/** 位图缓存stats契约，用于约束内部流程中传递的数据结构。 */
 export interface IBitmapCacheStats {
   /** 当前缓存数量。 */
   count: number
@@ -157,7 +157,7 @@ export interface IBitmapCacheStats {
   recentWindow: IBitmapCacheRecentWindowStats
 }
 
-/** bitmap 缓存配置。 */
+/** 位图缓存选项契约，用于约束内部流程中传递的数据结构。 */
 export interface IBitmapCacheOptions {
   /** 最多保留的 bitmap 缓存数量。 */
   maxCount?: number
@@ -267,6 +267,7 @@ export class BitmapCache {
 
   /** 记录一次 bitmap 缓存合成成功。 */
   public recordComposeHit(payload?: IBitmapCacheKeyPayload & {
+    /** 数据来源标识，用于区分渲染、缓存或事件来源。 */
     source?: BitmapCacheSource
   }) {
     this.composeHitCount++
@@ -425,11 +426,15 @@ export class BitmapCache {
 
   /** 单次遍历生成按 layer 分组的数量和内存统计。 */
   private getLayerStats(): {
+    /** 按图层统计的缓存数量，用于定位各层资源占用。 */
     countByLayer: Partial<Record<RenderLayer, number>>
+    /** 按图层统计的估算字节数，用于分析各层内存占用。 */
     estimatedBytesByLayer: Partial<Record<RenderLayer, number>>
   } {
     return Array.from(this.cache.values()).reduce<{
+      /** 按图层统计的缓存数量，用于定位各层资源占用。 */
       countByLayer: Partial<Record<RenderLayer, number>>
+      /** 按图层统计的估算字节数，用于分析各层内存占用。 */
       estimatedBytesByLayer: Partial<Record<RenderLayer, number>>
     }>(
       (stats, item) => {
@@ -449,11 +454,15 @@ export class BitmapCache {
 
   /** 单次遍历生成按来源分组的数量和内存统计。 */
   private getSourceStats(): {
+    /** 按来源统计的缓存数量，用于分析不同渲染源的缓存规模。 */
     countBySource: Partial<Record<BitmapCacheSource, number>>
+    /** 按来源统计的估算字节数，用于分析不同渲染源的内存占用。 */
     estimatedBytesBySource: Partial<Record<BitmapCacheSource, number>>
   } {
     return Array.from(this.cache.values()).reduce<{
+      /** 按来源统计的缓存数量，用于分析不同渲染源的缓存规模。 */
       countBySource: Partial<Record<BitmapCacheSource, number>>
+      /** 按来源统计的估算字节数，用于分析不同渲染源的内存占用。 */
       estimatedBytesBySource: Partial<Record<BitmapCacheSource, number>>
     }>(
       (stats, item) => {

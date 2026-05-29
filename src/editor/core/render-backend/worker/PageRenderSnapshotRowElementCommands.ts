@@ -1,43 +1,69 @@
-import { ElementType } from '../../../dataset/enum/Element'
 import { EditorMode } from '../../../dataset/enum/Editor'
-import { ControlComponent } from '../../../dataset/enum/Control'
 import { ZERO } from '../../../dataset/constant/Common'
 import { IDrawPagePayload } from '../../../interface/Draw'
 import { IElement, IElementPosition } from '../../../interface/Element'
 import { IRowElement } from '../../../interface/Row'
 import { ITableFragmentDescriptor } from '../../../interface/table/TableFragment'
+import { isCheckboxHitElement, isRadioHitElement } from '../../modules/control/hittest/ControlHitTest'
+import {
+  isImageElement,
+  isLatexElement
+} from '../../modules/image/layout/InlineImageElementLayout'
+import { isPageBreakElement } from '../../modules/page-break/layout/PageBreakElementLayout'
+import { isTabElement } from '../../modules/paragraph/layout/TabElementLayout'
+import { isSeparatorElement } from '../../modules/separator/layout/SeparatorElementLayout'
+import { isTableElement } from '../../modules/table/layout/TableRowLayoutPolicy'
 import { IWorkerPaintCommand } from './WorkerRenderProtocol'
 import { PageRenderSnapshotInlineCommands } from './PageRenderSnapshotInlineCommands'
 
+/** 行文本state契约，用于约束内部流程中传递的数据结构。 */
 interface IRowTextState {
+  /** 文本内容，用于剪贴板、输入或公式节点。 */
   text: string
+  /** 横坐标，用于定位画布或页面内的位置。 */
   x: number
+  /** 纵坐标，用于定位画布或页面内的位置。 */
   y: number
+  /** 字体声明，用于设置 Canvas 文本绘制样式。 */
   font: string
+  /** 填充样式，用于设置 Canvas 填充颜色或图案。 */
   fillStyle: string
 }
 
+/** 控件边框state契约，用于约束内部流程中传递的数据结构。 */
 interface IControlBorderState {
+  /** 横坐标，用于定位画布或页面内的位置。 */
   x: number
+  /** 纵坐标，用于定位画布或页面内的位置。 */
   y: number
+  /** 宽度尺寸，使用编辑器内部像素单位。 */
   width: number
+  /** 高度尺寸，使用编辑器内部像素单位。 */
   height: number
 }
 
+/** push行元素command调用载荷，聚合执行该操作所需的输入数据。 */
 interface IPushRowElementCommandPayload {
+  /** 命令列表，保存需要按顺序执行的编辑命令。 */
   commandList: IWorkerPaintCommand[]
   textDecorationCommandList: IWorkerPaintCommand[]
+  /** 行布局对象，保存当前行的元素和坐标信息。 */
   row: IDrawPagePayload['rowList'][number]
+  /** 文档元素对象，承载文本、控件、表格或媒体信息。 */
   element: IRowElement
+  /** pre元素，用于定位或修改对应文档节点。 */
   preElement: IRowElement | undefined
+  /** 行位置，用于描述布局或命中的空间范围。 */
   rowPosition: IElementPosition | undefined
   textState: IRowTextState
   controlBorderState: IControlBorderState
+  /** 透明度系数，用于控制绘制结果的不透明程度。 */
   alpha: number
 }
 
 /** Dispatches one row element to the matching worker command producer. */
 export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSnapshotInlineCommands {
+  /** 写入行元素commands，追加后续渲染需要的命令数据。 */
   protected pushRowElementCommands(payload: IPushRowElementCommandPayload) {
     const {
       commandList,
@@ -67,7 +93,7 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
       this.recordDecoratedNonTextElement(payload)
       return
     }
-    if (element.type === ElementType.SEPARATOR) {
+    if (isSeparatorElement(element)) {
       this.flushRowTextState(commandList, textState, alpha)
       if (rowPosition) {
         this.pushSeparatorCommand(commandList, element, rowPosition)
@@ -75,7 +101,7 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
       this.recordDecoratedNonTextElement(payload)
       return
     }
-    if (element.type === ElementType.PAGE_BREAK) {
+    if (isPageBreakElement(element)) {
       this.flushRowTextState(commandList, textState, alpha)
       if (
         rowPosition &&
@@ -87,12 +113,12 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
       this.recordDecoratedNonTextElement(payload)
       return
     }
-    if (element.type === ElementType.TAB) {
+    if (isTabElement(element)) {
       this.flushRowTextState(commandList, textState, alpha)
       this.recordDecoratedNonTextElement(payload)
       return
     }
-    if (element.type === ElementType.IMAGE) {
+    if (isImageElement(element)) {
       this.flushRowTextState(commandList, textState, alpha)
       if (rowPosition && !this.isFloatingImage(element)) {
         this.pushImageCommand(commandList, element, rowPosition, alpha)
@@ -100,7 +126,7 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
       this.recordDecoratedNonTextElement(payload)
       return
     }
-    if (element.type === ElementType.LATEX) {
+    if (isLatexElement(element)) {
       this.flushRowTextState(commandList, textState, alpha)
       if (rowPosition) {
         this.pushLaTexCommand(commandList, element, rowPosition, alpha)
@@ -108,10 +134,7 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
       this.recordDecoratedNonTextElement(payload)
       return
     }
-    if (
-      element.type === ElementType.CHECKBOX ||
-      element.controlComponent === ControlComponent.CHECKBOX
-    ) {
+    if (isCheckboxHitElement(element)) {
       this.flushRowTextState(commandList, textState, alpha)
       if (rowPosition) {
         this.pushCheckboxCommands(commandList, row, element, rowPosition, alpha)
@@ -119,10 +142,7 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
       this.recordDecoratedNonTextElement(payload)
       return
     }
-    if (
-      element.type === ElementType.RADIO ||
-      element.controlComponent === ControlComponent.RADIO
-    ) {
+    if (isRadioHitElement(element)) {
       this.flushRowTextState(commandList, textState, alpha)
       if (rowPosition) {
         this.pushRadioCommands(commandList, row, element, rowPosition, alpha)
@@ -130,7 +150,7 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
       this.recordDecoratedNonTextElement(payload)
       return
     }
-    if (element.type === ElementType.TABLE) {
+    if (isTableElement(element)) {
       this.flushRowTextState(commandList, textState, alpha)
       if (rowPosition) {
         this.pushTableCommands(
@@ -146,6 +166,7 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
     this.pushTextElementCommand(payload)
   }
 
+  /** 记录decoratednon文本元素，把当前命中结果写入缓存或统计。 */
   private recordDecoratedNonTextElement(payload: IPushRowElementCommandPayload) {
     const {
       commandList,
@@ -183,6 +204,7 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
     }
   }
 
+  /** 写入文本元素command，追加后续渲染需要的命令数据。 */
   private pushTextElementCommand(payload: IPushRowElementCommandPayload) {
     const {
       commandList,

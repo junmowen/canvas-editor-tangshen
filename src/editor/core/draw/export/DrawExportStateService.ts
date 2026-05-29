@@ -11,6 +11,7 @@ export class DrawExportStateService {
   /** 关联的 Draw 门面。 */
   constructor(private readonly draw: Draw) {}
 
+  /** 捕获 Export Render State 对应的当前状态。 */
   public captureExportRenderState() {
     const { header, main, footer } = this.draw
       .getObjectResolver()
@@ -28,6 +29,7 @@ export class DrawExportStateService {
     }
   }
 
+  /** 恢复 Export Render State 对应的快照状态。 */
   public restoreExportRenderState(
     state: ReturnType<Draw['captureExportRenderState']>
   ) {

@@ -1,3 +1,4 @@
+/** 元素样式键集合，用于从元素上提取可继承的文字与尺寸样式。 */
 export enum ElementStyleKey {
   font = 'font',
   size = 'size',

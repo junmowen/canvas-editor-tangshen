@@ -1,6 +1,4 @@
 import { ZERO } from '../../../dataset/constant/Common'
-import { ControlComponent } from '../../../dataset/enum/Control'
-import { ElementType } from '../../../dataset/enum/Element'
 import { EditorMode } from '../../../dataset/enum/Editor'
 import {
   IAppendElementListOption
@@ -13,6 +11,8 @@ import {
 } from '../../../interface/Element'
 import { deepClone } from '../../../utils'
 import { formatElementList } from '../../../utils/element'
+import { canDeleteControlValueInFormMode } from '../../modules/control/policy/ControlDeletionPolicy'
+import { isPlainTextElement } from '../../modules/paragraph/layout/ParagraphRowLayoutPolicy'
 import type { Draw } from '../Draw'
 import {
   ASYNC_INSERT_THRESHOLD,
@@ -138,7 +138,7 @@ export class DrawMutationService {
         preElement &&
         !preElement.listId &&
         preElement?.value === ZERO &&
-        (!preElement.type || preElement.type === ElementType.TEXT)
+        isPlainTextElement(preElement)
       ) {
         elementList.splice(startIndex, 1)
         curIndex -= 1
@@ -349,6 +349,7 @@ export class DrawMutationService {
     const isMainElementListMutation =
       elementList === this.draw.getObjectResolver().getOriginalMainElementList()
     const oldLength = isMainElementListMutation ? elementList.length : 0
+    // 记录删除前的元素签名，供文档文本存储同步裁剪。
     const deleteRecordList: Array<{ index: number; signature: string }> = []
     if (!this.isInternalInsertSplice) {
       this.asyncInsertTransactionManager.cancel('splice-element-list')
@@ -412,9 +413,10 @@ export class DrawMutationService {
             deleteElement?.area?.hide ||
             (tdDeletable !== false &&
               deleteElement?.control?.deletable !== false &&
-              (!isDisableControlDeleteInFormMode ||
-                !deleteElement?.controlId ||
-                deleteElement.controlComponent === ControlComponent.VALUE) &&
+              canDeleteControlValueInFormMode(
+                deleteElement,
+                isDisableControlDeleteInFormMode
+              ) &&
               deleteElement?.title?.deletable !== false &&
               (group.deletable !== false || !deleteElement?.groupIds?.length) &&
               (deleteElement?.area?.deletable !== false ||

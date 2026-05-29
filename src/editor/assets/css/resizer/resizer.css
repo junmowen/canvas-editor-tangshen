@@ -1,9 +1,11 @@
+/* 元素尺寸调整控制点样式。 */
 .ce-resizer-selection {
   position: absolute;
   border: 1px solid;
   pointer-events: none;
 }
 
+/* 元素尺寸调整控制点样式。 */
 .ce-resizer-selection .resizer-handle {
   position: absolute;
   z-index: 9;
@@ -16,38 +18,47 @@
   pointer-events: initial;
 }
 
+/* 元素尺寸调整控制点样式。 */
 .ce-resizer-selection .handle-0 {
   cursor: nw-resize;
 }
 
+/* 元素尺寸调整控制点样式。 */
 .ce-resizer-selection .handle-1 {
   cursor: n-resize;
 }
 
+/* 元素尺寸调整控制点样式。 */
 .ce-resizer-selection .handle-2 {
   cursor: ne-resize;
 }
 
+/* 元素尺寸调整控制点样式。 */
 .ce-resizer-selection .handle-3 {
   cursor: e-resize;
 }
 
+/* 元素尺寸调整控制点样式。 */
 .ce-resizer-selection .handle-4 {
   cursor: se-resize;
 }
 
+/* 元素尺寸调整控制点样式。 */
 .ce-resizer-selection .handle-5 {
   cursor: s-resize;
 }
 
+/* 元素尺寸调整控制点样式。 */
 .ce-resizer-selection .handle-6 {
   cursor: sw-resize;
 }
 
+/* 元素尺寸调整控制点样式。 */
 .ce-resizer-selection .handle-7 {
   cursor: w-resize;
 }
 
+/* 元素尺寸调整控制点样式。 */
 .ce-resizer-size-view {
   display: flex;
   align-items: center;
@@ -63,11 +74,13 @@
   border-radius: 4px;
 }
 
+/* 元素尺寸调整控制点样式。 */
 .ce-resizer-size-view span {
   color: #ffffff;
   font-size: 12px;
 }
 
+/* 元素尺寸调整控制点样式。 */
 .ce-resizer-image {
   position: absolute;
   opacity: 0.5;

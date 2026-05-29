@@ -2,6 +2,7 @@ import type { Draw } from '../../Draw'
 import { IChunkLayoutPatchContext } from './ChunkLayoutTypes'
 import { IPageChunkRebalanceResult } from './PageChunkRebalanceTypes'
 
+/** 脏区页面范围plan契约，用于约束内部流程中传递的数据结构。 */
 export interface IDirtyPageRangePlan {
   /** 建议失效起始页。 */
   startPageNo: number
@@ -17,11 +18,14 @@ export interface IDirtyPageRangePlan {
 
 /** 页级输入影响范围规划器。第一阶段只旁路统计，不接管真实写回。 */
 export class DirtyPageRangePlanner {
+  /** 初始化 DirtyPageRangePlanner 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
   /** 根据当前页级 rebalance 结果规划本次 dirty page range。 */
   public plan(payload: {
+    /** 当前操作上下文，汇总本次处理需要共享的状态。 */
     context: IChunkLayoutPatchContext
+    /** 再平衡结果，用于把分页块调整同步回运行态。 */
     rebalanceResult: IPageChunkRebalanceResult
   }): IDirtyPageRangePlan {
     const { context, rebalanceResult } = payload

@@ -9,14 +9,14 @@
 
 复跑失败：
 
-```text
+```txt
 AssertionError: expected 0 to be above 0
 at cypress/e2e/issues/issue-catalog-position-miss.cy.ts:45:60
 ```
 
 截图：
 
-```text
+```txt
 cypress/screenshots/issue-catalog-position-miss.cy.ts/目录位置容错 -- does not crash catalog worker after chunk typing (failed).png
 ```
 

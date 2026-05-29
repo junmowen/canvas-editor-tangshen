@@ -1,16 +1,25 @@
 
-import { ControlComponent } from '../../../dataset/enum/Control'
-import { ElementType } from '../../../dataset/enum/Element'
 import { WatermarkType } from '../../../dataset/enum/Watermark'
 import { IDrawPagePayload } from '../../../interface/Draw'
 import { IElement } from '../../../interface/Element'
 import { IRowElement } from '../../../interface/Row'
 import { ITableFragmentDescriptor } from '../../../interface/table/TableFragment'
 import { ZERO } from '../../../dataset/constant/Common'
+import { isCheckboxHitElement, isRadioHitElement } from '../../modules/control/hittest/ControlHitTest'
+import {
+  isImageElement,
+  isLatexElement
+} from '../../modules/image/layout/InlineImageElementLayout'
+import { isWorkerSnapshotSupportedFloatingImage } from '../../modules/image/render/WorkerSnapshotImageRenderPolicy'
+import { isPageBreakElement } from '../../modules/page-break/layout/PageBreakElementLayout'
+import { isSeparatorElement } from '../../modules/separator/layout/SeparatorElementLayout'
+import { isTableElement } from '../../modules/table/layout/TableRowLayoutPolicy'
+import { isWorkerSnapshotTextElement } from '../../modules/richtext/render/WorkerSnapshotTextStylePolicy'
 import { PageRenderSnapshotFrameCommands } from './PageRenderSnapshotFrameCommands'
 
 /** Support boundary checks for worker snapshot generation. */
 export abstract class PageRenderSnapshotValidator extends PageRenderSnapshotFrameCommands {
+  /** 校验页面supported，在不支持的场景下阻止后台渲染。 */
   protected assertPageSupported(payload: IDrawPagePayload) {
     const options = this.draw.getRuntime().getOptions()
     this.assertHeaderFooterSupported()
@@ -32,6 +41,7 @@ export abstract class PageRenderSnapshotValidator extends PageRenderSnapshotFram
     }
   }
 
+  /** 校验元素supported，在不支持的场景下阻止后台渲染。 */
   protected assertElementSupported(
     element: IRowElement,
     tableFragment?: ITableFragmentDescriptor
@@ -42,53 +52,43 @@ export abstract class PageRenderSnapshotValidator extends PageRenderSnapshotFram
     if (this.shouldSkipHiddenElement(element)) {
       return
     }
-    if (element.type === ElementType.SEPARATOR) {
+    if (isSeparatorElement(element)) {
       return
     }
-    if (element.type === ElementType.IMAGE) {
+    if (isImageElement(element)) {
       if (this.isFloatingImage(element)) {
-        if (tableFragment || !element.imgFloatPosition) {
+        if (
+          !isWorkerSnapshotSupportedFloatingImage({
+            element,
+            tableFragment
+          })
+        ) {
           throw new Error('worker snapshot does not support floating image')
         }
         return
       }
       return
     }
-    if (
-      element.type === ElementType.CHECKBOX ||
-      element.controlComponent === ControlComponent.CHECKBOX ||
-      element.type === ElementType.RADIO ||
-      element.controlComponent === ControlComponent.RADIO
-    ) {
+    if (isCheckboxHitElement(element) || isRadioHitElement(element)) {
       return
     }
-    if (element.type === ElementType.TABLE) {
+    if (isTableElement(element)) {
       if (!tableFragment) {
         this.assertTableSupported(element)
       }
       return
     }
     const type = element.type
-    if (type === ElementType.PAGE_BREAK) {
+    if (isPageBreakElement(element)) {
       return
     }
-    if (type === ElementType.LATEX) {
+    if (isLatexElement(element)) {
       if (!element.laTexSVG) {
         throw new Error('worker snapshot does not support incomplete latex')
       }
       return
     }
-    const isTextElement =
-      !type ||
-      type === ElementType.TEXT ||
-      type === ElementType.CONTROL ||
-      type === ElementType.TITLE ||
-      type === ElementType.HYPERLINK ||
-      type === ElementType.DATE ||
-      type === ElementType.TAB ||
-      type === ElementType.SUPERSCRIPT ||
-      type === ElementType.SUBSCRIPT
-    if (!isTextElement) {
+    if (!isWorkerSnapshotTextElement(element)) {
       throw new Error(`worker snapshot does not support element type=${type}`)
     }
   }
@@ -104,6 +104,7 @@ export abstract class PageRenderSnapshotValidator extends PageRenderSnapshotFram
     }
   }
 
+  /** 校验表格supported，在不支持的场景下阻止后台渲染。 */
   protected assertTableSupported(table: IElement | ITableFragmentDescriptor) {
     if (!table.trList?.length || !table.width || !table.height) {
       throw new Error('worker snapshot does not support incomplete table')
@@ -132,7 +133,7 @@ export abstract class PageRenderSnapshotValidator extends PageRenderSnapshotFram
           }
           for (let e = 0; e < row.elementList.length; e++) {
             const cellElement = row.elementList[e]
-            if (cellElement.type === ElementType.TABLE) {
+            if (isTableElement(cellElement)) {
               throw new Error('worker snapshot does not support nested table')
             }
             this.assertElementSupported(cellElement)

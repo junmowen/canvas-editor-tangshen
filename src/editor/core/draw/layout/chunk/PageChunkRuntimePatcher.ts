@@ -1,6 +1,6 @@
-import { ElementType } from '../../../../dataset/enum/Element'
 import { IElementPosition } from '../../../../interface/Element'
 import { IRow } from '../../../../interface/Row'
+import { hasTableElementInRow } from '../../../modules/table/layout/TableRowLayoutPolicy'
 import type { Draw } from '../../Draw'
 import { getRowsHeight, patchArraySegment, shiftRowsAfterPatch } from './ChunkPatchAlgorithms'
 import { isChunkDebugEnabled, logChunkDebug } from './ChunkDebugLogger'
@@ -9,6 +9,7 @@ import { IPageChunkRebalanceResult } from './PageChunkRebalanceTypes'
 
 /** 页级 rebalance 的运行时状态写回器。 */
 export class PageChunkRuntimePatcher {
+  /** 初始化 PageChunkRuntimePatcher 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
   /** 写回页窗口结果，并同步窗口之后的索引、页码和行号。 */
@@ -120,6 +121,7 @@ export class PageChunkRuntimePatcher {
     pageCount: number
   ): IRow[][] {
     const pageRowList = this.draw.getPageRowList()
+    // 初始化 window Page Rows 列表。
     const windowPageRows: IRow[][] = []
     for (let i = 0; i < pageCount; i++) {
       const pageRows = pageRowList[startPageNo + i]
@@ -135,20 +137,28 @@ export class PageChunkRuntimePatcher {
     return pageRowList.some(pageRows =>
       pageRows.some(row =>
         Boolean(row.tableFragment) ||
-        row.elementList.some(element => element.type === ElementType.TABLE)
+        hasTableElementInRow(row)
       )
     )
   }
 
   /** 局部替换 position / layoutElementList，避免表格迁移退化为整篇派生状态重建。 */
   private patchLayoutStateWindow(payload: {
+    /** 布局位置列表，保存元素分页后的坐标结果。 */
     positionList: IElementPosition[]
+    /** 布局起始偏移，用于把局部布局结果写回全量位置列表。 */
     layoutStartOffset: number
+    /** 旧布局元素数量，用于计算布局补丁的删除范围。 */
     oldLayoutElementCount: number
+    /** 索引偏移量，用于把局部变更同步到后续元素。 */
     indexDelta: number
+    /** 行偏移量，用于描述表格或布局变更后的行号变化。 */
     rowDelta: number
+    /** 页面数量变化量，用于同步分页重排后的索引。 */
     pageDelta: number
+    /** 旧窗口结束页码，用于计算分页窗口更新范围。 */
     oldWindowEndPageNo: number
+    /** 页面行列表，保存当前页排版后的行信息。 */
     pageRowList: IRow[][]
   }) {
     this.patchPositionList({
@@ -198,8 +208,11 @@ export class PageChunkRuntimePatcher {
 
   /** 表格移动后把新表格父范围也并入受影响页，确保旧页和新页都会强制清理重绘。 */
   private extendAffectedPagesWithNextTableRange(payload: {
+    /** 当前操作上下文，汇总本次处理需要共享的状态。 */
     context: IChunkLayoutPatchContext
+    /** 再平衡结果，用于把分页块调整同步回运行态。 */
     rebalanceResult: IPageChunkRebalanceResult
+    /** 是否同步表格子节点，用于决定重排后是否刷新后代位置。 */
     shouldSyncTableDescendants: boolean
   }) {
     if (!payload.shouldSyncTableDescendants) {
@@ -241,8 +254,11 @@ export class PageChunkRuntimePatcher {
 
   /** 缓存每个页级 chunk 的行和位置结果，后续同页输入可以直接复用。 */
   private cacheWindowPages(payload: {
+    /** 当前操作上下文，汇总本次处理需要共享的状态。 */
     context: IChunkLayoutPatchContext
+    /** 页面行列表，保存当前页排版后的行信息。 */
     pageRowList: IRow[][]
+    /** 布局位置列表，保存元素分页后的坐标结果。 */
     positionList: IElementPosition[]
   }) {
     const documentChunkIndex = this.draw.getServices().documentChunkIndex
@@ -303,12 +319,19 @@ export class PageChunkRuntimePatcher {
 
   /** 替换窗口位置，并平移窗口之后的位置页码、行号和索引。 */
   private patchPositionList(payload: {
+    /** 布局位置列表，保存元素分页后的坐标结果。 */
     positionList: IElementPosition[]
+    /** 起始偏移量，用于在文本或表格片段内定位范围起点。 */
     startOffset: number
+    /** 删除数量，用于描述从起点移除的元素个数。 */
     deleteCount: number
+    /** 索引偏移量，用于把局部变更同步到后续元素。 */
     indexDelta: number
+    /** 行偏移量，用于描述表格或布局变更后的行号变化。 */
     rowDelta: number
+    /** 页面数量变化量，用于同步分页重排后的索引。 */
     pageDelta: number
+    /** 旧窗口结束页码，用于计算分页窗口更新范围。 */
     oldWindowEndPageNo: number
   }) {
     const positionList = this.draw.getCoordinate().getPositionList()

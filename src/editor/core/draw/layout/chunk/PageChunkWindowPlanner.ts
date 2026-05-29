@@ -18,6 +18,7 @@ export class PageChunkWindowPlanner {
   /** 表格感知同步窗口最大页数，超过时才回退完整 layout，避免局部窗口退化成整篇。 */
   private readonly maxTableAwareWindowSize = 8
 
+  /** 初始化 PageChunkWindowPlanner 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
   /** 读取表格感知窗口最大页数，供异步传播跳过表格尾页时复用同一约束。 */
@@ -85,7 +86,9 @@ export class PageChunkWindowPlanner {
 
   /** 解析本轮旧窗口页数；表格父范围相交时必须扩到旧表格结束页。 */
   public resolveMeasuredWindowPageCount(payload: {
+    /** 起始页码，用于限定跨页范围的左边界。 */
     startPageNo: number
+    /** 窗口内分页块列表，保存当前可见范围的布局块。 */
     windowChunkList: IChunkLayoutPatchContext['chunk'][]
   }) {
     let pageCount = payload.windowChunkList.length
@@ -108,9 +111,13 @@ export class PageChunkWindowPlanner {
 
   /** 解析实际窗口结束索引，优先按页级 chunk 读取扩展后的旧窗口尾页。 */
   public resolveWindowEndIndex(payload: {
+    /** 降级分页块列表，用于窗口块缺失时继续完成布局。 */
     fallbackChunkList: IChunkLayoutPatchContext['chunk'][]
+    /** 起始页码，用于限定跨页范围的左边界。 */
     startPageNo: number
+    /** 页面数量，用于描述当前分页结果规模。 */
     pageCount: number
+    /** 文档元素列表，按文档顺序保存参与处理的元素。 */
     elementList: IElement[]
   }) {
     const endPageNo = payload.startPageNo + payload.pageCount - 1
@@ -133,10 +140,15 @@ export class PageChunkWindowPlanner {
 
   /** 解析本轮实际测量结束位置；大插入只测固定页窗口，剩余页交给异步传播。 */
   public resolveMeasureEndIndex(payload: {
+    /** 当前操作上下文，汇总本次处理需要共享的状态。 */
     context: IChunkLayoutPatchContext
+    /** 窗口内分页块列表，保存当前可见范围的布局块。 */
     windowChunkList: IChunkLayoutPatchContext['chunk'][]
+    /** 起始元素索引，用于确定处理范围的左边界。 */
     startIndex: number
+    /** 旧结束索引，用于比较重排前后的范围边界。 */
     oldEndIndex: number
+    /** 文档元素列表，按文档顺序保存参与处理的元素。 */
     elementList: IElement[]
   }) {
     const fullEndIndex = Math.min(

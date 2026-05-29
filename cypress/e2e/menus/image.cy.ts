@@ -2,7 +2,7 @@ import Editor from '../../../src/editor'
 
 describe('菜单-图片', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:3000/canvas-editor/')
+    cy.visit('http://localhost:3000/canvas-editor/index.html')
 
     cy.get('canvas[data-index]').first().as('canvas').should('have.length', 1)
   })
@@ -13,7 +13,7 @@ describe('菜单-图片', () => {
 
       editor.command.executeBackspace()
 
-      cy.get('#image').attachFile('test.png')
+      cy.get('#image').attachFile('images/test.png')
 
       cy.wait(200).then(() => {
         const data = editor.command.getValue().data.main

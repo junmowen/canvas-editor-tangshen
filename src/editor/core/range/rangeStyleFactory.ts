@@ -3,9 +3,11 @@ import { IEditorOption } from '../../interface/Editor'
 import { IElement } from '../../interface/Element'
 import { IRangeStyle } from '../../interface/Listener'
 
+/** 范围样式runtime契约，用于约束内部流程中传递的数据结构。 */
 interface IRangeStyleRuntime {
   canUndo: boolean
   canRedo: boolean
+  /** painter开关，用于控制当前流程的判断分支。 */
   painter: boolean
 }
 
@@ -13,9 +15,12 @@ interface IRangeStyleRuntime {
  * 构造当前选区的 rangeStyle 快照。
  */
 export function createSelectionRangeStyle(payload: {
+  /** 操作配置项，用于调整当前流程的可选行为。 */
   options: Required<IEditorOption>
   runtime: IRangeStyleRuntime
+  /** 活动元素，用于定位或修改对应文档节点。 */
   activeElement: IElement
+  /** 选区elements列表，保存同类数据的有序集合。 */
   selectionElements: IElement[]
 }): IRangeStyle {
   const { options, runtime, activeElement, selectionElements } = payload
@@ -85,6 +90,7 @@ export function createSelectionRangeStyle(payload: {
  * 构造恢复态 rangeStyle 快照。
  */
 export function createRecoveryRangeStyle(payload: {
+  /** 操作配置项，用于调整当前流程的可选行为。 */
   options: Required<IEditorOption>
   runtime: IRangeStyleRuntime
 }): IRangeStyle {
