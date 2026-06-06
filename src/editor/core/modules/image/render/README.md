@@ -14,7 +14,7 @@
 | --- | --- |
 | `FloatImageRenderer.ts` | 按页、zone、页面上下层和图片展示模式绘制浮动图片 |
 | `InlineImageRenderer.ts` | 正文行内图片绘制和浮动/环绕图片跳过策略 |
-| `LaTexRowRenderer.ts` | LaTeX 行内图片化预览绘制 |
+| `LaTexRowRenderer.ts` | 历史 LaTeX 图片化绘制能力，正文公式已由 `formula/render/FormulaTextRowRenderer.ts` 接管 |
 | `WorkerSnapshotImageRenderPolicy.ts` | worker 快照中的浮动图片层级、过滤和绘制矩形解析 |
 
 ## 函数说明

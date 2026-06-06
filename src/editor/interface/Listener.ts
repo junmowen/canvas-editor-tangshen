@@ -3,7 +3,11 @@ import { ElementType } from '../dataset/enum/Element'
 import { ListStyle, ListType } from '../dataset/enum/List'
 import { RowFlex } from '../dataset/enum/Row'
 import { TitleLevel } from '../dataset/enum/Title'
-import { IControlChangeResult, IControlContentChangeResult } from './Control'
+import {
+  IControlChangeResult,
+  IControlContentChangeResult,
+  IControlValidateResult
+} from './Control'
 import { IEditorResult } from './Editor'
 import { IElement } from './Element'
 import { IPositionContext } from './Position'
@@ -128,6 +132,9 @@ export type IControlChange = (payload: IControlChangeResult) => void
 export type IControlContentChange = (
   payload: IControlContentChangeResult
 ) => void
+
+/** 控件校验事件载荷，描述监听器收到的校验结果。 */
+export type IControlValidate = (payload: IControlValidateResult) => void
 
 /** 页面mode变更事件载荷，描述监听器收到的更新内容。 */
 export type IPageModeChange = (payload: PageMode) => void

@@ -2,6 +2,7 @@ import {
   IContentChange,
   IControlChange,
   IControlContentChange,
+  IControlValidate,
   IImageMousedown,
   IImageSizeChange,
   IInputEventChange,
@@ -28,6 +29,7 @@ export interface EventBusMap {
   contentChange: IContentChange
   controlChange: IControlChange
   controlContentChange: IControlContentChange
+  controlValidate: IControlValidate
   pageModeChange: IPageModeChange
   zoneChange: IZoneChange
   mousemove: IMouseEventChange

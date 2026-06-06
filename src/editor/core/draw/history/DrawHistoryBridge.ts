@@ -1,5 +1,5 @@
 import { deepClone } from '../../../utils'
-import { getSlimCloneElementList } from '../../../utils/element'
+import { getSlimCloneElementList } from '../../../utils/elementText'
 import type { Draw } from '../Draw'
 
 /**
@@ -62,12 +62,12 @@ export class DrawHistoryBridge {
     if (this.draw.getHistoryManager().isDisabledHistory()) return
     const components = this.draw.getComponents()
     const positionContext = this.draw.getCoordinate().getPositionContext()
-    const { header, main, footer } = this.draw
+    const { headerPageScopes, main, footerPageScopes } = this.draw
       .getObjectResolver()
       .getOriginalEditorData()
     const oldElementList = getSlimCloneElementList(main)
-    const oldHeaderElementList = getSlimCloneElementList(header)
-    const oldFooterElementList = getSlimCloneElementList(footer)
+    const oldHeaderPageScopes = deepClone(headerPageScopes || [])
+    const oldFooterPageScopes = deepClone(footerPageScopes || [])
     const oldRange = deepClone(components.range.getEditBoundaryRange())
     const pageNo = this.draw.getPageNo()
     const oldPositionContext = deepClone(positionContext)
@@ -77,8 +77,8 @@ export class DrawHistoryBridge {
       components.zone.setZone(zone)
       this.draw.setPageNo(pageNo)
       this.draw.getCoordinate().setPositionContext(deepClone(oldPositionContext))
-      components.header.setElementList(deepClone(oldHeaderElementList))
-      components.footer.setElementList(deepClone(oldFooterElementList))
+      components.header.setPageScopes(deepClone(oldHeaderPageScopes))
+      components.footer.setPageScopes(deepClone(oldFooterPageScopes))
       this.draw.replaceMainElementList(deepClone(oldElementList))
       components.range.replaceRange(deepClone(oldRange))
       this.draw.render({

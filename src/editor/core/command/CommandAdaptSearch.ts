@@ -1,7 +1,6 @@
 import { CommandAdaptMedia } from './CommandAdaptMedia'
-import { EditorMode } from '../../dataset/enum/Editor'
 import { IReplaceOption, ISearchOption } from '../../interface/Search'
-import { printImageBase64 } from '../../utils/print'
+import { printSvgDocument } from '../../utils/print'
 import { INavigateInfo } from '../modules/search/runtime/Search'
 
 /**
@@ -50,24 +49,49 @@ export class CommandAdaptSearch extends CommandAdaptMedia {
     this.draw.getSearch().replace(payload, option)
   }
 
-  /** 打印当前项，生成打印或导出需要的内容。 */
-  public async print() {
-    const { scale, printPixelRatio, paperDirection, width, height } =
-      this.options
-    if (scale !== 1) {
-      this.draw.setPageScale(1)
-    }
-    const base64List = await this.draw.getDataURL({
-      pixelRatio: printPixelRatio,
-      mode: EditorMode.PRINT
+  /** 打印当前文档，使用 SVG 矢量文本，避免 Canvas 图片打印导致文字发虚。 */
+  public print() {
+    this.draw.flushAsyncInsertTransaction('command-print-svg')
+    const pageCount = Math.max(1, this.draw.getPageRowList().length)
+    // SVG 打印需要页面级数据，正文 position 之外还要带上页眉、页脚、页码、水印等装饰层。
+    printSvgDocument({
+      mainPositionList: this.coordinate.getMainPositionList(),
+      pageRowList: this.draw.getPageRowList(),
+      headerRowListByPage: Array.from({ length: pageCount }, (_, pageNo) =>
+        this.options.header.disabled
+          ? []
+          : this.draw.getHeader().getRowList(pageNo)
+      ),
+      headerPositionListByPage: Array.from({ length: pageCount }, (_, pageNo) =>
+        this.options.header.disabled
+          ? []
+          : this.draw.getHeader().getPositionList(pageNo)
+      ),
+      footerRowListByPage: Array.from({ length: pageCount }, (_, pageNo) =>
+        this.options.footer.disabled
+          ? []
+          : this.draw.getFooter().getRowList(pageNo)
+      ),
+      footerPositionListByPage: Array.from({ length: pageCount }, (_, pageNo) =>
+        this.options.footer.disabled
+          ? []
+          : this.draw.getFooter().getPositionList(pageNo)
+      ),
+      floatPositionList: this.coordinate.getFloatPositionList(),
+      badgeListByPage: Array.from({ length: pageCount }, (_, pageNo) =>
+        this.draw.getBadge().getRenderableBadgeList(pageNo)
+      ),
+      editorOptions: this.options,
+      pageMetricList: Array.from({ length: pageCount }, (_, pageNo) => ({
+        margins: this.draw.getMargins(pageNo),
+        innerWidth: this.draw.getInnerWidth(pageNo),
+        headerExtraHeight: this.draw.getHeader().getExtraHeight(pageNo),
+        footerExtraHeight: this.draw.getFooter().getExtraHeight(pageNo)
+      })),
+      pageCount,
+      width: this.options.width,
+      height: this.options.height,
+      direction: this.options.paperDirection
     })
-    printImageBase64(base64List, {
-      width,
-      height,
-      direction: paperDirection
-    })
-    if (scale !== 1) {
-      this.draw.setPageScale(scale)
-    }
   }
 }

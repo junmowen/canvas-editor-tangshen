@@ -23,7 +23,7 @@
 1. 新增 `CanvasPool`。
 2. 新增 `RenderSurfaceManager`。
 3. `PageCanvasHost.mountCanvas()` / `unmountCanvas()` 改为委托给 `RenderSurfaceManager`。
-4. 保留 `getCtxList()` / `getOverlayCtxList()` 兼容方法，但内部从 surface 派生。
+4. 保留 `getCtxList()` / `getOverlayCtxList()` 过渡方法，但内部从 surface 派生。
 5. 给 canvas 池增加资源数量、命中率、内存估算的调试统计。
 
 验收：
@@ -81,10 +81,10 @@
 
 任务：
 
-1. 为图片预览和缩放引入可选 WebGL engine。当前已完成默认关闭的 WebGL capability 占位；核心实现需要补 `ImageRenderTask`、纹理缓存、context lost fallback 和输出 bitmap 固化。
-2. 为复杂 block 保持 DOM / SVG engine 接口。当前已完成默认关闭的 SVG / DOM capability 占位；核心实现需要补 block host 生命周期、页挂载同步、导出 fallback 和可见性调度。
-3. 给每个 engine 增加 capability 检测与 fallback，fallback 不能只记录统计，必须有可执行的 Canvas2D 或 DOM 原链路输出。
-4. 增加 debug 面板显示每页当前使用的 engine、任务状态、pending worker job、最近 fallback 原因、熔断状态和资源内存。
+1. 为图片预览和缩放引入可选 WebGL engine。当前已完成默认关闭的 WebGL capability 占位；核心实现需要补 `ImageRenderTask`、纹理缓存、context lost 回退 和输出 bitmap 固化。
+2. 为复杂 block 保持 DOM / SVG engine 接口。当前已完成默认关闭的 SVG / DOM capability 占位；核心实现需要补 block host 生命周期、页挂载同步、导出 回退 和可见性调度。
+3. 给每个 engine 增加 capability 检测与 回退，回退 不能只记录统计，必须有可执行的 Canvas2D 或 DOM 原链路输出。
+4. 增加 debug 面板显示每页当前使用的 engine、任务状态、pending worker job、最近 回退 原因、熔断状态和资源内存。
 
 验收：
 

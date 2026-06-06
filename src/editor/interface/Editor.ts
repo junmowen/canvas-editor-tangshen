@@ -8,7 +8,15 @@ import {
 import { IBackgroundOption } from './Background'
 import { ICheckboxOption } from './Checkbox'
 import { IRadioOption } from './Radio'
-import { IControlOption } from './Control'
+import {
+  IControlAsyncValidator,
+  IControlCrossValidateRule,
+  IControlRemoteOptionLoader,
+  IControlOption,
+  IControlSchema,
+  ISetControlProperties,
+  ISetControlValueOption
+} from './Control'
 import { ICursorOption } from './Cursor'
 import { IFooter } from './Footer'
 import { IGroup } from './Group'
@@ -20,6 +28,7 @@ import { IPageNumber } from './PageNumber'
 import { IPageColumns } from './PageColumns'
 import { IPlaceholder } from './Placeholder'
 import { ITitleOption } from './Title'
+import { ITypographyOption } from './Typography'
 import { IWatermark } from './Watermark'
 import { IZoneOption } from './Zone'
 import { ISeparatorOption } from './Separator'
@@ -30,16 +39,41 @@ import { IBadgeOption } from './Badge'
 import { IElement } from './Element'
 import { LocationPosition } from '../dataset/enum/Common'
 import { IRange } from './Range'
+import { IDocumentStyle } from './Style'
+
+/** 页眉页脚内容作用域，按零基 pageNo 解析为首页、奇数页、偶数页或全页默认。 */
+export type HeaderFooterPageScope = 'all' | 'first' | 'odd' | 'even'
+
+/** 单个页眉页脚作用域数据，TS-07 后续渲染和导出会按 pageScope 选择 elementList。 */
+export interface IHeaderFooterPageScopeData {
+  /** 作用域标识：all 为全页默认语义，first/odd/even 对应页面类型。 */
+  pageScope: HeaderFooterPageScope
+  /** 当前作用域下的页眉或页脚元素列表。 */
+  elementList: IElement[]
+}
 
 /** 编辑器数据契约，用于约束公开 API中传递的数据结构。 */
 export interface IEditorData {
-  /** 页眉配置，用于控制页眉区域内容和样式。 */
+  /** 文档样式集合，保存正文、标题、引用、列表和表格样式定义。 */
+  styles?: IDocumentStyle[]
+  /** 按页取值时返回当前页解析后的页眉内容；运行时存储使用 headerPageScopes。 */
   header?: IElement[]
+  /** 页眉按首页、奇数页、偶数页或全页划分的页面作用域数据。 */
+  headerPageScopes?: IHeaderFooterPageScopeData[]
   /** main列表，保存同类数据的有序集合。 */
   main: IElement[]
-  /** 页脚配置，用于控制页脚区域内容和样式。 */
+  /** 按页取值时返回当前页解析后的页脚内容；运行时存储使用 footerPageScopes。 */
   footer?: IElement[]
+  /** 页脚按首页、奇数页、偶数页或全页划分的页面作用域数据。 */
+  footerPageScopes?: IHeaderFooterPageScopeData[]
 }
+
+/** 当前 runtime 数据，正文为必需项，页眉页脚以作用域模型作为存储来源。 */
+export type IRuntimeEditorData = Required<Pick<IEditorData, 'main'>> &
+  Pick<
+    IEditorData,
+    'styles' | 'header' | 'headerPageScopes' | 'footer' | 'footerPageScopes'
+  >
 
 /** 渲染backend选项，用于约束调用方可传入的可选配置。 */
 export interface IRenderBackendOption {
@@ -108,6 +142,8 @@ export interface IEditorOption {
   defaultRowMargin?: number
   /** Tab 默认占位宽度，按编辑器内部像素计算。 */
   defaultTabWidth?: number
+  /** 中文排版细节配置，用于扩展单位不拆行和标点禁则。 */
+  typography?: ITypographyOption
   /** 宽度尺寸，使用编辑器内部像素单位。 */
   width?: number
   /** 高度尺寸，使用编辑器内部像素单位。 */
@@ -186,6 +222,18 @@ export interface IEditorOption {
   watermark?: IWatermark
   /** 控件配置对象，描述当前控件的行为和取值规则。 */
   control?: IControlOption
+  /** 控件 schema 列表，用于模板级声明业务绑定、默认规则和默认值。 */
+  controlSchema?: IControlSchema[]
+  /** 控件初始化属性列表，用于创建编辑器时注入选项、只读、禁用、校验等业务配置。 */
+  controlInitialProperties?: ISetControlProperties[]
+  /** 控件初始化值列表，用于创建编辑器时按 id、conceptId 或 areaId 回填业务数据。 */
+  controlInitialValues?: ISetControlValueOption[]
+  /** 控件异步校验器，用于接入业务侧后端校验或跨字段校验。 */
+  controlValidator?: IControlAsyncValidator
+  /** 声明式跨字段校验规则，用于常见控件联动约束。 */
+  controlCrossValidateRules?: IControlCrossValidateRule[]
+  /** 控件远程选项加载器，用于按业务接口异步刷新选择类控件候选项。 */
+  controlRemoteOptionLoader?: IControlRemoteOptionLoader
   /** 复选框配置，用于描述勾选控件的状态和样式。 */
   checkbox?: ICheckboxOption
   radio?: IRadioOption

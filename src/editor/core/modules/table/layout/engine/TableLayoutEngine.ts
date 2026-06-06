@@ -21,6 +21,8 @@ interface IMeasureTablePayload {
   isPagingPageMode: boolean
   /** 缩放比例，用于把文档尺寸映射到显示尺寸。 */
   scale: number
+  /** 当前行剩余可用宽度，已经按缩放比例折算，用于多栏内约束块级表格宽度。 */
+  availableWidth: number
   /** 单元格内边距，用于计算表格内容可用空间。 */
   tdPadding: number[]
 }
@@ -61,11 +63,13 @@ export class TableLayoutEngine {
       rowMargin,
       isPagingPageMode,
       scale,
+      availableWidth,
       tdPadding
     } = payload
     const metrics = this.createMetrics()
     const tdPaddingHeight = tdPadding[0] + tdPadding[2]
 
+    this.fitBlockTableToAvailableWidth(element, availableWidth, scale)
     this.draw.getTableParticle().computeRowColInfo(element)
 
     const trList = element.trList!
@@ -163,6 +167,29 @@ export class TableLayoutEngine {
     }
 
     return metrics
+  }
+
+  /** 按当前栏宽压缩块级表格列宽，避免表格在多栏正文中横向越界。 */
+  private fitBlockTableToAvailableWidth(
+    element: IElement,
+    availableWidth: number,
+    scale: number
+  ) {
+    if (element.tableDisplay === 'inline' || !element.colgroup?.length) return
+    const maxTableWidth = Math.max(0, availableWidth / scale)
+    const tableWidth = this.draw.getTableParticle().getTableWidth(element)
+    if (!maxTableWidth || tableWidth <= maxTableWidth) return
+
+    const shrinkRatio = maxTableWidth / tableWidth
+    let nextWidthTotal = 0
+    element.colgroup.forEach((col, colIndex) => {
+      if (colIndex === element.colgroup!.length - 1) {
+        col.width = Math.max(1, maxTableWidth - nextWidthTotal)
+      } else {
+        col.width = Math.max(1, col.width * shrinkRatio)
+        nextWidthTotal += col.width
+      }
+    })
   }
 
   /** 若当前元素是表格，则计算表格 metrics；否则返回 null。 */

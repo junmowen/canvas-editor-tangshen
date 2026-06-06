@@ -14,8 +14,8 @@ type PointInfo = {
 
 function findPlainTextRun(editor: Editor, target: string): PointInfo[] {
   const draw = (editor as any).draw
-  const elementList = draw.getOriginalMainElementList()
-  const positionList = draw.getPosition().getPositionList()
+  const elementList = draw.getObjectResolver().getOriginalMainElementList()
+  const positionList = draw.getCoordinate().getPositionList()
   const chars = target.split('')
   for (let start = 0; start <= elementList.length - chars.length; start++) {
     let matched = true

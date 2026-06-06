@@ -318,9 +318,49 @@ export function setupFooterOptions(
     })
   }
 
-  const pageColumnsDom =
-    document.querySelector<HTMLDivElement>('.page-columns')!
-  pageColumnsDom.onclick = function () {
+  const pageColumnsDom = document.querySelector<HTMLDivElement>('.page-columns')!
+  const pageColumnsOptionDom =
+    pageColumnsDom.querySelector<HTMLDivElement>('.options')!
+
+  /** 判断当前是否有选区，有选区时分栏应作用到选中内容。 */
+  function hasColumnsSelection() {
+    const range = instance.command.getRange()
+    return !!range && range.startIndex !== range.endIndex
+  }
+
+  /** 根据当前选区状态应用分栏：选区内写段落分栏，无选区写页面全局分栏。 */
+  function applyColumns(columns: {
+    count: number
+    gap: number
+    widths: number[]
+  }) {
+    if (hasColumnsSelection()) {
+      instance.command.executeRowColumns(
+        columns.count <= 1
+          ? null
+          : {
+              count: columns.count,
+              gap: columns.gap,
+              widths: columns.widths
+            }
+      )
+      return
+    }
+    instance.command.executeUpdateOptions({
+      columns
+    })
+    syncPageColumnsActive(columns.count)
+  }
+
+  /** 同步顶部快捷分栏菜单的激活状态。 */
+  function syncPageColumnsActive(count: number) {
+    pageColumnsOptionDom.querySelectorAll<HTMLLIElement>('li').forEach(li => {
+      li.classList.toggle('active', li.dataset.pageColumns === `${count}`)
+    })
+  }
+
+  /** 打开自定义分栏弹窗，沿用当前全局配置作为默认值。 */
+  function openPageColumnsDialog() {
     const columns = instance.command.getOptions().columns || {}
     new Dialog({
       title: '分栏',
@@ -362,16 +402,37 @@ export function setupFooterOptions(
         )
         const widths = parseDialogNumberList(getDialogValue(payload, 'widths'))
 
-        instance.command.executeUpdateOptions({
-          columns: {
-            ...columns,
-            count,
-            gap,
-            widths: widths.length > 0 ? widths : columns.widths || []
-          }
+        applyColumns({
+          count,
+          gap,
+          widths: widths.length > 0 ? widths : columns.widths || []
         })
       }
     })
+  }
+
+  syncPageColumnsActive(instance.command.getOptions().columns?.count ?? 1)
+  pageColumnsDom.onclick = function () {
+    pageColumnsOptionDom.classList.toggle('visible')
+  }
+  pageColumnsOptionDom.onclick = function (evt) {
+    evt.stopPropagation()
+    const li = evt.target as HTMLLIElement
+    const columnsMode = li.dataset.pageColumns
+    if (!columnsMode) return
+    if (columnsMode === 'custom') {
+      openPageColumnsDialog()
+      pageColumnsOptionDom.classList.remove('visible')
+      return
+    }
+    const count = Number(columnsMode)
+    const columns = instance.command.getOptions().columns || {}
+    applyColumns({
+      count,
+      gap: columns.gap ?? 24,
+      widths: []
+    })
+    pageColumnsOptionDom.classList.remove('visible')
   }
 
   // 全屏

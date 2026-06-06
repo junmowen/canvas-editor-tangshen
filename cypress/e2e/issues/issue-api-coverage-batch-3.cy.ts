@@ -55,8 +55,8 @@ describe('issue API coverage batch 3', () => {
       })
 
       const draw = (editor as any).draw
-      const elementList = draw.getOriginalMainElementList()
-      const positionList = draw.getPosition().getOriginalPositionList()
+      const elementList = draw.getObjectResolver().getOriginalMainElementList()
+      const positionList = draw.getCoordinate().getOriginalPositionList()
       const valueIndex = elementList.findIndex(
         (element: any) =>
           element.control?.conceptId === 'issue741Control' &&
@@ -164,7 +164,7 @@ describe('issue API coverage batch 3', () => {
 
       const draw = (editor as any).draw
       const controlElement = draw
-        .getElementList()
+        .getObjectResolver().getElementList()
         .find(
           (element: any) =>
             element.control?.conceptId === 'issue1103Required' &&
@@ -178,7 +178,7 @@ describe('issue API coverage batch 3', () => {
 
       const range = editor.command.getRange()
       const rangeContext = editor.command.getRangeContext()
-      const position = draw.getPosition().getOriginalPositionList()[range.endIndex]
+      const position = draw.getCoordinate().getOriginalPositionList()[range.endIndex]
       expect(position).to.exist
 
       expect(rangeContext?.isCollapsed).to.eq(true)
@@ -219,8 +219,8 @@ describe('issue API coverage batch 3', () => {
       })
 
       const draw = (editor as any).draw
-      const elementList = draw.getOriginalMainElementList()
-      const positionList = draw.getPosition().getOriginalPositionList()
+      const elementList = draw.getObjectResolver().getOriginalMainElementList()
+      const positionList = draw.getCoordinate().getOriginalPositionList()
       const areaIndex = elementList.findIndex(
         (element: any) => element.areaId === 'issue1228Area'
       )

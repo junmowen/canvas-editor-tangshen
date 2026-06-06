@@ -66,8 +66,8 @@ export class CheckboxControl implements IControlInstance {
    * @returns 控件元素列表
    */
   public getValue(): IElement[] {
-    const elementList = this.control.getElementList()
-    const { startIndex } = this.control.getEditBoundaryRange()
+    const elementList = this.control.getDraw().getObjectResolver().getElementList()
+    const { startIndex } = this.control.getDraw().getRange().getEditBoundaryRange()
     const controlBoundary = this.control.getDraw().getTargetResolver().resolveControlBoundaryElements({
       elementList,
       range: {
@@ -120,8 +120,8 @@ export class CheckboxControl implements IControlInstance {
       return
     }
     const { control } = this.element
-    const elementList = context.elementList || this.control.getElementList()
-    const { startIndex } = context.range || this.control.getEditBoundaryRange()
+    const elementList = context.elementList || this.control.getDraw().getObjectResolver().getElementList()
+    const { startIndex } = context.range || this.control.getDraw().getRange().getEditBoundaryRange()
     const targetResolver = this.control.getDraw().getTargetResolver()
     const controlBoundary = targetResolver.resolveControlBoundaryElements({
       range: context.range,
@@ -159,7 +159,7 @@ export class CheckboxControl implements IControlInstance {
     if (this.control.getIsDisabledControl()) {
       return null
     }
-    const range = this.control.getEditBoundaryRange()
+    const range = this.control.getDraw().getRange().getEditBoundaryRange()
     const { startIndex, endIndex } = range
     // 处理删除键：删除控件
     if (evt.key === KeyMap.Backspace || evt.key === KeyMap.Delete) {

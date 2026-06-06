@@ -5,7 +5,7 @@ import { IControl } from '../../../../interface/Control'
 import { IEditorOption } from '../../../../interface/Editor'
 import { IElement } from '../../../../interface/Element'
 import { pickObject } from '../../../../utils'
-import { formatElementList } from '../../../../utils/element'
+import { formatElementList } from '../../../../utils/elementFormat'
 
 export function createNestedControlValueElementList(payload: {
   /** 文档元素对象，承载文本、控件、表格或媒体信息。 */

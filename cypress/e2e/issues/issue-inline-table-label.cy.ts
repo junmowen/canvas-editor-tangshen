@@ -73,14 +73,14 @@ describe('inline table label layout', () => {
       )
 
       const draw = (editor as any).draw
-      const rowList = draw.getRowList()
+      const rowList = draw.getObjectResolver().getRowList()
       const firstRow = rowList[0]
       const inlineTableIndex = firstRow.elementList.findIndex(
         (element: any) => element.type === ElementType.TABLE
       )
       expect(inlineTableIndex).to.be.greaterThan(0)
 
-      const positionList = draw.getPosition().getOriginalPositionList()
+      const positionList = draw.getCoordinate().getOriginalPositionList()
       const labelPosition = positionList[inlineTableIndex - 1]
       const tablePosition = positionList[inlineTableIndex]
       expect(labelPosition.value).to.eq(':')
@@ -167,7 +167,7 @@ describe('inline table label layout', () => {
       expect(table?.id).to.be.a('string')
 
       const setStaleInlineTableContext = () => {
-        draw.getPosition().setPositionContext({
+        draw.getCoordinate().setPositionContext({
           isTable: true,
           index: 9999,
           trIndex: 0,
@@ -260,14 +260,14 @@ describe('inline table label layout', () => {
           extraPickAttrs: ['id']
         })
         .data.main.find(element => element.type === 'table')
-      const positionList = draw.getPosition().getOriginalPositionList()
+      const positionList = draw.getCoordinate().getOriginalPositionList()
       const tablePosition = positionList.find(
         (position: any) => position.element?.type === ElementType.TABLE
       )
       expect(tablePosition).to.exist
 
       const cellBounds = draw
-        .getTableLayoutSnapshotAccessor()
+        .getServices().tableLayoutSnapshotAccessor
         .getFragmentCellBounds(table!.id)
       expect(cellBounds).to.have.length(2)
       expect(cellBounds[0].x).to.be.closeTo(
@@ -364,7 +364,7 @@ describe('inline table label layout', () => {
         rawRender(ctx, x, y, width, height)
       }
 
-      draw.getPosition().setPositionContext({
+      draw.getCoordinate().setPositionContext({
         isTable: true,
         index: draw
           .getOriginalElementList()
@@ -375,10 +375,10 @@ describe('inline table label layout', () => {
       })
       range.setRange(0, 0, tables[0].id, 0, 1, 0, 0)
       const firstBounds = draw
-        .getTableLayoutSnapshotAccessor()
+        .getServices().tableLayoutSnapshotAccessor
         .getFragmentCellBounds(tables[0].id)
       const secondBounds = draw
-        .getTableLayoutSnapshotAccessor()
+        .getServices().tableLayoutSnapshotAccessor
         .getFragmentCellBounds(tables[1].id)
       const originalTables = tables.map(table =>
         draw
@@ -462,7 +462,7 @@ describe('inline table label layout', () => {
         })
         .data.main.find(element => element.type === 'table')
       const tablePosition = draw
-        .getPosition()
+        .getCoordinate()
         .getOriginalPositionList()
         .find((position: any) => position.element?.id === table!.id)
       expect(tablePosition).to.exist
@@ -480,7 +480,7 @@ describe('inline table label layout', () => {
         rawDrawRange(ctx, element, x, y)
       }
 
-      draw.getPosition().setPositionContext({
+      draw.getCoordinate().setPositionContext({
         isTable: true,
         index: draw
           .getOriginalElementList()
@@ -492,7 +492,7 @@ describe('inline table label layout', () => {
       draw.getRange().setRange(0, 0, table!.id, 0, 1, 0, 0)
       draw.drawRow(draw.getPage(0).getContext('2d'), {
         elementList: draw.getLayoutMainElementList(),
-        positionList: draw.getPosition().getLayoutMainPositionListByPage(0),
+        positionList: draw.getCoordinate().getMainPositionListByPage(0),
         rowList: draw.getPageRowList()[0],
         pageNo: 0,
         startIndex: draw.getPageRowList()[0][0]?.startIndex,
@@ -630,7 +630,7 @@ describe('inline table label layout', () => {
           extraPickAttrs: ['id']
         })
         .data.main.find(element => element.type === 'table')
-      draw.getPosition().setPositionContext({
+      draw.getCoordinate().setPositionContext({
         isTable: true,
         index: 9999,
         trIndex: 0,

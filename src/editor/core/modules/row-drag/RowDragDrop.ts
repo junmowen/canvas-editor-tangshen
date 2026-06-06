@@ -30,7 +30,7 @@ export function resolveRowDragDropTarget(payload: {
 }): IResolvedRowDragDropTarget | null {
   const { draw, x, y, pageNo, sourceRange } = payload
   const rowList = draw.getPageRowList()[pageNo] || []
-  const positionList = draw.getCoordinate().getLayoutMainPositionListByPage(pageNo)
+  const positionList = draw.getCoordinate().getMainPositionListByPage(pageNo)
   const elementList = draw.getObjectResolver().getLayoutMainElementList()
   const sourceFirstElement =
     sourceRange && sourceRange.startIndex + 1 < elementList.length

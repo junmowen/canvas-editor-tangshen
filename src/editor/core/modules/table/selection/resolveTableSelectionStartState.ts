@@ -45,7 +45,7 @@ export function resolveTableSelectionStartState(
       ? positionList[hitTargetIndex] || currentPosition
       : currentPosition
 
-  const pointerMouseDownFallbackIndex =
+  const pointerMouseDownDefaultIndex =
     positionResult.tdValueIndex !== undefined
       ? positionResult.tdValueIndex
       : currentIndex
@@ -54,7 +54,7 @@ export function resolveTableSelectionStartState(
     hitTargetPosition,
     currentIndex,
     hitTargetIndex,
-    fallbackIndex: pointerMouseDownFallbackIndex
+    defaultIndex: pointerMouseDownDefaultIndex
   })
 
   return {

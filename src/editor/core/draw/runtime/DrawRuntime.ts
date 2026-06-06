@@ -1,7 +1,12 @@
 import { DeepRequired } from '../../../interface/Common'
-import { IEditorData, IEditorOption } from '../../../interface/Editor'
+import {
+  IEditorData,
+  IEditorOption,
+  IRuntimeEditorData
+} from '../../../interface/Editor'
 import { IElement, IElementStyle } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
+import { ITypesettingLayoutSnapshot } from '../../../interface/TypesettingLayout'
 import { ITableLayoutSnapshot } from '../../modules/table/layout/TableLayoutSnapshotTypes'
 import { EditorMode } from '../../../dataset/enum/Editor'
 import { IPainterOption } from '../../../interface/Draw'
@@ -41,6 +46,8 @@ export class DrawRuntime {
   private pageRowList: IRow[][]
   /** 当前布局所使用的扁平元素列表，通常来自分页后的展开结果。 */
   private layoutElementList: IElement[]
+  /** 段落块/栏/页排版中间层快照，供后续规则和调试读取。 */
+  private typesettingLayoutSnapshot: ITypesettingLayoutSnapshot | null
   /** 表格布局快照版本号，用于标识缓存是否失效。 */
   private tableLayoutSnapshotVersion: number
   /** 表格布局快照缓存。 */
@@ -50,7 +57,7 @@ export class DrawRuntime {
   /** 当前画笔附加选项。 */
   private painterOptions: IPainterOption | null
   /** 打印模式下缓存的 header/main/footer 原始数据。 */
-  private printModeData: Required<IEditorData> | null
+  private printModeData: IRuntimeEditorData | null
   /** 新底层文档树快照，作为后续替换布局和渲染的统一数据源。 */
   private editor2DocumentTree: IEditorData
 
@@ -67,6 +74,7 @@ export class DrawRuntime {
     this.rowList = []
     this.pageRowList = []
     this.layoutElementList = []
+    this.typesettingLayoutSnapshot = null
     this.tableLayoutSnapshotVersion = 0
     this.tableLayoutSnapshot = null
     this.painterStyle = null
@@ -104,6 +112,15 @@ export class DrawRuntime {
   /** 替换正文主元素列表。 */
   public replaceMainElementList(payload: IElement[]) {
     this.documentTextStore.replaceAll(payload)
+  }
+
+  /** 替换文档样式集合。 */
+  public replaceDocumentStyles(payload: IEditorData['styles']) {
+    if (payload?.length) {
+      this.editor2DocumentTree.styles = deepClone(payload)
+    } else {
+      delete this.editor2DocumentTree.styles
+    }
   }
 
   /** 获取正文数据存储适配器，用于后续数据结构 mirror 和统计。 */
@@ -145,6 +162,11 @@ export class DrawRuntime {
     return this.pageRowList
   }
 
+  /** 获取最近一次布局生成的段落块/栏/页排版中间层快照。 */
+  public getTypesettingLayoutSnapshot(): ITypesettingLayoutSnapshot | null {
+    return this.typesettingLayoutSnapshot
+  }
+
   /**
    * 获取当前布局所使用的主元素列表。
    *
@@ -170,6 +192,8 @@ export class DrawRuntime {
     pageRowList: IRow[][]
     /** 布局元素列表，保存参与本轮排版的元素序列。 */
     layoutElementList: IElement[]
+    /** 段落块/栏/页排版中间层快照。 */
+    typesettingLayoutSnapshot?: ITypesettingLayoutSnapshot | null
     /** 表格布局snapshotversion数值，用于当前布局、统计或索引计算。 */
     tableLayoutSnapshotVersion: number
     tableLayoutSnapshot: ITableLayoutSnapshot | null
@@ -177,6 +201,10 @@ export class DrawRuntime {
     this.rowList = payload.rowList
     this.pageRowList = payload.pageRowList
     this.layoutElementList = payload.layoutElementList
+    this.typesettingLayoutSnapshot =
+      payload.typesettingLayoutSnapshot === undefined
+        ? this.typesettingLayoutSnapshot
+        : payload.typesettingLayoutSnapshot
     this.tableLayoutSnapshotVersion = payload.tableLayoutSnapshotVersion
     this.tableLayoutSnapshot = payload.tableLayoutSnapshot
   }
@@ -220,12 +248,12 @@ export class DrawRuntime {
   }
 
   /** 获取打印模式缓存数据。 */
-  public getPrintModeData(): Required<IEditorData> | null {
+  public getPrintModeData(): IRuntimeEditorData | null {
     return this.printModeData
   }
 
   /** 替换打印模式缓存数据。 */
-  public replacePrintModeData(payload: Required<IEditorData> | null) {
+  public replacePrintModeData(payload: IRuntimeEditorData | null) {
     this.printModeData = payload
   }
 }

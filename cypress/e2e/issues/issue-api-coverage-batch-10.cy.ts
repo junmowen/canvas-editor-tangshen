@@ -33,7 +33,7 @@ describe('issue API coverage batch 10', () => {
         ]
       })
 
-      const rowList = (editor as any).draw.getRowList()
+      const rowList = (editor as any).draw.getObjectResolver().getRowList()
       const rowTexts = rowList.map(normalizeRowText).filter(Boolean)
 
       expect(rowTexts).to.include.members(['Row one', 'Row two', 'Row three'])

@@ -12,6 +12,10 @@ import { LocationPosition } from '../../dataset/enum/Common'
 import { EditorMode, EditorZone } from '../../dataset/enum/Editor'
 import { MoveDirection } from '../../dataset/enum/Observer'
 import {
+  IControlValidateOption,
+  IControlValidateResult,
+  IControlRemoteOptionLoadBatchResult,
+  IControlRemoteOptionLoadOption,
   IGetControlValueOption,
   IGetControlValueResult,
   ILocationControlOption,
@@ -28,7 +32,9 @@ import { ILocationPosition } from '../../interface/Position'
 import { RangeRect } from '../../interface/Range'
 import { IGetTitleValueOption, IGetTitleValueResult } from '../../interface/Title'
 import { cloneProperty, deepClone, isNumber } from '../../utils'
-import { getTextFromElementList, zipElementList, getAnchorElement } from '../../utils/element'
+import { zipElementList } from '../../utils/elementZip'
+import { getAnchorElement } from '../../utils/elementContext'
+import { getTextFromElementList } from '../../utils/elementText'
 import {
   IDeleteAreaOption,
   IInsertAreaOption,
@@ -71,7 +77,7 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
   public getGroupRectList(groupId: string) {
     const pageCanvasHost = this.draw.getPageCanvasHost()
     return this.coordinate
-      .getLayoutMainPositionList()
+      .getMainPositionList()
       .filter(position => position.element?.groupIds?.includes(groupId))
       .map(position => {
         const { leftTop, rightBottom } = position.coordinate
@@ -118,32 +124,46 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
 
   /** 设置单个控件的值。 */
   public setControlValue(payload: ISetControlValueOption) {
-    this.draw.getControl().setValueListById([payload])
+    return this.draw.getControl().setValueListById([payload])
   }
 
   /** 批量设置控件值。 */
   public setControlValueList(payload: ISetControlValueOption[]) {
-    this.draw.getControl().setValueListById(payload)
+    return this.draw.getControl().setValueListById(payload)
   }
 
   /** 设置单个控件的扩展数据。 */
   public setControlExtension(payload: ISetControlExtensionOption) {
-    this.draw.getControl().setExtensionListById([payload])
+    return this.draw.getControl().setExtensionListById([payload])
   }
 
   /** 批量设置控件扩展数据。 */
   public setControlExtensionList(payload: ISetControlExtensionOption[]) {
-    this.draw.getControl().setExtensionListById(payload)
+    return this.draw.getControl().setExtensionListById(payload)
   }
 
   /** 设置单个控件属性。 */
   public setControlProperties(payload: ISetControlProperties) {
-    this.draw.getControl().setPropertiesListById([payload])
+    return this.draw.getControl().setPropertiesListById([payload])
   }
 
   /** 批量设置控件属性。 */
   public setControlPropertiesList(payload: ISetControlProperties[]) {
-    this.draw.getControl().setPropertiesListById(payload)
+    return this.draw.getControl().setPropertiesListById(payload)
+  }
+
+  /** 异步加载单个控件远程选项，并写入候选项与远程状态。 */
+  public loadControlRemoteOptions(
+    payload: IControlRemoteOptionLoadOption
+  ): Promise<IControlRemoteOptionLoadBatchResult> {
+    return this.draw.getControl().loadRemoteOptionsById([payload])
+  }
+
+  /** 批量异步加载控件远程选项，并返回每个失败项。 */
+  public loadControlRemoteOptionsList(
+    payload: IControlRemoteOptionLoadOption[]
+  ): Promise<IControlRemoteOptionLoadBatchResult> {
+    return this.draw.getControl().loadRemoteOptionsById(payload)
   }
 
   /** 设置控件高亮状态并刷新覆盖层。 */
@@ -153,6 +173,20 @@ export class CommandAdaptDomain extends CommandAdaptPageElement {
     this.draw.refreshVisibleOverlay({
       isControlDirty: true
     })
+  }
+
+  /** 校验控件并返回失败项，同时按需派发校验事件。 */
+  public validateControl(
+    payload?: IControlValidateOption
+  ): IControlValidateResult {
+    return this.draw.getControl().validateById(payload)
+  }
+
+  /** 异步校验控件，允许业务侧通过 options.controlValidator 追加失败项。 */
+  public validateControlAsync(
+    payload?: IControlValidateOption
+  ): Promise<IControlValidateResult> {
+    return this.draw.getControl().validateAsyncById(payload)
   }
 
   /** 更新修订模式配置。 */

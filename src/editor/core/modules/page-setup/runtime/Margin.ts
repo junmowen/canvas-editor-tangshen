@@ -30,7 +30,8 @@ export class Margin {
         : pageMode === PageMode.CONTINUITY
         ? this.draw.getPageCanvasHost().getPageHeight(pageNo)
         : this.draw.getHeight()
-    const margins = this.draw.getMargins()
+    // 页边距指示器必须按当前页码解析镜像页边距和装订线，否则奇偶页视觉提示会和实际正文区域不一致。
+    const margins = this.draw.getMargins(pageNo)
     const marginIndicatorSize =
       this.draw.getServices().metricsService.getMarginIndicatorSize()
     ctx.save()

@@ -188,8 +188,8 @@ export class DrawRenderFacadeService {
     const oldPageSize = this.draw.getPageRowList().length
     const renderInvalidationManager =
       this.draw.getServices().renderInvalidationManager
-    const editIndex = payloadEditIndex ?? this.resolveTypingEditIndex(
-      curIndex,
+    const editIndex = this.resolveTypingEditIndex(
+      payloadEditIndex ?? curIndex,
       insertedCount
     )
     this.draw.getViewState().incrementRenderCount()
@@ -209,7 +209,7 @@ export class DrawRenderFacadeService {
         insertedCount
       })
     if (requiresFullLayout || !finalPatchResult.patched) {
-      this.renderTypingFullLayoutFallback({
+      this.renderTypingFullLayoutRecovery({
         curIndex,
         isSubmitHistory,
         isSetCursor,
@@ -240,7 +240,7 @@ export class DrawRenderFacadeService {
         isTyping: true
       })
     } else {
-      // chunk 和单行正式 patch 都覆盖不了的复杂场景保持 dirty，不再回退整篇 layout。
+      // chunk 和单行正式 patch 都覆盖不了的复杂场景保持 dirty，不再触发整篇 layout 接管。
       this.draw.getComponents().cursor.drawCursor()
     }
     this.finalizeService.submitHistory({
@@ -258,8 +258,8 @@ export class DrawRenderFacadeService {
     })
   }
 
-  /** 输入态正确性回退：当页级传播后方存在表格时，先同步完整 layout 保证父子 chunk 一致。 */
-  private renderTypingFullLayoutFallback(payload: {
+  /** 输入态正确性接管：当页级传播后方存在表格时，先同步完整 layout 保证父子 chunk 一致。 */
+  private renderTypingFullLayoutRecovery(payload: {
     /** 当前元素索引，用于记录遍历或命中过程的位置。 */
     curIndex?: number
     /** 是否提交历史记录，用于控制本次变更是否可撤销。 */

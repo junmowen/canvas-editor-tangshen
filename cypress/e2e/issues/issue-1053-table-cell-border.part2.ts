@@ -16,9 +16,9 @@ function getTable(editor: Editor) {
 
 function getCellBounds(editor: Editor, tableId: string, trIndex: number, tdIndex: number) {
   const draw = (editor as any).draw
-  draw.flushScheduledFrameRender()
+  draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
   const bounds = draw
-    .getTableLayoutSnapshotAccessor()
+    .getServices().tableLayoutSnapshotAccessor
     .getFragmentCellBounds(tableId)
     .find((item: any) => item.trIndex === trIndex && item.tdIndex === tdIndex)
   expect(bounds).to.not.eq(undefined)
@@ -27,7 +27,7 @@ function getCellBounds(editor: Editor, tableId: string, trIndex: number, tdIndex
 
 function getFirstLaterFragmentBounds(editor: Editor, logicalTableId: string) {
   const draw = (editor as any).draw
-  draw.flushScheduledFrameRender()
+  draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
   const rowList = draw.getPageRowList().flat()
   const laterRow = rowList.find(
     (row: any) =>
@@ -37,7 +37,7 @@ function getFirstLaterFragmentBounds(editor: Editor, logicalTableId: string) {
   expect(laterRow).to.not.eq(undefined)
   const fragment = laterRow.tableFragment
   const bounds = draw
-    .getTableLayoutSnapshotAccessor()
+    .getServices().tableLayoutSnapshotAccessor
     .getFragmentCellBounds(fragment.tableId)
   expect(bounds.length).to.be.greaterThan(0)
   return {
@@ -360,10 +360,10 @@ function findLaterFragmentBox(
     if (cursor.pageNo > prevPageNo) {
       const draw = (editor as any).draw
       const slice = draw
-        .getTableLayoutSnapshotAccessor()
-        .resolveSliceByPositionContext(draw.getPosition().getPositionContext())
+        .getServices().tableLayoutSnapshotAccessor
+        .resolveSliceByPositionContext(draw.getCoordinate().getPositionContext())
       const bounds = draw
-        .getTableLayoutSnapshotAccessor()
+        .getServices().tableLayoutSnapshotAccessor
         .getFragmentCellBounds(slice.fragmentTableId)
         .find((item: any) => item.fragmentTdId === slice.fragmentTdId)
       if (bounds) {
@@ -628,7 +628,7 @@ describe('issue #1053 table cell border settings', () => {
       editor.command.executeSetRange(0, 0)
       editor.command.executeTableBorderType(TableBorder.ALL)
       editor.command.executeTableBorderType(TableBorder.EXTERNAL)
-      ;(editor as any).draw.flushScheduledFrameRender()
+      ;(editor as any).draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
 
       const firstCell = getCellBounds(editor, table.id!, 0, 0)
       const secondRowCell = getCellBounds(editor, table.id!, 1, 0)
@@ -671,7 +671,7 @@ describe('issue #1053 table cell border settings', () => {
       } as any)
       editor.command.executeSetRange(0, 0)
       editor.command.executeTableBorderType(TableBorder.INTERNAL)
-      ;(editor as any).draw.flushScheduledFrameRender()
+      ;(editor as any).draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
 
       const topLeft = getCellBounds(editor, table.id!, 0, 0)
       const bottomLeft = getCellBounds(editor, table.id!, 1, 0)
@@ -739,7 +739,7 @@ describe('issue #1053 table cell border settings', () => {
       } as any)
       editor.command.executeSetRange(0, 0)
       editor.command.executeTableBorderType(TableBorder.DASH)
-      ;(editor as any).draw.flushScheduledFrameRender()
+      ;(editor as any).draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
 
       const firstCell = getCellBounds(editor, table.id!, 0, 0)
       return editor.command.getImage({
@@ -910,7 +910,7 @@ describe('issue #1053 table cell border settings', () => {
         ]
       })
       const textRows = draw
-        .getOriginalRowList()
+        .getObjectResolver().getOriginalRowList()
         .filter((row: any) =>
           row.elementList.some((element: any) => element.value !== '\u200B') &&
           !row.elementList.some((element: any) => element.type === ElementType.TABLE)

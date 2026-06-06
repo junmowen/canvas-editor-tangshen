@@ -29,3 +29,20 @@
 | `BitmapCache.ts` | `set()` / `get()` / `delete()` / `clear()` / `getStats()` | 管理 bitmap 缓存。 | `RenderSurfaceManager.ts` |
 | `RenderBackendDebugPanel.ts` | `update()` / `destroy()` | 调试面板刷新和销毁。 | `Draw.ts` 调试面板链路 |
 
+## 统计数据结构
+
+| 结构 | 字段 | 说明 |
+| --- | --- | --- |
+| `IRenderBackendDispatchResult` | `rendered` | 当前任务是否被某个后端完成。 |
+| `IRenderBackendDispatchResult` | `backendName` | 实际完成任务的后端名称。未命中时为空。 |
+| `IRenderBackendDispatchResult` | `failover` | 当前任务是否在前置后端失败后切换到后续后端。 |
+| `IRenderBackendManagerStats` | `failoverCount` | 累计降级路径次数。 |
+| `IRenderBackendManagerStats` | `backendFailoverCountMap` | 各后端作为降级目标的次数。 |
+| `IRenderBackendRecentWindowStats` | `backendFailureCountMap` | 近期窗口内各后端失败次数。 |
+| `IWorkerRenderSchedulerStats` | `lastFailoverReason` | worker 最近一次转入同步路径的原因。 |
+
+## 命名约束
+
+- 降级路径统一使用 `failover` 命名。
+- 不再暴露 `fallback`、`fallbackCount`、`lastFallbackReason`、`backendFallbackCountMap` 等旧命名。
+- 调试面板、worker stats、backend stats 必须消费同一套当前字段，避免在主渲染链路保留兼容别名。

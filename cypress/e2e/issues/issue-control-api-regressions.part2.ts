@@ -137,7 +137,7 @@ describe('control API regressions', () => {
         placeholder: 'empty placeholder'
       })
       const rawText = (editor as any).draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .map((element: any) => element.value)
         .join('')
       expect(rawText).to.contain('empty placeholder')
@@ -177,7 +177,7 @@ describe('control API regressions', () => {
         placeholder: 'empty string placeholder'
       })
       const rawText = (editor as any).draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .map((element: any) => element.value)
         .join('')
       expect(rawText).to.contain('empty string placeholder')
@@ -420,7 +420,7 @@ describe('control API regressions', () => {
       editor.command.executeSetValue({
         main: [{ value: 'first' }, { value: '\n' }, { value: 'second' }]
       })
-      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const secondParagraphStart = elementList.findIndex(
         (element: any, index: number) =>
           element.value === 's' && elementList[index - 1]?.value === '\u200B'
@@ -469,7 +469,7 @@ describe('control API regressions', () => {
         ]
       })
 
-      const elementList = (editor as any).draw.getElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getElementList()
       const controlId = elementList.find(
         (element: any) => element.control?.conceptId === 'disabledText'
       )?.controlId
@@ -705,7 +705,7 @@ describe('control API regressions', () => {
         ]
       })
 
-      const elementList = (editor as any).draw.getElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getElementList()
       const valueIndex = elementList.findIndex(
         (element: any) =>
           element.control?.conceptId === 'disabledHighlight' &&
@@ -828,7 +828,7 @@ describe('control API regressions', () => {
         ]
       })
 
-      const elementList = (editor as any).draw.getElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getElementList()
       const leftPostfixIndex = elementList.findIndex(
         (element: any) =>
           element.control?.conceptId === 'disabled-left' &&

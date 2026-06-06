@@ -2,6 +2,18 @@
   background-image: url('../assets/images/print.svg');
 }
 
+.menu-item__docx i {
+  color: #1f6feb;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.menu-item__docx i::before {
+  content: 'W';
+}
+
 .menu-item__track-change {
   position: relative;
 }

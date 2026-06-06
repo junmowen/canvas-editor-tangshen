@@ -23,7 +23,7 @@ function readTextBandPixelStats(payload: {
 }) {
   const { editor, index, padding = 4 } = payload
   const draw = editor.draw
-  const position = draw.getPosition().getLayoutMainPositionList()[index]
+  const position = draw.getCoordinate().getMainPositionList()[index]
   expect(position, '待检测文字位置').to.exist
   const canvas = draw
     .getPageCanvasHost()
@@ -164,7 +164,7 @@ describe('输入态点击刷新回归', () => {
               .getLayoutMainElementList()
               .map((element: { value?: string }) => element.value || '')
               .join('')
-            const positionList = draw.getPosition().getPositionList()
+            const positionList = draw.getCoordinate().getPositionList()
             const isPositionIndexStable = positionList.every(
               (position: { index: number }, index: number) =>
                 position?.index === index
@@ -214,8 +214,8 @@ describe('输入态点击刷新回归', () => {
               .map((element: { value?: string }) => element.value || '')
               .join('')
             const pagePositionList = draw
-              .getPosition()
-              .getLayoutMainPositionListByPage(0)
+              .getCoordinate()
+              .getMainPositionListByPage(0)
             const rowTopMap = new Map<number, number>()
 
             pagePositionList.forEach(
@@ -323,8 +323,8 @@ describe('输入态点击刷新回归', () => {
           })
           .then(() => {
             const firstPosition = draw
-              .getPosition()
-              .getLayoutMainPositionList()[startIndex]
+              .getCoordinate()
+              .getMainPositionList()[startIndex]
             cy.get(`canvas[data-index="${firstPosition.pageNo}"]`).click(
               firstPosition.coordinate.leftTop[0] + 2,
               firstPosition.coordinate.leftTop[1] + 2,
@@ -448,7 +448,7 @@ describe('输入态点击刷新回归', () => {
               'dirty range planner 应接管异步传播起点'
             ).to.be.greaterThan(0)
             expect(
-              stats.chunkLayout.dirtyRangeScheduleFallbackCount,
+              stats.chunkLayout.dirtyRangeScheduleCorrectionCount,
               '普通 overflow 不应回退经验式传播'
             ).to.eq(0)
           })
@@ -458,7 +458,7 @@ describe('输入态点击刷新回归', () => {
               .getLayoutMainElementList()
               .map((element: { value?: string }) => element.value || '')
               .join('')
-            const positionList = draw.getPosition().getPositionList()
+            const positionList = draw.getCoordinate().getPositionList()
             const isPositionIndexStable = positionList.every(
               (position: { index: number }, index: number) =>
                 position?.index === index
@@ -520,13 +520,13 @@ describe('输入态点击刷新回归', () => {
               '删除补行应由 planner 接管传播起点'
             ).to.be.greaterThan(0)
             expect(
-              stats.chunkLayout.dirtyRangeScheduleFallbackCount,
+              stats.chunkLayout.dirtyRangeScheduleCorrectionCount,
               '删除补行不应回退经验式传播'
             ).to.eq(0)
           })
           .then(() => {
             const stats = editor.getRenderBackendStats()
-            const positionList = draw.getPosition().getPositionList()
+            const positionList = draw.getCoordinate().getPositionList()
             const isPositionIndexStable = positionList.every(
               (position: { index: number }, index: number) =>
                 position?.index === index

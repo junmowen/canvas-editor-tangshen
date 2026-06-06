@@ -21,12 +21,10 @@ import { IMargin } from '../../interface/Margin'
 import { IPositionContext } from '../../interface/Position'
 import { IRange } from '../../interface/Range'
 import { cloneProperty, deepClone } from '../../utils'
-import {
-  formatElementList,
-  pickSurroundElementList,
-  pickElementAttr,
-  getElementListByHTML
-} from '../../utils/element'
+import { pickElementAttr } from '../../utils/elementZip'
+import { getElementListByHTML } from '../../utils/elementDom'
+import { formatElementList } from '../../utils/elementFormat'
+import { pickSurroundElementList } from '../../utils/elementLayout'
 import { IAreaBadge, IBadge } from '../../interface/Badge'
 import {
   findCommandElementList,
@@ -86,9 +84,9 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
     this.draw.setPaperDirection(payload)
   }
 
-  /** 获取当前纸张页边距。 */
-  public getPaperMargin(): number[] {
-    return this.options.margins
+  /** 获取指定页最终纸张页边距，包含镜像页边距和装订线。 */
+  public getPaperMargin(pageNo = 0): number[] {
+    return this.draw.getOriginalMargins(pageNo)
   }
 
   /** 设置当前纸张页边距。 */
@@ -435,6 +433,11 @@ export class CommandAdaptPageElement extends CommandAdaptQuery {
       isSubmitHistory: false,
       pageRenderScope: 'visible'
     })
+  }
+
+  /** 按标题 id 定位章节，语义上复用目录定位的稳定落点逻辑。 */
+  public locationTitle(titleId: string) {
+    this.locationCatalog(titleId)
   }
 
   /** 执行文档工具类统计和分析。 */

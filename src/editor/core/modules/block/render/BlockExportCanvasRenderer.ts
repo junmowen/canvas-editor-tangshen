@@ -3,8 +3,8 @@ import { IDrawRowPayload } from '../../../../interface/Draw'
 
 type RowElement = IDrawRowPayload['rowList'][number]['elementList'][number]
 
-/** 导出时不挂载 DOM/SVG block host，改为在 Canvas 中固化稳定占位内容。 */
-export class BlockExportFallbackRenderer {
+/** 导出时不挂载 DOM/SVG block host，改为在 Canvas 中固化稳定内容。 */
+export class BlockExportCanvasRenderer {
   public render(
     ctx: CanvasRenderingContext2D,
     element: RowElement,
@@ -19,7 +19,7 @@ export class BlockExportFallbackRenderer {
       ctx.drawImage(svgRasterImage, x, y, width, height)
       return
     }
-    const fallbackText = this.getFallbackText(element)
+    const placeholderText = this.getPlaceholderText(element)
     ctx.save()
     ctx.fillStyle = '#f7f7f7'
     ctx.strokeStyle = '#d0d0d0'
@@ -34,11 +34,11 @@ export class BlockExportFallbackRenderer {
     ctx.fillStyle = '#666666'
     ctx.font = '12px sans-serif'
     ctx.textBaseline = 'middle'
-    ctx.fillText(fallbackText, x + 8, y + height / 2)
+    ctx.fillText(placeholderText, x + 8, y + height / 2)
     ctx.restore()
   }
 
-  private getFallbackText(element: RowElement): string {
+  private getPlaceholderText(element: RowElement): string {
     if (element.block?.type === BlockType.HTML) {
       const text =
         element.block.htmlBlock?.text ||

@@ -4,6 +4,11 @@ import {
   IWorkerRenderSuccessResult
 } from './WorkerRenderProtocol'
 import { BackgroundRepeat, BackgroundSize } from '../../../dataset/enum/Background'
+import {
+  logFormulaDebug,
+  roundFormulaDebugNumber
+} from '../../modules/formula/debug/FormulaDebugLogger'
+import { createFormulaVisualBox } from '../../modules/formula/model/FormulaVisualModel'
 
 /** worker 图片资源缓存，避免同一页重复解码。 */
 const imageBitmapCache = new Map<string, Promise<ImageBitmap>>()
@@ -33,7 +38,7 @@ async function getImageBitmap(src: string): Promise<ImageBitmap> {
   return bitmapPromise
 }
 
-/** 创建图片 Blob，SVG data URL 在 worker fetch 下存在浏览器兼容差异，需手动解码。 */
+/** 创建图片 Blob，SVG data URL 在 worker fetch 下存在浏览器行为差异，需手动解码。 */
 async function createImageBlob(src: string): Promise<Blob> {
   const base64SvgPrefix = 'data:image/svg+xml;base64,'
   if (src.startsWith(base64SvgPrefix)) {
@@ -251,6 +256,80 @@ async function renderSnapshot(
         ctx.rotate(command.rotate)
       }
       ctx.fillText(command.text, command.x, command.y)
+      ctx.restore()
+    } else if (command.type === 'formulaText') {
+      ctx.save()
+      ctx.globalAlpha = command.alpha ?? 1
+      const visualBox = createFormulaVisualBox({
+        ctx: ctx as unknown as CanvasRenderingContext2D,
+        latex: command.latex,
+        font: command.font,
+        defaultSize: command.defaultSize,
+        element: {
+          value: command.latex,
+          color: command.fillStyle,
+          formula: {
+            latex: command.latex,
+            placeholderText: command.placeholderText,
+            placeholderColor: command.placeholderColor
+          }
+        } as any,
+        defaultColor: command.fillStyle,
+        debugSource: 'worker-render'
+      })
+      ctx.font = command.font
+      ctx.fillStyle = command.fillStyle
+      const textMetrics = ctx.measureText(command.displayText)
+      const textWidth = textMetrics.width || visualBox.width
+      const textAscent =
+        textMetrics.actualBoundingBoxAscent || command.defaultSize * 0.82
+      const textDescent =
+        textMetrics.actualBoundingBoxDescent || command.defaultSize * 0.22
+      // worker 使用布局层传入的占位宽高，避免缓存页公式尺寸和主线程不一致。
+      const metricsWidth = Math.max(
+        1,
+        command.metricsWidth || textWidth
+      )
+      const metricsAscent =
+        command.metricsAscent !== undefined
+          ? command.metricsAscent
+          : textAscent
+      const metricsDescent =
+        command.metricsDescent !== undefined
+          ? command.metricsDescent
+          : textDescent
+      const metricsHeight = Math.max(1, metricsAscent + metricsDescent)
+      const visualHeight = Math.max(1, visualBox.ascent + visualBox.descent)
+      const scale = Math.min(
+        1,
+        metricsWidth / visualBox.width,
+        metricsHeight / visualHeight
+      )
+      const renderWidth = visualBox.width * scale
+      const renderX = command.x + Math.max(0, (metricsWidth - renderWidth) / 2)
+      const renderY = command.y + Math.max(
+        0,
+        (metricsHeight - visualBox.ascent * scale - visualBox.descent * scale) / 2
+      )
+      ctx.translate(renderX, renderY)
+      ctx.scale(scale, scale)
+      visualBox.render(ctx as unknown as CanvasRenderingContext2D, 0, 0)
+      if (command.debug) {
+        logFormulaDebug('worker-render', {
+          latex: command.latex,
+          displayText: command.displayText,
+          x: roundFormulaDebugNumber(command.x),
+          baselineY: roundFormulaDebugNumber(command.y),
+          visualWidth: roundFormulaDebugNumber(visualBox.width),
+          visualAscent: roundFormulaDebugNumber(visualBox.ascent),
+          visualDescent: roundFormulaDebugNumber(visualBox.descent),
+          metricsWidth: roundFormulaDebugNumber(metricsWidth),
+          metricsHeight: roundFormulaDebugNumber(metricsHeight),
+          renderScale: roundFormulaDebugNumber(scale),
+          font: command.font,
+          fillStyle: command.fillStyle
+        })
+      }
       ctx.restore()
     } else if (command.type === 'repeatTextWatermark') {
       drawRepeatTextWatermark(ctx, command)

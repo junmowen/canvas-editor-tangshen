@@ -20,17 +20,17 @@ export interface IVideoBlock {
 
 /** svgblock契约，用于约束公开 API中传递的数据结构。 */
 export interface ISvgBlock {
-  /** Inline SVG source. Used by the DOM/SVG host and Canvas2D export raster fallback. */
+  /** 内联 SVG 源，供 DOM/SVG host 和 Canvas2D 导出备用栅格绘制使用。 */
   svg: string
-  /** Cached image populated after SVG source is loaded for synchronous export drawing. */
+  /** SVG 源加载后缓存的图片，用于同步导出绘制。 */
   rasterImage?: HTMLImageElement
 }
 
 /** htmlblock契约，用于约束公开 API中传递的数据结构。 */
 export interface IHtmlBlock {
-  /** Sanitized or trusted inline HTML fragment rendered inside the DOM/SVG block host. */
+  /** 已清理或可信的内联 HTML 片段，在 DOM/SVG block host 中渲染。 */
   html: string
-  /** Plain text summary used by Canvas2D export fallback. */
+  /** 纯文本摘要，用于 Canvas2D 导出备用绘制。 */
   text?: string
 }
 

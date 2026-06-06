@@ -12,4 +12,4 @@
 
 1. 正文 base 的实验 worker 路径只允许非交互页进入。
 2. WebGL 只接图片任务，DOM / SVG 只接 block host 任务。
-3. 导出路径不复用运行时 WebGL 或可视 DOM host，必须走 Canvas2D 固化或稳定 fallback。
+3. 导出路径不复用运行时 WebGL 或可视 DOM host，必须走 Canvas2D 固化或稳定 回退。

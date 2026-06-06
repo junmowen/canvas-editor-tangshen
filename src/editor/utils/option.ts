@@ -15,6 +15,7 @@ import { defaultRadioOption } from '../dataset/constant/Radio'
 import { defaultSeparatorOption } from '../dataset/constant/Separator'
 import { defaultTableOption } from '../dataset/constant/Table'
 import { defaultTitleOption } from '../dataset/constant/Title'
+import { defaultTypographyOption } from '../dataset/constant/Typography'
 import { defaultWatermarkOption } from '../dataset/constant/Watermark'
 import { defaultZoneOption } from '../dataset/constant/Zone'
 import { defaultLineNumberOption } from '../dataset/constant/LineNumber'
@@ -41,6 +42,7 @@ import { IRadioOption } from '../interface/Radio'
 import { ISeparatorOption } from '../interface/Separator'
 import { ITableOption } from '../interface/table/Table'
 import { ITitleOption } from '../interface/Title'
+import { ITypographyOption } from '../interface/Typography'
 import { IWatermark } from '../interface/Watermark'
 import { IZoneOption } from '../interface/Zone'
 import { ILineNumberOption } from '../interface/LineNumber'
@@ -130,6 +132,10 @@ export function mergeOption(
   const lineBreakOptions: Required<ILineBreakOption> = {
     ...defaultLineBreak,
     ...options.lineBreak
+  }
+  const typographyOptions: Required<ITypographyOption> = {
+    ...defaultTypographyOption,
+    ...options.typography
   }
   const separatorOptions: Required<ISeparatorOption> = {
     ...defaultSeparatorOption,
@@ -256,12 +262,27 @@ export function mergeOption(
     zone: zoneOptions,
     background: backgroundOptions,
     lineBreak: lineBreakOptions,
+    typography: typographyOptions,
     separator: separatorOptions,
     lineNumber: lineNumberOptions,
     pageBorder: pageBorderOptions,
     badge: badgeOptions,
     modeRule: modeRuleOption,
     renderBackend: renderBackendOptions,
-    trackChange: trackChangeOptions
+    trackChange: trackChangeOptions,
+    controlSchema: (options.controlSchema || []) as
+      unknown as DeepRequired<IEditorOption>['controlSchema'],
+    controlInitialProperties: (options.controlInitialProperties || []) as
+      unknown as DeepRequired<IEditorOption>['controlInitialProperties'],
+    controlInitialValues: (options.controlInitialValues || []) as
+      unknown as DeepRequired<IEditorOption>['controlInitialValues'],
+    controlCrossValidateRules: (options.controlCrossValidateRules || []) as
+      unknown as DeepRequired<IEditorOption>['controlCrossValidateRules'],
+    controlValidator: (options.controlValidator ||
+      (payload => payload.result)) as DeepRequired<IEditorOption>['controlValidator'],
+    controlRemoteOptionLoader: (options.controlRemoteOptionLoader ||
+      (async payload => ({
+        valueSets: payload.control.valueSets || []
+      }))) as DeepRequired<IEditorOption>['controlRemoteOptionLoader']
   }
 }

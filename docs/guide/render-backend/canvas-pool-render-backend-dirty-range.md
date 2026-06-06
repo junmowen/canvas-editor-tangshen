@@ -19,7 +19,7 @@
 3. 已补 `dirtyRangeLastMissingActualPageNoList`、实际影响页起止等诊断字段，用于接管前定位 planner 漏页。
 4. 已修复表格迁移时 dirty range 被旧页数裁剪的问题；planner 现在允许覆盖 rebalance 已知的新增 / 迁移页。
 5. 已让 planner 接管普通页级 rebalance 的异步传播起点：当 dirty range 覆盖实际影响页时，从 `dirtyRangePlan.endPageNo + 1` 继续传播，避免重复调度已经覆盖的窗口。
-6. 已保留回退路径：如果 planner 输出没有覆盖 `affectedPageNoList`，立即回退旧的尾页边界传播起点，并记录 `dirtyRangeScheduleFallbackCount`。
+6. 已保留修正路径：如果 planner 输出没有覆盖 `affectedPageNoList`，立即修正尾页边界传播起点，并记录 `dirtyRangeScheduleCorrectionCount`。
 7. 已通过 overflow / gap refill 回归断言，确认 `dirtyRangeMissActualCount = 0`、`dirtyRangeScheduleTakeoverCount > 0`，普通文本跨页传播不再依赖经验式起点。
 8. 已通过表格输入 chunk 隔离回归和 1000 页编辑性能回归，确认 planner 接管后没有引入重复表格、旧边框残留或同步性能退化。
 

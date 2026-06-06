@@ -1,10 +1,29 @@
 import { PageMode } from '../../../dataset/enum/Editor'
 import { MoveDirection } from '../../../dataset/enum/Observer'
 import type { IElement } from '../../../interface/Element'
+import type { IFloatPosition } from '../../../interface/Position'
 import { nextTick } from '../../../utils'
 import { resolveScaledFloatImageRect } from '../../modules/image/position/ImagePositionPolicy'
 import { visitTableCellValueList } from '../../modules/table/layout/TableRowLayoutPolicy'
 import type { Draw } from '../Draw'
+
+function resolveFloatPositionBottom(
+  floatPosition: IFloatPosition,
+  scale: number
+) {
+  const coordinate = floatPosition.position?.coordinate
+  if (coordinate) {
+    return Math.max(
+      coordinate.leftBottom[1],
+      coordinate.rightBottom[1]
+    )
+  }
+  const floatRect = resolveScaledFloatImageRect({
+    element: floatPosition.element,
+    scale
+  })
+  return floatRect ? floatRect.y + floatRect.height : null
+}
 
 /** Draw render 流程的通用收尾动作。 */
 export class DrawRenderFinalizeService {
@@ -150,7 +169,7 @@ export class DrawRenderFinalizeService {
         })
       }
     }
-    this.draw.getCoordinate().getLayoutMainPositionList().forEach(position => {
+    this.draw.getCoordinate().getMainPositionList().forEach(position => {
       maxBottom = Math.max(
         maxBottom,
         position.coordinate.leftBottom[1] + bottomMargin,
@@ -159,23 +178,17 @@ export class DrawRenderFinalizeService {
     })
     visitElementList(this.draw.getObjectResolver().getLayoutMainElementList())
     this.draw.getCoordinate().getFloatPositionList().forEach(floatPosition => {
-      const floatRect = resolveScaledFloatImageRect({
-        element: floatPosition.element,
-        scale: this.draw.getOptions().scale
-      })
-      if (!floatRect) return
-      maxBottom = Math.max(
-        maxBottom,
-        floatRect.y + floatRect.height + bottomMargin
+      const floatBottom = resolveFloatPositionBottom(
+        floatPosition,
+        this.draw.getOptions().scale
       )
+      if (floatBottom === null) return
+      maxBottom = Math.max(maxBottom, floatBottom + bottomMargin)
     })
     this.draw.getPageCanvasHost().resizeContinuousPage(
       pageNo,
       Math.ceil(maxBottom),
       this.draw.getHeight()
     )
-    if (!this.draw.getOptions().footer.disabled) {
-      this.draw.getFooter().syncPositionForPage(pageNo)
-    }
   }
 }

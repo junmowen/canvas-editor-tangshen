@@ -3,7 +3,7 @@ import { EditorMode } from '../../../src/editor/dataset/enum/Editor'
 
 function getControlElements(editor: Editor) {
   return (editor as any).draw
-    .getOriginalMainElementList()
+    .getObjectResolver().getOriginalMainElementList()
     .filter((element: any) => element.controlId)
 }
 
@@ -50,7 +50,7 @@ describe('form mode control deletion disabled', () => {
       })
       editor.command.executeMode(EditorMode.FORM)
 
-      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const structureElements = getControlElements(editor)
       const firstControlId = structureElements[0].controlId
       const firstStartIndex = elementList.findIndex(
@@ -97,7 +97,7 @@ describe('form mode control deletion disabled', () => {
       })
       editor.command.executeMode(EditorMode.FORM)
 
-      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const startIndex = elementList.findIndex((element: any) => element.value === '已')
       const endIndex = elementList.findIndex((element: any) => element.value === '写')
       expect(startIndex).to.be.greaterThan(-1)

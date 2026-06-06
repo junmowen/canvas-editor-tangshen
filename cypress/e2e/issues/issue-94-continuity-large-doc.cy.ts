@@ -140,7 +140,7 @@ describe('#94 continuity mode large document', () => {
 
     cy.getEditor().then((editor: any) => {
       const draw = Reflect.get(editor, 'draw')
-      const pagingRowCount = draw.getRowList().length
+      const pagingRowCount = draw.getObjectResolver().getRowList().length
       const pagingVisibleRowCount = draw
         .getPageRowList()
         .reduce((total: number, rows: unknown[]) => total + rows.length, 0)
@@ -156,10 +156,10 @@ describe('#94 continuity mode large document', () => {
 
       cy.document().then(doc => {
         const wrapper = doc.querySelector('[data-index="0"]') as HTMLDivElement | null
-        const continuousRowCount = draw.getRowList().length
+        const continuousRowCount = draw.getObjectResolver().getRowList().length
         const continuousPositionBottom = draw
-          .getPosition()
-          .getLayoutMainPositionList()
+          .getCoordinate()
+          .getMainPositionList()
           .reduce(
             (max: number, position: { coordinate: { leftBottom: number[]; rightBottom: number[] } }) =>
               Math.max(
@@ -170,7 +170,7 @@ describe('#94 continuity mode large document', () => {
             0
           )
         const expectedMinHeight =
-          draw.getRowList().reduce(
+          draw.getObjectResolver().getRowList().reduce(
             (total: number, row: { height: number; offsetY?: number }) =>
               total + row.height + (row.offsetY || 0),
             0
@@ -324,8 +324,8 @@ describe('#94 continuity mode large document', () => {
         .getPageCanvasHost()
         .getPageWrapperList()[0] as HTMLDivElement
       const targetPosition = draw
-        .getPosition()
-        .getLayoutMainPositionList()
+        .getCoordinate()
+        .getMainPositionList()
         .find(
           (position: any) =>
             position.pageNo === 0 &&
@@ -367,7 +367,7 @@ describe('#94 continuity mode large document', () => {
     cy.getEditor().then((editor: any) => {
       const draw = Reflect.get(editor, 'draw')
       const range = draw.getRange().getEditBoundaryRange()
-      const cursorPosition = draw.getPosition().getCursorPosition()
+      const cursorPosition = draw.getCoordinate().getCursorPosition()
       expect(range.startIndex, 'clicked range is not left at document start').to.be.greaterThan(0)
       expect(range.startIndex, 'clicked range reaches lower continuity content').to.be.greaterThan(80)
       expect(cursorPosition?.pageNo, 'cursor stays on continuity page').to.eq(0)
@@ -409,7 +409,7 @@ describe('#94 continuity mode large document', () => {
         .getPageCanvasHost()
         .getPageWrapperList()[0] as HTMLDivElement
       const expectedMinHeight =
-        draw.getRowList().reduce(
+        draw.getObjectResolver().getRowList().reduce(
           (total: number, row: { height: number; offsetY?: number }) =>
             total + row.height + (row.offsetY || 0),
           0

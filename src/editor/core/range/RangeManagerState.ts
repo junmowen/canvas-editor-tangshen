@@ -2,7 +2,7 @@ import { RangeManagerBase } from './RangeManagerBase'
 import { TEXTLIKE_ELEMENT_TYPE } from '../../dataset/constant/Element'
 import { IElement, IElementPosition } from '../../interface/Element'
 import { IRange, IRangeElementStyle } from '../../interface/Range'
-import { getAnchorElement } from '../../utils/element'
+import { getAnchorElement } from '../../utils/elementContext'
 import { sliceSelectionContent } from './utils/resolveSelectionContent'
 import { IGetTableSelectionRenderRangePayload, ITableSelectionRenderRange } from '../modules/table/selection/TableSelectionTypes'
 import {
@@ -143,7 +143,7 @@ export class RangeManagerState extends RangeManagerBase {
     return sliceSelectionContent(elementList, selectionContentRange)
   }
 
-  /** 获取当前选区元素列表，兼容跨行列单元格选择。 */
+  /** 获取当前选区元素列表，支持跨行列单元格选择。 */
   public getSelectionElementList(): IElement[] | null {
     if (this.range.isCrossRowCol) {
       const rowCol = this.draw.getTableParticle().getRangeRowCol()

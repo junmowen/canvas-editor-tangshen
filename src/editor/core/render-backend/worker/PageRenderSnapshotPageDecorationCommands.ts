@@ -7,12 +7,13 @@ import { PageRenderSnapshotAreaCommands } from './PageRenderSnapshotAreaCommands
 
 /** Page margin, line number, page border and badge commands. */
 export abstract class PageRenderSnapshotPageDecorationCommands extends PageRenderSnapshotAreaCommands {
-  protected buildMarginCommands(): IWorkerPaintCommand[] {
+  protected buildMarginCommands(pageNo = 0): IWorkerPaintCommand[] {
     if (this.draw.getMode() === EditorMode.PRINT) return []
     const options = this.draw.getRuntime().getOptions()
     const marginIndicatorSize =
       this.draw.getServices().metricsService.getMarginIndicatorSize()
-    const margins = this.draw.getMargins()
+    // Worker 快照和主线程 Canvas2D 使用同一页码边距，保证镜像页边距/装订线下四角指示器一致。
+    const margins = this.draw.getMargins(pageNo)
     const width = this.draw.getWidth()
     const height = this.draw.getHeight()
     // 初始化 left Top Point 列表。
@@ -86,7 +87,7 @@ export abstract class PageRenderSnapshotPageDecorationCommands extends PageRende
     } = options
     const commandList: IWorkerPaintCommand[] = []
     const pagePositionList =
-      this.draw.getCoordinate().getLayoutMainPositionListByPage(payload.pageNo)
+      this.draw.getCoordinate().getMainPositionListByPage(payload.pageNo)
     const commandFont = `${size * scale}px ${font}`
     let rowPositionOffset = 0
     for (let i = 0; i < payload.rowList.length; i++) {
@@ -97,7 +98,10 @@ export abstract class PageRenderSnapshotPageDecorationCommands extends PageRende
       const seq = type === LineNumberType.PAGE ? i + 1 : row.rowIndex + 1
       const text = `${seq}`
       const metrics = this.measureTextMetrics(text, commandFont)
-      const x = this.draw.getMargins()[3] - (metrics.width + right) * scale
+      // 行号位置跟随当前页左边距，worker 快照和主线程绘制保持一致。
+      const x =
+        this.draw.getMargins(payload.pageNo)[3] -
+        (metrics.width + right) * scale
       const y =
         rowPosition.coordinate.leftBottom[1] -
         metrics.actualBoundingBoxAscent * scale
@@ -114,21 +118,22 @@ export abstract class PageRenderSnapshotPageDecorationCommands extends PageRende
   }
 
   /** 生成页边框命令。 */
-  protected buildPageBorderCommands(): IWorkerPaintCommand[] {
+  protected buildPageBorderCommands(pageNo = 0): IWorkerPaintCommand[] {
     const options = this.draw.getRuntime().getOptions()
     if (options.pageBorder.disabled) return []
     const {
       scale,
       pageBorder: { color, lineWidth, padding }
     } = options
-    const margins = this.draw.getMargins()
+    // 页边框按目标页读取镜像页边距和装订线，避免非当前页快照横向错位。
+    const margins = this.draw.getMargins(pageNo)
     const x = margins[3] - padding[3] * scale
     const y =
       margins[0] +
       this.draw.getHeader().getExtraHeight() -
       padding[0] * scale
     const width =
-      this.draw.getInnerWidth() + (padding[1] + padding[3]) * scale
+      this.draw.getInnerWidth(pageNo) + (padding[1] + padding[3]) * scale
     const height =
       this.draw.getHeight() -
       y -

@@ -21,8 +21,9 @@ export class LineNumber {
       lineNumber: { color, size, font, right, type }
     } = this.options
     const textParticle = this.draw.getTextParticle()
-    const margins = this.draw.getMargins()
-    const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
+    // 行号贴近当前页正文左边界，镜像页边距下必须按页码读取左边距。
+    const margins = this.draw.getMargins(pageNo)
+    const positionList = this.draw.getCoordinate().getMainPositionList()
     const pageRowList = this.draw.getPageRowList()
     const rowList = pageRowList[pageNo]
     ctx.save()

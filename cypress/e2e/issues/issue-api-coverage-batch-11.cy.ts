@@ -21,7 +21,7 @@ describe('issue API coverage batch 11', () => {
         main: [{ value: 'draw instance is public' }]
       })
 
-      const originalList = (editor as any).draw.getOriginalMainElementList()
+      const originalList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       expect(getText(originalList).replace(/\u200B/g, '')).to.eq(
         'draw instance is public'
       )

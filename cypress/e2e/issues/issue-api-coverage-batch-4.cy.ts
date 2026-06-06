@@ -107,7 +107,7 @@ describe('issue API coverage batch 4', () => {
           .every(element => element.color === '#25C7FE')
       ).to.eq(true)
 
-      const expandedValueElements = ((editor as any).draw.getOriginalMainElementList() as IElement[])
+      const expandedValueElements = ((editor as any).draw.getObjectResolver().getOriginalMainElementList() as IElement[])
         .filter(
           element =>
             element.control?.conceptId === 'styled-select' &&

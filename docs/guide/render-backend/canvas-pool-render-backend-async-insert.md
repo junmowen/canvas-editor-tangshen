@@ -13,7 +13,7 @@
 5. `thousand-pages-editing` 已补状态机和指标断言，覆盖大粘贴完成、getValue / search / HTML / Text / image export / save / undo / redo 前 flush、setValue / splice / typing 取消和 Unicode 边界。
 6. 已补大粘贴同步回退统计：低于阈值、后台批次自身、表格上下文、控件上下文分别可观测；表格单元格和激活控件内大粘贴保持同步回退，不启动后台主文档事务。
 7. 已补后台批次异常恢复用例：后台批次抛错后记录 `status = failed`、`lastErrorReason`，清空 active transaction / pending batch，并保留首批耗时指标。
-8. 已补页眉 / 页脚大粘贴同步回退统计：非正文区域不会误启动后台主文档事务，分别记录 `headerSyncFallbackCount`、`footerSyncFallbackCount`。
+8. 已补页眉 / 页脚大粘贴同步接管统计：非正文区域不会误启动后台主文档事务，分别记录 `headerSyncRecoveryCount`、`footerSyncRecoveryCount`。
 9. 已补导出图片像素断言：导出前 flush 后，导出的页面不仅有页数，还必须包含正文墨迹像素。
 10. 已补失败后恢复一致性：后台批次失败并恢复原插入入口后，继续输入和 `getValue()` 能读取一致数据。
 

@@ -8,7 +8,7 @@ function getDraw(editor: Editor) {
 }
 
 function getPositionList(editor: Editor) {
-  return getDraw(editor).getPosition().getOriginalPositionList()
+  return getDraw(editor).getCoordinate().getOriginalPositionList()
 }
 
 function getTable(editor: Editor) {
@@ -85,7 +85,7 @@ describe('issue API coverage batch 15', () => {
       expect(Cypress.$('.ce-table-tool__border')).to.have.length(1)
 
       editor.command.executeUndo()
-      getDraw(editor).flushScheduledFrameRender()
+      getDraw(editor).getServices().renderInvalidationManager.flushScheduledFrameRender()
 
       expect(editor.command.getValue().data.main.some((element: any) => element.type === ElementType.TABLE)).to.eq(false)
       expect(Cypress.$('.ce-table-tool__select')).to.have.length(0)
@@ -118,9 +118,9 @@ describe('issue API coverage batch 15', () => {
           { value: ' Bravo selection line' }
         ]
       })
-      getDraw(editor).flushScheduledFrameRender()
+      getDraw(editor).getServices().renderInvalidationManager.flushScheduledFrameRender()
 
-      const elementList = getDraw(editor).getOriginalMainElementList()
+      const elementList = getDraw(editor).getObjectResolver().getOriginalMainElementList()
       const selectStart = elementList.findIndex(
         (element: any) =>
           element.control?.conceptId === 'select-popup-guard' &&
@@ -158,10 +158,10 @@ describe('issue API coverage batch 15', () => {
           { value: ' after' }
         ]
       })
-      getDraw(editor).flushScheduledFrameRender()
+      getDraw(editor).getServices().renderInvalidationManager.flushScheduledFrameRender()
 
       const valueIndex = getDraw(editor)
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .findIndex(
           (element: any) =>
             element.control?.conceptId === 'focused-text-control' &&

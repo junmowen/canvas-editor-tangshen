@@ -28,9 +28,9 @@ src/editor/core/render-backend/worker/
   PageRenderSnapshotTableCellCommands.ts
   PageRenderSnapshotTableCellBorderCommands.ts
   PageRenderSnapshotTableBorderCommands.ts
-  PageRenderSnapshotPageCommands.ts         # 兼容 facade
-  PageRenderSnapshotInlineCommands.ts       # 兼容 facade
-  PageRenderSnapshotRowDecorations.ts       # 兼容 facade
+  PageRenderSnapshotPageCommands.ts         # 过渡 facade
+  PageRenderSnapshotInlineCommands.ts       # 过渡 facade
+  PageRenderSnapshotRowDecorations.ts       # 过渡 facade
 ```
 
 ## Worker 执行链路
@@ -57,4 +57,4 @@ src/editor/core/render-backend/engines/
 1. 新增 worker 命令时，先判断属于页面框架、行、行内元素、文本装饰、控件、列表还是表格，再放入对应模块。
 2. `PageRenderSnapshotBuilder.ts` 只能负责组合和对外入口，不再承载具体绘制分支。
 3. 大于约 8KB 的 snapshot 模块需要继续按职责拆分，不能把新能力重新堆回 facade。
-4. 兼容 facade 只保留旧 import 边界，不承接新增逻辑。
+4. 过渡 facade 只保留旧 import 边界，不承接新增逻辑。

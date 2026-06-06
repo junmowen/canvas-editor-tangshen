@@ -36,7 +36,7 @@ describe('issue #111 shift selection direction', () => {
         ]
       })
 
-      const positionList = (editor as any).draw.getPosition().getPositionList()
+      const positionList = (editor as any).draw.getCoordinate().getPositionList()
       const secondRowPositions = positionList.filter(
         (position: any) => position.rowNo === 1
       )

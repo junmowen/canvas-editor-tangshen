@@ -22,6 +22,7 @@
 - 控件命令中的 component 定位规则留在 `command/`，不要内联回 `core/command/CommandAdaptDomain.ts`。
 - 控件生命周期、渲染和数据读写能力统一放在 `runtime/`，不要重新散回 `draw/control/`。
 - 控件行内边框等渲染规则留在 `render/`，不要内联回 `draw/render/RowRenderer.ts`。
+- 控件业务校验统一从 `ControlValueMethods.validateById()` 进入；模板级规则放在 `controlSchema`，声明式跨字段规则放在 `IEditorOption.controlCrossValidateRules`，后端/复杂业务规则放在 `controlValidator`。
 
 ## 位置说明
 
@@ -45,6 +46,7 @@
 | 目录 | 主要入口 | 作用 | 调用地方 |
 | --- | --- | --- | --- |
 | `runtime/Control.ts` | control runtime 方法 | 控件值读写、状态切换、渲染和生命周期。 | command、event、render |
+| `runtime/ControlValueMethods.ts` | `validateById()` / `validateByContext()` | 汇总必填、正则、声明式跨字段和异步业务校验。 | command、业务初始化 |
 | `runtime/*/*Control.ts` | `getValue()` / `setValue()` / `keydown()` / `cut()` | 具体控件的取值、设值和输入行为。 | `Control.ts` |
 | `interaction/` | control interaction 函数 | 处理控件点击、输入和浮层副作用。 | pointer、keyboard |
 | `policy/` | control policy 函数 | 判断控件是否可输入、删除或拖拽。 | event、command |

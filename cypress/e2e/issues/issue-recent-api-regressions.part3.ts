@@ -13,9 +13,9 @@ import { TitleLevel } from '../../../src/editor/dataset/enum/Title'
 import { WatermarkType } from '../../../src/editor/dataset/enum/Watermark'
 import {
   createDomFromElementList,
-  getElementListByHTML,
-  getTextFromElementList
-} from '../../../src/editor/utils/element'
+  getElementListByHTML
+} from '../../../src/editor/utils/elementDom'
+import { getTextFromElementList } from '../../../src/editor/utils/elementText'
 
 const transparentPng =
   'data:image/png;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
@@ -337,9 +337,13 @@ describe('recent issue API regressions', () => {
   it('issue #1278 removes disabled header and footer from layout and editing zones', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
-        header: [{ value: 'Header value' }],
+        headerPageScopes: [
+          { pageScope: 'all', elementList: [{ value: 'Header value' }] }
+        ],
         main: [{ value: 'Main value' }],
-        footer: [{ value: 'Footer value' }]
+        footerPageScopes: [
+          { pageScope: 'all', elementList: [{ value: 'Footer value' }] }
+        ]
       })
 
       const draw = (editor as any).draw
@@ -543,7 +547,7 @@ describe('recent issue API regressions', () => {
 
     cy.getEditor().then((editor: Editor) => {
       const draw = (editor as any).draw
-      const rowList = draw.getRowList()
+      const rowList = draw.getObjectResolver().getRowList()
       let blockRow: any
       let blockIndex = -1
       let positionOffset = 0
@@ -558,7 +562,7 @@ describe('recent issue API regressions', () => {
         positionOffset += row.elementList.length
       }
       const rowPosition = draw
-        .getPosition()
+        .getCoordinate()
         .getPositionList()[positionOffset + blockIndex]
       const blockElement = blockRow.elementList.find(
         (element: any) => element.id === 'print-position-iframe'
@@ -866,8 +870,8 @@ describe('recent issue API regressions', () => {
       })
 
       const draw = (editor as any).draw
-      draw.flushScheduledFrameRender()
-      const rowTexts = draw.getOriginalRowList().map((row: any) =>
+      draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
+      const rowTexts = draw.getObjectResolver().getOriginalRowList().map((row: any) =>
         row.elementList
           .map((element: any) => element.value)
           .join('')

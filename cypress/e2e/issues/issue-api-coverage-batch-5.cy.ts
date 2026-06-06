@@ -11,7 +11,7 @@ const getControlText = (control: any) =>
   (control?.value || []).map((element: any) => element.value).join('')
 
 const getValueElements = (editor: Editor, conceptId: string) =>
-  ((editor as any).draw.getOriginalMainElementList() as any[]).filter(
+  ((editor as any).draw.getObjectResolver().getOriginalMainElementList() as any[]).filter(
     element =>
       element.control?.conceptId === conceptId &&
       element.controlComponent === ControlComponent.VALUE &&

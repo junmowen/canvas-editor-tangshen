@@ -15,7 +15,8 @@ import {
   IRepaintControlOption
 } from '../../../../interface/Control'
 import { pickObject, splitText } from '../../../../utils'
-import { formatElementContext, zipElementList } from '../../../../utils/element'
+import { zipElementList } from '../../../../utils/elementZip'
+import { formatElementContext } from '../../../../utils/elementContext'
 import { CheckboxControl } from './checkbox/CheckboxControl'
 import { RadioControl } from './radio/RadioControl'
 import { SelectControl } from './select/SelectControl'

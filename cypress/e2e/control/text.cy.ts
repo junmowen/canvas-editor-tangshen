@@ -30,8 +30,7 @@ describe('控件-文本型', () => {
       ])
 
       const controlId = (editor as any).draw
-        .getObjectResolver()
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .find((element: any) => element.controlId).controlId
       editor.command.executeSetControlValue({
         id: controlId,

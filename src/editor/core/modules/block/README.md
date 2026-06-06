@@ -38,4 +38,4 @@
 | `layout/` | block measure / preload | 计算 block 行内尺寸并处理导出资源。 | `InlineElementLayout` |
 | `particle/BlockParticle.ts` | block particle 方法 | 管理 block DOM 宿主和页面定位。 | row render、lifecycle |
 | `particle/modules/` | `BaseBlock.render()` 等 | 渲染 iframe、video、svg、html block。 | `BlockParticle` |
-| `render/` | block fallback renderer | 导出时绘制 block 回退内容。 | `RowRenderer` |
+| `render/` | block export renderer | 导出时绘制 block Canvas 内容。 | `RowRenderer` |

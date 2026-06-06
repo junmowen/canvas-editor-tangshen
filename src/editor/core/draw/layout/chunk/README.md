@@ -36,7 +36,7 @@
 | `TypingLinePatchPipeline.ts` | `patchAroundCursor()` | 尝试只重排光标附近一行。 | `TypingPatchCoordinator.ts` |
 | `PageChunkRebalancePatcher.ts` | `patch()` | 处理分页 chunk 的同步 / 异步 rebalance。 | `ChunkLayoutPipeline.ts` |
 | `PageChunkRuntimePatcher.ts` | `patch()` / `getOldWindowPageRows()` / `hasTableRows()` | 写回分页窗口并判断表格行影响。 | `PageChunkRebalancePatcher.ts` |
-| `PageChunkWindowPlanner.ts` | `resolveSyncWindowSizeWithFallback()` / `resolveAsyncWindowSize()` | 计算 rebalance 需要测量的页窗口。 | `PageChunkRebalancePatcher.ts` |
+| `PageChunkWindowPlanner.ts` | `resolveSyncWindowSize()` / `resolveAsyncWindowSize()` | 计算 rebalance 需要测量的页窗口。 | `PageChunkRebalancePatcher.ts` |
 | `DirtyPageRangePlanner.ts` | `plan()` | 生成受影响页范围计划。 | `PageChunkRebalancePatcher.ts` |
 | `AsyncPageRebalanceQueue.ts` | `schedule()` / `clearPending()` / `getStats()` | 调度和观察异步 rebalance。 | `PageChunkRebalancePatcher.ts` |
 | `ChunkPatchAlgorithms.ts` | `patchArraySegment()` / `getRowsHeight()` / `shiftRowsAfterPatch()` | 提供 patch 数组和行偏移的基础算法。 | `ChunkRuntimePatcher.ts`、`TypingLinePatchPipeline.ts` |

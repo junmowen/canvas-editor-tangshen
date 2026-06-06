@@ -324,7 +324,7 @@ describe('menu-table pagination multicell', () => {
           clickedY: number
         }
         const cursor = editor.command.getCursorPosition()
-        const context = (editor as any).draw.getPosition().getPositionContext()
+        const context = (editor as any).draw.getCoordinate().getPositionContext()
         expect(cursor).to.not.eq(null)
         expect(cursor!.pageNo).to.be.at.most(clickedPageNo)
         if (cursor!.pageNo === clickedPageNo) {
@@ -400,7 +400,7 @@ describe('menu-table pagination multicell', () => {
 
     cy.getEditor().then((editor: Editor) => {
       const cursor = editor.command.getCursorPosition()
-      const context = (editor as any).draw.getPosition().getPositionContext()
+      const context = (editor as any).draw.getCoordinate().getPositionContext()
       expect(cursor).to.not.eq(null)
       expect(context.isTable).to.eq(true)
       expect(context.trIndex).to.eq(0)
@@ -422,7 +422,7 @@ describe('menu-table pagination multicell', () => {
           startIndex: number
         }
         const cursor = editor.command.getCursorPosition()
-        const context = (editor as any).draw.getPosition().getPositionContext()
+        const context = (editor as any).draw.getCoordinate().getPositionContext()
         expect(cursor).to.not.eq(null)
         expect(cursor!.pageNo).to.be.greaterThan(0)
         expect(cursor!.pageNo).to.be.at.least(startPageNo)

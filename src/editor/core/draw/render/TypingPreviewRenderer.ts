@@ -1,9 +1,19 @@
 import { EditorZone } from '../../../dataset/enum/Editor'
 import { IDrawPagePayload } from '../../../interface/Draw'
 import { IElement, IElementPosition } from '../../../interface/Element'
-import { isPatchableTextElement } from '../../modules/paragraph/layout/ParagraphPatchLayoutPolicy'
 import { IRenderSurface, RenderLayer } from '../../render-backend'
 import type { Draw } from '../Draw'
+import {
+  applyPreviewRowColumnContext,
+  canFitTypingPreviewHeight,
+  canPreviewTypingRow,
+  canUseTypingLinePreviewResult,
+  canUseTypingPreviewRows,
+  getTypingPreviewRowsHeight,
+  isTypingPreviewColumnRowCountStable,
+  resolveTypingPreviewElementRange,
+  resolveTypingPreviewChunkPageNo
+} from './TypingPreviewPolicy'
 
 /** typing预览stats契约，用于约束内部流程中传递的数据结构。 */
 export interface ITypingPreviewStats {
@@ -11,7 +21,7 @@ export interface ITypingPreviewStats {
   attemptCount: number
   /** chunk 级局部重绘成功次数。 */
   chunkSuccessCount: number
-  /** 单行兜底局部重绘成功次数。 */
+  /** 单行局部重绘成功次数。 */
   lineSuccessCount: number
   /** 局部重绘失败次数。 */
   failCount: number
@@ -32,7 +42,7 @@ export class TypingPreviewRenderer {
   /**
    * 输入态 canvas 快速重绘。
    *
-   * 优先做 chunk / 段落真实局部重排；如果 chunk 不安全，再兜底尝试单行重绘。
+   * 优先做 chunk / 段落真实局部重排；如果 chunk 不安全，再尝试单行重绘。
    * 失败时不做假预览，等待后台 layout。
    */
   public renderTypingChunkPreview(payload: {
@@ -94,8 +104,6 @@ export class TypingPreviewRenderer {
     editIndex?: number
     /** 已插入数量，用于累加本次写入的元素个数。 */
     insertedCount: number
-  /** 原因说明，用于记录降级、跳过或失败的触发条件。 */
-  /** rendered文本，用于标识、展示或匹配当前对象。 */
   }): { rendered: boolean; reason?: string } {
     const coordinate = this.draw.getCoordinate()
     const positionContext = coordinate.getPositionContext()
@@ -111,14 +119,10 @@ export class TypingPreviewRenderer {
     if (!chunk) {
       return { rendered: false, reason: 'chunk-miss' }
     }
-    if (
-      chunk.startPageNo === null ||
-      chunk.endPageNo === null ||
-      chunk.startPageNo !== chunk.endPageNo
-    ) {
+    const pageNo = resolveTypingPreviewChunkPageNo(chunk)
+    if (pageNo === null) {
       return { rendered: false, reason: 'chunk-cross-page' }
     }
-    const pageNo = chunk.startPageNo
     const surface = this.draw
       .getPageCanvasHost()
       .getSurface(pageNo, RenderLayer.BASE)
@@ -127,12 +131,19 @@ export class TypingPreviewRenderer {
     }
     const elementList = this.draw.getObjectResolver().getElementList()
     const startIndex = chunk.startIndex
-    const endIndex = Math.min(
-      elementList.length - 1,
-      chunk.endIndex + payload.insertedCount
+    const previewRange = resolveTypingPreviewElementRange({
+      elementCount: elementList.length,
+      startIndex,
+      endIndex: chunk.endIndex + payload.insertedCount
+    })
+    if (!previewRange) {
+      return { rendered: false, reason: 'chunk-range-invalid' }
+    }
+    const chunkElementList = elementList.slice(
+      previewRange.startIndex,
+      previewRange.endIndex + 1
     )
-    const chunkElementList = elementList.slice(startIndex, endIndex + 1)
-    if (!this.canPreviewRow(chunkElementList)) {
+    if (!canPreviewTypingRow(chunkElementList)) {
       return { rendered: false, reason: 'chunk-complex-element' }
     }
     const oldChunkRows = this.getPageRowsByIndexRange(
@@ -143,18 +154,32 @@ export class TypingPreviewRenderer {
     if (!oldChunkRows.length) {
       return { rendered: false, reason: 'chunk-row-miss' }
     }
+    if (!canUseTypingPreviewRows(oldChunkRows)) {
+      return { rendered: false, reason: 'chunk-surround-row' }
+    }
     const chunkStartPosition = coordinate.getPositionList()[chunk.startIndex]
     if (!chunkStartPosition) {
       return { rendered: false, reason: 'chunk-position-miss' }
     }
-    const margins = this.draw.getMargins()
-    const innerWidth = this.draw.getInnerWidth()
-    const startX = margins[3]
+    const sourceColumn = this.draw
+      .getServices()
+      .pageColumnLayoutService.getColumn(
+        pageNo,
+        oldChunkRows[0].columnIndex || 0,
+        oldChunkRows[0].columns
+      )
+    const innerWidth = this.draw
+      .getServices()
+      .pageColumnLayoutService.getMeasurementColumnWidth(
+        pageNo,
+        oldChunkRows[0].columns
+      )
+    const startX = sourceColumn.rect.x
     const startY = chunkStartPosition.coordinate.leftTop[1]
     const cachePayload = {
       chunk,
       startIndex,
-      endIndex,
+      endIndex: previewRange.endIndex,
       pageNo,
       startX,
       startY,
@@ -169,12 +194,23 @@ export class TypingPreviewRenderer {
         startX,
         startY,
         pageHeight: this.draw.getHeight(),
-        mainOuterHeight: this.draw.getMainOuterHeight(),
-        isPagingMode: false,
+        mainOuterHeight: this.draw.getMainOuterHeight(pageNo),
+        startPageNo: pageNo,
         innerWidth,
         surroundElementList: [],
         elementList: chunkElementList,
         sourceStartIndex: startIndex
+      })
+      if (!isTypingPreviewColumnRowCountStable({
+        oldRowList: oldChunkRows,
+        rowList
+      })) {
+        return { rendered: false, reason: 'chunk-column-row-count-changed' }
+      }
+      applyPreviewRowColumnContext({
+        rowList,
+        oldRowList: oldChunkRows,
+        startY
       })
       previewPositionList = []
       coordinate.computePageRowPosition({
@@ -188,7 +224,7 @@ export class TypingPreviewRenderer {
         innerWidth,
         zone: EditorZone.MAIN
       })
-      nextHeight = this.getRowsHeight(rowList)
+      nextHeight = getTypingPreviewRowsHeight(rowList)
       // 输入预览测量结果写入 chunk 缓存，正式 runtime patch 会直接复用同一份布局结果。
       this.draw.getServices().chunkLayoutCache.set({
         ...cachePayload,
@@ -197,8 +233,12 @@ export class TypingPreviewRenderer {
         height: nextHeight
       })
     }
-    const oldHeight = this.getRowsHeight(oldChunkRows)
-    if (!rowList.length || nextHeight > oldHeight) {
+    const oldHeight = getTypingPreviewRowsHeight(oldChunkRows)
+    if (!canFitTypingPreviewHeight({
+      rowList,
+      oldRowList: oldChunkRows,
+      nextHeight
+    })) {
       return { rendered: false, reason: 'chunk-height-expanded' }
     }
     this.clearAndDrawPreviewRows({
@@ -217,14 +257,12 @@ export class TypingPreviewRenderer {
     return { rendered: true }
   }
 
-  /** 输入态当前行 canvas 快速重绘兜底。 */
+  /** 输入态当前行 canvas 快速重绘。 */
   private renderTypingLinePreviewInternal(payload: {
     /** 当前元素索引，用于记录遍历或命中过程的位置。 */
     curIndex: number
     /** 已插入数量，用于累加本次写入的元素个数。 */
     insertedCount: number
-  /** 原因说明，用于记录降级、跳过或失败的触发条件。 */
-  /** rendered文本，用于标识、展示或匹配当前对象。 */
   }): { rendered: boolean; reason?: string } {
     const coordinate = this.draw.getCoordinate()
     const positionContext = coordinate.getPositionContext()
@@ -241,40 +279,63 @@ export class TypingPreviewRenderer {
     if (!surface || !sourceRow?.elementList?.length) {
       return { rendered: false, reason: 'line-row-miss' }
     }
-    if (!this.canPreviewRow(sourceRow.elementList)) {
+    if (!canPreviewTypingRow(sourceRow.elementList)) {
       return { rendered: false, reason: 'line-complex-element' }
     }
     const elementList = this.draw.getObjectResolver().getElementList()
     const startIndex = sourceRow.startIndex
-    const endIndex = Math.min(
-      elementList.length - 1,
-      startIndex + sourceRow.elementList.length + payload.insertedCount
-    )
-    if (startIndex < 0 || endIndex < startIndex) {
+    const previewRange = resolveTypingPreviewElementRange({
+      elementCount: elementList.length,
+      startIndex,
+      endIndex: startIndex + sourceRow.elementList.length + payload.insertedCount
+    })
+    if (!previewRange) {
       return { rendered: false, reason: 'line-range-invalid' }
     }
-    const lineElementList = elementList.slice(startIndex, endIndex + 1)
-    if (!this.canPreviewRow(lineElementList)) {
+    const lineElementList = elementList.slice(
+      previewRange.startIndex,
+      previewRange.endIndex + 1
+    )
+    if (!canPreviewTypingRow(lineElementList)) {
       return { rendered: false, reason: 'line-next-complex-element' }
     }
-    const margins = this.draw.getMargins()
-    const innerWidth = this.draw.getInnerWidth()
-    const startX = margins[3]
+    const sourceColumn = this.draw
+      .getServices()
+      .pageColumnLayoutService.getColumn(
+        pageNo,
+        sourceRow.columnIndex || 0,
+        sourceRow.columns
+      )
+    const innerWidth = this.draw
+      .getServices()
+      .pageColumnLayoutService.getMeasurementColumnWidth(
+        pageNo,
+        sourceRow.columns
+      )
+    const startX = sourceColumn.rect.x
     const startY = cursorPosition.coordinate.leftTop[1]
+    if (!canUseTypingPreviewRows([sourceRow])) {
+      return { rendered: false, reason: 'line-surround-row' }
+    }
     const rowList = this.draw.computeRowList({
       startX,
       startY,
       pageHeight: this.draw.getHeight(),
-      mainOuterHeight: this.draw.getMainOuterHeight(),
-      isPagingMode: false,
+      mainOuterHeight: this.draw.getMainOuterHeight(pageNo),
+      startPageNo: pageNo,
       innerWidth,
       surroundElementList: [],
       elementList: lineElementList,
       sourceStartIndex: startIndex
     })
-    if (rowList.length !== 1) {
+    if (!canUseTypingLinePreviewResult(rowList)) {
       return { rendered: false, reason: 'line-expanded' }
     }
+    applyPreviewRowColumnContext({
+      rowList,
+      oldRowList: [sourceRow],
+      startY
+    })
     const previewPositionList: IElementPosition[] = []
     coordinate.computePageRowPosition({
       positionList: previewPositionList,
@@ -307,11 +368,6 @@ export class TypingPreviewRenderer {
     return { rendered: true }
   }
 
-  /** 判断当前行是否适合输入态局部 canvas 重绘。 */
-  private canPreviewRow(elementList: Array<{ type?: unknown; value?: string }>) {
-    return elementList.every(element => isPatchableTextElement(element as any))
-  }
-
   /** 获取某页中落在索引范围内的旧行。 */
   private getPageRowsByIndexRange(pageNo: number, startIndex: number, endIndex: number) {
     const pageRowList = this.draw.getPageRowList()[pageNo] || []
@@ -320,11 +376,6 @@ export class TypingPreviewRenderer {
       const rowEndIndex = row.startIndex + row.elementList.length - 1
       return rowStartIndex <= endIndex && rowEndIndex >= startIndex
     })
-  }
-
-  /** 计算一组行的占用高度，包含行级 offsetY。 */
-  private getRowsHeight(rowList: Array<{ height: number; offsetY?: number }>) {
-    return rowList.reduce((sum, row) => sum + row.height + (row.offsetY || 0), 0)
   }
 
   /** 清理旧局部区域并绘制新的局部行结果。 */

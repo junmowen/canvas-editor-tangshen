@@ -2,6 +2,8 @@
 import { IDrawPagePayload } from '../../../interface/Draw'
 import { IElement, IElementPosition } from '../../../interface/Element'
 import { ITableFragmentDescriptor } from '../../../interface/table/TableFragment'
+import { TableBorder } from '../../../dataset/enum/table/Table'
+import { getTableCellContentInset } from '../../modules/table/layout/TableCellContentInset'
 import { IWorkerPaintCommand } from './WorkerRenderProtocol'
 import { PageRenderSnapshotTableBorderCommands } from './PageRenderSnapshotTableBorderCommands'
 
@@ -30,6 +32,9 @@ export abstract class PageRenderSnapshotTableCellCommands extends PageRenderSnap
       scale,
       table: { defaultBorderColor }
     } = this.draw.getRuntime().getOptions()
+    if (!this.shouldDrawFragmentTableTopBorder(table.borderType)) {
+      return
+    }
     const borderHeight = Math.max(1, Math.ceil((table.borderWidth || 1) * scale))
     commandList.push({
       type: 'fillRect',
@@ -69,14 +74,14 @@ export abstract class PageRenderSnapshotTableCellCommands extends PageRenderSnap
                 )
             : null
         if (cellBounds) {
+          const clipRect = this.resolveTableCellTextClipRect({
+            table,
+            td,
+            bounds: cellBounds
+          })
           commandList.push({
             type: 'pushClipRect',
-            rect: {
-              x: cellBounds.x,
-              y: cellBounds.y,
-              width: cellBounds.width,
-              height: cellBounds.height
-            }
+            rect: clipRect
           })
         }
         this.buildRowTextCommands(
@@ -133,21 +138,75 @@ export abstract class PageRenderSnapshotTableCellCommands extends PageRenderSnap
     const tableElement = this.draw
       .getTargetResolver()
       .resolveOriginalTableByIndex(activeSlice.logicalTableIndex)?.element
+    const isLaterFragment =
+      activeSlice.fragmentTableId !== activeSlice.logicalTableId
+    if (
+      !isLaterFragment ||
+      !this.shouldDrawFragmentCellTopBorder(tableElement?.borderType)
+    ) {
+      return
+    }
     const {
       scale,
       table: { defaultBorderColor }
     } = this.draw.getRuntime().getOptions()
-    const borderWidth = (tableElement?.borderWidth || 1) * scale
+    const borderWidth = Math.max(1, (tableElement?.borderWidth || 1) * scale)
+    const y = cellBounds.y + borderWidth / 2
     commandList.push({
-      type: 'fillRect',
-      rect: {
-        x: cellBounds.x,
-        y: cellBounds.y,
-        width: cellBounds.width,
-        height: Math.max(1, Math.ceil(borderWidth))
-      },
-      fillStyle: tableElement?.borderColor || defaultBorderColor,
-      alpha
+      type: 'strokePath',
+      segmentList: [
+        {
+          from: [cellBounds.x, y],
+          to: [cellBounds.x + cellBounds.width, y]
+        }
+      ],
+      lineWidth: borderWidth,
+      strokeStyle: tableElement?.borderColor || defaultBorderColor,
+      alpha,
+      lineDash:
+        tableElement?.borderType === TableBorder.DASH ? [3, 3] : undefined
     })
+  }
+
+  /** 表格 fragment 自身顶边只补全边框，避免 EMPTY/DASH/内外边框类型变成额外实线。 */
+  private shouldDrawFragmentTableTopBorder(borderType = TableBorder.ALL) {
+    return (
+      borderType !== TableBorder.EMPTY &&
+      borderType !== TableBorder.DASH &&
+      borderType !== TableBorder.INTERNAL &&
+      borderType !== TableBorder.EXTERNAL
+    )
+  }
+
+  /** 单元格首行顶边匹配主 Canvas 后续 fragment 补线规则。 */
+  private shouldDrawFragmentCellTopBorder(borderType = TableBorder.ALL) {
+    return (
+      borderType !== TableBorder.EMPTY &&
+      borderType !== TableBorder.INTERNAL &&
+      borderType !== TableBorder.EXTERNAL
+    )
+  }
+
+  /** worker 单元格文本裁剪需要和主 Canvas 一样扣除单元格 padding 与边框 inset。 */
+  private resolveTableCellTextClipRect(payload: {
+    table: IElement | ITableFragmentDescriptor
+    td: NonNullable<(IElement | ITableFragmentDescriptor)['trList']>[number]['tdList'][number]
+    bounds: { x: number; y: number; width: number; height: number }
+  }) {
+    const {
+      scale,
+      table: { tdPadding }
+    } = this.draw.getRuntime().getOptions()
+    const contentInset = getTableCellContentInset(payload.table, payload.td)
+    const left = (tdPadding[3] + contentInset.left) * scale
+    const right = (tdPadding[1] + contentInset.right) * scale
+    const top = (tdPadding[0] + contentInset.top) * scale
+    const bottom = (tdPadding[2] + contentInset.bottom) * scale
+    return {
+      x: payload.bounds.x + left,
+      y: payload.bounds.y + top,
+      width: Math.max(0, payload.bounds.width - left - right),
+      height: Math.max(0, payload.bounds.height - top - bottom)
+    }
   }
 }

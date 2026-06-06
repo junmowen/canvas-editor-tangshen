@@ -12,6 +12,7 @@ import {
   IEditorData,
   IEditorOption,
   IEditorResult,
+  IRuntimeEditorData,
   ISetValueOption
 } from '../../interface/Editor'
 import {
@@ -21,6 +22,7 @@ import {
   IInsertElementListOption
 } from '../../interface/Element'
 import { IRow } from '../../interface/Row'
+import { ITypesettingLayoutSnapshot } from '../../interface/TypesettingLayout'
 import { Cursor } from '../runtime/cursor/Cursor'
 import { HistoryManager } from '../runtime/history/HistoryManager'
 import { Listener } from '../runtime/listener/Listener'
@@ -59,14 +61,12 @@ import { Area } from '../modules/area/runtime/Area'
 import { Badge } from '../modules/badge/runtime/Badge'
 import { TableOverlayRenderer } from '../modules/table/render/TableOverlayRenderer'
 import { ITableLayoutSnapshot } from '../modules/table/layout/TableLayoutSnapshotTypes'
-import { TableLayoutSnapshotAccessor } from '../modules/table/layout/TableLayoutSnapshotAccessor'
 import { TableHitTestService } from '../modules/table/hittest/TableHitTestService'
 import { PageCanvasHost } from './dom/PageCanvasHost'
 import { DrawViewState } from './state/DrawViewState'
 import { createDocumentTextStoreElementSignature } from './data/DocumentTextStore'
 import {
-  IRenderBackendDebugSnapshot,
-  RenderBackendDebugPanel
+  IRenderBackendDebugSnapshot
 } from '../render-backend/RenderBackendDebugPanel'
 import { DrawRuntime } from './runtime/DrawRuntime'
 import { DrawComponentRegistry } from './runtime/DrawComponentRegistry'
@@ -75,6 +75,13 @@ import { TrackChangeService } from './track-change/TrackChangeService'
 import { DrawCoordinateService } from './coordinate/DrawCoordinateService'
 import { DrawObjectResolverService } from './data/DrawObjectResolverService'
 import { DrawTargetResolverService } from './data/DrawTargetResolverService'
+import { createRenderBackendDebugSnapshot } from './DrawRenderBackendDebugSnapshot'
+import {
+  createRenderBackendStatsSnapshot,
+  resetRenderBackendStatsSnapshot
+} from './DrawRenderBackendStatsSnapshot'
+import { DrawBootstrapRegistry } from './DrawBootstrapRegistry'
+import { DrawRenderBackendDebugPanelController } from './DrawRenderBackendDebugPanelController'
 
 export class Draw {
   /** Draw 运行时状态容器，集中托管模式、配置、正文数据和布局结果。 */
@@ -87,38 +94,17 @@ export class Draw {
   private pageCanvasHost: PageCanvasHost
   /** 绘制视图状态，记录页码、可见页、像素比和渲染次数。 */
   private viewState: DrawViewState
-  /** 构造阶段注入的 History Manager 依赖，在服务注册完成前临时保存。 */
-  private bootstrapHistoryManager?: HistoryManager
-  /** 构造阶段注入的 Position 依赖，在服务注册完成前临时保存。 */
-  private bootstrapPosition?: Position
-  /** 构造阶段注入的 Zone 依赖，在服务注册完成前临时保存。 */
-  private bootstrapZone?: Zone
-  /** 构造阶段注入的 Range 依赖，在服务注册完成前临时保存。 */
-  private bootstrapRange?: RangeManager
-  /** 构造阶段注入的 Header 依赖，在服务注册完成前临时保存。 */
-  private bootstrapHeader?: Header
-  /** 构造阶段注入的 Footer 依赖，在服务注册完成前临时保存。 */
-  private bootstrapFooter?: Footer
-  /** 构造阶段注入的 Table Particle 依赖，在服务注册完成前临时保存。 */
-  private bootstrapTableParticle?: TableParticle
-  /** 构造阶段注入的 Hyperlink Particle 依赖，在服务注册完成前临时保存。 */
-  private bootstrapHyperlinkParticle?: HyperlinkParticle
-  /** 构造阶段注入的 Image Particle 依赖，在服务注册完成前临时保存。 */
-  private bootstrapImageParticle?: ImageParticle
-  /** 构造阶段注入的 Control 依赖，在服务注册完成前临时保存。 */
-  private bootstrapControl?: Control
-  /** 构造阶段注入的 Cursor 依赖，在服务注册完成前临时保存。 */
-  private bootstrapCursor?: Cursor
-  /** 构造阶段注入的 Table Hit Test Service 依赖，在服务注册完成前临时保存。 */
-  private bootstrapTableHitTestService?: TableHitTestService
+  /** 构造阶段注入的临时依赖容器，在组件注册完成前提供启动期依赖。 */
+  private bootstrapRegistry = new DrawBootstrapRegistry()
   /** 外部监听器集合，用于触发内容、页码、选区、控件等回调。 */
   private listener: Listener
   /** 事件总线实例，用于发布和订阅编辑器内部事件。 */
   private eventBus: EventBus<EventBusMap>
   /** 外部覆盖处理器集合，用于接管复制、粘贴、拖放等默认行为。 */
   private override: Override
-  /** 渲染后端调试面板实例，用于展示 worker、bitmap cache 和后端命中统计。 */
-  private renderBackendDebugPanel: RenderBackendDebugPanel | null = null
+  /** 渲染后端调试面板生命周期控制器。 */
+  private renderBackendDebugPanelController =
+    new DrawRenderBackendDebugPanelController()
 
   /** 字母字符匹配正则，用于判断单字符是否属于可组词字符。 */
   private LETTER_REG: RegExp
@@ -248,28 +234,31 @@ export class Draw {
     return this.services.metricsService.getHeight()
   }
 
-  public getMainOuterHeight(): number {
-    return this.services.metricsService.getMainOuterHeight()
+  /** 获取指定页正文外部占高，用于分页、分栏和导出高度计算。 */
+  public getMainOuterHeight(pageNo = 0): number {
+    return this.services.metricsService.getMainOuterHeight(pageNo)
   }
 
-  public getInnerWidth(): number {
-    return this.services.metricsService.getInnerWidth()
+  /** 获取指定页缩放后的正文可用宽度，用于镜像页边距和装订线场景。 */
+  public getInnerWidth(pageNo = 0): number {
+    return this.services.metricsService.getInnerWidth(pageNo)
   }
 
-  public getOriginalInnerWidth(): number {
-    return this.services.metricsService.getOriginalInnerWidth()
+  /** 获取指定页未缩放的正文可用宽度，用于导入导出和原始布局计算。 */
+  public getOriginalInnerWidth(pageNo = 0): number {
+    return this.services.metricsService.getOriginalInnerWidth(pageNo)
   }
 
   public getContextInnerWidth(): number {
     return this.services.metricsService.getContextInnerWidth()
   }
 
-  public getMargins(): IMargin {
-    return this.services.metricsService.getMargins()
+  public getMargins(pageNo = 0): IMargin {
+    return this.services.metricsService.getMargins(pageNo)
   }
 
-  public getOriginalMargins(): number[] {
-    return this.services.metricsService.getOriginalMargins()
+  public getOriginalMargins(pageNo = 0): number[] {
+    return this.services.metricsService.getOriginalMargins(pageNo)
   }
 
   public getPageGap(): number {
@@ -327,33 +316,8 @@ export class Draw {
     return this.services.coordinateService
   }
 
-  /** @deprecated 仅保留给历史回归用例；业务代码请使用 getCoordinate()。 */
-  public getPosition(): DrawCoordinateService {
-    return this.getCoordinate()
-  }
-
   public getObjectResolver(): DrawObjectResolverService {
     return this.services.objectResolverService
-  }
-
-  /** @deprecated 仅保留给历史回归用例；业务代码请使用 ObjectResolver。 */
-  public getOriginalMainElementList(): IElement[] {
-    return this.getObjectResolver().getOriginalMainElementList()
-  }
-
-  /** @deprecated 仅保留给历史回归用例；业务代码请使用 ObjectResolver。 */
-  public getElementList(): IElement[] {
-    return this.getObjectResolver().getElementList()
-  }
-
-  /** @deprecated 仅保留给历史回归用例；业务代码请使用 ObjectResolver。 */
-  public getOriginalRowList(): IRow[] {
-    return this.getObjectResolver().getOriginalRowList()
-  }
-
-  /** @deprecated 仅保留给历史回归用例；业务代码请使用 ObjectResolver。 */
-  public getRowList(): IRow[] {
-    return this.getObjectResolver().getRowList()
   }
 
   public getTargetResolver(): DrawTargetResolverService {
@@ -362,6 +326,11 @@ export class Draw {
 
   public getPageRowList(): IRow[][] {
     return this.runtime.getPageRowList()
+  }
+
+  /** 获取段落块/栏/页排版中间层快照，用于调试和后续规则落地。 */
+  public getTypesettingLayoutSnapshot(): ITypesettingLayoutSnapshot | null {
+    return this.runtime.getTypesettingLayoutSnapshot()
   }
 
   public getOptions(): DeepRequired<IEditorOption> {
@@ -374,16 +343,6 @@ export class Draw {
 
   public getTableLayoutSnapshot(): ITableLayoutSnapshot {
     return this.services.renderFacadeService.getTableLayoutSnapshot()
-  }
-
-  /** @deprecated 仅保留给历史回归用例；业务代码请通过 TargetResolver 查询表格目标。 */
-  public getTableLayoutSnapshotAccessor(): TableLayoutSnapshotAccessor {
-    return this.services.tableLayoutSnapshotAccessor
-  }
-
-  /** @deprecated 仅保留给历史回归用例；生产代码请走渲染失效管理器调度。 */
-  public flushScheduledFrameRender() {
-    this.services.renderInvalidationManager.flushScheduledFrameRender()
   }
 
   public getWordLikeReg(): RegExp {
@@ -400,169 +359,21 @@ export class Draw {
    * 该入口用于观察 canvas 池复用情况和多引擎调度命中情况。
    */
   public getRenderBackendStats() {
-    const surface = this.pageCanvasHost.getSurfaceStats()
-    const canvasPool = this.pageCanvasHost.getCanvasPoolStats()
-    const bitmapCache = surface.bitmapCache
-    const imagePreview = this.getImageParticle().getPreviewBitmapCacheStats()
-    const estimatedTotalBytes =
-      surface.estimatedActiveBytes +
-      canvasPool.estimatedIdleBytes +
-      bitmapCache.estimatedBytes +
-      imagePreview.estimatedBytes
-    return {
-      surface,
-      canvasPool,
-      backend: this.services.renderBackendManager.getStats(),
-      // imagePreview 统计 WebGL / Canvas2D 图片任务处理后的预览 bitmap 复用情况。
-      imagePreview,
-      // baseRenderSource 区分同步 Canvas2D 重画、worker bitmap 合成和 bitmap cache 合成。
-      baseRenderSource: this.services.pageRenderer.getBaseRenderSourceStats(),
-      // typingPreview 统计输入态 chunk / 行级 canvas 局部重绘命中情况。
-      typingPreview: this.services.pageRenderer.getTypingPreviewStats(),
-      // layout 用于定位 1000 页输入后仍然卡顿的整篇排版阶段耗时。
-      layout: this.services.layoutPipeline.getStats(),
-      // documentChunk 用于推进商业级段落 / chunk 增量布局。
-      documentChunk: this.services.documentChunkIndex.getStats(),
-      // tableChunkRange 用于观察页 chunk、表格 chunk、td 子 chunk 的父子范围同步。
-      tableChunkRange: this.services.tableChunkRangeIndex.getStats(),
-      // tableCellChunk 用于推进表格单元格父子 chunk 增量布局。
-      tableCellChunk: this.services.tableCellChunkIndex.getStats(),
-      // tableCellChunkPipeline 统计表格 td 子 chunk 的同步局部写回。
-      tableCellChunkPipeline: this.services.tableCellChunkPipeline.getStats(),
-      // tableLocalRelayout 统计表格级局部重分页是否接管表格输入。
-      tableLocalRelayout: this.services.tableLocalRelayoutPipeline.getStats(),
-      // chunkLayout 统计输入态 chunk 管线 patch 命中与失败原因。
-      chunkLayout: this.services.chunkLayoutPipeline.getStats(),
-      // asyncInsert 统计大粘贴后台分批事务，观察首批响应、剩余批次和取消情况。
-      asyncInsert: this.services.mutationService.getAsyncInsertStats(),
-      // typingLinePatch 统计 chunk 失败后单行正式 patch 的覆盖情况。
-      typingLinePatch: this.services.typingLinePatchPipeline.getStats(),
-      tableSnapshot: this.services.targetResolverService.getTableSnapshotStats(),
-      // documentTextStore 统计正文主数据适配层，后续替换为 piece-table / rope 时用于双写对比。
-      documentTextStore: this.runtime.getDocumentTextStoreStats(),
-      // workerRender 统计 OffscreenCanvas 后台页渲染 job、fallback 和过期丢弃。
-      workerRender: this.services.workerRenderScheduler.getStats(),
-      memory: {
-        // activeSurfaceBytes 统计已挂载、测量和 transient surface 的当前占用。
-        activeSurfaceBytes: surface.estimatedActiveBytes,
-        idleCanvasPoolBytes: canvasPool.estimatedIdleBytes,
-        bitmapCacheBytes: bitmapCache.estimatedBytes,
-        imagePreviewBitmapBytes: imagePreview.estimatedBytes,
-        estimatedTotalBytes,
-        estimatedTotalMB: Math.round((estimatedTotalBytes / 1024 / 1024) * 100) / 100,
-        peakActiveSurfaceBytes: surface.peakEstimatedActiveBytes,
-        peakIdleCanvasPoolBytes: canvasPool.peakEstimatedIdleBytes,
-        peakBitmapCacheBytes: bitmapCache.peakEstimatedBytes
-      },
-      // baseBitmapContentVersion 用于排查非布局基础视觉变化导致的缓存失效。
-      baseBitmapContentVersion:
-        this.services.renderInvalidationManager.getBaseBitmapContentVersion()
-    }
+    return createRenderBackendStatsSnapshot(this)
   }
 
   /** 获取面向调试面板的聚合快照，避免业务方理解完整统计树结构。 */
   public getRenderBackendDebugSnapshot(): IRenderBackendDebugSnapshot {
-    const stats = this.getRenderBackendStats()
-    const webglCapability = stats.backend.capabilityList.find(item => {
-      return item.name === 'webgl'
-    }) as Record<string, number | string | boolean | undefined> | undefined
-    const previewTotal =
-      stats.imagePreview.hitCount + stats.imagePreview.missCount
-    const documentTextStore = stats.documentTextStore
-    return {
-      pageCount: this.getPageCount(),
-      visiblePageNoList: this.viewState.getVisiblePageNoList(),
-      intersectionPageNo: this.viewState.getIntersectionPageNo(),
-      currentPageNo: this.getPageNo(),
-      backend: {
-        dispatchCount: stats.backend.dispatchCount,
-        renderCount: stats.backend.renderCount,
-        missCount: stats.backend.missCount,
-        failureCount: stats.backend.failureCount,
-        fallbackCount: stats.backend.fallbackCount,
-        slowCount: stats.backend.recentWindow.slowCount,
-        capabilityList: stats.backend.capabilityList
-      },
-      worker: {
-        submitCount: stats.workerRender.submitCount,
-        successCount: stats.workerRender.successCount,
-        fallbackCount: stats.workerRender.fallbackCount,
-        pendingCount: stats.workerRender.pendingCount,
-        activeCount: stats.workerRender.activeCount,
-        queuedCount: stats.workerRender.queuedCount,
-        circuitOpen: stats.workerRender.circuitOpen,
-        lastFallbackReason: stats.workerRender.lastFallbackReason
-      },
-      baseRenderSource: {
-        canvas2DRenderCount: stats.baseRenderSource.canvas2DRenderCount,
-        workerRenderCount: stats.baseRenderSource.workerRenderCount,
-        bitmapCacheComposeCount:
-          stats.baseRenderSource.bitmapCacheComposeCount
-      },
-      typingPreview: {
-        attemptCount: stats.typingPreview.attemptCount,
-        patchSuccessCount: stats.typingPreview.chunkSuccessCount,
-        linePatchSuccessCount: stats.typingPreview.lineSuccessCount,
-        failureCount: stats.typingPreview.failCount
-      },
-      image: {
-        previewCacheHitRate:
-          previewTotal > 0
-            ? Math.round((stats.imagePreview.hitCount / previewTotal) * 100) /
-              100
-            : 0,
-        previewCacheEstimatedMB: stats.imagePreview.estimatedMB,
-        webglTextureCacheMB: Number(webglCapability?.textureCacheMB || 0),
-        webglMaxTextureCacheMB: Number(webglCapability?.maxTextureCacheMB || 0),
-        estimatedDownsampleSavedPixels: Number(
-          webglCapability?.estimatedDownsampleSavedPixels || 0
-        ),
-        savedUploadPixels: Number(webglCapability?.savedUploadPixels || 0)
-      },
-      memory: {
-        estimatedTotalMB: stats.memory.estimatedTotalMB,
-        activeSurfaceMB: Math.round(
-          (stats.memory.activeSurfaceBytes / 1024 / 1024) * 100
-        ) / 100,
-        bitmapCacheMB: Math.round(
-          (stats.memory.bitmapCacheBytes / 1024 / 1024) * 100
-        ) / 100,
-        imagePreviewBitmapMB: Math.round(
-          (stats.memory.imagePreviewBitmapBytes / 1024 / 1024) * 100
-        ) / 100,
-        idleCanvasPoolMB: Math.round(
-          (stats.memory.idleCanvasPoolBytes / 1024 / 1024) * 100
-        ) / 100
-      },
-      documentTextStore: {
-        type: documentTextStore.type,
-        length: documentTextStore.length,
-        operationCount: documentTextStore.operationCount,
-        externalMutationCount: documentTextStore.externalMutationCount,
-        mirrorMode: documentTextStore.mirrorMode,
-        mirrorHealthy: documentTextStore.mirrorHealthy,
-        mirrorReplayCount: documentTextStore.mirrorReplayCount,
-        mirrorReplayMismatchCount:
-          documentTextStore.mirrorReplayMismatchCount,
-        mirrorReplaySkippedCount: documentTextStore.mirrorReplaySkippedCount
-      }
-    }
+    return createRenderBackendDebugSnapshot(this)
   }
 
   /** 按当前配置同步默认关闭的渲染后端调试面板。 */
   private syncRenderBackendDebugPanel() {
-    if (!this.runtime.getOptions().renderBackend.debugPanel.enabled) {
-      this.renderBackendDebugPanel?.destroy()
-      this.renderBackendDebugPanel = null
-      return
-    }
-    if (!this.renderBackendDebugPanel) {
-      this.renderBackendDebugPanel = new RenderBackendDebugPanel(
-        this.pageCanvasHost.getContainer(),
-        () => this.getRenderBackendDebugSnapshot()
-      )
-    }
-    this.renderBackendDebugPanel.update()
+    this.renderBackendDebugPanelController.sync({
+      enabled: this.runtime.getOptions().renderBackend.debugPanel.enabled,
+      container: this.pageCanvasHost.getContainer(),
+      getSnapshot: () => this.getRenderBackendDebugSnapshot()
+    })
   }
 
   /**
@@ -571,23 +382,7 @@ export class Draw {
    * 仅清空性能计数、近期窗口和高水位基线，不释放当前 canvas / bitmap 资源。
    */
   public resetRenderBackendStats() {
-    this.pageCanvasHost.resetRenderResourceStats()
-    this.services.renderBackendManager.resetStats()
-    this.services.pageRenderer.resetBaseRenderSourceStats()
-    this.services.pageRenderer.resetTypingPreviewStats()
-    this.services.layoutPipeline.resetStats()
-    this.services.documentChunkIndex.resetStats()
-    this.services.tableChunkRangeIndex.resetStats()
-    this.services.tableCellChunkIndex.resetStats()
-    this.services.tableCellChunkPipeline.resetStats()
-    this.services.tableLocalRelayoutPipeline.resetStats()
-    this.services.chunkLayoutPipeline.resetStats()
-    this.services.mutationService.resetAsyncInsertStats()
-    this.services.typingLinePatchPipeline.resetStats()
-    this.services.tableLayoutSnapshotBuilder.resetStats()
-    this.services.workerRenderScheduler.resetStats()
-    this.getImageParticle().resetPreviewBitmapCacheStats()
-    this.runtime.resetDocumentTextStoreStats()
+    resetRenderBackendStatsSnapshot(this)
   }
 
   public getRuntime(): DrawRuntime {
@@ -607,51 +402,51 @@ export class Draw {
   }
 
   public setBootstrapHistoryManager(payload: HistoryManager) {
-    this.bootstrapHistoryManager = payload
+    this.bootstrapRegistry.setHistoryManager(payload)
   }
 
   public setBootstrapPosition(payload: Position) {
-    this.bootstrapPosition = payload
+    this.bootstrapRegistry.setPosition(payload)
   }
 
   public setBootstrapZone(payload: Zone) {
-    this.bootstrapZone = payload
+    this.bootstrapRegistry.setZone(payload)
   }
 
   public setBootstrapRange(payload: RangeManager) {
-    this.bootstrapRange = payload
+    this.bootstrapRegistry.setRange(payload)
   }
 
   public setBootstrapHeader(payload: Header) {
-    this.bootstrapHeader = payload
+    this.bootstrapRegistry.setHeader(payload)
   }
 
   public setBootstrapFooter(payload: Footer) {
-    this.bootstrapFooter = payload
+    this.bootstrapRegistry.setFooter(payload)
   }
 
   public setBootstrapTableParticle(payload: TableParticle) {
-    this.bootstrapTableParticle = payload
+    this.bootstrapRegistry.setTableParticle(payload)
   }
 
   public setBootstrapHyperlinkParticle(payload: HyperlinkParticle) {
-    this.bootstrapHyperlinkParticle = payload
+    this.bootstrapRegistry.setHyperlinkParticle(payload)
   }
 
   public setBootstrapImageParticle(payload: ImageParticle) {
-    this.bootstrapImageParticle = payload
+    this.bootstrapRegistry.setImageParticle(payload)
   }
 
   public setBootstrapControl(payload: Control) {
-    this.bootstrapControl = payload
+    this.bootstrapRegistry.setControl(payload)
   }
 
   public setBootstrapCursor(payload: Cursor) {
-    this.bootstrapCursor = payload
+    this.bootstrapRegistry.setCursor(payload)
   }
 
   public setBootstrapTableHitTestService(payload: TableHitTestService) {
-    this.bootstrapTableHitTestService = payload
+    this.bootstrapRegistry.setTableHitTestService(payload)
   }
 
   public getViewState(): DrawViewState {
@@ -695,16 +490,16 @@ export class Draw {
   }
 
   public getHistoryManager(): HistoryManager {
-    return this.components?.historyManager || this.bootstrapHistoryManager!
+    return this.bootstrapRegistry.resolveHistoryManager(this.components)
   }
 
   /** 内部坐标实现入口，仅允许 DrawCoordinateService 调用。 */
   public getInternalPosition(): Position {
-    return this.components?.position || this.bootstrapPosition!
+    return this.bootstrapRegistry.resolvePosition(this.components)
   }
 
   public getTableHitTestService(): TableHitTestService {
-    return this.components?.tableHitTestService || this.bootstrapTableHitTestService!
+    return this.bootstrapRegistry.resolveTableHitTestService(this.components)
   }
 
   public getTableOverlayRenderer(): TableOverlayRenderer {
@@ -712,11 +507,11 @@ export class Draw {
   }
 
   public getZone(): Zone {
-    return this.components?.zone || this.bootstrapZone!
+    return this.bootstrapRegistry.resolveZone(this.components)
   }
 
   public getRange(): RangeManager {
-    return this.components?.range || this.bootstrapRange!
+    return this.bootstrapRegistry.resolveRange(this.components)
   }
 
   public getTextParticle(): TextParticle {
@@ -770,27 +565,27 @@ export class Draw {
   }
 
   public getCursor(): Cursor {
-    return this.components?.cursor || this.bootstrapCursor!
+    return this.bootstrapRegistry.resolveCursor(this.components)
   }
 
   public getImageParticle(): ImageParticle {
-    return this.components?.imageParticle || this.bootstrapImageParticle!
+    return this.bootstrapRegistry.resolveImageParticle(this.components)
   }
 
   public getTableParticle(): TableParticle {
-    return this.components?.tableParticle || this.bootstrapTableParticle!
+    return this.bootstrapRegistry.resolveTableParticle(this.components)
   }
 
   public getHeader(): Header {
-    return this.components?.header || this.bootstrapHeader!
+    return this.bootstrapRegistry.resolveHeader(this.components)
   }
 
   public getFooter(): Footer {
-    return this.components?.footer || this.bootstrapFooter!
+    return this.bootstrapRegistry.resolveFooter(this.components)
   }
 
   public getHyperlinkParticle(): HyperlinkParticle {
-    return this.components?.hyperlinkParticle || this.bootstrapHyperlinkParticle!
+    return this.bootstrapRegistry.resolveHyperlinkParticle(this.components)
   }
 
   public getListParticle(): ListParticle {
@@ -810,7 +605,7 @@ export class Draw {
   }
 
   public getControl(): Control {
-    return this.components?.control || this.bootstrapControl!
+    return this.bootstrapRegistry.resolveControl(this.components)
   }
 
   public replaceMainElementList(payload: IElement[]) {
@@ -823,7 +618,7 @@ export class Draw {
     )
   }
 
-  /** 记录仍由旧数组链路完成的正文写操作，供后续 store mirror 对齐。 */
+  /** 记录直接数组写入，供 document text store mirror 对齐。 */
   public recordDocumentTextStoreExternalMutation(payload: {
     /** 起始位置，用于描述范围、拖拽或扫描的入口。 */
     start: number | null
@@ -862,6 +657,8 @@ export class Draw {
     pageRowList: IRow[][]
     /** 布局元素列表，保存参与本轮排版的元素序列。 */
     layoutElementList: IElement[]
+    /** 段落块/栏/页排版中间层快照。 */
+    typesettingLayoutSnapshot?: ITypesettingLayoutSnapshot | null
     /** 表格布局snapshotversion数值，用于当前布局、统计或索引计算。 */
     tableLayoutSnapshotVersion: number
     tableLayoutSnapshot: ITableLayoutSnapshot | null
@@ -873,7 +670,7 @@ export class Draw {
     this.runtime.replaceTableLayoutSnapshot(payload)
   }
 
-  public replacePrintModeData(payload: Required<IEditorData> | null) {
+  public replacePrintModeData(payload: IRuntimeEditorData | null) {
     this.runtime.replacePrintModeData(payload)
   }
 
@@ -966,7 +763,7 @@ export class Draw {
 
   public getOriginValue(
     options: IGetOriginValueOption = {}
-  ): Required<IEditorData> {
+  ): IRuntimeEditorData {
     this.flushAsyncInsertTransaction('get-origin-value')
     this.getBlockParticle().syncIframeSrcdocFromDom()
     return this.services.valueService.getOriginValue(options)
@@ -1008,11 +805,7 @@ export class Draw {
 
   /** 计算 Row List 对应的布局或状态。 */
   public computeRowList(payload: IComputeRowListPayload) {
-    return this.services.rowLayoutEngine.computeRowList({
-      ...payload,
-      isPagingPageMode:
-        payload.isPagingPageMode ?? (payload as any).isPagingMode ?? false
-    })
+    return this.services.rowLayoutEngine.computeRowList(payload)
   }
 
   public drawRow(ctx: CanvasRenderingContext2D, payload: IDrawRowPayload) {
@@ -1046,8 +839,7 @@ export class Draw {
 
   /** 销毁destroy相关资源，解除事件监听并释放持有对象。 */
   public destroy() {
-    this.renderBackendDebugPanel?.destroy()
-    this.renderBackendDebugPanel = null
+    this.renderBackendDebugPanelController.destroy()
     this.services.lifecycleService.destroy()
   }
 

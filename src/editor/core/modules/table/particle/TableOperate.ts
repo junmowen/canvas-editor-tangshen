@@ -11,10 +11,8 @@ import { IColgroup } from '../../../../interface/table/Colgroup'
 import { ITd } from '../../../../interface/table/Td'
 import { ITr } from '../../../../interface/table/Tr'
 import { getUUID } from '../../../../utils'
-import {
-  formatElementContext,
-  formatElementList
-} from '../../../../utils/element'
+import { formatElementContext } from '../../../../utils/elementContext'
+import { formatElementList } from '../../../../utils/elementFormat'
 import { RangeManager } from '../../../range/RangeManager'
 import { Draw } from '../../../draw/Draw'
 import type { DrawCoordinateService } from '../../../draw/coordinate/DrawCoordinateService'
@@ -230,11 +228,11 @@ export class TableOperate {
     }))
   }
 
-  private resolveInlineTableWidth(startIndex: number, fallbackWidth: number) {
+  private resolveInlineTableWidth(startIndex: number, defaultWidth: number) {
     const positionList = this.coordinate.getPositionList()
     const cursorPosition = positionList[startIndex]
     if (!cursorPosition) {
-      return fallbackWidth
+      return defaultWidth
     }
     const rowPositionList = positionList.filter(position => {
       return (
@@ -243,7 +241,7 @@ export class TableOperate {
       )
     })
     if (!rowPositionList.length) {
-      return fallbackWidth
+      return defaultWidth
     }
     const rowStartX = Math.min(
       ...rowPositionList.map(position => position.coordinate.leftTop[0])
@@ -252,8 +250,8 @@ export class TableOperate {
       0,
       (cursorPosition.coordinate.rightTop[0] - rowStartX) / this.options.scale
     )
-    const inlineWidth = fallbackWidth - usedWidth
-    return inlineWidth > 0 ? inlineWidth : fallbackWidth
+    const inlineWidth = defaultWidth - usedWidth
+    return inlineWidth > 0 ? inlineWidth : defaultWidth
   }
 
   public insertTable(row: number, col: number, options: IInsertTableOption = {}) {
@@ -929,10 +927,8 @@ export class TableOperate {
     }
     const { endIndex } = this.range.getEditBoundaryRange()
     this.range.setRange(endIndex, endIndex)
-    this.draw.render({
-      isCompute: false,
-      pageRenderScope: 'visible'
-    })
+    // 分页表格渲染依赖 fragment 深拷贝，背景色改动必须重算 fragment 才能同步到跨页片段。
+    this.renderTableVisualStyleChange(endIndex)
   }
 
   public tableSelectAll() {

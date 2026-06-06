@@ -15,6 +15,29 @@ import {
   isTrackChangeContainerElement
 } from '../../modules/table/track-change/TableTrackChangePolicy'
 import type { Draw } from '../Draw'
+
+declare global {
+  /** 窗口契约，用于控制修订留痕调试日志。 */
+  interface Window {
+    /** 修订留痕调试日志开关，默认关闭。 */
+    __CANVAS_EDITOR_TRACK_CHANGE_DEBUG__?: boolean
+  }
+}
+
+/** 判断修订留痕调试日志是否开启。 */
+function isTrackChangeDebugEnabled() {
+  return (
+    typeof window !== 'undefined' &&
+    Boolean(window.__CANVAS_EDITOR_TRACK_CHANGE_DEBUG__)
+  )
+}
+
+/** 输出修订留痕调试日志，默认关闭以避免控制台噪音。 */
+function logTrackChangeDebug(label: string, payload: Record<string, unknown>) {
+  if (!isTrackChangeDebugEnabled()) return
+  console.log(`[track-change] ${label}`, payload)
+}
+
 /** trackchangerecord契约，用于约束内部流程中传递的数据结构。 */
 export interface ITrackChangeRecord {
   /** 同一次修订操作的唯一标识。 */
@@ -161,12 +184,17 @@ export class TrackChangeService {
 
   private getTrackChangeElementSource() {
     const objectResolver = this.draw.getObjectResolver()
-    const { header, main, footer } = objectResolver.getOriginalEditorData()
+    const { headerPageScopes, main, footerPageScopes } =
+      objectResolver.getOriginalEditorData()
     return {
-      headerElementList: header,
+      headerElementList: (headerPageScopes || []).flatMap(
+        scopeData => scopeData.elementList
+      ),
       originalMainElementList: main,
       layoutMainElementList: objectResolver.getLayoutMainElementList(),
-      footerElementList: footer
+      footerElementList: (footerPageScopes || []).flatMap(
+        scopeData => scopeData.elementList
+      )
     }
   }
 
@@ -223,7 +251,7 @@ export class TrackChangeService {
       trackChangeMap
     )
     this.collectRecordListFromPositionList(
-      this.draw.getCoordinate().getLayoutMainPositionList(),
+      this.draw.getCoordinate().getMainPositionList(),
       recordMap,
       collectedElementKeySet,
       elementTrackChangeIdMap,
@@ -248,7 +276,7 @@ export class TrackChangeService {
       layoutMainElementList,
       footerElementList
     } = this.getTrackChangeElementSource()
-    console.log('[track-change] record list summary', {
+    logTrackChangeDebug('record list summary', {
       headerCount: headerElementList.length,
       mainCount: originalMainElementList.length,
       layoutCount: layoutMainElementList.length,
@@ -351,7 +379,7 @@ export class TrackChangeService {
     elementList.forEach((element, elementIndex) => {
       const change = element.trackChange
       if (isTrackChangeContainerElement(element)) {
-        console.log('[track-change] collect element', {
+        logTrackChangeDebug('collect element', {
           elementType: element.type,
           elementId: element.id,
           elementValue: element.value || '',
@@ -439,7 +467,7 @@ export class TrackChangeService {
         trackChangeMap
       )
       if (!change) return
-      console.log('[track-change] position hit', {
+      logTrackChangeDebug('position hit', {
         pageNo: position.pageNo,
         index: position.index,
         rowIndex: position.rowIndex,
@@ -496,7 +524,7 @@ export class TrackChangeService {
       trackChangeMap
     )
     this.collectPositionRectList(
-      this.draw.getCoordinate().getLayoutMainPositionList(),
+      this.draw.getCoordinate().getMainPositionList(),
       recordMap,
       collectedRectKeySet,
       elementTrackChangeIdMap,
@@ -573,7 +601,7 @@ export class TrackChangeService {
             elementTrackChangeIdMap,
             trackChangeMap
           )
-          this.collectTableCellFallbackRectList(
+          this.collectTableCellEstimatedRectList(
             td.value || [],
             td.positionList || [],
             recordMap,
@@ -601,7 +629,7 @@ export class TrackChangeService {
   }
 
   /** 表格 position 使用布局中间元素时，按单元格内容反推修订矩形。 */
-  private collectTableCellFallbackRectList(
+  private collectTableCellEstimatedRectList(
     cellElementList: IElement[],
     positionList: IElementPosition[],
     recordMap: Map<string, ITrackChangeRecord>,
@@ -630,7 +658,7 @@ export class TrackChangeService {
         addedCount++
       })
       if (addedCount) {
-        console.log('[track-change] table cell fallback rect', {
+        logTrackChangeDebug('table cell estimated rect', {
           changeId,
           positionCount: positionList.length,
           addedCount,
@@ -686,7 +714,7 @@ export class TrackChangeService {
         if (collectedRectKeySet.has(rectKey)) return
         collectedRectKeySet.add(rectKey)
         record.rectList.push(rect)
-        console.log('[track-change] table fragment row rect', {
+        logTrackChangeDebug('table fragment row rect', {
           changeId: change.id,
           pageNo,
           value: element.value,
@@ -710,7 +738,7 @@ export class TrackChangeService {
     if (!changeId) return null
     const change = trackChangeMap.get(changeId)
     if (change) {
-      console.log('[track-change] position resolved by element id', {
+      logTrackChangeDebug('position resolved by element id', {
         elementId,
         changeId,
         elementType: position.element?.type || '',

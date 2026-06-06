@@ -6,7 +6,9 @@ import { ulStyleMapping } from '../dataset/constant/List'
 import { IElement } from '../interface/Element'
 import { IRowElement } from '../interface/Row'
 import { deepCloneOmitKeys } from '.'
-import { splitListElement, zipElementList } from './element'
+import { resolveFormulaDisplayText } from '../core/modules/formula/model/FormulaTextModel'
+import { zipElementList } from './elementZip'
+import { splitListElement } from './elementDom'
 
 /**
  * 将元素列表转换成纯文本。
@@ -71,6 +73,11 @@ export function getTextFromElementList(elementList: IElement[]) {
             : ''
         } else if (element.type === ElementType.DATE) {
           textLike = element.valueList?.map(v => v.value).join('') || ''
+        } else if (element.type === ElementType.LATEX) {
+          // 文本型公式控件复制时输出可读展示文本，而不是空值或历史图片数据。
+          textLike =
+            element.formula?.displayText ||
+            resolveFormulaDisplayText(element.formula?.latex ?? element.value)
         } else {
           textLike = element.value
         }

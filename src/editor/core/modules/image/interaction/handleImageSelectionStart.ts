@@ -23,6 +23,7 @@ function emitImageMousedown(payload: {
 function isFloatingImageDisplay(element: IElement) {
   return (
     element.imgDisplay === ImageDisplay.SURROUND ||
+    element.imgDisplay === ImageDisplay.TIGHT ||
     element.imgDisplay === ImageDisplay.FLOAT_TOP ||
     element.imgDisplay === ImageDisplay.FLOAT_BOTTOM
   )

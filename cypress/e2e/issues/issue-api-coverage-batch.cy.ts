@@ -6,7 +6,7 @@ import { ElementType } from '../../../src/editor/dataset/enum/Element'
 import {
   createDomFromElementList,
   getElementListByHTML
-} from '../../../src/editor/utils/element'
+} from '../../../src/editor/utils/elementDom'
 
 describe('issue API coverage batch', () => {
   beforeEach(() => {
@@ -197,9 +197,13 @@ describe('issue API coverage batch', () => {
   it('issue #1257 switches JSON template data through executeSetValue', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
-        header: [{ value: 'Template A header' }],
+        headerPageScopes: [
+          { pageScope: 'all', elementList: [{ value: 'Template A header' }] }
+        ],
         main: [{ value: 'Template A body' }],
-        footer: [{ value: 'Template A footer' }]
+        footerPageScopes: [
+          { pageScope: 'all', elementList: [{ value: 'Template A footer' }] }
+        ]
       })
       expect(editor.command.getText()).to.deep.eq({
         header: 'Template A header',
@@ -208,9 +212,13 @@ describe('issue API coverage batch', () => {
       })
 
       editor.command.executeSetValue({
-        header: [{ value: 'Template B header' }],
+        headerPageScopes: [
+          { pageScope: 'all', elementList: [{ value: 'Template B header' }] }
+        ],
         main: [{ value: 'Template B body' }],
-        footer: [{ value: 'Template B footer' }]
+        footerPageScopes: [
+          { pageScope: 'all', elementList: [{ value: 'Template B footer' }] }
+        ]
       })
 
       expect(editor.command.getText()).to.deep.eq({

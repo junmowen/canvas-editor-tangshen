@@ -3,10 +3,27 @@ import { IElement } from '../../../../interface/Element'
 
 type PatchableTextElement = {
   type?: ElementType
+  control?: unknown
+  controlId?: string
+  parentControlId?: string
+  controlComponent?: unknown
+}
+
+/** 判断元素是否携带控件上下文，控件片段不能当作普通文本做输入态局部 patch。 */
+export function hasControlPatchContext(element: PatchableTextElement) {
+  return Boolean(
+    element.control ||
+      element.controlId ||
+      element.parentControlId ||
+      element.controlComponent
+  )
 }
 
 /** 判断元素是否适合输入态文本局部 patch / preview。 */
 export function isPatchableTextElement(element: PatchableTextElement) {
+  if (hasControlPatchContext(element)) {
+    return false
+  }
   return (
     !element.type ||
     element.type === ElementType.TEXT ||

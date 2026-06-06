@@ -12,10 +12,7 @@ interface IViewportPoint {
 
 /** 判断元素是否为图片类拖拽元素。 */
 export function isImageLikeDragElement(element?: IElement | null) {
-  return (
-    element?.type === ElementType.IMAGE ||
-    element?.type === ElementType.LATEX
-  )
+  return element?.type === ElementType.IMAGE
 }
 
 /** 判断元素是否为浮动图片展示模式。 */
@@ -23,14 +20,18 @@ export function isFloatingImageElement(element?: IElement | null) {
   return !!(
     element &&
     (element.imgDisplay === ImageDisplay.SURROUND ||
+      element.imgDisplay === ImageDisplay.TIGHT ||
       element.imgDisplay === ImageDisplay.FLOAT_TOP ||
       element.imgDisplay === ImageDisplay.FLOAT_BOTTOM)
   )
 }
 
-/** 判断元素是否为环绕图片展示模式。 */
+/** 判断元素是否为会触发文字环绕重排的图片展示模式。 */
 export function isSurroundImageElement(element?: IElement | null) {
-  return element?.imgDisplay === ImageDisplay.SURROUND
+  return (
+    element?.imgDisplay === ImageDisplay.SURROUND ||
+    element?.imgDisplay === ImageDisplay.TIGHT
+  )
 }
 
 /** 配置禁止浮动图片拖拽时，判断是否应跳过拖拽光标绘制。 */

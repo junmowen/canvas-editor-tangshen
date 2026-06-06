@@ -1,12 +1,12 @@
 import type Editor from '../../../src/editor'
 
 function getOriginalElements(editor: Editor) {
-  return (editor as any).draw.getOriginalMainElementList()
+  return (editor as any).draw.getObjectResolver().getOriginalMainElementList()
 }
 
 function getTextRows(editor: Editor) {
   return (editor as any).draw
-    .getOriginalRowList()
+    .getObjectResolver().getOriginalRowList()
     .filter((row: any) =>
       row.elementList.some(
         (element: any) => !element.type && element.value !== '\u200B'
@@ -167,7 +167,7 @@ describe('issue #725 paragraph row indentation', () => {
       })
 
       const rows = (editor as any).draw
-        .getOriginalRowList()
+        .getObjectResolver().getOriginalRowList()
         .filter((row: any) => row.elementList.some((element: any) => !element.type))
       expect(rows.length).to.be.greaterThan(1)
 

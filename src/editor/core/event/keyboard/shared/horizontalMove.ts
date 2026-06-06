@@ -1,5 +1,5 @@
 import { LocationPosition } from '../../../../dataset/enum/Common'
-import { getNonHideElementIndex } from '../../../../utils/element'
+import { getNonHideElementIndex } from '../../../../utils/elementLayout'
 import { isMod } from '../../../../utils/hotkey'
 import { resolveHiddenControlHorizontalMove } from '../../../modules/control/navigation/resolveHiddenControlHorizontalMove'
 import { tryNavigateFormControlBoundary } from '../../../modules/control/navigation/tryNavigateFormControlBoundary'

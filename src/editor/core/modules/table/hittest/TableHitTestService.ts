@@ -300,15 +300,15 @@ export class TableHitTestService {
       /** 左侧是否为空白，用于判断行首或单元格起始位置。 */
       isLeftSideBlank?: boolean
     }): TResolvedTableCellPositionByPagePoint => {
-      const fallbackTableIndex = activeFragmentPosition.index
-      const fallbackTrIndex = resolvedTd.rowIndex ?? trIndex
-      const fallbackTdIndex = resolvedTd.colIndex ?? tdIndex
+      const defaultTableIndex = activeFragmentPosition.index
+      const defaultTrIndex = resolvedTd.rowIndex ?? trIndex
+      const defaultTdIndex = resolvedTd.colIndex ?? tdIndex
 
       if (!activeSlice) {
         return {
-          index: fallbackTableIndex,
-          trIndex: fallbackTrIndex,
-          tdIndex: fallbackTdIndex,
+          index: defaultTableIndex,
+          trIndex: defaultTrIndex,
+          tdIndex: defaultTdIndex,
           tdValueIndex: payload.boundaryIndex,
           tdId: resolvedTd.id!,
           trId: resolvedTr.id!,
@@ -504,7 +504,7 @@ export class TableHitTestService {
     }
 
     if (!activeSlice) {
-      const fallbackEndIndex = Math.max(
+      const edgeEndIndex = Math.max(
         0,
         resolvedTd.positionList?.[resolvedTd.positionList.length - 1]?.index ?? 0
       )
@@ -514,7 +514,7 @@ export class TableHitTestService {
         tdIndex: resolvedTd.colIndex ?? tdIndex,
         tdValueIndex:
           isBelowLastTextRow && !isAboveFirstTextRow
-            ? fallbackEndIndex
+            ? edgeEndIndex
             : isLeadingArea
               ? 0
               : Math.max(0, resolvedTd.positionList?.[0]?.index ?? 0),
@@ -522,11 +522,11 @@ export class TableHitTestService {
         trId: resolvedTr.id!,
         tableId: sourceTableId,
         hitTargetIndex:
-          isBelowLastTextRow && !isAboveFirstTextRow ? fallbackEndIndex : 0
+          isBelowLastTextRow && !isAboveFirstTextRow ? edgeEndIndex : 0
       }
     }
 
-    const fallbackFragmentEndIndex = Math.max(
+    const edgeFragmentEndIndex = Math.max(
       activeSlice.absoluteStart,
       activeSlice.absoluteEnd - 1
     )
@@ -536,14 +536,14 @@ export class TableHitTestService {
       tdIndex: activeSlice.logicalTdIndex,
         tdValueIndex:
           isBelowLastTextRow && !isAboveFirstTextRow
-            ? fallbackFragmentEndIndex
+            ? edgeFragmentEndIndex
           : activeSlice.absoluteStart,
       tdId: activeSlice.fragmentTdId,
       trId: activeSlice.fragmentTrId,
       tableId: activeSlice.fragmentTableId,
       hitTargetIndex:
         isBelowLastTextRow && !isAboveFirstTextRow
-          ? fallbackFragmentEndIndex
+          ? edgeFragmentEndIndex
           : activeSlice.absoluteStart
     }
   }
@@ -551,7 +551,7 @@ export class TableHitTestService {
   private resolveAdjustedPointerPosition(
     payload: IGetPositionByXYPayload
   ): TResolvedPointerPosition | null {
-    // 非表格命中最后统一回退到 Position 基础命中，
+    // 非表格命中最后统一交给 Position 基础命中，
     // 同时把 Position 内部结果重新包装成命中服务可继续消费的结构。
     const positionResult = this.draw.getCoordinate().getPositionByXY(
       payload
@@ -773,9 +773,7 @@ export class TableHitTestService {
         hitElement?.type === ElementType.RADIO ||
         hitElement?.controlComponent === ControlComponent.RADIO,
       isControl: !!hitElement?.controlId,
-      isImage:
-        hitElement?.type === ElementType.IMAGE ||
-        hitElement?.type === ElementType.LATEX
+      isImage: hitElement?.type === ElementType.IMAGE
     }
   }
 

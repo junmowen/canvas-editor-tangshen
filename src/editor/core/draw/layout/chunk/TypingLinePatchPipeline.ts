@@ -1,13 +1,20 @@
 import { EditorZone } from '../../../../dataset/enum/Editor'
 import { IElement, IElementPosition } from '../../../../interface/Element'
 import { IRow } from '../../../../interface/Row'
-import { isPatchableTextElement } from '../../../modules/paragraph/layout/ParagraphPatchLayoutPolicy'
 import type { Draw } from '../../Draw'
 import { IChunkLayoutPatchResult } from './ChunkLayoutTypes'
 import {
   patchArraySegment,
   shiftRowsAfterPatch
 } from './ChunkPatchAlgorithms'
+import {
+  applyTypingLinePatchRowContext,
+  canPatchTypingLineElementList,
+  getTypingLineControlPatchRiskReason,
+  getTypingLinePatchPositionRiskReason,
+  getTypingLinePatchRowShapeRiskReason,
+  resolveTypingLinePatchElementRange
+} from './TypingLinePatchPolicy'
 
 /** typing行补丁stats契约，用于约束内部流程中传递的数据结构。 */
 export interface ITypingLinePatchStats {
@@ -102,41 +109,79 @@ export class TypingLinePatchPipeline {
     if (!sourceRow?.elementList?.length) {
       return this.fail('line-row-miss')
     }
-    if (!this.canPatchElementList(sourceRow.elementList)) {
+    const sourceControlRisk =
+      getTypingLineControlPatchRiskReason(sourceRow.elementList)
+    if (sourceControlRisk) {
+      return this.fail(sourceControlRisk)
+    }
+    if (!canPatchTypingLineElementList(sourceRow.elementList)) {
       return this.fail('line-complex-row')
     }
     const elementList = this.draw.getObjectResolver().getElementList()
     const startIndex = sourceRow.startIndex
     const oldElementCount = sourceRow.elementList.length
-    const endIndex = Math.min(
-      elementList.length - 1,
-      startIndex + oldElementCount - 1 + payload.insertedCount
-    )
-    if (startIndex < 0 || endIndex < startIndex) {
+    const patchRange = resolveTypingLinePatchElementRange({
+      elementCount: elementList.length,
+      startIndex,
+      oldElementCount,
+      insertedCount: payload.insertedCount
+    })
+    if (!patchRange) {
       return this.fail('line-range-invalid')
     }
-    const lineElementList = elementList.slice(startIndex, endIndex + 1)
-    if (!lineElementList.length || !this.canPatchElementList(lineElementList)) {
+    const lineElementList = elementList.slice(
+      patchRange.startIndex,
+      patchRange.endIndex + 1
+    )
+    const nextControlRisk =
+      getTypingLineControlPatchRiskReason(lineElementList)
+    if (nextControlRisk) {
+      return this.fail(nextControlRisk)
+    }
+    if (
+      !lineElementList.length ||
+      !canPatchTypingLineElementList(lineElementList)
+    ) {
       return this.fail('line-next-complex-row')
     }
-    const margins = this.draw.getMargins()
-    const innerWidth = this.draw.getInnerWidth()
-    const startX = margins[3]
+    const column = this.draw
+      .getServices()
+      .pageColumnLayoutService.getColumn(
+        pageNo,
+        sourceRow.columnIndex || 0,
+        sourceRow.columns
+      )
+    const innerWidth = this.draw
+      .getServices()
+      .pageColumnLayoutService.getMeasurementColumnWidth(
+        pageNo,
+        sourceRow.columns
+      )
+    const startX = column.rect.x
     const startY = cursorPosition.coordinate.leftTop[1]
+    if (sourceRow.isSurround) {
+      return this.fail('line-surround-row')
+    }
     const rowList = this.draw.computeRowList({
       startX,
       startY,
       pageHeight: this.draw.getHeight(),
-      mainOuterHeight: this.draw.getMainOuterHeight(),
-      isPagingMode: false,
+      mainOuterHeight: this.draw.getMainOuterHeight(pageNo),
+      startPageNo: pageNo,
       innerWidth,
       surroundElementList: [],
       elementList: lineElementList,
       sourceStartIndex: startIndex
     })
-    if (rowList.length !== 1) {
-      return this.fail('line-expanded')
+    const rowShapeRisk = getTypingLinePatchRowShapeRiskReason(rowList)
+    if (rowShapeRisk) {
+      return this.fail(rowShapeRisk)
     }
+    applyTypingLinePatchRowContext({
+      nextRow: rowList[0],
+      sourceRow,
+      startY
+    })
     const nextPositionList: IElementPosition[] = []
     coordinate.computePageRowPosition({
       positionList: nextPositionList,
@@ -149,8 +194,12 @@ export class TypingLinePatchPipeline {
       innerWidth,
       zone: EditorZone.MAIN
     })
-    if (nextPositionList.length !== lineElementList.length) {
-      return this.fail('line-position-count-mismatch')
+    const positionRisk = getTypingLinePatchPositionRiskReason({
+      lineElementList,
+      positionList: nextPositionList
+    })
+    if (positionRisk) {
+      return this.fail(positionRisk)
     }
     this.patchRuntime({
       pageNo,
@@ -311,11 +360,6 @@ export class TypingLinePatchPipeline {
       patchedChunk: chunk,
       indexDelta
     })
-  }
-
-  /** 判断当前行元素是否适合单行正式 patch。 */
-  private canPatchElementList(elementList: Array<{ type?: unknown }>) {
-    return elementList.every(element => isPatchableTextElement(element as any))
   }
 
   /** 构建失败结果。 */

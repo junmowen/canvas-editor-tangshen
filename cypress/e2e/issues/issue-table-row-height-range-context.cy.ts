@@ -12,9 +12,9 @@ function getTable(editor: Editor) {
 
 function getCellBounds(editor: Editor, tableId: string, trIndex: number, tdIndex: number) {
   const draw = (editor as any).draw
-  draw.flushScheduledFrameRender()
+  draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
   const bounds = draw
-    .getTableLayoutSnapshotAccessor()
+    .getServices().tableLayoutSnapshotAccessor
     .getFragmentCellBounds(tableId)
     .find((item: any) => item.trIndex === trIndex && item.tdIndex === tdIndex)
   expect(bounds, `cell bounds ${trIndex}:${tdIndex}`).to.not.eq(undefined)
@@ -87,7 +87,7 @@ describe('table row height range context', () => {
         .find((element: any) => element.type === ElementType.TABLE)
       expect(table?.id).to.be.a('string')
 
-      draw.getPosition().setPositionContext({
+      draw.getCoordinate().setPositionContext({
         isTable: true,
         index: 9999,
         trIndex: 0,
@@ -194,7 +194,7 @@ describe('table row height range context', () => {
       }
       cy.getEditor().then((editor: Editor) => {
         const draw = (editor as any).draw
-        const context = draw.getPosition().getPositionContext()
+        const context = draw.getCoordinate().getPositionContext()
 
         expect(context.isTable, 'clicked lower cell keeps table context').to.eq(true)
         expect(context.index, 'clicked lower cell table index').to.eq(tableIndex)

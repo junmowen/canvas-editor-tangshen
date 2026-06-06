@@ -33,8 +33,8 @@ export class RadioControl extends CheckboxControl {
       return
     }
     const { control } = this.element
-    const elementList = context.elementList || this.control.getElementList()
-    const { startIndex } = context.range || this.control.getEditBoundaryRange()
+    const elementList = context.elementList || this.control.getDraw().getObjectResolver().getElementList()
+    const { startIndex } = context.range || this.control.getDraw().getRange().getEditBoundaryRange()
     const controlBoundary = this.control.getDraw().getTargetResolver().resolveControlBoundaryElements({
       range: context.range,
       elementList

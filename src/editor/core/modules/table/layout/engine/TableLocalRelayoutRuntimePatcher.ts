@@ -68,7 +68,7 @@ export class TableLocalRelayoutRuntimePatcher {
   }) {
     const positionPrefix = this.draw
       .getCoordinate()
-      .getLayoutMainPositionList()
+      .getMainPositionList()
       .filter(position => position.pageNo < payload.pageStart)
     const positionList = this.computeWindowPositionList(payload)
     this.draw.getCoordinate().setPositionList([...positionPrefix, ...positionList])

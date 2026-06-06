@@ -742,7 +742,7 @@ function getFirstMountedBaseCanvas(doc: Document): HTMLCanvasElement {
 function redrawPageWithoutInvalidatingBaseBitmap(draw: any, pageNo: number) {
   draw.getServices().pageRenderer.drawPage({
     elementList: draw.getLayoutMainElementList(),
-    positionList: draw.getPosition().getLayoutMainPositionList(),
+    positionList: draw.getCoordinate().getMainPositionList(),
     rowList: draw.getPageRowList()[pageNo],
     pageNo
   })
@@ -844,20 +844,20 @@ describe('canvas 池与渲染后端浏览器级回归', () => {
 
     cy.getEditor().then((editor: any) => {
       const draw = getDraw(editor)
-      const activeGroupPositionList = draw.getPosition().getPositionList().filter((position: any) => {
+      const activeGroupPositionList = draw.getCoordinate().getPositionList().filter((position: any) => {
         return position.element?.groupIds?.includes('worker-group-active-cross-page')
       })
       const activeGroupPageNo = activeGroupPositionList.find((position: any) => {
         return position.pageNo > 0
       })?.pageNo
-      const activeAnchorIndex = draw.getOriginalMainElementList().findIndex((element: any) => {
+      const activeAnchorIndex = draw.getObjectResolver().getOriginalMainElementList().findIndex((element: any) => {
         return element.groupIds?.includes('worker-group-active-cross-page')
       })
       expect(activeAnchorIndex, '活动 group 锚点索引').to.be.greaterThan(-1)
       expect(activeGroupPageNo, '活动 group 非当前页').to.be.greaterThan(0)
       draw.setPageNo(0)
       draw.getRange().setRange(activeAnchorIndex, activeAnchorIndex)
-      draw.getPosition().setCursorPosition(null)
+      draw.getCoordinate().setCursorPosition(null)
       draw.getPageCanvasHost().invalidateAllBitmapCache()
       editor.resetRenderBackendStats()
       draw.enqueueExtraVisibleRenderPages([activeGroupPageNo])

@@ -1,16 +1,39 @@
 import './assets/css/index.css'
 import {
+  HeaderFooterPageScope,
+  IHeaderFooterPageScopeData,
   IEditorData,
   IEditorOption,
   IEditorResult,
   IRenderBackendOption
 } from './interface/Editor'
-import { IElement } from './interface/Element'
+import { IElement, ITabStop } from './interface/Element'
+import {
+  DocumentStyleType,
+  IDocumentListStyle,
+  IDocumentStyle
+} from './interface/Style'
 import { ISetTrackChangeOption } from './interface/Command'
 import {
   ITrackChangeRecord,
   ITrackChangeRect
 } from './core/draw/track-change/TrackChangeService'
+import { IOoxmlPackageParts } from './core/export/ooxml/OoxmlPackage'
+import { ITypesettingLayoutSnapshot } from './interface/TypesettingLayout'
+import {
+  ITitleTree,
+  ITitleTreeNode,
+  ITitleTreeRange
+} from './interface/Title'
+import {
+  FormulaDisplayMode,
+  FormulaDomain,
+  FormulaNodeType,
+  FormulaSourceFormat,
+  IFormula,
+  IFormulaNode,
+  IFormulaSymbol
+} from './interface/Formula'
 import { Draw } from './core/draw/Draw'
 import { Command } from './core/command/Command'
 import { CommandAdapt } from './core/command/CommandAdapt'
@@ -22,7 +45,7 @@ import {
   LocationPosition
 } from './dataset/enum/Common'
 import { ElementType } from './dataset/enum/Element'
-import { formatElementList } from './utils/element'
+import { formatElementList } from './utils/elementFormat'
 import { Register } from './core/extension/register/Register'
 import { ContextMenu } from './core/runtime/contextmenu/ContextMenu'
 import {
@@ -76,9 +99,9 @@ import { deepClone, splitText } from './utils'
 import {
   createDomFromElementList,
   getElementListByHTML,
-  getTextFromElementList,
   type IGetElementListByHTMLOption
-} from './utils/element'
+} from './utils/elementDom'
+import { getTextFromElementList } from './utils/elementText'
 import { BackgroundRepeat, BackgroundSize } from './dataset/enum/Background'
 import { TextDecorationStyle } from './dataset/enum/Text'
 import { mergeOption } from './utils/option'
@@ -116,21 +139,22 @@ export default class Editor {
     const editorOptions = mergeOption(options)
     // 数据处理
     data = deepClone(data)
-    let headerElementList: IElement[] = []
+    this.applyInitialControlDataToEditorData(data, editorOptions)
     let mainElementList: IElement[] = []
-    let footerElementList: IElement[] = []
+    let headerPageScopes: IHeaderFooterPageScopeData[] | undefined
+    let footerPageScopes: IHeaderFooterPageScopeData[] | undefined
     if (Array.isArray(data)) {
       mainElementList = data
     } else {
-      headerElementList = data.header || []
       mainElementList = data.main
-      footerElementList = data.footer || []
+      headerPageScopes = data.headerPageScopes
+      footerPageScopes = data.footerPageScopes
     }
     // 初始化 page Component Data 列表。
     const pageComponentData = [
-      headerElementList,
+      ...(headerPageScopes?.map(scopeData => scopeData.elementList) || []),
       mainElementList,
-      footerElementList
+      ...(footerPageScopes?.map(scopeData => scopeData.elementList) || [])
     ]
     pageComponentData.forEach(elementList => {
       formatElementList(elementList, {
@@ -149,9 +173,9 @@ export default class Editor {
       container,
       editorOptions,
       {
-        header: headerElementList,
+        headerPageScopes,
         main: mainElementList,
-        footer: footerElementList
+        footerPageScopes
       },
       this.listener,
       this.eventBus,
@@ -193,6 +217,178 @@ export default class Editor {
   /** 获取压缩后的渲染后端调试快照，用于内置面板和业务诊断视图。 */
   public getRenderBackendDebugSnapshot() {
     return this.draw.getRenderBackendDebugSnapshot()
+  }
+
+  /** 获取段落块/栏/页排版中间层快照。 */
+  public getTypesettingLayoutSnapshot(): ITypesettingLayoutSnapshot | null {
+    return this.draw.getTypesettingLayoutSnapshot()
+  }
+
+  /** 获取当前正文标题父子树。 */
+  public getTitleTree(): ITitleTree | null {
+    return this.command.getTitleTree()
+  }
+
+  /** 按标题 id 获取标题树节点。 */
+  public getTitleTreeNode(titleId: string): ITitleTreeNode | null {
+    return this.command.getTitleTreeNode(titleId)
+  }
+
+  /** 按标题 id 列表批量获取标题树节点。 */
+  public getTitleTreeNodeList(titleIds: string[]): ITitleTreeNode[] {
+    return this.command.getTitleTreeNodeList(titleIds)
+  }
+
+  /** 获取指定标题的直接子标题节点列表。 */
+  public getTitleTreeChildList(titleId: string): ITitleTreeNode[] | null {
+    return this.command.getTitleTreeChildList(titleId)
+  }
+
+  /** 获取指定标题覆盖的章节范围。 */
+  public getTitleTreeRange(titleId: string): ITitleTreeRange | null {
+    return this.command.getTitleTreeRange(titleId)
+  }
+
+  /** 按标题 id 定位到对应章节。 */
+  public locationTitle(titleId: string) {
+    this.command.executeLocationTitle(titleId)
+  }
+
+  /** 在格式化前把创建编辑器时传入的控件业务数据合并到原始模型。 */
+  private applyInitialControlDataToEditorData(
+    data: IEditorData | IElement[],
+    options: Required<IEditorOption>
+  ) {
+    const apply = (elementList?: IElement[]) => {
+      if (elementList?.length) {
+        this.applyInitialControlDataToElementList(elementList, options)
+      }
+    }
+    if (Array.isArray(data)) {
+      apply(data)
+    } else {
+      data.headerPageScopes?.forEach(scopeData => apply(scopeData.elementList))
+      apply(data.main)
+      data.footerPageScopes?.forEach(scopeData => apply(scopeData.elementList))
+    }
+  }
+
+  /** 遍历元素列表，处理普通控件、区域/标题 valueList 和表格单元格内的控件。 */
+  private applyInitialControlDataToElementList(
+    elementList: IElement[],
+    options: Required<IEditorOption>
+  ) {
+    for (let index = 0; index < elementList.length; index++) {
+      const element = elementList[index]
+      if (element.control) {
+        this.applyInitialControlDataToElement(element, options)
+      }
+      if (element.valueList?.length) {
+        this.applyInitialControlDataToElementList(element.valueList, options)
+      }
+      if (element.type === ElementType.TABLE && element.trList?.length) {
+        element.trList.forEach(tr => {
+          tr.tdList.forEach(td => {
+            this.applyInitialControlDataToElementList(td.value, options)
+          })
+        })
+      }
+    }
+  }
+
+  /** 将初始化属性和值写入单个控件元素。 */
+  private applyInitialControlDataToElement(
+    element: IElement,
+    options: Required<IEditorOption>
+  ) {
+    const schema = options.controlSchema.find(item =>
+      this.isInitialControlDataMatched(element, item)
+    )
+    if (schema) {
+      if (schema.elementProperties?.externalId !== undefined) {
+        element.externalId = schema.elementProperties.externalId
+      }
+      if (schema.elementProperties?.extension !== undefined) {
+        element.extension = schema.elementProperties.extension
+      }
+      if (schema.properties) {
+        element.control = {
+          ...element.control!,
+          ...schema.properties,
+          value: element.control!.value
+        }
+      }
+      if (schema.defaultValue !== undefined) {
+        this.applyInitialControlValueToElement(element, schema.defaultValue)
+      }
+    }
+    const property = options.controlInitialProperties.find(item =>
+      this.isInitialControlDataMatched(element, item)
+    )
+    if (property) {
+      element.control = {
+        ...element.control!,
+        ...property.properties,
+        value: element.control!.value
+      }
+    }
+    const value = options.controlInitialValues.find(item =>
+      this.isInitialControlDataMatched(element, item)
+    )
+    if (value) {
+      this.applyInitialControlValueToElement(element, value.value)
+    }
+  }
+
+  /** 判断初始化数据是否命中当前控件元素。 */
+  private isInitialControlDataMatched(
+    element: IElement,
+    option: {
+      /** 唯一标识，用于匹配控件 controlId。 */
+      id?: string
+      /** 控件概念标识，用于匹配业务语义。 */
+      conceptId?: string
+      /** 区域标识，用于匹配区域内控件。 */
+      areaId?: string
+      /** 外部系统标识，用于匹配业务字段。 */
+      externalId?: string
+      /** 业务编码，用于匹配业务字段编码。 */
+      code?: string | number
+    }
+  ): boolean {
+    return (
+      (!!option.id && element.controlId === option.id) ||
+      (!!option.conceptId && element.control?.conceptId === option.conceptId) ||
+      (!!option.externalId && element.externalId === option.externalId) ||
+      (option.code !== undefined &&
+        option.code !== null &&
+        element.control?.code !== undefined &&
+        element.control.code !== null &&
+        String(element.control.code) === String(option.code)) ||
+      (!!option.areaId && element.areaId === option.areaId)
+    )
+  }
+
+  /** 按控件类型写入初始化值，选择类控件写 code，文本类控件写 value。 */
+  private applyInitialControlValueToElement(
+    element: IElement,
+    value: string | IElement[] | null
+  ) {
+    const control = element.control!
+    if (
+      control.type === ControlType.SELECT ||
+      control.type === ControlType.CHECKBOX ||
+      control.type === ControlType.RADIO
+    ) {
+      control.code = Array.isArray(value) ? null : value
+      control.value = null
+      return
+    }
+    control.value = Array.isArray(value)
+      ? value
+      : value
+        ? [{ value }]
+        : null
   }
 
   /**
@@ -265,7 +461,13 @@ export {
 // 对外类型
 export type {
   IElement,
+  ITabStop,
+  DocumentStyleType,
+  IDocumentListStyle,
+  IDocumentStyle,
+  HeaderFooterPageScope,
   IEditorData,
+  IHeaderFooterPageScopeData,
   IEditorOption,
   IRenderBackendOption,
   IEditorResult,
@@ -283,5 +485,17 @@ export type {
   IGetElementListByHTMLOption,
   ISetTrackChangeOption,
   ITrackChangeRecord,
-  ITrackChangeRect
+  ITrackChangeRect,
+  IOoxmlPackageParts,
+  ITypesettingLayoutSnapshot,
+  ITitleTree,
+  ITitleTreeNode,
+  ITitleTreeRange,
+  FormulaDisplayMode,
+  FormulaDomain,
+  FormulaNodeType,
+  FormulaSourceFormat,
+  IFormula,
+  IFormulaNode,
+  IFormulaSymbol
 }

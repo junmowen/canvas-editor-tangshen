@@ -11,10 +11,10 @@ export interface IOffscreenCanvasRenderEngineOptions {
 }
 
 /**
- * OffscreenCanvas 渲染引擎占位实现。
+ * OffscreenCanvas 渲染引擎。
  *
- * 当前阶段只接入能力探测和调度统计，不抢占 Canvas2D 主链路；
- * 后续可以在这里扩展 worker 绘制、ImageBitmap 回传和主线程合成。
+ * 负责把非交互 base 页绘制提交给 worker 调度器，并在调度器侧完成
+ * ImageBitmap 回传、主线程合成和 Canvas2D 备用路径切换。
  */
 export class OffscreenCanvasRenderEngine implements IRenderBackend {
   /** 渲染引擎名称，用于后端调度统计。 */
@@ -65,7 +65,7 @@ export class OffscreenCanvasRenderEngine implements IRenderBackend {
   /**
    * 执行 OffscreenCanvas 渲染任务。
    *
-   * 当前还没有 worker 绘制实现，因此保守复用同步 execute 回调作为临时兜底。
+   * 满足 worker 条件的任务会提交给调度器，失败时由调度器切换到 Canvas2D。
    *
    * @param surface - 目标渲染 surface
    * @param task - 渲染任务描述

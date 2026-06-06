@@ -1,6 +1,5 @@
 import { CanvasEvent } from '../CanvasEvent'
-import { runDragHoverIntent } from '../pointer/intents/drag-drop/DragHoverIntent'
-import { runSelectionDragIntent } from '../pointer/intents/selection/SelectionDragIntent'
+import { dispatchPointerMoveIntent } from '../pointer/policy/PointerMoveDispatchPolicy'
 
 /**
  * 处理鼠标移动事件。
@@ -11,10 +10,5 @@ import { runSelectionDragIntent } from '../pointer/intents/selection/SelectionDr
  * @param host - Canvas 事件主机
  */
 export function mousemove(evt: MouseEvent, host: CanvasEvent) {
-  const session = host.getPointerSession()
-  if (session.isAllowDrag) {
-    runDragHoverIntent({ host, evt })
-    return
-  }
-  runSelectionDragIntent({ host, evt })
+  dispatchPointerMoveIntent({ host, evt })
 }

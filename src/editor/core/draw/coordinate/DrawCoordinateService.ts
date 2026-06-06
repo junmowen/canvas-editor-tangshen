@@ -45,12 +45,12 @@ export class DrawCoordinateService {
     return this.draw.getInternalPosition().getOriginalPositionList()
   }
 
-  public getLayoutMainPositionList(): IElementPosition[] {
-    return this.draw.getInternalPosition().getLayoutMainPositionList()
+  public getMainPositionList(): IElementPosition[] {
+    return this.draw.getInternalPosition().getMainPositionList()
   }
 
-  public getLayoutMainPositionListByPage(pageNo: number): IElementPosition[] {
-    return this.draw.getInternalPosition().getLayoutMainPositionListByPage(pageNo)
+  public getMainPositionListByPage(pageNo: number): IElementPosition[] {
+    return this.draw.getInternalPosition().getMainPositionListByPage(pageNo)
   }
 
   public getFloatPositionList(): IFloatPosition[] {

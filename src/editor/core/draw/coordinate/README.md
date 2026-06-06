@@ -19,7 +19,7 @@
 | 文件 | 函数 / 方法 | 作用 | 调用地方 |
 | --- | --- | --- | --- |
 | `DrawCoordinateService.ts` | `getPointerCoordinates()` / `getPointerDelta()` | 将原生鼠标 / 拖拽事件转换为容器、页面和 delta 坐标。 | `draw/viewport/DrawViewportService.ts`、`event/pointer/**` |
-| `DrawCoordinateService.ts` | `getPositionList()` / `getOriginalPositionList()` / `getLayoutMainPositionList()` | 读取当前布局 position 缓存。 | `Draw.ts`、渲染和命中链路 |
+| `DrawCoordinateService.ts` | `getPositionList()` / `getOriginalPositionList()` / `getMainPositionList()` | 读取当前布局 position 缓存。 | `Draw.ts`、渲染和命中链路 |
 | `DrawCoordinateService.ts` | `getPositionByXY()` / `getFloatPositionByXY()` | 根据页面坐标解析正文或浮动元素命中位置。 | `event/pointer/intents/**`、`position/PositionHitTestMethods.ts` |
 | `DrawCoordinateService.ts` | `setCursorPosition()` / `getCursorPosition()` / `setCursorLogicalIndex()` | 管理光标物理位置和逻辑索引。 | 光标、选区和键盘移动链路 |
 | `DrawCoordinateService.ts` | `computePositionList()` / `computePositionListFromPage()` / `computePageRowPosition()` / `computeRowPosition()` | 触发整篇、分页或行级 position 计算。 | `draw/layout/**`、`Draw.render()` |

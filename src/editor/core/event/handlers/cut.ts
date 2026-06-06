@@ -20,7 +20,7 @@ export function cut(host: CanvasEvent) {
     const coordinate = draw.getCoordinate()
     const positionList = coordinate.getPositionList()
     const startPosition = resolvePositionAtIndex(draw, startIndex, {
-      fallbackToLast: true
+      useLastPositionWhenMissing: true
     })
     if (!startPosition) return
     const curRowNo = startPosition.rowNo

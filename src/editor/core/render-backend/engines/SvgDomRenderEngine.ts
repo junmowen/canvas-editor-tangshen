@@ -11,10 +11,9 @@ export interface ISvgDomRenderEngineOptions {
 }
 
 /**
- * SVG / DOM 渲染引擎占位实现。
+ * SVG / DOM 渲染引擎。
  *
- * 用于后续承接外部 block、嵌入内容或 SVG 装饰层；
- * 当前仅暴露 capability，不处理现有 canvas 渲染任务。
+ * 用于承接外部 block、嵌入内容或 SVG 装饰层，不抢占普通 canvas 渲染任务。
  */
 export class SvgDomRenderEngine implements IRenderBackend {
   /** 渲染引擎名称，用于后端调度统计。 */
@@ -39,9 +38,9 @@ export class SvgDomRenderEngine implements IRenderBackend {
   /**
    * 判断任务是否适合由 SVG / DOM 引擎处理。
    *
-   * 当前尚未定义 DOM / SVG 专用任务原因，因此默认不抢占任何任务。
+   * 仅处理明确标记为 SVG / DOM block 的任务。
    *
-   * @returns 当前阶段始终返回 false
+   * @returns 环境可用、配置启用且任务匹配时返回 true
    */
   public canRender(task: IRenderTask): boolean {
     return (
@@ -56,7 +55,7 @@ export class SvgDomRenderEngine implements IRenderBackend {
   /**
    * 执行 SVG / DOM 渲染任务。
    *
-   * 当前为占位实现，默认不会被调度命中。
+   * SVG / DOM 任务通过任务自带回调执行。
    *
    * @param _surface - 目标渲染 surface
    * @param _task - 渲染任务描述

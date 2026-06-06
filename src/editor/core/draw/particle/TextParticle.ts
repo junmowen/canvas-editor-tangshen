@@ -1,4 +1,4 @@
-import { IEditorOption, IElement, RenderMode } from '../../..'
+import { IEditorOption, IElement } from '../../..'
 import { METRICS_BASIS_TEXT } from '../../../dataset/constant/Common'
 import { DeepRequired } from '../../../interface/Common'
 import { IRowElement } from '../../../interface/Row'
@@ -218,7 +218,7 @@ export class TextParticle {
   /**
    * 记录文本元素。
    *
-   * 在兼容模式下立即绘制，否则累积文本待批量渲染。
+   * 文本会累积到当前批次，待样式变化或 complete() 时统一绘制。
    *
    * @param ctx - 画布上下文
    * @param element - 行元素
@@ -233,17 +233,6 @@ export class TextParticle {
   ) {
     // 记录当前渲染上下文，供 complete() 时的批量绘制使用。
     this.ctx = ctx
-    // 兼容模式立即绘制
-    if (this.options.renderMode === RenderMode.COMPATIBILITY) {
-      this._setCurXY(x, y)
-      this.text = element.value
-      this.curStyle = element.style
-      this.curColor = element.color
-      this.curTrackChangeType = element.trackChange?.type
-      this.curTrackChangeColor = element.trackChange?.color
-      this.complete()
-      return
-    }
     // 主动完成时重设起始点
     if (!this.text) {
       this._setCurXY(x, y)

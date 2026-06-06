@@ -65,7 +65,7 @@ import { IEditorData } from '../../../interface/Editor'
  * 这个文件是当前整轮重构里"构造期链路"最敏感的部分，原因在于：
  * - 很多组件在构造时就会立即通过 `draw.getXxx()` 反查别的对象；
  * - 因此初始化顺序不是实现细节，而是架构约束；
- * - 为了避免构造期空引用，这里需要在关键节点把对象提前写入 bootstrap fallback。
+ * - 为了避免构造期空引用，这里需要在关键节点把对象提前写入 bootstrap 引用。
  *
  * 换句话说，这个注册表不仅是"把对象 new 出来"，
  * 也是整个编辑器启动链的依赖拓扑落地点。
@@ -323,7 +323,7 @@ export class DrawComponentRegistry {
    * 这里最重要的不是“创建了哪些对象”，而是“按什么顺序创建”：
    *
    * 1. 先创建最基础的上下文对象，例如 `HistoryManager`、`Position`、`Zone`；
-   * 2. 在某些对象创建后，立刻调用 `draw.setBootstrapXxx(...)` 写回 bootstrap fallback；
+   * 2. 在某些对象创建后，立刻调用 `draw.setBootstrapXxx(...)` 写回 bootstrap 引用；
    * 3. 再创建那些会在构造时通过 `draw.getXxx()` 反查依赖的对象；
    * 4. 最后再挂接观察器、事件对象、worker 等外围设施。
    *
@@ -355,9 +355,11 @@ export class DrawComponentRegistry {
     draw.setBootstrapZone(this.zone)
 
     // header/footer 在构造链中需要尽早可见，因为 Zone、Position、Metrics 等都可能引用它们。
-    this.header = new Header(draw, data.header)
+    this.header = new Header(draw)
+    this.header.setPageScopes(data.headerPageScopes)
     draw.setBootstrapHeader(this.header)
-    this.footer = new Footer(draw, data.footer)
+    this.footer = new Footer(draw)
+    this.footer.setPageScopes(data.footerPageScopes)
     draw.setBootstrapFooter(this.footer)
 
     // RangeManager 会在构造时反查 Position / HistoryManager，因此必须放在二者之后。

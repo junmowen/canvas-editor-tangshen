@@ -81,8 +81,8 @@ export interface IChunkLayoutPipelineStats {
   dirtyRangeLastActualEndPageNo: number | null
   /** dirty range planner 接管异步传播起点次数。 */
   dirtyRangeScheduleTakeoverCount: number
-  /** planner 漏实际页时回退旧异步传播起点次数。 */
-  dirtyRangeScheduleFallbackCount: number
+  /** planner 漏实际页时修正异步传播起点次数。 */
+  dirtyRangeScheduleCorrectionCount: number
 }
 
 /** 分块布局补丁上下文，汇总流程中需要共享的定位、状态和依赖。 */

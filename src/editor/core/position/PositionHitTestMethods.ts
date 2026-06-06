@@ -1,13 +1,10 @@
 import { ZERO } from '../../dataset/constant/Common'
-import { EditorZone } from '../../dataset/enum/Editor'
-import { IElementPosition } from '../../interface/Element'
 import {
   ICurrentPosition,
   IGetFloatPositionByXYPayload,
   IGetPositionByXYPayload
 } from '../../interface/Position'
 import {
-  createCollapsedLeftCursorPosition,
   resolvePointerBoundaryAtPosition
 } from './utils/resolvePointerBoundaryAtPosition'
 import {
@@ -16,6 +13,12 @@ import {
   isRadioHitElement
 } from '../modules/control/hittest/ControlHitTest'
 import {
+  isFormulaDebugEnabled,
+  logFormulaDebug,
+  roundFormulaDebugNumber
+} from '../modules/formula/debug/FormulaDebugLogger'
+import { isFormulaTextElement } from '../modules/formula/layout/FormulaTextElementLayout'
+import {
   getBackFloatImageHitDisplays,
   getFrontFloatImageHitDisplays,
   isFloatImageHitCandidate,
@@ -23,29 +26,21 @@ import {
   isPointInFloatImageElement
 } from '../modules/image/hittest/ImageHitTestPolicy'
 import {
-  resolveListCheckboxHeadHit,
-  resolveListCheckboxHeadStartX,
   resolveListCheckboxTabHit
 } from '../modules/list/hittest/ListCheckboxHitTestPolicy'
 import { resolveTableFloatImageHit } from '../modules/table/hittest/resolveTableFloatImageHit'
 import type { Position } from './Position'
+import {
+  resolveBestPageRowBandByPointer,
+  resolveActiveRowBandBlankHit,
+  resolveHeaderFooterZoneHit,
+  resolveLastPageRowBoundaryIndex,
+  resolvePageBoundaryHitIndex,
+  TPageRowBand
+} from './PositionHitTestPolicy'
 
 /** 位置内部访问契约，用于在拆分模块间共享受控能力。 */
 type PositionInternal = Record<string, any>
-
-/** 页面行band类型，用于约束内部流程中传递的数据结构。 */
-type TPageRowBand = {
-  /** 行号，用于定位页面内的目标行。 */
-  rowNo: number
-  /** 上侧偏移或边距，用于计算区域边界。 */
-  top: number
-  /** 下侧偏移或边距，用于计算区域边界。 */
-  bottom: number
-  /** 起始位置，用于描述范围、拖拽或扫描的入口。 */
-  start: number
-  /** 结束数值，用于当前布局、统计或索引计算。 */
-  end: number
-}
 
 type TPointerHitResult = ICurrentPosition & {
   /** 命中目标索引，用于定位指针事件落点对应的元素。 */
@@ -84,7 +79,7 @@ const positionHitTestMethods = {
     }
     if (!positionList) {
       positionList = isMainActive
-        ? this.getLayoutMainPositionList()
+        ? this.getMainPositionList()
         : this.getOriginalPositionList()
     }
     elementList = elementList as NonNullable<typeof elementList>
@@ -92,31 +87,40 @@ const positionHitTestMethods = {
     const positionNo = isMainActive ? curPageNo : 0
     const pageRowBands =
       this.getPageRowBandsLookupMap(positionList).get(positionNo) || []
-    let activeRowBand: TPageRowBand | null = null
-    let left = 0
-    let right = pageRowBands.length - 1
-    while (left <= right) {
-      const middle = Math.floor((left + right) / 2)
-      const rowBand = pageRowBands[middle]
-      if (y < rowBand.top) {
-        right = middle - 1
-      } else if (y > rowBand.bottom) {
-        left = middle + 1
-      } else {
-        activeRowBand = rowBand
-        break
+    const resolveRowBandRange = (rowBand: TPageRowBand) => {
+      const pageRow = isMainActive
+        ? this.draw.getPageRowList()?.[positionNo]?.[rowBand.rowNo]
+        : null
+      if (pageRow) {
+        const column = this.draw
+          .getServices()
+          .pageColumnLayoutService.getColumn(
+            positionNo,
+            pageRow.columnIndex || 0,
+            pageRow.columns
+          )
+        return {
+          left: column.rect.x,
+          right: column.rect.x + column.rect.width
+        }
+      }
+      return {
+        left: rowBand.left,
+        right: rowBand.right
       }
     }
-    // 命中左半区时，需要回退到前一个逻辑边界；
-    // 这里统一把“当前位置 cursor -> 逻辑边界索引”的回退规则抽成局部函数。
+    const activeRowBand = resolveBestPageRowBandByPointer({
+      x,
+      y,
+      pageRowBands,
+      resolveRowBandRange
+    })
     const resolvePreviousLogicalIndex = (
       positionCursor: number,
-      fallbackIndex: number
+      boundaryIndex: number
     ) => {
-      return positionList?.[positionCursor - 1]?.index ?? fallbackIndex - 1
+      return positionList?.[positionCursor - 1]?.index ?? boundaryIndex - 1
     }
-    // 页内行带兜底命中可能需要根据逻辑索引回查真实元素，
-    // 例如判断当前位置是否落在控件上。
     const resolveLogicalControlElement = (logicalIndex: number) => {
       const logicalPosition = this.getPositionByPageAndIndex(
         positionNo,
@@ -128,8 +132,7 @@ const positionHitTestMethods = {
       }
       return elementList?.[logicalPosition.index]
     }
-    // 第一层：优先验证浮在文字上方的元素。
-    // 这层命中需要早于正文字符盒，否则会被正文文字错误吞掉。
+    // 1. 浮在文字上方的元素。
     const floatTopPosition = this.getFloatPositionByXY({
       ...payload,
       imgDisplays: getFrontFloatImageHitDisplays()
@@ -137,26 +140,37 @@ const positionHitTestMethods = {
     if (floatTopPosition) return floatTopPosition
     const directHitStart = activeRowBand?.start ?? 0
     const directHitEnd = activeRowBand?.end ?? -1
-    // 第二层：只在当前活动行带内做 direct-hit 命中，
-    // 避免跨整页线性扫描。
+    // 2. 当前活动行带内的 direct-hit。
     for (let cursor = directHitStart; cursor <= directHitEnd; cursor++) {
       const position = positionList[cursor]
       if (!position) continue
+      const element = elementList[cursor]
+      if (!element) {
+        continue
+      }
       const {
         index,
         left,
         coordinate: { leftTop, rightTop, leftBottom }
       } = position
+      const formulaHitPaddingX = isFormulaTextElement(element)
+        ? Math.max(4, Math.min(12, position.metrics.width * 0.08))
+        : 0
+      const formulaHitPaddingY = isFormulaTextElement(element) ? 2 : 0
+      // 公式本体中间区域用于打开编辑器，左右贴边区域用于放置光标。
+      const formulaInlineEdgeInset = isFormulaTextElement(element)
+        ? Math.max(4, Math.min(10, position.metrics.width * 0.08))
+        : 0
+      const isFormulaEdgeHit =
+        isFormulaTextElement(element) &&
+        (x <= leftTop[0] + formulaInlineEdgeInset ||
+          x >= rightTop[0] - formulaInlineEdgeInset)
       if (
-        leftTop[0] - left > x ||
-        rightTop[0] < x ||
-        leftTop[1] > y ||
-        leftBottom[1] < y
+        leftTop[0] - left - formulaHitPaddingX > x ||
+        rightTop[0] + formulaHitPaddingX < x ||
+        leftTop[1] - formulaHitPaddingY > y ||
+        leftBottom[1] + formulaHitPaddingY < y
       ) {
-        continue
-      }
-      const element = elementList[cursor]
-      if (!element) {
         continue
       }
       if (isImageDirectHitElement(element)) {
@@ -199,85 +213,54 @@ const positionHitTestMethods = {
           previousBoundaryIndex: resolvePreviousLogicalIndex(cursor, index),
           canCollapseToPrevious: element.value !== ZERO
         })
+      if (isFormulaDebugEnabled() && isFormulaTextElement(element)) {
+        logFormulaDebug('inline-hit-test', {
+          index,
+          boundaryIndex,
+          value: element.value,
+          latex: element.formula?.latex,
+          x: roundFormulaDebugNumber(x),
+          y: roundFormulaDebugNumber(y),
+          left: roundFormulaDebugNumber(leftTop[0]),
+          right: roundFormulaDebugNumber(rightTop[0]),
+          top: roundFormulaDebugNumber(leftTop[1]),
+          bottom: roundFormulaDebugNumber(leftBottom[1]),
+          paddingX: roundFormulaDebugNumber(formulaHitPaddingX),
+          paddingY: roundFormulaDebugNumber(formulaHitPaddingY),
+          edgeInset: roundFormulaDebugNumber(formulaInlineEdgeInset),
+          isFormulaEdgeHit
+        })
+      }
       const directHitPosition: TPointerHitResult = {
         isDirectHit: true,
         hitTargetIndex: index,
         index: boundaryIndex,
-        isControl: isElementInControl(element)
+        isControl: isElementInControl(element),
+        isFormulaEdgeHit
       }
       return directHitPosition
     }
-    // 第三层：再处理浮在文字下层的元素。
-    // 这类元素优先级低于正文 direct-hit，但高于行带/页边界兜底。
+    // 3. 浮在文字下层的元素。
     const floatBottomPosition = this.getFloatPositionByXY({
       ...payload,
       imgDisplays: getBackFloatImageHitDisplays()
     })
     if (floatBottomPosition) return floatBottomPosition
-    // 第四层：页内行带兜底。
-    // 当没有命中具体字符盒时，仍需要在当前行带内给出一个稳定边界，
-    // 以保证点击空白区、行首前侧区域时的落点一致性。
-    let activeRowBandPosition: TPointerHitResult | null = null
-    if (activeRowBand) {
-      const headIndex = activeRowBand.start
-      const tailIndex = activeRowBand.end
-      const headElement = elementList[headIndex]
-      const headPosition = positionList[headIndex]
-      const tailPosition = positionList[tailIndex]
-      if (headElement && headPosition && tailPosition) {
-        let curPositionIndex = -1
-        const headStartX = resolveListCheckboxHeadStartX({
-          headElement,
-          defaultStartX: headPosition.coordinate.leftTop[0],
-          leftMargin: this.draw.getMargins()[3]
-        })
-        if (x < headStartX) {
-          const lineStartBoundaryIndex =
-            headPosition.value === ZERO
-              ? headPosition.index
-              : resolvePreviousLogicalIndex(headIndex, headPosition.index)
-          activeRowBandPosition = {
-            index: lineStartBoundaryIndex,
-            hitTargetIndex: headPosition.index,
-            cursorPosition: createCollapsedLeftCursorPosition(
-              headPosition,
-              lineStartBoundaryIndex
-            ),
-            isLeftSideBlank: true,
-            isControl: isElementInControl(
-              resolveLogicalControlElement(lineStartBoundaryIndex)
-            )
-          }
-        } else {
-          const listCheckboxHeadHit = resolveListCheckboxHeadHit({
-            headElement,
-            headPosition,
-            x
-          })
-          if (listCheckboxHeadHit) {
-            activeRowBandPosition = listCheckboxHeadHit
-          } else {
-            curPositionIndex = tailPosition.index
-          }
-        }
-
-        if (!activeRowBandPosition && curPositionIndex >= 0) {
-          activeRowBandPosition = {
-            index: curPositionIndex,
-            isControl: isElementInControl(
-              resolveLogicalControlElement(curPositionIndex)
-            )
-          }
-        }
-      }
-    }
+    // 4. 页内行带空白命中。
+    const activeRowBandPosition = resolveActiveRowBandBlankHit({
+      x,
+      curPageLeftMargin: this.draw.getMargins(curPageNo)[3],
+      activeRowBand,
+      elementList,
+      positionList,
+      resolvePreviousLogicalIndex,
+      resolveLogicalControlElement
+    })
     if (activeRowBandPosition) {
       return activeRowBandPosition
     }
 
-    // 第五层：页眉 / 页脚区域切换。
-    // 这里保留命中计算完成后的 zone 回退，避免在区域切换时直接
-    // 跳过正文命中，导致第一次点击只切区不落点。
+    // 5. 页眉 / 页脚区域切换。
     const header = this.draw.getHeader()
     const headerBottomY = header.getHeaderTop() + header.getHeight()
     const footer = this.draw.getFooter()
@@ -285,84 +268,34 @@ const positionHitTestMethods = {
     const footerTopY =
       pageHeight - (footer.getFooterBottom() + footer.getHeight())
 
-    if (isMainActive) {
-      if (y < headerBottomY) {
-        return {
-          index: -1,
-          zone: EditorZone.HEADER
-        }
-      }
-      if (y > footerTopY) {
-        return {
-          index: -1,
-          zone: EditorZone.FOOTER
-        }
-      }
-    } else if (y <= footerTopY && y >= headerBottomY) {
+    const headerFooterZoneHit = resolveHeaderFooterZoneHit({
+      y,
+      isMainActive,
+      headerBottomY,
+      footerTopY
+    })
+    if (headerFooterZoneHit) return headerFooterZoneHit
+
+    // 6. 页边界 / 区域空白命中。
+    const margins = this.draw.getMargins(curPageNo)
+    const pageBoundaryHitIndex = resolvePageBoundaryHitIndex({
+      x,
+      y,
+      margins,
+      pageRowBands,
+      positionList
+    })
+    if (pageBoundaryHitIndex !== null) {
       return {
-        index: -1,
-        zone: EditorZone.MAIN
+        index: pageBoundaryHitIndex
       }
     }
 
-    // 第六层：页边界 / 区域兜底。
-    // 当前页内没有任何直接命中时，再判断是否切到页眉页脚，
-    // 或回退到首行 / 末行边界。
-    const margins = this.draw.getMargins()
-    if (y <= margins[0]) {
-      const firstRowBand = pageRowBands[0] || null
-      let firstRowPosition: IElementPosition | null = null
-      if (firstRowBand) {
-        for (let cursor = firstRowBand.start; cursor <= firstRowBand.end; cursor++) {
-          const position = positionList[cursor]
-          if (!position) continue
-          const { leftTop, rightTop } = position.coordinate
-          if (
-            x <= margins[3] ||
-            (x >= leftTop[0] && x <= rightTop[0]) ||
-            cursor === firstRowBand.end
-          ) {
-            firstRowPosition = position
-            break
-          }
-        }
-      }
-      if (firstRowPosition) {
-        return {
-          index: firstRowPosition.index
-        }
-      }
-    } else {
-      const lastRowBand = pageRowBands[pageRowBands.length - 1] || null
-      let lastRowPosition: IElementPosition | null = null
-      if (lastRowBand) {
-        for (let cursor = lastRowBand.start; cursor <= lastRowBand.end; cursor++) {
-          const position = positionList[cursor]
-          if (!position) continue
-          const { leftTop, rightTop } = position.coordinate
-          if (
-            x <= margins[3] ||
-            (x >= leftTop[0] && x <= rightTop[0]) ||
-            cursor === lastRowBand.end
-          ) {
-            lastRowPosition = position
-            break
-          }
-        }
-      }
-      if (lastRowPosition) {
-        return {
-          index: lastRowPosition.index
-        }
-      }
-    }
-
-    const lastRowBand = pageRowBands[pageRowBands.length - 1]
     return {
-      index:
-        (lastRowBand ? positionList[lastRowBand.end]?.index : undefined) ||
-        positionList[positionList.length - 1]?.index ||
-        positionList.length - 1
+      index: resolveLastPageRowBoundaryIndex({
+        pageRowBands,
+        positionList
+      })
     }
   },
 
@@ -374,7 +307,7 @@ const positionHitTestMethods = {
     const currentPageNo = payload.pageNo ?? this.draw.getPageNo()
     const currentZone = this.draw.getZone().getZone()
     const { scale } = this.options
-    for (let f = 0; f < this.floatPositionList.length; f++) {
+    for (let f = this.floatPositionList.length - 1; f >= 0; f--) {
       const floatPosition = this.floatPositionList[f]
       const { position, element, zone: floatElementZone, pageNo } = floatPosition
       if (
@@ -385,7 +318,7 @@ const positionHitTestMethods = {
         }) &&
         (!floatElementZone || floatElementZone === currentZone)
       ) {
-        if (isPointInFloatImageElement({ element, x, y, scale })) {
+        if (isPointInFloatImageElement({ element, floatPosition, x, y, scale })) {
           const tableFloatHit = resolveTableFloatImageHit(floatPosition)
           if (tableFloatHit) {
             return tableFloatHit

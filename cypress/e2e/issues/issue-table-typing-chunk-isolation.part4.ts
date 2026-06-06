@@ -352,8 +352,8 @@ function getFirstTableCellBounds(editor: Editor, tableId: string) {
 function getNonTableTextBottomOnPage(editor: Editor, pageNo: number) {
   const draw = (editor as any).draw
   const positionList = draw
-    .getPosition()
-    .getLayoutMainPositionListByPage(pageNo)
+    .getCoordinate()
+    .getMainPositionListByPage(pageNo)
     .filter((position: any) => position.element?.type !== ElementType.TABLE)
   if (!positionList.length) {
     return 0

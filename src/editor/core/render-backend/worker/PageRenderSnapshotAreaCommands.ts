@@ -7,8 +7,9 @@ import { PageRenderSnapshotPageBaseCommands } from './PageRenderSnapshotPageBase
 export abstract class PageRenderSnapshotAreaCommands extends PageRenderSnapshotPageBaseCommands {
   protected buildAreaCommands(pageNo: number): IWorkerPaintCommand[] {
     const commandList: IWorkerPaintCommand[] = []
-    const margins = this.draw.getMargins()
-    const width = this.draw.getInnerWidth()
+    // Worker 区域装饰使用目标页边距，保证镜像页边距下背景和边框不向首页对齐。
+    const margins = this.draw.getMargins(pageNo)
+    const width = this.draw.getInnerWidth(pageNo)
     const areaInfo = this.draw.getArea().getAreaInfo()
     areaInfo.forEach(({ area, positionList }) => {
       if (
@@ -60,7 +61,8 @@ export abstract class PageRenderSnapshotAreaCommands extends PageRenderSnapshotP
               ...defaultPlaceholderOption,
               ...area.placeholder
             },
-            firstPosition.coordinate.leftTop[1]
+            firstPosition.coordinate.leftTop[1],
+            pageNo
           )
         )
       }

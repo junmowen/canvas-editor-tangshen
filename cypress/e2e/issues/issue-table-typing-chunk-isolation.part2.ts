@@ -352,8 +352,8 @@ function getFirstTableCellBounds(editor: Editor, tableId: string) {
 function getNonTableTextBottomOnPage(editor: Editor, pageNo: number) {
   const draw = (editor as any).draw
   const positionList = draw
-    .getPosition()
-    .getLayoutMainPositionListByPage(pageNo)
+    .getCoordinate()
+    .getMainPositionListByPage(pageNo)
     .filter((position: any) => position.element?.type !== ElementType.TABLE)
   if (!positionList.length) {
     return 0
@@ -849,7 +849,7 @@ describe('表格输入原分页正确性基线', () => {
       )
 
       const draw = (editor as any).draw
-      const cursorPosition = draw.getPosition().getCursorPosition()
+      const cursorPosition = draw.getCoordinate().getCursorPosition()
       const stats = editor.getRenderBackendStats()
 
       expectTableRelayoutOrFullLayout(stats, '表格输入')

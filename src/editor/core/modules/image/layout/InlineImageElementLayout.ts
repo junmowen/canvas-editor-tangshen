@@ -12,12 +12,7 @@ export function isImageElement(element: IElement | undefined) {
   return element?.type === ElementType.IMAGE
 }
 
-/** 判断当前元素是否是 LaTeX 元素。 */
-export function isLatexElement(element: IElement | undefined) {
-  return element?.type === ElementType.LATEX
-}
-
-/** 图片和 LaTeX 行内测量器。 */
+/** 图片行内测量器。 */
 export class InlineImageElementLayout {
   public measure(payload: {
     element: IElement
@@ -27,8 +22,7 @@ export class InlineImageElementLayout {
   }) {
     const { element, metrics, availableWidth, scale } = payload
     if (
-      !isImageElement(element) &&
-      !isLatexElement(element)
+      !isImageElement(element)
     ) {
       return false
     }

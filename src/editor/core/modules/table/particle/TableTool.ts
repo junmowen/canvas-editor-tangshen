@@ -441,12 +441,12 @@ export class TableTool {
         .getTableParticle()
         .getTdListByColIndex(tableElement.trList!, lastColIndex)
         .find(td => td.rowIndex === 0)
-      const fallbackTdIndex = (tableElement.trList?.[0]?.tdList?.length || 1) - 1
+      const defaultTdIndex = (tableElement.trList?.[0]?.tdList?.length || 1) - 1
       const targetCell = resolveTableCellByIndex({
         tableElement,
         tableIndex: index,
         trIndex: matchedTd?.trIndex ?? 0,
-        tdIndex: matchedTd?.tdIndex ?? fallbackTdIndex
+        tdIndex: matchedTd?.tdIndex ?? defaultTdIndex
       })
       const targetTd = targetCell?.td
       if (!targetTd) return
@@ -454,7 +454,7 @@ export class TableTool {
         index,
         isTable: true,
         trIndex: targetTd.trIndex ?? 0,
-        tdIndex: targetTd.tdIndex ?? fallbackTdIndex,
+        tdIndex: targetTd.tdIndex ?? defaultTdIndex,
         tdId: targetTd.id,
         trId: targetCell.tr.id,
         tableId: tableElement.id

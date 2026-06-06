@@ -103,7 +103,13 @@ export function pickSurroundElementList(elementList: IElement[]) {
   const surroundElementList = []
   for (let e = 0; e < elementList.length; e++) {
     const element = elementList[e]
-    if (element.imgDisplay === ImageDisplay.SURROUND) {
+    if (element.hide || element.control?.hide || element.area?.hide) {
+      continue
+    }
+    if (
+      element.imgDisplay === ImageDisplay.SURROUND ||
+      element.imgDisplay === ImageDisplay.TIGHT
+    ) {
       surroundElementList.push(element)
     }
   }
@@ -123,6 +129,18 @@ export function deleteSurroundElementList(
       elementList.splice(s, 1)
     }
   }
+}
+
+/**
+ * 判断浮动环绕矩形是否属于当前栏区域；单栏或无栏区域由调用方跳过。
+ */
+export function isSurroundRectInColumnRect(
+  surroundRect: { x: number; y: number; width: number; height: number },
+  columnRect: { x: number; y: number; width: number; height: number }
+) {
+  const surroundRight = surroundRect.x + surroundRect.width
+  const columnRight = columnRect.x + columnRect.width
+  return surroundRect.x < columnRight && surroundRight > columnRect.x
 }
 
 /**

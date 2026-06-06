@@ -17,11 +17,10 @@ import {
   ISetControlRowFlexOption
 } from '../../../../interface/Control'
 import { IEditorOption } from '../../../../interface/Editor'
-import { IElement, IElementPosition } from '../../../../interface/Element'
+import { IElement } from '../../../../interface/Element'
 import { EventBusMap } from '../../../../interface/EventBus'
-import { IRange } from '../../../../interface/Range'
 import { deepClone } from '../../../../utils'
-import { pickElementAttr, zipElementList } from '../../../../utils/element'
+import { pickElementAttr, zipElementList } from '../../../../utils/elementZip'
 import { EventBus } from '../../../event/eventbus/EventBus'
 import { Listener } from '../../../runtime/listener/Listener'
 import { RangeManager } from '../../../range/RangeManager'
@@ -31,7 +30,6 @@ import { ControlBorder } from './richtext/Border'
 import { MoveDirection } from '../../../../dataset/enum/Observer'
 import { IRowElement } from '../../../../interface/Row'
 import { RowFlex } from '../../../../dataset/enum/Row'
-import { resolvePositionAtIndex } from '../../../position/utils/resolvePositionAtIndex'
 import {
   isControlPlaceholderComponent,
   isControlPrefixComponent,
@@ -489,28 +487,6 @@ export class Control {
 
   public getControlHighlight(elementList: IElement[], index: number) {
     return this.controlSearch.getControlHighlight(elementList, index)
-  }
-
-  public getContainer(): HTMLDivElement {
-    return this.draw.getPageCanvasHost().getContainer()
-  }
-
-  public getElementList(): IElement[] {
-    return this.draw.getObjectResolver().getElementList()
-  }
-
-  public getPosition(): IElementPosition | null {
-    const { endIndex } = this.range.getEditBoundaryRange()
-    return resolvePositionAtIndex(this.draw, endIndex)
-  }
-
-  public getPreY(): number {
-    const pageNo = this.getPosition()?.pageNo ?? this.draw.getPageNo()
-    return this.draw.getPageCanvasHost().getPageTop(pageNo)
-  }
-
-  public getEditBoundaryRange(): IRange {
-    return this.range.getEditBoundaryRange()
   }
 
   public shrinkBoundary(context: IControlContext = {}) {

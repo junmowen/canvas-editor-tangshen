@@ -38,7 +38,7 @@ describe('control API regressions', () => {
 
       const draw = (editor as any).draw
       const controlElement = draw
-        .getElementList()
+        .getObjectResolver().getElementList()
         .find(
           (element: any) =>
             element.control?.conceptId === 'noPasteControl' &&
@@ -82,8 +82,8 @@ describe('control API regressions', () => {
       })
 
       const draw = (editor as any).draw
-      const elementList = draw.getOriginalMainElementList()
-      const positionList = draw.getPosition().getOriginalPositionList()
+      const elementList = draw.getObjectResolver().getOriginalMainElementList()
+      const positionList = draw.getCoordinate().getOriginalPositionList()
       const valueIndex = elementList.findIndex(
         (element: any) =>
           element.control?.conceptId === 'positionValueControl' &&
@@ -140,7 +140,7 @@ describe('control API regressions', () => {
 
       const findValueElement = () =>
         (editor as any).draw
-          .getElementList()
+          .getObjectResolver().getElementList()
           .find(
             (element: any) =>
               element.control?.conceptId === 'anchorControl' &&
@@ -183,7 +183,7 @@ describe('control API regressions', () => {
 
       const draw = (editor as any).draw
       const controlElement = draw
-        .getElementList()
+        .getObjectResolver().getElementList()
         .find(
           (element: any) =>
             element.control?.conceptId === 'controlChangePosition' &&
@@ -283,8 +283,8 @@ describe('control API regressions', () => {
       editor.command.executeMode(EditorMode.FORM)
 
       const draw = (editor as any).draw
-      const elementList = draw.getOriginalMainElementList()
-      const positionList = draw.getPosition().getOriginalPositionList()
+      const elementList = draw.getObjectResolver().getOriginalMainElementList()
+      const positionList = draw.getCoordinate().getOriginalPositionList()
       const checkboxIndex = elementList.findIndex(
         (element: any) =>
           element.control?.conceptId === 'horizontalCheckbox' &&
@@ -294,7 +294,7 @@ describe('control API regressions', () => {
       expect(checkboxIndex).to.be.greaterThan(-1)
 
       const position = positionList[checkboxIndex]
-      const layoutElement = draw.getElementList()[checkboxIndex]
+      const layoutElement = draw.getObjectResolver().getElementList()[checkboxIndex]
       const pageWrapper = draw.getPageCanvasHost().getPageWrapperList()[
         position.pageNo
       ]
@@ -419,7 +419,7 @@ describe('control API regressions', () => {
 
       const draw = (editor as any).draw
       const placeholder = draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .find(
           (element: any) =>
             element.control?.conceptId === 'sizedPlaceholderControl' &&

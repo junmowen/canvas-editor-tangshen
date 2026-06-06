@@ -169,7 +169,7 @@ describe('issue API coverage batch 12', () => {
         rowFlex: RowFlex.ALIGNMENT
       })
 
-      const firstRow = (editor as any).draw.getOriginalRowList()[0]
+      const firstRow = (editor as any).draw.getObjectResolver().getOriginalRowList()[0]
       expect(firstRow.rowFlex).to.eq(RowFlex.ALIGNMENT)
       expect(getText(firstRow.elementList).replace(/\u200B/g, '')).to.eq(
         'left labelright value'

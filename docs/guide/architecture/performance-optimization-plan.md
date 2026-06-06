@@ -71,7 +71,7 @@
 
 ### 3.2 `Position` / `TableHitTestService`
 
-虽然命中主链已经明显优于旧链路，但热点上仍有这些问题：
+虽然命中主链已经明显优于过渡链路，但热点上仍有这些问题：
 
 1. `floatPositionList` 线性扫描
 2. `pageFragmentPositions` 线性扫描

@@ -427,7 +427,7 @@ interface PointerCoordinatePayload {
 - `drag.ts`
   - 命中使用 `pagePoint?.x ?? evt.offsetX`
 - `DrawViewportService.ts`
-  - 同时兼容 `clientX/clientY` 和 `offsetX/offsetY`
+  - 同时支持 `clientX/clientY` 和 `offsetX/offsetY`
 - `Previewer.ts`
   - 使用 `evt.x / evt.y`
 - `TableTool.ts`
@@ -455,7 +455,7 @@ interface PointerCoordinatePayload {
 - `evt.x/evt.y`
 - `movementX/movementY`
 
-它们只能出现在 `PointerCoordinateService` 内部，作为原始输入兼容层。
+它们只能出现在 `PointerCoordinateService` 内部，作为原始输入适配层。
 
 ### 坐标服务建议
 
@@ -482,7 +482,7 @@ class PointerCoordinateService {
 - 统一 clamp 规则
 - 统一 delta 计算
 
-`DrawViewportService.getEventPagePoint()` 可以保留，但应降级为该 service 的薄代理，不再让事件层直接拼 fallback。
+`DrawViewportService.getEventPagePoint()` 可以保留，但应收敛为该 service 的薄代理，不再让事件层直接拼备用坐标。
 
 ### 必须修改的行为约束
 
@@ -502,7 +502,7 @@ class PointerCoordinateService {
 
 - 能解析出 `pagePoint` 就继续
 - 解析不出 `pagePoint` 就走显式空命中或 nearest-page 策略
-- 不再 fallback 到 `offsetX/offsetY`
+- 不再在事件层备用读取 `offsetX/offsetY`
 
 #### 2. 拖拽位移永远基于统一 delta
 
@@ -514,7 +514,7 @@ class PointerCoordinateService {
 - move 过程：使用 `current.viewport - previous.viewport`
 - commit 过程：使用 `current.viewport - session.startContext.coordinates.viewport`
 
-这样跨元素目标、跨层 DOM、drag 事件兼容性才稳定。
+这样跨元素目标、跨层 DOM、drag 事件适配才稳定。
 
 #### 3. `evt.x / evt.y` 全部归一到 viewport
 
@@ -674,7 +674,7 @@ interface IResolvedPagePoint extends IPoint {
 
 1. 新增 `pointer/coordinates/PointerCoordinateService.ts`
 2. 定义 `viewport / container / page / delta` 四类标准坐标
-3. 替换事件层中所有 `offsetX/offsetY` fallback
+3. 替换事件层中所有 `offsetX/offsetY` 备用读取
 4. 替换 `movementX/movementY` 和 `evt.x/evt.y` 的直接业务消费
 
 这一阶段优先级最高，因为它会直接决定后续命中和拖拽是否稳定。

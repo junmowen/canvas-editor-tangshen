@@ -17,10 +17,11 @@ import { IEditorOption } from '../interface/Editor'
 import { IElement } from '../interface/Element'
 import { ITd } from '../interface/table/Td'
 import { ITr } from '../interface/table/Tr'
+import { resolveFormulaDisplayText } from '../core/modules/formula/model/FormulaTextModel'
 import { getControlInlineContentText } from './elementControl'
 import { convertRowFlexToJustifyContent, convertRowFlexToTextAlign, convertTextAlignToRowFlex, getIsBlockElement, replaceHTMLElementTag } from './elementLayout'
 import { mergeOption } from './option'
-import { zipElementList } from './element'
+import { zipElementList } from './elementZip'
 
 /**
  * DOM/HTML 转换模块。
@@ -465,6 +466,11 @@ export function createDomFromElementList(
         let text = ''
         if (element.type === ElementType.DATE) {
           text = element.valueList?.map(v => v.value).join('') || ''
+        } else if (element.type === ElementType.LATEX) {
+          // 文本型公式控件导出 DOM 时使用展示文本，避免复制为空或退回图片语义。
+          text =
+            element.formula?.displayText ||
+            resolveFormulaDisplayText(element.formula?.latex ?? element.value)
         } else {
           text = element.value
         }

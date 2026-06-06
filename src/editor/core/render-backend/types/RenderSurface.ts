@@ -14,11 +14,11 @@ export interface IRenderSurface {
   offsetY?: number
   /** 当前 surface 的设备像素比。 */
   dpr: number
-  /** surface 挂载的 DOM 宿主，当前阶段通常是 page wrapper。 */
+  /** surface 挂载的 DOM 宿主，通常是 page wrapper。 */
   host: HTMLElement
-  /** 当前阶段实际复用的 HTMLCanvasElement。 */
+  /** 实际复用的 HTMLCanvasElement。 */
   canvas: HTMLCanvasElement
-  /** 当前阶段实际使用的 2D 上下文。 */
+  /** 实际使用的 2D 上下文。 */
   ctx2d: CanvasRenderingContext2D
   /** 是否已挂载到页面 DOM 中。 */
   mounted: boolean

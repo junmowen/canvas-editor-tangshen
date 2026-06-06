@@ -1,6 +1,6 @@
 import { MaxHeightRatio } from '../dataset/enum/Common'
 
-/** footer契约，用于约束公开 API中传递的数据结构。 */
+/** footer契约，用于约束公开 API中传递的数据结构。内容 pageScope 见 IEditorData.footerPageScopes。 */
 export interface IFooter {
   /** 下侧偏移或边距，用于计算区域边界。 */
   bottom?: number

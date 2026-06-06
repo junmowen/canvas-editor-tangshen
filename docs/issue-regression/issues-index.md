@@ -547,7 +547,7 @@
 | [#805](https://github.com/Hufe921/canvas-editor/issues/805) | closed |  | 字体能不能 不使用本地字体 而是把字体挂载到项目中 |
 | [#804](https://github.com/Hufe921/canvas-editor/issues/804) | closed |  | 格式设置问题 |
 | [#802](https://github.com/Hufe921/canvas-editor/issues/802) | closed |  | 表格内容过多，表格错位 |
-| [#801](https://github.com/Hufe921/canvas-editor/issues/801) | closed |  | 右键粘贴在http环境下不兼容 |
+| [#801](https://github.com/Hufe921/canvas-editor/issues/801) | closed |  | 右键粘贴在 http 环境下不适配 |
 | [#799](https://github.com/Hufe921/canvas-editor/issues/799) | closed | enhancement | 表格 tr和td 增加extension属性 |
 | [#798](https://github.com/Hufe921/canvas-editor/issues/798) | closed |  | Is there any server end export  |
 | [#797](https://github.com/Hufe921/canvas-editor/issues/797) | closed |  | 控件删除的bug |

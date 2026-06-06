@@ -1,6 +1,9 @@
-import { isIOS } from '../../../utils/ua'
 import { CanvasEvent } from '../CanvasEvent'
 import { debugClick } from '../debug/click'
+import {
+  focusIOSInputAdapter,
+  scheduleTableCellClickReset
+} from '../pointer/policy/ClickInteractionPolicy'
 
 /**
  * 处理单击事件。
@@ -9,20 +12,6 @@ import { debugClick } from '../debug/click'
  */
 export function click(evt: MouseEvent, host: CanvasEvent): void {
   debugClick(evt, host)
-  const draw = host.getDraw()
-  if (evt.detail === 1) {
-    const { multiClick } = host.getPointerSession()
-    if (multiClick.tableCellClickResetTimer !== null) {
-      window.clearTimeout(multiClick.tableCellClickResetTimer)
-    }
-    multiClick.tableCellClickResetTimer = window.setTimeout(() => {
-      multiClick.lastTableCellDblclickInfo = null
-      multiClick.tableCellDblclickCount = 0
-      multiClick.tableCellClickResetTimer = null
-    }, 250)
-  }
-
-  if (isIOS && !draw.isReadonly()) {
-    draw.getCursor().getAgentDom().focus()
-  }
+  scheduleTableCellClickReset(host, evt)
+  focusIOSInputAdapter(host)
 }

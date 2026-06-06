@@ -38,7 +38,7 @@ export class ChunkLayoutStats {
     dirtyRangeLastActualStartPageNo: null,
     dirtyRangeLastActualEndPageNo: null,
     dirtyRangeScheduleTakeoverCount: 0,
-    dirtyRangeScheduleFallbackCount: 0
+    dirtyRangeScheduleCorrectionCount: 0
   }
 
   /** 记录一次 patch 尝试结果。 */
@@ -120,8 +120,8 @@ export class ChunkLayoutStats {
     dirtyRangeLastActualEndPageNo: number | null
     /** 脏区范围scheduletakeovercount，用于统计当前场景的发生次数。 */
     dirtyRangeScheduleTakeoverCount: number
-    /** 脏区范围schedule降级count，用于统计当前场景的发生次数。 */
-    dirtyRangeScheduleFallbackCount: number
+    /** 脏区范围schedule修正count，用于统计当前场景的发生次数。 */
+    dirtyRangeScheduleCorrectionCount: number
   }): IChunkLayoutPipelineStats {
     return {
       ...this.stats,
@@ -147,7 +147,7 @@ export class ChunkLayoutStats {
       dirtyRangeLastActualStartPageNo: stats.dirtyRangeLastActualStartPageNo,
       dirtyRangeLastActualEndPageNo: stats.dirtyRangeLastActualEndPageNo,
       dirtyRangeScheduleTakeoverCount: stats.dirtyRangeScheduleTakeoverCount,
-      dirtyRangeScheduleFallbackCount: stats.dirtyRangeScheduleFallbackCount
+      dirtyRangeScheduleCorrectionCount: stats.dirtyRangeScheduleCorrectionCount
     }
   }
 
@@ -185,7 +185,7 @@ export class ChunkLayoutStats {
       dirtyRangeLastActualStartPageNo: null,
       dirtyRangeLastActualEndPageNo: null,
       dirtyRangeScheduleTakeoverCount: 0,
-      dirtyRangeScheduleFallbackCount: 0
+      dirtyRangeScheduleCorrectionCount: 0
     }
   }
 }

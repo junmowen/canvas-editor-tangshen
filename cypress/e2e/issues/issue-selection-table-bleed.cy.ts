@@ -67,7 +67,7 @@ describe('selection rendering around tables', () => {
         originalRender(ctx, x, y, width, height)
       }
 
-      draw.getPosition().setPositionContext({
+      draw.getCoordinate().setPositionContext({
         isTable: false
       })
       range.setRange(2, 20)

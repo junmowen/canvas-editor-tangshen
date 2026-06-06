@@ -7,7 +7,7 @@ import { IEditorData, ISetValueOption, IUpdateOption } from '../../interface/Edi
 import { IElement, IElementPosition, IInsertElementListOption } from '../../interface/Element'
 import { ICopyOption, IPasteOption } from '../../interface/Event'
 import { IRange } from '../../interface/Range'
-import { formatElementContext } from '../../utils/element'
+import { formatElementContext } from '../../utils/elementContext'
 import { mergeOption } from '../../utils/option'
 
 /**

@@ -9,6 +9,8 @@ import { IArea } from './Area'
 import { IBlock } from './Block'
 import { ICheckbox } from './Checkbox'
 import { IControl } from './Control'
+import { IFormula } from './Formula'
+import { IPageColumns } from './PageColumns'
 import { IRadio } from './Radio'
 import { ITextDecoration } from './Text'
 import { ITitle } from './Title'
@@ -88,6 +90,8 @@ export interface IElementStyle {
   rowIndent?: number
   /** 行悬挂缩进，用于计算首行外的文本起点。 */
   rowHangingIndent?: number
+  /** 段落局部分栏配置，用于让选中内容独立于页面全局分栏排版。 */
+  columns?: IPageColumns
   /** 字间距，用于排版时计算字符间隔。 */
   letterSpacing?: number
   /** spacebefore数值，用于当前布局、统计或索引计算。 */
@@ -105,11 +109,8 @@ export interface IElementStyle {
   keepLines?: boolean
   /** widow控件开关，用于控制当前流程的判断分支。 */
   widowControl?: boolean
-  tabStops?: {
-    /** 位置数据，用于描述元素、光标或浮层所在坐标。 */
-    position: number
-    alignment?: 'left' | 'center' | 'right' | 'decimal' | 'bar'
-  }[]
+  /** 段落制表位列表，位置单位为编辑器内部像素，按段落文本起点计算。 */
+  tabStops?: ITabStop[]
   /** editor2 文档样式标识，用于内置/自定义样式回显。 */
   styleId?: string
   /** editor2 文档样式名称，用于菜单状态回显。 */
@@ -179,6 +180,14 @@ export interface IElementStyle {
   }
   /** editor2 纵横混排样式。 */
   textCombine?: boolean
+}
+
+/** 段落制表位配置，用于控制 TAB 元素跳转到指定位置。 */
+export interface ITabStop {
+  /** 制表位位置，按段落文本起点计算，单位为编辑器内部像素。 */
+  position: number
+  /** 制表位对齐方式；第一批布局先按位置落点处理，后续扩展对齐测量。 */
+  alignment?: 'left' | 'center' | 'right' | 'decimal' | 'bar'
 }
 
 /** 行indent调用载荷，聚合执行该操作所需的输入数据。 */
@@ -336,6 +345,8 @@ export interface IRadioElement {
 export interface ILaTexElement {
   /** latexsvg文本，用于标识、展示或匹配当前对象。 */
   laTexSVG?: string
+  /** 结构化公式模型，用于支持可编辑、可搜索和可导入导出的专业公式。 */
+  formula?: IFormula
 }
 
 /** date元素，描述文档元素在该场景下扩展的业务属性。 */
@@ -479,6 +490,8 @@ export interface IElementMetrics {
   boundingBoxAscent: number
   /** boundingboxdescent数值，用于当前布局、统计或索引计算。 */
   boundingBoxDescent: number
+  /** 命中的制表位对齐方式，用于渲染竖线制表位等非文本标记。 */
+  tabStopAlignment?: ITabStop['alignment']
 }
 
 /** 元素位置契约，用于约束公开 API中传递的数据结构。 */

@@ -49,7 +49,7 @@
    - snapshot 驱动命中与导航
    - 渲染层与交互宿主分层
    - visible-only / overlay-only / invalidation 的局部刷新
-   - 旧链路与补丁层物理删除
+   - 过渡链路与补丁层物理删除
 3. 当时的主要剩余工作已经不再是“选择路线”，而是“继续压平主链内部层级并删除退出主链的壳层”。
 
 ### 当前阶段总结
@@ -61,15 +61,15 @@
 | 阶段 3 | 已完成 | 导航主规则已集中并稳定服务主链。 |
 | 阶段 4 | 已完成 | 快照结构与关键索引已真实服务命中/导航/渲染。 |
 | 阶段 5 | 已完成 | 渲染层和交互宿主迁移已完成。 |
-| 阶段 6 | 已完成 | 当前阶段定义下的旧链路删除与主链收口任务已完成。 |
+| 阶段 6 | 已完成 | 当前阶段定义下的过渡链路删除与主链收口任务已完成。 |
 
 ### 当前阶段后的剩余项
 
 - 后续仍可继续削薄 `Position / CommandAdapt / RowRenderer` 等热点大方法内部层级。
-- 后续仍可继续把少量历史命名和公开兼容面做温和收尾。
+- 后续仍可继续把少量历史命名和公开过渡面做温和收尾。
 - 当前这些事项更偏向持续优化，而不再是路线是否站稳的问题。
 - `Position.getSelectionPositionList()` 这层只服务命令上下文拼装的公开薄壳也已被删除，而对应的 `CommandAdapt.getRangeContext()` 已直接消费 `RangeManager` 的投影结果与 `Position` 的基础位置列表。这说明当前收口已经开始继续削掉“Position 帮其他域做投影拼装”的跨域包装接口，让职责边界进一步贴近“Position 只做位置、Range 只做范围投影”的目标形态。
-- `Control.getRange()` 这层只做名称兼容的旧壳也已被删除，控件域改为直接依赖 `getEditBoundaryRange()`。这说明当前收口已经开始继续清理“旧 API 名称壳层”而不只是删 helper 文件，主干对象的公开面也在同步变薄。
+- `Control.getRange()` 这层只做名称过渡的旧壳也已被删除，控件域改为直接依赖 `getEditBoundaryRange()`。这说明当前收口已经开始继续清理“旧 API 名称壳层”而不只是删 helper 文件，主干对象的公开面也在同步变薄。
 - `CommandAdapt.getActivePublicRange()/getActiveEditBoundaryRange()` 这两层私有 range 转发壳也已被删除，说明当前收口已经继续从“删字段壳、删 helper 壳”走到“删主干类内部的中间读取壳”，主链正在持续变得更直接。
 - `Draw` 里 `RowRenderer` 与 `PageRenderer` 也已进一步提升为 draw 级宿主成员，说明当前收口已经不只是在 table 域和命令域删壳，还在继续把渲染主链从“临时实例化”收束到“统一宿主复用”的运行形态。
 - `Control.getContainer()/getPosition()/getPreY()` 这三层 popup / picker 宿主读取包装也已被删除，说明当前收口已经继续向控件子域推进，不只是在主编辑链上删壳，也在持续清掉“Control 帮子控件转发 draw/position/container”的历史包装层。
@@ -385,14 +385,14 @@ WPS 的 `JSAPI`、`OpenAPI`、中台能力是分层的。
 不行。  
 模型不统一时，增量渲染只会把错误更快地画出来。
 
-### 误区 3：保留旧链路兼容
+### 误区 3：保留过渡链路双轨
 
 不行。  
 双轨长期共存会把复杂度翻倍。
 
 ### 误区 4：先决定 OT / CRDT 等协同算法
 
-暂时不建议。  
+现阶段不建议。  
 目前最核心的问题是本地编辑模型与选区模型不统一。  
 先把本地单人编辑做成稳定平台，再考虑协同层插拔。
 
@@ -438,7 +438,7 @@ WPS 的 `JSAPI`、`OpenAPI`、中台能力是分层的。
 1. 已经开始从“坐标修补”转向“布局快照 + 选区投影 + 导航服务”的主路线。
 2. `TableHitTestService` 与 `TableNavigationService` 已经承接主干职责，方向与本文第 5 节、第 6 节一致；其中 `Position -> table` 主命中已切到 snapshot 优先。
 3. `TableLayoutSnapshot` 已经不是空壳，而是开始承载页级 fragment、逻辑表格映射、cell slice、fragment cell bounds 等索引。
-4. 当前最主要的剩余工作不再是路线选择，而是继续把 `Position / render / event utils` 中残留的运行期推导替换成 snapshot 查询，并同步删除已经脱离主链的旧缓存 / 过渡 API；其中表格主命中链上的 `td.positionList` fallback 与 `cellAreaPosition` 覆盖拼接都已被实际移除，`click / mousemove / mouseup`、`dragover` 与 `CommandAdapt.getPositionContextByEvent()` 已直接接入 `TableHitTestService`，selection start 的表格分支、existing-caret anchor helper 与共用 `mouseDownIndex` 半区命中逻辑也已开始抽离到 `table/selection` / `range/utils`，渲染侧的 fragment ghost / boundary 局部补丁则已收口为通用清行重绘，而 `Position.getSelectionPositionList()` / `CommandAdapt.getRangeContext()` / `CommandAdapt.title()` / `CommandAdapt.getHyperlinkRange()` / `RangeManager` 的公开行段落查询与 `ContextMenu / Draw / Control / TableOperate / TableParticle / ListParticle / DateParticle / Area / Group / GlobalEvent / CommandAdapt` 这组核心模块的内部编辑边界读取也都已被显式接口化；同一层级里不再混用裸的 raw range 与公开投影语义。
+4. 当前最主要的剩余工作不再是路线选择，而是继续把 `Position / render / event utils` 中残留的运行期推导替换成 snapshot 查询，并同步删除已经脱离主链的旧缓存 / 过渡 API；其中表格主命中链上的 `td.positionList` 回退 与 `cellAreaPosition` 覆盖拼接都已被实际移除，`click / mousemove / mouseup`、`dragover` 与 `CommandAdapt.getPositionContextByEvent()` 已直接接入 `TableHitTestService`，selection start 的表格分支、existing-caret anchor helper 与共用 `mouseDownIndex` 半区命中逻辑也已开始抽离到 `table/selection` / `range/utils`，渲染侧的 fragment ghost / boundary 局部补丁则已收口为通用清行重绘，而 `Position.getSelectionPositionList()` / `CommandAdapt.getRangeContext()` / `CommandAdapt.title()` / `CommandAdapt.getHyperlinkRange()` / `RangeManager` 的公开行段落查询与 `ContextMenu / Draw / Control / TableOperate / TableParticle / ListParticle / DateParticle / Area / Group / GlobalEvent / CommandAdapt` 这组核心模块的内部编辑边界读取也都已被显式接口化；同一层级里不再混用裸的 raw range 与公开投影语义。
 5. overlay 层已经从“基础设施预埋”进入真实主链：selection/search/control highlight、可视 cursor、`TableTool`、`Previewer` 页内辅助层与图片 modal 宿主都已切到 per-page overlay / page host，分页增量渲染与交互宿主迁移已经实装。
 6. 截至当前，`ContextMenu / Draw / Control / TableOperate / TableParticle / ListParticle / DateParticle / Area / Group / GlobalEvent / CommandAdapt`、控件子类、分页渲染器与主事件 handler 都已经显式区分“公开投影”与“内部编辑边界”，这条范围语义去歧义主线已基本收束完成。
 7. 阶段 5 目前采取的是更保守的落地路径：先把 `pageRenderScope`、分页页包装与 per-page overlay canvas / ctx 基础设施补齐，再逐步迁移真实选区绘制；这样可以先拿到分页局部刷新收益，同时避免在 overlay 切换时把表格分页高亮主链打歪。
@@ -449,7 +449,7 @@ WPS 的 `JSAPI`、`OpenAPI`、中台能力是分层的。
 12. 在此基础上，`Draw.scheduleFrameRender()` 也已从直通调用升级为真正的 RAF 合并调度点，并在 `mouseup` 收尾与滚动触发的可见页刷新链上同步 flush pending render；这说明阶段 5 已经不只是在补 visible-only 分支，而是在开始为后续 dirty/invalidation manager 建统一渲染调度边界。
 13. `RenderInvalidationManager` 现已从文档待办变成实际代码模块，并正式接管 `visible pages dirty` 与帧级调度；这说明阶段 5 已经开始把“局部刷新策略”从 `Draw` 内联分支提升为可持续扩展的独立渲染失效层。
 14. 在此基础上，`TableOverlayRenderer` 也已从规划模块变成实际代码模块，并开始承接 overlay 页清理与 `selectionCtx` 分发；overlay canvas 已真实接入 DOM，选区矩形也已切到 overlay 为权威输出，说明阶段 5 已经跨过了“只做双写预埋”的过渡点，开始进入真实渲染层迁移。
-15. 对应的 Cypress 表格回归采样基线也已切到 composited page 结果，不再依赖“只采样 base canvas”“canvas 顺序等于 pageNo”这类旧假设；这意味着后续光标与 table tool 迁移到 overlay 时，不需要再反向兼容旧测试模型。
+15. 对应的 Cypress 表格回归采样基线也已切到 composited page 结果，不再依赖“只采样 base canvas”“canvas 顺序等于 pageNo”这类旧假设；这意味着后续光标与 table tool 迁移到 overlay 时，不需要再反向保留旧测试模型。
 16. 在此基础上，分页页包装里又已补出每页独立的 overlay DOM host，`Cursor` 可视层与 `TableTool` 也已切入页级 overlay host；这说明阶段 5 已经不再只是迁像素绘制，而是开始把实际交互 DOM 也从 editor container 的全局层收回到 page wrapper 层。
 17. 在此基础上，`Previewer` 的页内辅助层也已向页级 overlay host 收口，`resizerSelection` 与拖拽镜像不再依赖 editor container 的全局定位；进一步地，图片全屏预览 modal 也已切到 editor 自己的 modal host，这说明阶段 5 的宿主迁移已经从页内辅助层推进到了原本仍挂在 `document.body` 的全局交互层。
 18. 在此基础上，selection-overlay 专用刷新路径也已真正打通：拖选高频帧会优先只清理并重绘相关页 overlay，而不再回退到整页 visible render；这说明 `selection dirty / overlay dirty` 已经从“文档待办”变成实际被消费的调度语义。
@@ -475,7 +475,7 @@ WPS 的 `JSAPI`、`OpenAPI`、中台能力是分层的。
 38. 再进一步，`resolveAdjustedPointerPosition.ts` 这层只剩单一调用者的非表格命中归一化包装也已回收进 `TableHitTestService`。这说明命中域当前不只是在“把表格逻辑搬回 service”，而是在把原本分散在事件工具层的整条命中主链持续压缩回一个更明确的服务边界里。
 39. 在此基础上，selection-start 侧那两层只服务事件起点链的 helper 也已从 `range/utils` 挪回 `event/utils`，而 `hitLineStartIndex` 也已从通用命中类型中退出。这说明当前项目已经开始不仅清理“表格命中”，也在同步把 selection-start 相关的辅助逻辑和类型噪音从通用域里剥离出去。
 40. 再往下，`resolveTableCellPositionByPagePoint.ts` 这层也已整段并回 `TableHitTestService`，说明命中域当前已经从“service + 多个单用 helper”继续向“service 内聚实现 + 更少跳转文件”推进，结构越来越接近真正的平台型命中服务。
-41. 在此基础上，`TableHitTestService` 还进一步固定持有了 `snapshotAccessor`，并删除了 `resolveFragmentCellSlice()` 里对快照 map 的重复 fallback。说明命中域当前不仅在减少文件跳转，也在持续统一 service 内部访问 snapshot 的方式。
+41. 在此基础上，`TableHitTestService` 还进一步固定持有了 `snapshotAccessor`，并删除了 `resolveFragmentCellSlice()` 里对快照 map 的重复 回退。说明命中域当前不仅在减少文件跳转，也在持续统一 service 内部访问 snapshot 的方式。
 42. 进一步地，`TableHitTestService.resolvePointerPosition()` 也已拆成内部扩展结果与对外公共结果两层，命中域内部的 `hitTargetIndex / hitLineStartIndex` 不再通过公共返回值泄露给调用方。这说明当前项目正在把“命中服务的内部辅助信息”和“对外公共命中语义”做更清晰的边界隔离。
 43. 再进一步，`TableHitTestService` 内部又删掉了两层只被单处消费的实现，并直接复用前一步命中结果里已经算好的 `activeSlice`，说明当前命中服务不仅在收紧对外公共面，也在持续压缩内部调用栈和重复查询。
 44. 在此基础上，`Draw` 也已提升为 `TableHitTestService` 与 `TableLayoutSnapshotAccessor` 的统一宿主，命中主链和快照访问主链都开始从“多处临时实例化”收口到 draw 级单例。这说明当前重构已开始从“逻辑收口”进一步走向“服务生命周期收口”。
@@ -487,9 +487,9 @@ WPS 的 `JSAPI`、`OpenAPI`、中台能力是分层的。
 52. 再往下，事件层里只负责字段转发的 `applyPositionResultContext.ts` 与 `applyResolvedSelectionRange.ts` 也已被物理删除，`click / drag / mousedown / mousemove / mouseup` 主链直接就地消费命中结果和拖选结果。这说明当前收口已经从“删主干 service 壳层”继续推进到“删事件层无语义胶水文件”，让事件主链更接近直接表达真实状态写入。
 53. 在此基础上，`TableOverlayRenderer` 也已继续从“已有模块”推进到“draw 级统一宿主”：`PageRenderer` 与 `RenderInvalidationManager` 不再各自实例化 overlay renderer，而是共同复用 `Draw` 持有的唯一宿主实例。这说明当前收口已经进一步进入渲染宿主层，而不只停留在 table service 层。
 54. 再往下，`resolveExistingCaretAnchorIndex.ts` 这层只剩单处消费的 selection-start helper 也已并回 `resolveSelectionStartState.ts` 并物理删除，说明当前收口还在继续把事件起点链里的单用 helper 往主链内收，而不是停留在 table service 或渲染宿主层。
-55. 与此同时，`Position.resolveRowBoundaryPosition()` 这层只剩单处消费的页边界兜底 helper 也已内联回 `resolvePageBoundaryFallback()`，说明当前收口还在继续深入到 position 主链内部的方法层，而不只是删文件级壳层。
-56. 再往下，`Position.resolveActiveRowBandFallback()` 这层只剩单处消费的页内行带兜底 helper 也已内联回 `getPositionByXY()`，说明当前收口正在继续直接压平 position 主命中链内部的局部中转层。
-57. 再进一步，`Position.resolvePageBoundaryFallback()` 这层只剩单处消费的页边界兜底 helper 也已内联回 `getPositionByXY()`，说明当前收口已经开始把 position 主命中链最外层的页内/页边界裁决也继续压回同一入口。
+55. 与此同时，`Position.resolveRowBoundaryPosition()` 这层只剩单处消费的页边界兜底 helper 也已内联，说明当前收口还在继续深入到 position 主链内部的方法层，而不只是删文件级壳层。
+56. 再往下，页内行带兜底 helper 也已内联回 `getPositionByXY()`，说明当前收口正在继续直接压平 position 主命中链内部的局部中转层。
+57. 再进一步，页边界兜底 helper 也已内联回 `getPositionByXY()`，说明当前收口已经开始把 position 主命中链最外层的页内/页边界裁决也继续压回同一入口。
 58. 与此同时，fresh direct-drag 的 table selection 起点也已重新收回 hit-range 主路径，`dragAnchorSource` 在 `mousemove / mouseup -> resolveSelectionDragRange()` 链上已完整透传，说明当前推进并不只是删壳，也在同步修复事件起点和拖选裁决之间最后一段语义脱节。
 59. 再往下，`CommandAdapt.getRangeContext()` 也已开始继续从“大方法堆逻辑”拆成编排层与局部组装 helper，说明当前收口已经不只在删壳，也在继续压平命令层高频公开读取入口内部的职责块。
 60. 与此同时，`RowRenderer.drawSelection()` 也已继续把跨行列表格选区裁决与普通选区矩形绘制拆成局部 helper，说明渲染层当前也在从“主方法内混合裁决 + 混合绘制”进一步朝更清晰的编排结构收口。
@@ -520,7 +520,7 @@ WPS 的 `JSAPI`、`OpenAPI`、中台能力是分层的。
   - hit-test 主入口集中
   - navigation 主规则集中
   - 旧补丁壳持续物理删除
-- 验证结果已经重新回到固定表格基线 `47 / 47` 全绿，因此当前工作重点继续是阶段 6 收口，不需要回退到“双轨兼容旧主链”的方向。
+- 验证结果已经重新回到固定表格基线 `47 / 47` 全绿，因此当前工作重点继续是阶段 6 收口，不需要回退到“双轨保留旧主链”的方向。
 
 ### 2026-04-22 第二轮对齐补充
 
@@ -566,5 +566,5 @@ WPS 的 `JSAPI`、`OpenAPI`、中台能力是分层的。
 - 该轮时点的实现仍然没有偏离本文路线。
 - `resolveExistingCaretAnchorIndex.ts` 被并回 `resolveSelectionStartState.ts` 这件事，进一步说明该轮阶段已经不只是“把主规则迁进中心 service”，也在继续清理事件起点链内部只剩单处消费的 helper 壳层。
 - `Position.resolveRowBoundaryPosition()` 被内联删除，则进一步说明该轮阶段也在同步压平 `Position` 内部的页边界兜底主链，剩余工作已经越来越偏向“删内部方法层级”而不是“重搭主干对象”。
-- `Position.resolveActiveRowBandFallback()` 也被内联删除，则进一步说明该轮阶段已经开始直接削薄 `getPositionByXY()` 周边的单用兜底层，剩余工作继续集中在主链内部层级压平。
-- `Position.resolvePageBoundaryFallback()` 也被内联删除，并且 fixed baseline `57 / 57` 重新全绿，则说明该轮阶段的推进已经不只是结构压平，相关拖选主链修复也已经通过真实分页表格回归重新确认。
+- 页内行带兜底 helper 也被内联删除，则进一步说明该轮阶段已经开始直接削薄 `getPositionByXY()` 周边的单用兜底层，剩余工作继续集中在主链内部层级压平。
+- 页边界兜底 helper 也被内联删除，并且 fixed baseline `57 / 57` 重新全绿，则说明该轮阶段的推进已经不只是结构压平，相关拖选主链修复也已经通过真实分页表格回归重新确认。

@@ -6,6 +6,12 @@ import {
   IChunkLayoutPatchResult
 } from './ChunkLayoutTypes'
 import { getRowsHeight } from './ChunkPatchAlgorithms'
+import {
+  applyChunkMeasureRowColumnContext,
+  canUseChunkMeasureOldRows,
+  getChunkMeasureRiskReason,
+  isChunkColumnMeasureRowCountStable
+} from './ChunkLayoutMeasurePolicy'
 
 /** chunk 局部测量器，负责把 chunk 元素重新排成行和位置列表。 */
 export class ChunkLayoutMeasurer {
@@ -39,17 +45,36 @@ export class ChunkLayoutMeasurer {
     let rowList = layoutCache?.rowList
     let positionList = layoutCache?.positionList
     let nextHeight = layoutCache?.height
+    if (!canUseChunkMeasureOldRows(context.oldChunkRows)) {
+      return {
+        measureResult: null,
+        result: { patched: false, reason: 'chunk-surround-row' }
+      }
+    }
     if (!rowList || !positionList || nextHeight === undefined) {
       rowList = this.draw.computeRowList({
         startX: context.startX,
         startY: context.startY,
         pageHeight: this.draw.getHeight(),
-        mainOuterHeight: this.draw.getMainOuterHeight(),
-        isPagingMode: false,
+        mainOuterHeight: this.draw.getMainOuterHeight(context.pageNo),
+        startPageNo: context.pageNo,
         innerWidth: context.innerWidth,
         surroundElementList: [],
         elementList: context.chunkElementList,
         sourceStartIndex: context.chunk.startIndex
+      })
+      if (!isChunkColumnMeasureRowCountStable({
+        oldRowList: context.oldChunkRows,
+        rowList
+      })) {
+        return {
+          measureResult: null,
+          result: { patched: false, reason: 'chunk-column-row-count-changed' }
+        }
+      }
+      applyChunkMeasureRowColumnContext({
+        rowList,
+        context
       })
       positionList = []
       this.draw.getCoordinate().computePageRowPosition({
@@ -73,20 +98,15 @@ export class ChunkLayoutMeasurer {
       })
     }
     const oldHeight = getRowsHeight(context.oldChunkRows)
-    if (!rowList.length) {
+    const measureRisk = getChunkMeasureRiskReason({
+      rowList,
+      positionList,
+      expectedElementCount: context.chunkElementList.length
+    })
+    if (measureRisk) {
       return {
         measureResult: null,
-        result: { patched: false, reason: 'empty-row' }
-      }
-    }
-    const measuredElementCount = this.getMeasuredElementCount(rowList)
-    if (
-      measuredElementCount !== context.chunkElementList.length ||
-      positionList.length !== context.chunkElementList.length
-    ) {
-      return {
-        measureResult: null,
-        result: { patched: false, reason: 'chunk-measure-count-mismatch' }
+        result: { patched: false, reason: measureRisk }
       }
     }
     this.normalizeRowIndexes(rowList, context.oldChunkRows[0].rowIndex)
@@ -102,11 +122,6 @@ export class ChunkLayoutMeasurer {
     }
   }
 
-  /** 统计测量行内元素数量，确保局部排版没有吞掉或重复元素。 */
-  private getMeasuredElementCount(rowList: IChunkLayoutMeasureResult['rowList']) {
-    return rowList.reduce((count, row) => count + row.elementList.length, 0)
-  }
-
   /** 把局部 rowIndex 调整到整篇文档行号。 */
   private normalizeRowIndexes(
     rowList: IChunkLayoutMeasureResult['rowList'],
@@ -116,4 +131,5 @@ export class ChunkLayoutMeasurer {
       rowList[i].rowIndex = startRowIndex + i
     }
   }
+
 }

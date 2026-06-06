@@ -62,7 +62,7 @@
 - `components`: 重型对象注册表
 - `services`: 流程与桥接服务注册表
 
-也就是说，`Draw` 本身已经不再是主要实现体，而更像兼容 facade。
+也就是说，`Draw` 本身已经不再是主要实现体，而更像对外 facade。
 
 ## 当前收口方向
 
@@ -104,7 +104,7 @@
 当前阶段，`Draw` 更像：
 
 - 对外主门面
-- 对内兼容接线层
+- 对内过渡接线层
 - 构造期 bootstrap 稳定器
 
 也就是说，剩余表面积已经不是简单的“越少越好”，而是要按职责分级处理。
@@ -118,18 +118,18 @@
 
 当前已经通过两种方式解决：
 
-1. 纯计算项允许 fallback 到 `runtime/viewState`
+1. 纯计算项允许从 `runtime/viewState` 读取默认状态
 2. 核心重型对象通过 bootstrap 引用兜底，再由 getter 回退访问
 
 这意味着：
 
-- `Draw` 的 facade getter 现在不只是兼容层，也是构造期依赖稳定器
+- `Draw` 的 facade getter 现在不只是对外门面，也是构造期依赖稳定器
 - 后续如果继续删除 getter，必须先消除这些构造期反查关系
 
 进一步的落地约束：
 
 - 处于 `DrawComponentRegistry` 构造链中的对象，不应直接改成依赖 `draw.getComponents()`
-- 这类对象必须继续走 facade getter，以利用 bootstrap fallback
+- 这类对象必须继续走 facade getter，以利用 bootstrap 兜底引用
 - 外围依赖迁移应优先选择：
   - 构造完成后才运行的模块
   - 只缓存稳定依赖且不参与 bootstrap 链的模块
@@ -168,7 +168,7 @@
 
 1. 先把外围模块改成优先依赖 `components/services/runtime`
 2. 再统计哪些 facade getter 已经没有外部消费者
-3. 最后再删除兼容 getter
+3. 最后再删除过渡 getter
 
 当前已经进入第 3 步，第一批已删除 facade getter：
 
@@ -266,7 +266,7 @@
 - `getComponents()`
 - `getServices()`
 - `getPageCanvasHost()`
-- `getTableLayoutSnapshotAccessor()`
+- `getServices().tableLayoutSnapshotAccessor`
 
 ### 后续如有需要再退役
 

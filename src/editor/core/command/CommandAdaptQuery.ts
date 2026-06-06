@@ -9,21 +9,49 @@ import {
   IEditorText
 } from '../../interface/Editor'
 import { IElement, IElementPosition } from '../../interface/Element'
+import { IDocumentStyle } from '../../interface/Style'
 import { IRange, RangeContext, RangeRect } from '../../interface/Range'
 import { ISearchResultContext } from '../../interface/Search'
 import { deepClone } from '../../utils'
 import {
-  createDomFromElementList,
   pickElementAttr,
-  getTextFromElementList,
   zipElementList
-} from '../../utils/element'
+} from '../../utils/elementZip'
+import { createDomFromElementList } from '../../utils/elementDom'
+import { getTextFromElementList } from '../../utils/elementText'
 import { IGetAreaValueOption, IGetAreaValueResult } from '../../interface/Area'
+import { ITypesettingLayoutSnapshot } from '../../interface/TypesettingLayout'
+import {
+  ITitleTree,
+  ITitleTreeNode,
+  ITitleTreeRange
+} from '../../interface/Title'
+import { buildTitleTree } from '../modules/title/query/TitleTreeBuilder'
+import { FormulaDomain, IFormulaSymbol } from '../../interface/Formula'
+import { getFormulaSymbolList } from '../modules/formula/model/FormulaSymbolLibrary'
+import {
+  createFormulaFromMathML,
+  normalizeFormulaFromElement
+} from '../modules/formula/model/FormulaModel'
+import {
+  createOoxmlDocxPackageBlob,
+  createOoxmlPackageParts
+} from '../export/ooxml/OoxmlPackage'
 
 /**
  * 查询命令适配模块，负责文档数据、选区上下文、关键词上下文等只读结果获取。
  */
 export class CommandAdaptQuery extends CommandAdaptSearch {
+  /** 标题树查询缓存，按正文数据版本和布局版本失效，避免频繁重建章节树。 */
+  private titleTreeCache: {
+    /** 正文数据版本，用于识别标题文本或结构是否变化。 */
+    documentVersion: number
+    /** 布局版本，用于识别标题所在页码是否变化。 */
+    layoutVersion: number
+    /** 缓存的标题树；无标题时缓存 null，避免重复扫描。 */
+    tree: ITitleTree | null
+  } | null = null
+
   /** 导出当前文档图片数据。 */
   public getImage(payload?: IGetImageOption): Promise<string[]> {
     return this.draw.getDataURL(payload)
@@ -34,9 +62,145 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
     return this.options
   }
 
+  /** 获取段落块/栏/页排版中间层快照。 */
+  public getTypesettingLayoutSnapshot(): ITypesettingLayoutSnapshot | null {
+    return this.draw.getTypesettingLayoutSnapshot()
+  }
+
+  /** 获取当前正文标题父子树。 */
+  public getTitleTree(): ITitleTree | null {
+    const version = this.getTitleTreeCacheVersion()
+    if (
+      !this.titleTreeCache ||
+      this.titleTreeCache.documentVersion !== version.documentVersion ||
+      this.titleTreeCache.layoutVersion !== version.layoutVersion
+    ) {
+      this.titleTreeCache = {
+        ...version,
+        tree: buildTitleTree({
+          elementList: this.draw.getObjectResolver().getOriginalMainElementList(),
+          positionList: this.coordinate.getMainPositionList()
+        })
+      }
+    }
+    // 对外返回克隆结果，防止调用方修改节点数组或 childList 后污染缓存。
+    return this.titleTreeCache.tree ? deepClone(this.titleTreeCache.tree) : null
+  }
+
+  /** 读取标题树缓存版本，正文版本负责内容变化，布局版本负责页码变化。 */
+  private getTitleTreeCacheVersion() {
+    return {
+      documentVersion: this.draw.getRuntime().getDocumentTextStore().version,
+      layoutVersion: this.draw.getTableLayoutSnapshotVersion()
+    }
+  }
+
+  /** 按标题 id 查询标题树节点，供目录、章节定位和业务侧按章操作复用。 */
+  public getTitleTreeNode(titleId: string): ITitleTreeNode | null {
+    const titleTree = this.getTitleTree()
+    if (!titleTree) {
+      return null
+    }
+    return titleTree.nodeList.find(node => node.id === titleId) || null
+  }
+
+  /** 按标题 id 列表批量查询标题树节点，返回顺序与传入 id 顺序一致。 */
+  public getTitleTreeNodeList(titleIds: string[]): ITitleTreeNode[] {
+    const titleTree = this.getTitleTree()
+    if (!titleTree || !titleIds.length) {
+      return []
+    }
+    const nodeMap = new Map(titleTree.nodeList.map(node => [node.id, node]))
+    return titleIds
+      .map(titleId => nodeMap.get(titleId))
+      .filter((node): node is ITitleTreeNode => Boolean(node))
+  }
+
+  /** 查询指定标题的直接子标题节点列表，标题不存在时返回 null。 */
+  public getTitleTreeChildList(titleId: string): ITitleTreeNode[] | null {
+    const titleTree = this.getTitleTree()
+    if (!titleTree) {
+      return null
+    }
+    const node = titleTree.nodeList.find(item => item.id === titleId)
+    if (!node) {
+      return null
+    }
+    const nodeMap = new Map(titleTree.nodeList.map(item => [item.id, item]))
+    return node.childrenTitleIds
+      .map(childTitleId => nodeMap.get(childTitleId))
+      .filter((childNode): childNode is ITitleTreeNode => Boolean(childNode))
+  }
+
+  /** 按标题 id 查询章节范围，供章节拖拽、按章导出和业务侧批量处理复用。 */
+  public getTitleTreeRange(titleId: string): ITitleTreeRange | null {
+    const node = this.getTitleTreeNode(titleId)
+    if (!node) {
+      return null
+    }
+    const elementList = this.draw
+      .getObjectResolver()
+      .getOriginalMainElementList()
+    return {
+      titleId: node.id,
+      startIndex: node.rangeStartIndex,
+      endIndex: node.rangeEndIndex,
+      contentStartIndex: node.contentStartIndex,
+      contentEndIndex: node.contentEndIndex,
+      nextBoundaryTitleId: node.nextBoundaryTitleId,
+      tableId: node.tableId,
+      trIndex: node.trIndex,
+      tdIndex: node.tdIndex,
+      elementList: node.tableId
+        ? []
+        : deepClone(
+            elementList.slice(node.rangeStartIndex, node.rangeEndIndex + 1)
+          )
+    }
+  }
+
+  /** 查询内置专业公式符号库。 */
+  public getFormulaSymbolList(domain?: FormulaDomain): IFormulaSymbol[] {
+    return getFormulaSymbolList(domain)
+  }
+
+  /** 获取当前文档样式库。 */
+  public getDocumentStyles(): IDocumentStyle[] {
+    const styles = this.draw.getObjectResolver().getOriginalEditorData().styles
+    return styles ? deepClone(styles) : []
+  }
+
+  /** 按元素 id 查询结构化公式模型。 */
+  public getFormulaById(id: string) {
+    const element = this.draw
+      .getObjectResolver()
+      .getOriginalMainElementList()
+      .find(item => item.id === id)
+    return element ? normalizeFormulaFromElement(element) : null
+  }
+
+  /** 将外部 MathML 文本解析为内部结构化公式模型。 */
+  public parseFormulaMathML(mathML: string, id?: string) {
+    return createFormulaFromMathML(mathML, id)
+  }
+
   /** 同步获取当前文档结构数据。 */
   public getValue(options?: IGetValueOption): IEditorResult {
     return this.draw.getValue(options)
+  }
+
+  /** 获取当前文档的 OOXML 最小 package 部件集合，供 DOCX 打包或调试使用。 */
+  public getOoxmlPackageParts() {
+    this.draw.flushAsyncInsertTransaction('command-get-ooxml-package-parts')
+    const data = this.draw.getObjectResolver().getOriginalEditorData()
+    return createOoxmlPackageParts(data, this.options)
+  }
+
+  /** 获取当前文档的最小 DOCX Blob，内部使用无压缩 ZIP package。 */
+  public getOoxmlDocxBlob() {
+    this.draw.flushAsyncInsertTransaction('command-get-ooxml-docx-blob')
+    const data = this.draw.getObjectResolver().getOriginalEditorData()
+    return createOoxmlDocxPackageBlob(data, this.options)
   }
 
   /** 异步获取当前文档结构数据。 */
@@ -55,26 +219,32 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
   public getHTML(): IEditorHTML {
     this.draw.flushAsyncInsertTransaction('command-get-html')
     const options = this.options
-    const { header, main, footer } = this.draw
+    const { main } = this.draw
       .getObjectResolver()
       .getOriginalEditorData()
     return {
-      header: createDomFromElementList(header, options).innerHTML,
+      header: createDomFromElementList(
+        this.draw.getHeader().getElementList(0),
+        options
+      ).innerHTML,
       main: createDomFromElementList(main, options).innerHTML,
-      footer: createDomFromElementList(footer, options).innerHTML
+      footer: createDomFromElementList(
+        this.draw.getFooter().getElementList(0),
+        options
+      ).innerHTML
     }
   }
 
   /** 获取当前文档的纯文本内容。 */
   public getText(): IEditorText {
     this.draw.flushAsyncInsertTransaction('command-get-text')
-    const { header, main, footer } = this.draw
+    const { main } = this.draw
       .getObjectResolver()
       .getOriginalEditorData()
     return {
-      header: getTextFromElementList(header),
+      header: getTextFromElementList(this.draw.getHeader().getElementList(0)),
       main: getTextFromElementList(main),
-      footer: getTextFromElementList(footer)
+      footer: getTextFromElementList(this.draw.getFooter().getElementList(0))
     }
   }
 
@@ -100,7 +270,7 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
     cursorPosition: IElementPosition | null
   }) {
     // 统一解析 rangeContext 里的首尾位置和选区位置列表。
-    // 这样 getRangeContext 主体只做编排，不再铺开大量 fallback 分支。
+    // 这样 getRangeContext 主体只做编排，不再铺开大量边界补位分支。
     const { isCollapsed, startIndex, endIndex, cursorPosition } = payload
     const positionList = this.coordinate.getPositionList()
     const selectionContentRange = this.range.getSelectionContentRange()
@@ -371,7 +541,7 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
     const rangeList = this.getKeywordRangeList(payload)
     if (!rangeList.length) return null
     const searchResultContextList: ISearchResultContext[] = []
-    const positionList = this.coordinate.getLayoutMainPositionList()
+    const positionList = this.coordinate.getMainPositionList()
     for (let r = 0; r < rangeList.length; r++) {
       const range = rangeList[r]
       const { startIndex, endIndex, tableId, startTrIndex, startTdIndex } =

@@ -14,7 +14,7 @@ export abstract class PageRenderSnapshotRowCommands extends PageRenderSnapshotRo
   protected buildMainTextCommands(payload: IDrawPagePayload): IWorkerPaintCommand[] {
     const commandList: IWorkerPaintCommand[] = []
     const pagePositionList =
-      this.draw.getCoordinate().getLayoutMainPositionListByPage(payload.pageNo)
+      this.draw.getCoordinate().getMainPositionListByPage(payload.pageNo)
     this.buildRowTextCommands(
       commandList,
       payload.rowList,

@@ -1076,6 +1076,73 @@ instance.command.executeSetControlProperties(payload: ISetControlProperties)
 instance.command.executeSetControlPropertiesList(payload: ISetControlProperties[])
 ```
 
+## executeLoadControlRemoteOptions
+
+功能：按控件标识异步加载选择类控件候选项，并写入控件 `valueSets` 与 `remote` 状态。
+
+用法：
+
+```javascript
+const result = await instance.command.executeLoadControlRemoteOptions({
+  externalId: 'patient.city',
+  source: 'city-dict',
+  requestId: `city-${Date.now()}`,
+  params: {
+    province: 'gd'
+  }
+})
+```
+
+参数：
+
+```typescript
+interface IControlRemoteOptionLoadOption extends IGetControlValueOption {
+  source?: string
+  requestId?: string
+  params?: unknown
+  isSubmitHistory?: boolean
+}
+```
+
+返回值：
+
+```typescript
+interface IControlRemoteOptionLoadBatchResult {
+  successCount: number
+  failureList: IControlRemoteOptionLoadFailure[]
+}
+```
+
+说明：
+
+- 匹配字段沿用控件查询条件，可使用 `id`、`conceptId`、`externalId`、`code`、`areaId`。
+- 只支持选择类控件；非选择类控件会进入 `failureList`，原因是 `unsupported`。
+- 远程加载器配置在 `options.controlRemoteOptionLoader`。
+
+## executeLoadControlRemoteOptionsList
+
+功能：批量异步加载多个选择类控件候选项。
+
+用法：
+
+```javascript
+const result = await instance.command.executeLoadControlRemoteOptionsList([
+  {
+    externalId: 'patient.province',
+    source: 'province-dict'
+  },
+  {
+    externalId: 'patient.city',
+    source: 'city-dict',
+    params: {
+      province: 'gd'
+    }
+  }
+])
+```
+
+返回值同 `executeLoadControlRemoteOptions()`。如果某一项未找到控件、控件类型不支持或加载失败，只影响该项，其他项继续执行。
+
 ## executeSetControlHighlight
 
 功能：设置控件高亮（根据关键词）

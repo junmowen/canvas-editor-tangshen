@@ -2,7 +2,7 @@ import Editor from '../../../src/editor'
 
 function findPlainTextRun(editor: Editor, target: string): number {
   const draw = (editor as any).draw
-  const elementList = draw.getOriginalMainElementList()
+  const elementList = draw.getObjectResolver().getOriginalMainElementList()
   const chars = target.split('')
   for (let start = 0; start <= elementList.length - chars.length; start++) {
     let matched = true

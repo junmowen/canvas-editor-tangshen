@@ -742,7 +742,7 @@ function getFirstMountedBaseCanvas(doc: Document): HTMLCanvasElement {
 function redrawPageWithoutInvalidatingBaseBitmap(draw: any, pageNo: number) {
   draw.getServices().pageRenderer.drawPage({
     elementList: draw.getLayoutMainElementList(),
-    positionList: draw.getPosition().getLayoutMainPositionList(),
+    positionList: draw.getCoordinate().getMainPositionList(),
     rowList: draw.getPageRowList()[pageNo],
     pageNo
   })
@@ -849,7 +849,7 @@ describe('canvas 池与渲染后端浏览器级回归', () => {
     cy.getEditor().then((editor: any) => {
       const draw = getDraw(editor)
       const pageBreakPosition = draw
-        .getPosition()
+        .getCoordinate()
         .getPositionList()
         .find((position: any) => {
           return position.element?.id === 'worker-page-break-marker'

@@ -1,5 +1,6 @@
 import { RowFlex } from '../dataset/enum/Row'
 import { IElement, IElementMetrics } from './Element'
+import { IPageColumns } from './PageColumns'
 import { ITableFragmentDescriptor } from './table/TableFragment'
 
 /** 行元素，描述文档元素在该场景下扩展的业务属性。 */
@@ -44,6 +45,12 @@ export interface IRow {
   isWidthNotEnough?: boolean
   /** 行索引，用于定位表格或页面中的目标行。 */
   rowIndex: number
+  /** 栏索引，用于记录当前行在页面分栏中的落位。 */
+  columnIndex?: number
+  /** 行所属的局部分栏配置，为空时使用页面全局分栏配置。 */
+  columns?: IPageColumns
+  /** 当前分栏小节的纵向起点，用于选中内容分栏从正文中间开始排版。 */
+  columnStartY?: number
   /** 是否环绕元素，用于行布局中处理浮动内容占位。 */
   isSurround?: boolean
   tableFragment?: ITableFragmentDescriptor

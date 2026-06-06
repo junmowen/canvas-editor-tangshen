@@ -73,7 +73,7 @@ export class Watermark {
         RenderLayer.MEASURE,
         patternWidth,
         patternHeight,
-        // pattern 的平铺单位来自 canvas 固有尺寸，固定 1 倍像素以保持旧版间距语义。
+        // pattern 的平铺单位来自 canvas 固有尺寸，固定 1 倍像素以保持水印间距稳定。
         1
       )
       try {
@@ -157,7 +157,7 @@ export class Watermark {
         RenderLayer.MEASURE,
         patternWidth,
         patternHeight,
-        // pattern 的平铺单位来自 canvas 固有尺寸，固定 1 倍像素以保持旧版间距语义。
+        // pattern 的平铺单位来自 canvas 固有尺寸，固定 1 倍像素以保持水印间距稳定。
         1
       )
       try {

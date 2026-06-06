@@ -1,4 +1,5 @@
 import { RenderLayer } from '../../render-backend'
+import { ElementType } from '../../../dataset/enum/Element'
 import type { Draw } from '../Draw'
 
 /** Draw 渲染门面的 surface / bitmap cache 失效 helper。 */
@@ -31,7 +32,9 @@ export class DrawRenderSurfaceInvalidator {
           .invalidateBitmapCache(pageNo, RenderLayer.OVERLAY)
       }
     })
-    if (requiresSurfaceClear) {
+    const shouldClearSurface =
+      requiresSurfaceClear || this.hasFormulaInAffectedPages(affectedPageNoList)
+    if (shouldClearSurface) {
       this.clearAffectedSurfaces(affectedPageNoList)
     }
     this.draw.enqueueExtraVisibleRenderPages(affectedPageNoList)
@@ -65,5 +68,15 @@ export class DrawRenderSurfaceInvalidator {
       this.draw.getPageCanvasHost().invalidateBitmapCache(pageNo, RenderLayer.OVERLAY)
     })
     this.draw.getComponents().tableTool.dispose()
+  }
+
+  /** 判断受影响页是否包含公式，公式重排行高时需要整页清理旧文本残影。 */
+  private hasFormulaInAffectedPages(pageNoList: number[]) {
+    return pageNoList.some(pageNo => {
+      const pageRows = this.draw.getPageRowList()[pageNo] || []
+      return pageRows.some(row => {
+        return row.elementList.some(element => element.type === ElementType.LATEX)
+      })
+    })
   }
 }

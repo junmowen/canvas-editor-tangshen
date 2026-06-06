@@ -1,21 +1,52 @@
 import { CommandAdaptCore } from './CommandAdaptCore'
 import { ZERO } from '../../dataset/constant/Common'
-import { EDITOR_ELEMENT_STYLE_ATTR } from '../../dataset/constant/Element'
-import { titleSizeMapping } from '../../dataset/constant/Title'
-import { ElementStyleKey } from '../../dataset/enum/ElementStyle'
 import { ListStyle, ListType } from '../../dataset/enum/List'
 import { RowFlex } from '../../dataset/enum/Row'
 import { TitleLevel } from '../../dataset/enum/Title'
 import { IDrawOption, IPainterOption } from '../../interface/Draw'
-import { IElement, IElementStyle, IRowIndentPayload } from '../../interface/Element'
+import { IElement, IRowIndentPayload, ITabStop } from '../../interface/Element'
+import { IPageColumns } from '../../interface/PageColumns'
 import { ITextDecoration } from '../../interface/Text'
-import { getUUID, isObjectEqual } from '../../utils'
-import { isTextLikeElement } from '../../utils/element'
+import { IDocumentStyle } from '../../interface/Style'
+import { getUUID } from '../../utils'
 import { IRichtextOption } from '../../interface/Command'
 import {
   toggleSubscriptSelection,
   toggleSuperscriptSelection
 } from '../modules/richtext/command/ScriptCommandPolicy'
+import {
+  applyRowColumnsToParagraphList,
+  applyRowFlexToParagraphList,
+  applyRowMarginToParagraphList,
+  applyParagraphIndent,
+  applyTitleToElementList
+} from './CommandParagraphStylePolicy'
+import {
+  applyDocumentStyleToParagraphList,
+  clearDocumentStyleFromParagraphList,
+  cloneDocumentStyleList
+} from './CommandDocumentStyleCommandPolicy'
+import {
+  createPageNumberContinueOptions,
+  createPageNumberRangeOptions,
+  createPageNumberRestartOptions
+} from './CommandPageNumberPolicy'
+import {
+  executeBooleanTextStyleToggleCommand,
+  executeFontCommand,
+  executeNullableColorStyleCommand,
+  executeSizeCommand,
+  executeSizeDeltaCommand,
+  executeUnderlineCommand
+} from './CommandTextStyleCommandPolicy'
+import {
+  applyTabStopsToParagraphList,
+  clearRichTextStyleFromElementList,
+  collectPainterStyleFromSelection,
+  createParagraphCommandRenderOption,
+  executeParagraphElementCommand,
+  getCommandParagraphElementList
+} from './CommandRichTextElementPolicy'
 
 /**
  * 富文本命令适配模块，负责文字样式、段落样式、标题、列表和页码相关命令。
@@ -30,17 +61,10 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     }
     const selection = this.range.getSelection()
     if (!selection) return
-    const painterStyle: IElementStyle = {}
-    selection.forEach(s => {
-      const painterStyleKeys = EDITOR_ELEMENT_STYLE_ATTR
-      painterStyleKeys.forEach(p => {
-        const key = p as keyof typeof ElementStyleKey
-        if (painterStyle[key] === undefined) {
-          painterStyle[key] = s[key] as any
-        }
-      })
-    })
-    this.draw.setPainterStyle(painterStyle, options)
+    this.draw.setPainterStyle(
+      collectPainterStyleFromSelection(selection),
+      options
+    )
   }
 
   /** 将格式刷样式应用到当前选区。 */
@@ -69,43 +93,19 @@ export class CommandAdaptRichText extends CommandAdaptCore {
       }
     }
     if (!changeElementList.length) return
-    changeElementList.forEach(el => {
-      EDITOR_ELEMENT_STYLE_ATTR.forEach(attr => {
-        delete el[attr]
-      })
-    })
+    clearRichTextStyleFromElementList(changeElementList)
     this.draw.render(renderOption)
   }
 
   /** 设置当前选区或默认输入样式的字体。 */
   public font(payload: string, options?: IRichtextOption) {
     if (this.isCommandDisabled(options)) return
-    const selection = this.range.getSelectionElementList()
-    if (selection?.length) {
-      selection.forEach(el => {
-        el.font = payload
-      })
-      this.draw.render({ isSetCursor: false })
-    } else {
-      let isSubmitHistory = true
-      const { endIndex } = this.getRange()
-      const elementList = this.draw.getObjectResolver().getElementList()
-      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
-      this.range.setDefaultStyle({
-        font: payload
-      })
-      if (enterElement?.value === ZERO) {
-        enterElement.font = payload
-      } else {
-        isSubmitHistory = false
-      }
-      this.draw.render({
-        isSubmitHistory,
-        curIndex: endIndex,
-        isCompute: false,
-        pageRenderScope: 'visible'
-      })
-    }
+    executeFontCommand({
+      draw: this.draw,
+      range: this.range,
+      endIndex: this.getRange().endIndex,
+      font: payload
+    })
   }
 
   /** 设置当前选区或默认输入样式的字号。 */
@@ -113,216 +113,63 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     if (this.isCommandDisabled(options)) return
     const { minSize, maxSize, defaultSize } = this.options
     if (payload < minSize || payload > maxSize) return
-    // 选区设置或设置换行处样式
-    let renderOption: IDrawOption = {}
-    let changeElementList: IElement[] = []
-    const selection = this.range.getTextLikeSelectionElementList()
-    if (selection?.length) {
-      changeElementList = selection
-      renderOption = { isSetCursor: false }
-    } else {
-      const { endIndex } = this.getRange()
-      const elementList = this.draw.getObjectResolver().getElementList()
-      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
-      this.range.setDefaultStyle({
-        size: payload
-      })
-      if (enterElement?.value === ZERO) {
-        changeElementList.push(enterElement)
-        renderOption = { curIndex: endIndex }
-      } else {
-        this.draw.render({
-          curIndex: endIndex,
-          isCompute: false,
-          isSubmitHistory: false,
-          pageRenderScope: 'visible'
-        })
-      }
-    }
-    if (!changeElementList.length) return
-    let isExistUpdate = false
-    changeElementList.forEach(el => {
-      if (
-        (!el.size && payload === defaultSize) ||
-        (el.size && el.size === payload)
-      ) {
-        return
-      }
-      el.size = payload
-      isExistUpdate = true
+    executeSizeCommand({
+      draw: this.draw,
+      range: this.range,
+      endIndex: this.getRange().endIndex,
+      size: payload,
+      defaultSize
     })
-    if (isExistUpdate) {
-      this.draw.render(renderOption)
-    }
   }
 
   /** 增大当前选区或默认输入样式的字号。 */
   public sizeAdd(options?: IRichtextOption) {
     if (this.isCommandDisabled(options)) return
-    const { defaultSize, maxSize } = this.options
-    const selection = this.range.getTextLikeSelectionElementList()
-    // 选区设置或设置换行处样式
-    let renderOption: IDrawOption = {}
-    let changeElementList: IElement[] = []
-    if (selection?.length) {
-      changeElementList = selection
-      renderOption = { isSetCursor: false }
-    } else {
-      const { endIndex } = this.getRange()
-      const elementList = this.draw.getObjectResolver().getElementList()
-      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
-      // 设置默认样式
-      const style = this.range.getDefaultStyle()
-      const anchorSize = style?.size || enterElement.size || defaultSize
-      this.range.setDefaultStyle({
-        size: anchorSize + 2 > maxSize ? maxSize : anchorSize + 2
-      })
-      if (enterElement?.value === ZERO) {
-        changeElementList.push(enterElement)
-        renderOption = { curIndex: endIndex }
-      } else {
-        this.draw.render({
-          curIndex: endIndex,
-          isCompute: false,
-          isSubmitHistory: false,
-          pageRenderScope: 'visible'
-        })
-      }
-    }
-    if (!changeElementList.length) return
-    let isExistUpdate = false
-    changeElementList.forEach(el => {
-      if (!el.size) {
-        el.size = defaultSize
-      }
-      if (el.size >= maxSize) return
-      if (el.size + 2 > maxSize) {
-        el.size = maxSize
-      } else {
-        el.size += 2
-      }
-      isExistUpdate = true
+    executeSizeDeltaCommand({
+      draw: this.draw,
+      range: this.range,
+      endIndex: this.getRange().endIndex,
+      delta: 2,
+      defaultSize: this.options.defaultSize,
+      minSize: this.options.minSize,
+      maxSize: this.options.maxSize
     })
-    if (isExistUpdate) {
-      this.draw.render(renderOption)
-    }
   }
 
   /** 减小当前选区或默认输入样式的字号。 */
   public sizeMinus(options?: IRichtextOption) {
     if (this.isCommandDisabled(options)) return
-    const { defaultSize, minSize } = this.options
-    const selection = this.range.getTextLikeSelectionElementList()
-    // 选区设置或设置换行处样式
-    let renderOption: IDrawOption = {}
-    let changeElementList: IElement[] = []
-    if (selection?.length) {
-      changeElementList = selection
-      renderOption = { isSetCursor: false }
-    } else {
-      const { endIndex } = this.getRange()
-      const elementList = this.draw.getObjectResolver().getElementList()
-      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
-      const style = this.range.getDefaultStyle()
-      const anchorSize = style?.size || enterElement.size || defaultSize
-      this.range.setDefaultStyle({
-        size: anchorSize - 2 < minSize ? minSize : anchorSize - 2
-      })
-      if (enterElement?.value === ZERO) {
-        changeElementList.push(enterElement)
-        renderOption = { curIndex: endIndex }
-      } else {
-        this.draw.render({
-          curIndex: endIndex,
-          isCompute: false,
-          isSubmitHistory: false,
-          pageRenderScope: 'visible'
-        })
-      }
-    }
-    if (!changeElementList.length) return
-    let isExistUpdate = false
-    changeElementList.forEach(el => {
-      if (!el.size) {
-        el.size = defaultSize
-      }
-      if (el.size <= minSize) return
-      if (el.size - 2 < minSize) {
-        el.size = minSize
-      } else {
-        el.size -= 2
-      }
-      isExistUpdate = true
+    executeSizeDeltaCommand({
+      draw: this.draw,
+      range: this.range,
+      endIndex: this.getRange().endIndex,
+      delta: -2,
+      defaultSize: this.options.defaultSize,
+      minSize: this.options.minSize,
+      maxSize: this.options.maxSize
     })
-    if (isExistUpdate) {
-      this.draw.render(renderOption)
-    }
   }
 
   /** 切换当前选区或默认输入样式的加粗状态。 */
   public bold(options?: IRichtextOption) {
     if (this.isCommandDisabled(options)) return
-    const selection = this.range.getSelectionElementList()
-    if (selection?.length) {
-      const noBoldIndex = selection.findIndex(s => !s.bold)
-      selection.forEach(el => {
-        el.bold = !!~noBoldIndex
-      })
-      this.draw.render({ isSetCursor: false })
-    } else {
-      let isSubmitHistory = true
-      const { endIndex } = this.getRange()
-      const elementList = this.draw.getObjectResolver().getElementList()
-      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
-      this.range.setDefaultStyle({
-        bold: enterElement.bold ? false : !this.range.getDefaultStyle()?.bold
-      })
-      if (enterElement?.value === ZERO) {
-        enterElement.bold = !enterElement.bold
-      } else {
-        isSubmitHistory = false
-      }
-      this.draw.render({
-        isSubmitHistory,
-        curIndex: endIndex,
-        isCompute: false,
-        pageRenderScope: 'visible'
-      })
-    }
+    executeBooleanTextStyleToggleCommand({
+      draw: this.draw,
+      range: this.range,
+      endIndex: this.getRange().endIndex,
+      key: 'bold'
+    })
   }
 
   /** 切换当前选区或默认输入样式的斜体状态。 */
   public italic(options?: IRichtextOption) {
     if (this.isCommandDisabled(options)) return
-    const selection = this.range.getSelectionElementList()
-    if (selection?.length) {
-      const noItalicIndex = selection.findIndex(s => !s.italic)
-      selection.forEach(el => {
-        el.italic = !!~noItalicIndex
-      })
-      this.draw.render({ isSetCursor: false })
-    } else {
-      let isSubmitHistory = true
-      const { endIndex } = this.getRange()
-      const elementList = this.draw.getObjectResolver().getElementList()
-      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
-      this.range.setDefaultStyle({
-        italic: enterElement.italic
-          ? false
-          : !this.range.getDefaultStyle()?.italic
-      })
-      if (enterElement?.value === ZERO) {
-        enterElement.italic = !enterElement.italic
-      } else {
-        isSubmitHistory = false
-      }
-      this.draw.render({
-        isSubmitHistory,
-        curIndex: endIndex,
-        isCompute: false,
-        pageRenderScope: 'visible'
-      })
-    }
+    executeBooleanTextStyleToggleCommand({
+      draw: this.draw,
+      range: this.range,
+      endIndex: this.getRange().endIndex,
+      key: 'italic'
+    })
   }
 
   /** 切换当前选区或默认输入样式的下划线状态。 */
@@ -331,91 +178,28 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     options?: IRichtextOption
   ) {
     if (this.isCommandDisabled(options)) return
-    const selection = this.range.getSelectionElementList()
-    if (selection?.length) {
-      // 没有设置下划线、当前与之前有一个设置不存在、文本装饰不一致时重设下划线
-      const isSetUnderline = selection.some(
-        s =>
-          !s.underline ||
-          (!textDecoration && s.textDecoration) ||
-          (textDecoration && !s.textDecoration) ||
-          (textDecoration &&
-            s.textDecoration &&
-            !isObjectEqual(s.textDecoration, textDecoration))
-      )
-      selection.forEach(el => {
-        el.underline = isSetUnderline
-        if (isSetUnderline && textDecoration) {
-          el.textDecoration = textDecoration
-        } else {
-          delete el.textDecoration
-        }
-      })
-      this.draw.render({
-        isSetCursor: false,
-        isCompute: false,
-        pageRenderScope: 'visible'
-      })
-    } else {
-      let isSubmitHistory = true
-      const { endIndex } = this.getRange()
-      const elementList = this.draw.getObjectResolver().getElementList()
-      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
-      this.range.setDefaultStyle({
-        underline: enterElement?.underline
-          ? false
-          : !this.range.getDefaultStyle()?.underline
-      })
-      if (enterElement?.value === ZERO) {
-        enterElement.underline = !enterElement.underline
-      } else {
-        isSubmitHistory = false
-      }
-      this.draw.render({
-        isSubmitHistory,
-        curIndex: endIndex,
-        isCompute: false,
-        pageRenderScope: 'visible'
-      })
-    }
+    executeUnderlineCommand({
+      draw: this.draw,
+      range: this.range,
+      endIndex: this.getRange().endIndex,
+      textDecoration
+    })
   }
 
   /** 切换当前选区或默认输入样式的删除线状态。 */
   public strikeout(options?: IRichtextOption) {
     if (this.isCommandDisabled(options)) return
-    const selection = this.range.getSelectionElementList()
-    if (selection?.length) {
-      const noStrikeoutIndex = selection.findIndex(s => !s.strikeout)
-      selection.forEach(el => {
-        el.strikeout = !!~noStrikeoutIndex
-      })
-      this.draw.render({
+    executeBooleanTextStyleToggleCommand({
+      draw: this.draw,
+      range: this.range,
+      endIndex: this.getRange().endIndex,
+      key: 'strikeout',
+      selectionRenderOptions: {
         isSetCursor: false,
         isCompute: false,
         pageRenderScope: 'visible'
-      })
-    } else {
-      let isSubmitHistory = true
-      const { endIndex } = this.getRange()
-      const elementList = this.draw.getObjectResolver().getElementList()
-      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
-      this.range.setDefaultStyle({
-        strikeout: enterElement.strikeout
-          ? false
-          : !this.range.getDefaultStyle()?.strikeout
-      })
-      if (enterElement?.value === ZERO) {
-        enterElement.strikeout = !enterElement.strikeout
-      } else {
-        isSubmitHistory = false
       }
-      this.draw.render({
-        isSubmitHistory,
-        curIndex: endIndex,
-        isCompute: false,
-        pageRenderScope: 'visible'
-      })
-    }
+    })
   }
 
   /** 切换当前选区或默认输入样式的上标状态。 */
@@ -439,87 +223,27 @@ export class CommandAdaptRichText extends CommandAdaptCore {
   /** 设置当前选区或默认输入样式的文字颜色。 */
   public color(payload: string | null, options?: IRichtextOption) {
     if (this.isCommandDisabled(options)) return
-    const selection = this.range.getSelectionElementList()
-    if (selection?.length) {
-      selection.forEach(el => {
-        if (payload) {
-          el.color = payload
-        } else {
-          delete el.color
-        }
-      })
-      this.draw.render({
-        isSetCursor: false,
-        isCompute: false,
-        pageRenderScope: 'visible'
-      })
-    } else {
-      let isSubmitHistory = true
-      const { endIndex } = this.getRange()
-      const elementList = this.draw.getObjectResolver().getElementList()
-      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
-      this.range.setDefaultStyle({
-        color: payload || undefined
-      })
-      if (enterElement?.value === ZERO) {
-        if (payload) {
-          enterElement.color = payload
-        } else {
-          delete enterElement.color
-        }
-      } else {
-        isSubmitHistory = false
-      }
-      this.draw.render({
-        isSubmitHistory,
-        curIndex: endIndex,
-        isCompute: false,
-        pageRenderScope: 'visible'
-      })
-    }
+    executeNullableColorStyleCommand({
+      draw: this.draw,
+      range: this.range,
+      endIndex: this.getRange().endIndex,
+      key: 'color',
+      value: payload,
+      isCompute: false
+    })
   }
 
   /** 设置当前选区或默认输入样式的高亮颜色。 */
   public highlight(payload: string | null, options?: IRichtextOption) {
     if (this.isCommandDisabled(options)) return
-    const selection = this.range.getSelectionElementList()
-    if (selection?.length) {
-      selection.forEach(el => {
-        if (payload) {
-          el.highlight = payload
-        } else {
-          delete el.highlight
-        }
-      })
-      this.draw.render({
-        isSetCursor: false,
-        isCompute: true,
-        pageRenderScope: 'visible'
-      })
-    } else {
-      let isSubmitHistory = true
-      const { endIndex } = this.getRange()
-      const elementList = this.draw.getObjectResolver().getElementList()
-      const enterElement = this.draw.getTargetResolver().resolveRangeAnchorElement({ elementList })!
-      this.range.setDefaultStyle({
-        highlight: payload || undefined
-      })
-      if (enterElement?.value === ZERO) {
-        if (payload) {
-          enterElement.highlight = payload
-        } else {
-          delete enterElement.highlight
-        }
-      } else {
-        isSubmitHistory = false
-      }
-      this.draw.render({
-        isSubmitHistory,
-        curIndex: endIndex,
-        isCompute: true,
-        pageRenderScope: 'visible'
-      })
-    }
+    executeNullableColorStyleCommand({
+      draw: this.draw,
+      range: this.range,
+      endIndex: this.getRange().endIndex,
+      key: 'highlight',
+      value: payload,
+      isCompute: true
+    })
   }
 
   /** 将当前段落设置为指定标题级别或恢复为正文。 */
@@ -535,30 +259,13 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     if (!changeElementList || !changeElementList.length) return
     // 设置值
     const titleId = getUUID()
-    const titleOptions = this.draw.getOptions().title
-    changeElementList.forEach(el => {
-      if (!el.type && el.value === ZERO) return
-      if (payload) {
-        el.level = payload
-        el.titleId = titleId
-        if (isTextLikeElement(el)) {
-          el.size = titleOptions[titleSizeMapping[payload]]
-          el.bold = true
-        }
-      } else {
-        if (el.titleId) {
-          delete el.titleId
-          delete el.title
-          delete el.level
-          delete el.size
-          delete el.bold
-        }
-      }
+    applyTitleToElementList({
+      elementList: changeElementList,
+      level: payload,
+      titleId,
+      titleOptions: this.draw.getOptions().title
     })
-    // 光标定位
-    const isSetCursor = startIndex === endIndex
-    const curIndex = isSetCursor ? endIndex : startIndex
-    this.draw.render({ curIndex, isSetCursor })
+    this.draw.render(createParagraphCommandRenderOption(startIndex, endIndex))
   }
 
   /** 设置当前段落的列表类型。 */
@@ -570,89 +277,94 @@ export class CommandAdaptRichText extends CommandAdaptCore {
 
   /** 设置当前段落的水平对齐方式。 */
   public rowFlex(payload: RowFlex) {
-    const isReadonly = this.draw.isReadonly()
-    if (isReadonly) return
-    const { startIndex, endIndex } = this.getRange()
-    if (!~startIndex && !~endIndex) return
-    const paragraphElementList = this.range.getEditBoundaryRange().isCrossRowCol
-      ? this.range.getSelectionElementList()
-      : this.range.getRangeParagraphElementList()
-    if (!paragraphElementList) return
-    paragraphElementList.forEach(element => {
-      element.rowFlex = payload
+    executeParagraphElementCommand({
+      draw: this.draw,
+      range: this.range,
+      getRange: () => this.getRange(),
+      apply: paragraphElementList => {
+        applyRowFlexToParagraphList(paragraphElementList, payload)
+      }
     })
-    // 光标定位
-    const isSetCursor = startIndex === endIndex
-    const curIndex = isSetCursor ? endIndex : startIndex
-    this.draw.render({ curIndex, isSetCursor })
   }
 
   /** 设置当前段落的行间距和段前段后距离。 */
   public rowMargin(payload: number) {
-    const isReadonly = this.draw.isReadonly()
-    if (isReadonly) return
-    const { startIndex, endIndex } = this.getRange()
-    if (!~startIndex && !~endIndex) return
-    const paragraphElementList = this.range.getEditBoundaryRange().isCrossRowCol
-      ? this.range.getSelectionElementList()
-      : this.range.getRangeParagraphElementList()
-    if (!paragraphElementList) return
-    paragraphElementList.forEach(element => {
-      element.rowMargin = payload
+    executeParagraphElementCommand({
+      draw: this.draw,
+      range: this.range,
+      getRange: () => this.getRange(),
+      apply: paragraphElementList => {
+        applyRowMarginToParagraphList(paragraphElementList, payload)
+      }
     })
-    // 光标定位
-    const isSetCursor = startIndex === endIndex
-    const curIndex = isSetCursor ? endIndex : startIndex
-    this.draw.render({ curIndex, isSetCursor })
+  }
+
+  /** 设置当前段落的局部分栏配置，支持对选中内容独立分栏。 */
+  public rowColumns(payload: IPageColumns | null) {
+    executeParagraphElementCommand({
+      draw: this.draw,
+      range: this.range,
+      getRange: () => this.getRange(),
+      getElementList: () => this.getParagraphElementList(),
+      apply: paragraphElementList => {
+        applyRowColumnsToParagraphList(paragraphElementList, payload)
+      }
+    })
+  }
+
+  /** 设置整篇文档的可复用样式库，不触碰当前正文内容。 */
+  public setDocumentStyles(payload: IDocumentStyle[]) {
+    this.draw.setEditorData({
+      styles: cloneDocumentStyleList(payload)
+    })
+  }
+
+  /** 对当前段落或选区应用文档样式。 */
+  public applyDocumentStyle(styleId: string) {
+    executeParagraphElementCommand({
+      draw: this.draw,
+      range: this.range,
+      getRange: () => this.getRange(),
+      getElementList: () => this.getParagraphElementList(),
+      apply: paragraphElementList => {
+        return applyDocumentStyleToParagraphList({
+          paragraphElementList,
+          styles: this.draw.getObjectResolver().getOriginalEditorData().styles,
+          styleId
+        })
+      }
+    })
+  }
+
+  /** 清除当前段落或选区的文档样式关联，保留直接格式。 */
+  public clearDocumentStyle() {
+    executeParagraphElementCommand({
+      draw: this.draw,
+      range: this.range,
+      getRange: () => this.getRange(),
+      getElementList: () => this.getParagraphElementList(),
+      apply: paragraphElementList => {
+        return clearDocumentStyleFromParagraphList(paragraphElementList)
+      }
+    })
   }
 
   /** 获取当前选区覆盖的段落元素集合。 */
   private getParagraphElementList(): IElement[] | null {
-    return this.range.getEditBoundaryRange().isCrossRowCol
-      ? this.range.getSelectionElementList()
-      : this.range.getRangeParagraphElementList()
-  }
-
-  /** 写入单个段落元素的缩进配置。 */
-  private setParagraphIndentValue(
-    element: IElement,
-    key: keyof Pick<
-      IElement,
-      'rowIndentLeft' | 'rowIndentRight' | 'rowIndent' | 'rowHangingIndent'
-    >,
-    value: number | null | undefined
-  ) {
-    if (value === undefined) return
-    const nextValue = value === null ? null : Math.max(0, value)
-    if (nextValue === null || nextValue === 0) {
-      delete element[key]
-    } else {
-      element[key] = nextValue
-    }
+    return getCommandParagraphElementList(this.range)
   }
 
   /** 批量设置当前段落缩进。 */
   private setParagraphIndent(payload: IRowIndentPayload) {
-    const isReadonly = this.draw.isReadonly()
-    if (isReadonly) return
-    const { startIndex, endIndex } = this.getRange()
-    if (!~startIndex && !~endIndex) return
-    const paragraphElementList = this.getParagraphElementList()
-    if (!paragraphElementList) return
-    paragraphElementList.forEach(element => {
-      this.setParagraphIndentValue(element, 'rowIndentLeft', payload.left)
-      this.setParagraphIndentValue(element, 'rowIndentRight', payload.right)
-      this.setParagraphIndentValue(element, 'rowIndent', payload.firstLine)
-      this.setParagraphIndentValue(
-        element,
-        'rowHangingIndent',
-        payload.hanging
-      )
+    executeParagraphElementCommand({
+      draw: this.draw,
+      range: this.range,
+      getRange: () => this.getRange(),
+      getElementList: () => this.getParagraphElementList(),
+      apply: paragraphElementList => {
+        applyParagraphIndent(paragraphElementList, payload)
+      }
     })
-    // 光标定位
-    const isSetCursor = startIndex === endIndex
-    const curIndex = isSetCursor ? endIndex : startIndex
-    this.draw.render({ curIndex, isSetCursor })
   }
 
   /** 设置当前段落的首行缩进。 */
@@ -679,14 +391,23 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     this.setParagraphIndent({ hanging: payload })
   }
 
+  /** 设置当前段落的制表位列表，传入 null 或空数组时清除制表位。 */
+  public setTabStops(payload: ITabStop[] | null) {
+    executeParagraphElementCommand({
+      draw: this.draw,
+      range: this.range,
+      getRange: () => this.getRange(),
+      getElementList: () => this.getParagraphElementList(),
+      apply: paragraphElementList => {
+        applyTabStopsToParagraphList(paragraphElementList, payload)
+      }
+    })
+  }
+
   /** 设置页码沿用上一节编号。 */
   public pageNumberContinue() {
     this.updateOptions({
-      pageNumber: {
-        ...this.options.pageNumber,
-        startPageNo: 1,
-        fromPageNo: 0
-      }
+      pageNumber: createPageNumberContinueOptions(this.options.pageNumber)
     })
   }
 
@@ -698,11 +419,7 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     fromPageNo?: number
   }) {
     this.updateOptions({
-      pageNumber: {
-        ...this.options.pageNumber,
-        startPageNo: payload.startPageNo ?? this.options.pageNumber.startPageNo,
-        fromPageNo: payload.fromPageNo ?? this.options.pageNumber.fromPageNo
-      }
+      pageNumber: createPageNumberRestartOptions(this.options.pageNumber, payload)
     })
   }
 
@@ -714,14 +431,7 @@ export class CommandAdaptRichText extends CommandAdaptCore {
     maxPageNo?: number | null
   }) {
     this.updateOptions({
-      pageNumber: {
-        ...this.options.pageNumber,
-        fromPageNo: payload.fromPageNo ?? this.options.pageNumber.fromPageNo,
-        maxPageNo:
-          payload.maxPageNo === undefined
-            ? this.options.pageNumber.maxPageNo
-            : payload.maxPageNo
-      }
+      pageNumber: createPageNumberRangeOptions(this.options.pageNumber, payload)
     })
   }
 }

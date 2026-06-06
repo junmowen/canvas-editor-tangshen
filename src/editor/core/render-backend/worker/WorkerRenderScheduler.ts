@@ -14,8 +14,8 @@ export interface IWorkerRenderSchedulerStats {
   submitCount: number
   /** 成功次数，用于统计渲染任务完成情况。 */
   successCount: number
-  /** 降级次数，用于统计回退到备用渲染路径的频率。 */
-  fallbackCount: number
+  /** 降级路径次数，用于统计切换到 Canvas2D 渲染的频率。 */
+  failoverCount: number
   /** stalediscardcount，用于统计当前场景的发生次数。 */
   staleDiscardCount: number
   /** composerejectcount，用于统计当前场景的发生次数。 */
@@ -30,8 +30,8 @@ export interface IWorkerRenderSchedulerStats {
   priorityReorderCount: number
   /** circuitopencount，用于统计当前场景的发生次数。 */
   circuitOpenCount: number
-  /** 最近一次降级原因，用于诊断渲染后端回退。 */
-  lastFallbackReason: string
+  /** 最近一次降级路径原因，用于诊断渲染后端切换。 */
+  lastFailoverReason: string
   /** 待处理count，用于统计当前场景的发生次数。 */
   pendingCount: number
   /** 正在执行的任务数量，用于观察后台渲染并发。 */
@@ -87,7 +87,7 @@ export class WorkerRenderScheduler {
   private readonly compositor = new WorkerBitmapCompositor()
   private submitCount = 0
   private successCount = 0
-  private fallbackCount = 0
+  private failoverCount = 0
   private staleDiscardCount = 0
   private composeRejectCount = 0
   private timeoutCount = 0
@@ -97,8 +97,8 @@ export class WorkerRenderScheduler {
   private circuitOpenCount = 0
   private consecutiveFailureCount = 0
   private circuitOpen = false
-  /** 最近一次降级渲染原因，供调试面板和统计信息展示。 */
-  private lastFallbackReason = ''
+  /** 最近一次降级路径原因，供调试面板和统计信息展示。 */
+  private lastFailoverReason = ''
   private timeoutMs = 1500
   private readonly maxConcurrent = 1
   private maxQueueLength = 8
@@ -115,7 +115,7 @@ export class WorkerRenderScheduler {
     return this.circuitOpen
   }
 
-  /** 调整 worker 调度边界，用于测试超时、队列丢弃和熔断 fallback。 */
+  /** 调整 worker 调度边界，用于测试超时、队列丢弃和熔断备用路径。 */
   public configureDebugOptions(options: IWorkerRenderSchedulerDebugOptions) {
     if (options.timeoutMs !== undefined) {
       this.timeoutMs = Math.max(0, options.timeoutMs)
@@ -132,7 +132,7 @@ export class WorkerRenderScheduler {
     }
   }
 
-  /** 提交 worker 渲染任务；快照构建失败会向上抛出并交给 Canvas2D fallback。 */
+  /** 提交 worker 渲染任务；快照构建失败会向上抛出并交给 Canvas2D 备用路径。 */
   public submit(surface: IRenderSurface, task: IRenderTask) {
     if (this.circuitOpen) {
       throw new Error('OffscreenCanvas worker circuit breaker open')
@@ -206,7 +206,7 @@ export class WorkerRenderScheduler {
     }
     if (canceled) {
       this.cancelCount += canceled
-      this.lastFallbackReason = reason
+      this.lastFailoverReason = reason
       this.pumpQueue()
     }
   }
@@ -216,7 +216,7 @@ export class WorkerRenderScheduler {
     return {
       submitCount: this.submitCount,
       successCount: this.successCount,
-      fallbackCount: this.fallbackCount,
+      failoverCount: this.failoverCount,
       staleDiscardCount: this.staleDiscardCount,
       composeRejectCount: this.composeRejectCount,
       timeoutCount: this.timeoutCount,
@@ -224,7 +224,7 @@ export class WorkerRenderScheduler {
       queueDropCount: this.queueDropCount,
       priorityReorderCount: this.priorityReorderCount,
       circuitOpenCount: this.circuitOpenCount,
-      lastFallbackReason: this.lastFallbackReason,
+      lastFailoverReason: this.lastFailoverReason,
       pendingCount: this.pendingJobMap.size,
       activeCount: this.activeJobMap.size,
       queuedCount: this.queuedJobList.length,
@@ -239,7 +239,7 @@ export class WorkerRenderScheduler {
   public resetStats() {
     this.submitCount = 0
     this.successCount = 0
-    this.fallbackCount = 0
+    this.failoverCount = 0
     this.staleDiscardCount = 0
     this.composeRejectCount = 0
     this.timeoutCount = 0
@@ -250,7 +250,7 @@ export class WorkerRenderScheduler {
     this.consecutiveFailureCount = this.circuitOpen
       ? this.circuitBreakerFailureThreshold
       : 0
-    this.lastFallbackReason = ''
+    this.lastFailoverReason = ''
   }
 
   /** 终止 worker 并清理 pending job。 */
@@ -275,8 +275,8 @@ export class WorkerRenderScheduler {
     }
     this.worker.onerror = evt => {
       const reason = evt.message || 'worker error'
-      this.lastFallbackReason = reason
-      this.drainPendingJobsToFallback(reason)
+      this.lastFailoverReason = reason
+      this.drainPendingJobsToFailover(reason)
       this.recordWorkerFailure(reason)
       this.worker?.terminate()
       this.worker = null
@@ -305,7 +305,7 @@ export class WorkerRenderScheduler {
       return
     }
     if (result.type === 'error') {
-      this.fallbackJob(job.jobId, result.errorReason, job)
+      this.failoverJob(job.jobId, result.errorReason, job)
       return
     }
     const composeResult = this.compositor.compose(job.surface, result, {
@@ -314,7 +314,7 @@ export class WorkerRenderScheduler {
     })
     if (!composeResult.composed) {
       this.composeRejectCount++
-      this.fallbackJob(
+      this.failoverJob(
         job.jobId,
         composeResult.rejectReason || 'worker bitmap compose rejected',
         job
@@ -332,16 +332,16 @@ export class WorkerRenderScheduler {
   /** worker 超时后回退 Canvas2D。 */
   private handleTimeout(jobId: number) {
     this.timeoutCount++
-    this.fallbackJob(jobId, 'worker render timeout')
+    this.failoverJob(jobId, 'worker render timeout')
   }
 
-  /** 回退执行原 Canvas2D 绘制回调。 */
-  private fallbackJob(jobId: number, reason: string, knownJob?: IWorkerRenderJob) {
+  /** 降级执行原 Canvas2D 绘制回调。 */
+  private failoverJob(jobId: number, reason: string, knownJob?: IWorkerRenderJob) {
     const job = knownJob || this.pendingJobMap.get(jobId)
     if (!job) return
     this.removeJob(job)
-    this.fallbackCount++
-    this.lastFallbackReason = reason
+    this.failoverCount++
+    this.lastFailoverReason = reason
     this.recordWorkerFailure(reason)
     job.task.execute?.(job.surface, job.task)
     this.pumpQueue()
@@ -375,7 +375,7 @@ export class WorkerRenderScheduler {
       this.activeJobMap.set(job.jobId, job)
       this.worker!.postMessage(job.snapshot)
     } catch (error) {
-      this.fallbackJob(job.jobId, this.resolveErrorReason(error), job)
+      this.failoverJob(job.jobId, this.resolveErrorReason(error), job)
     }
   }
 
@@ -390,7 +390,7 @@ export class WorkerRenderScheduler {
     }
     if (canceled) {
       this.cancelCount += canceled
-      this.lastFallbackReason = reason
+      this.lastFailoverReason = reason
     }
   }
 
@@ -406,7 +406,7 @@ export class WorkerRenderScheduler {
     this.worker?.terminate()
     this.worker = null
     this.cancelCount += canceled
-    this.lastFallbackReason = reason
+    this.lastFailoverReason = reason
   }
 
   /** 队列超限时丢弃最旧排队 job，并立即回退 Canvas2D，避免页面空白。 */
@@ -414,7 +414,7 @@ export class WorkerRenderScheduler {
     while (this.queuedJobList.length > this.maxQueueLength) {
       const job = this.queuedJobList[0]
       this.queueDropCount++
-      this.fallbackJob(job.jobId, 'worker queue limit exceeded', job)
+      this.failoverJob(job.jobId, 'worker queue limit exceeded', job)
     }
   }
 
@@ -502,18 +502,18 @@ export class WorkerRenderScheduler {
     ) {
       this.circuitOpen = true
       this.circuitOpenCount++
-      this.lastFallbackReason = `worker circuit breaker open: ${reason}`
-      this.drainPendingJobsToFallback(this.lastFallbackReason)
+      this.lastFailoverReason = `worker circuit breaker open: ${reason}`
+      this.drainPendingJobsToFailover(this.lastFailoverReason)
     }
   }
 
-  /** 将所有待处理 job 回退到 Canvas2D。 */
-  private drainPendingJobsToFallback(reason: string) {
+  /** 将所有待处理 job 降级到 Canvas2D。 */
+  private drainPendingJobsToFailover(reason: string) {
     const jobList = Array.from(this.pendingJobMap.values())
     jobList.forEach(job => {
       this.removeJob(job)
-      this.fallbackCount++
-      this.lastFallbackReason = reason
+      this.failoverCount++
+      this.lastFailoverReason = reason
       job.task.execute?.(job.surface, job.task)
     })
   }

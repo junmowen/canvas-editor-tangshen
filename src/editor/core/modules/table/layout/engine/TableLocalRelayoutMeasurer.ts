@@ -30,7 +30,7 @@ export class TableLocalRelayoutMeasurer {
       startY: margins[0] + this.draw.getHeader().getExtraHeight(),
       pageHeight: this.draw.getHeight(),
       mainOuterHeight: this.draw.getMainOuterHeight(),
-      isPagingMode: true,
+      isPagingPageMode: true,
       innerWidth: this.draw.getInnerWidth(),
       surroundElementList: [],
       elementList: [payload.sourceTable]

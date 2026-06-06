@@ -742,7 +742,7 @@ function getFirstMountedBaseCanvas(doc: Document): HTMLCanvasElement {
 function redrawPageWithoutInvalidatingBaseBitmap(draw: any, pageNo: number) {
   draw.getServices().pageRenderer.drawPage({
     elementList: draw.getLayoutMainElementList(),
-    positionList: draw.getPosition().getLayoutMainPositionList(),
+    positionList: draw.getCoordinate().getMainPositionList(),
     rowList: draw.getPageRowList()[pageNo],
     pageNo
   })
@@ -844,14 +844,14 @@ describe('canvas 池与渲染后端浏览器级回归', () => {
 
     cy.getEditor().then((editor: any) => {
       const draw = getDraw(editor)
-      const hiddenAreaPosition = draw.getPosition().getPositionList().find((position: any) => {
+      const hiddenAreaPosition = draw.getCoordinate().getPositionList().find((position: any) => {
         return position.element?.areaId === 'worker-area-hidden'
       })
       const hiddenAreaPageNo = hiddenAreaPosition?.pageNo
       expect(hiddenAreaPageNo, '隐藏 area 所在页').to.be.greaterThan(0)
       draw.setPageNo(0)
       draw.getRange().setRange(0, 0)
-      draw.getPosition().setCursorPosition(null)
+      draw.getCoordinate().setCursorPosition(null)
       draw.getPageCanvasHost().invalidateAllBitmapCache()
       editor.resetRenderBackendStats()
       draw.enqueueExtraVisibleRenderPages([hiddenAreaPageNo])

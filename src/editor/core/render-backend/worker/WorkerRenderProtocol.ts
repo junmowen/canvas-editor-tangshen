@@ -76,6 +76,39 @@ export interface IWorkerFillTextCommand {
   baseline?: CanvasTextBaseline
 }
 
+/** 后台线程公式文本控件command契约，用于让 worker 路径和主线程使用同一套公式视觉盒。 */
+export interface IWorkerFormulaTextCommand {
+  type: 'formulaText'
+  /** 公式源码，用于保留公式控件身份和调试信息。 */
+  latex: string
+  /** 公式展示文本，按普通文本参与 worker 绘制。 */
+  displayText: string
+  /** 横坐标，用于定位公式控件左侧。 */
+  x: number
+  /** 纵坐标，用于定位公式控件基线。 */
+  y: number
+  /** 字体声明，用于公式基础字号和文本样式。 */
+  font: string
+  /** 默认字号，用于 font 解析失败时保持公式尺寸稳定。 */
+  defaultSize: number
+  /** 布局层计算的公式占位宽度，用于 worker 和主线程保持同一绘制比例。 */
+  metricsWidth?: number
+  /** 布局层计算的公式基线上方高度，用于 worker 和主线程保持同一绘制比例。 */
+  metricsAscent?: number
+  /** 布局层计算的公式基线下方高度，用于 worker 和主线程保持同一绘制比例。 */
+  metricsDescent?: number
+  /** 填充样式，用于设置公式文本颜色。 */
+  fillStyle: string
+  /** 空公式占位文本，用于 worker 渲染灰色提示。 */
+  placeholderText?: string
+  /** 空公式占位颜色，用于 worker 渲染灰色提示。 */
+  placeholderColor?: string
+  /** 透明度系数，用于控制绘制结果的不透明程度。 */
+  alpha?: number
+  /** 是否输出 worker 公式渲染日志，用于定位缓存或非当前页渲染差异。 */
+  debug?: boolean
+}
+
 /** 后台线程repeat文本watermarkcommand契约，用于约束内部流程中传递的数据结构。 */
 export interface IWorkerRepeatTextWatermarkCommand {
   type: 'repeatTextWatermark'
@@ -267,6 +300,7 @@ export type IWorkerPaintCommand =
   | IWorkerBackgroundImageCommand
   | IWorkerFillRectCommand
   | IWorkerFillTextCommand
+  | IWorkerFormulaTextCommand
   | IWorkerRepeatTextWatermarkCommand
   | IWorkerRepeatImageWatermarkCommand
   | IWorkerDrawImageCommand

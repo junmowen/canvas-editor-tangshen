@@ -51,8 +51,8 @@ export interface IRenderBackendRecentSample {
   rendered: boolean
   /** 命中的后端名称，未命中时为空。 */
   backendName?: string
-  /** 本次调度是否从失败后端回退到后续后端。 */
-  fallback: boolean
+  /** 本次调度是否从失败后端切换到后续后端。 */
+  failover: boolean
   /** 本次调度中失败的后端名称列表。 */
   failedBackendNameList: string[]
   /** 本次调度耗时，单位毫秒。 */
@@ -75,8 +75,8 @@ export interface IRenderBackendPageEngineStats {
   lastRendered: boolean
   /** 最近一次命中的后端名称，未命中时为空。 */
   lastBackendName?: string
-  /** 最近一次是否发生 engine fallback。 */
-  lastFallback: boolean
+  /** 最近一次是否发生引擎降级路径切换。 */
+  lastFailover: boolean
   /** 最近一次失败的后端名称列表。 */
   lastFailedBackendNameList: string[]
   /** 最近一次调度耗时，单位毫秒。 */
@@ -89,8 +89,8 @@ export interface IRenderBackendPageEngineStats {
   missCount: number
   /** 该页该层累计后端失败尝试次数。 */
   failureCount: number
-  /** 该页该层累计 fallback 次数。 */
-  fallbackCount: number
+  /** 该页该层累计降级路径次数。 */
+  failoverCount: number
 }
 
 /** 渲染taskstats契约，用于约束内部流程中传递的数据结构。 */
@@ -121,12 +121,12 @@ export interface IRenderBackendRecentWindowStats {
   missCount: number
   /** 当前窗口内后端失败尝试次数。 */
   failureCount: number
-  /** 当前窗口内 fallback 次数。 */
-  fallbackCount: number
+  /** 当前窗口内降级路径次数。 */
+  failoverCount: number
   /** 当前窗口内各后端失败次数。 */
   backendFailureCountMap: Record<string, number>
-  /** 当前窗口内各后端作为 fallback 目标的次数。 */
-  backendFallbackCountMap: Record<string, number>
+  /** 当前窗口内各后端作为降级目标的次数。 */
+  backendFailoverCountMap: Record<string, number>
   /** 当前窗口内慢任务数量。 */
   slowCount: number
   /** 慢任务阈值，单位毫秒。 */
@@ -146,8 +146,8 @@ export interface IRenderBackendDispatchResult {
   rendered: boolean
   /** 命中的后端名称，未命中时为空。 */
   backendName?: string
-  /** 本次调度是否从失败后端回退到后续后端。 */
-  fallback: boolean
+  /** 本次调度是否从失败后端切换到后续后端。 */
+  failover: boolean
   /** 本次调度中失败的后端列表。 */
   failedBackendList: IRenderBackendFailureRecord[]
   /** 本次调度耗时，单位毫秒。 */
@@ -166,14 +166,14 @@ export interface IRenderBackendManagerStats {
   missCount: number
   /** 累计后端失败尝试次数。 */
   failureCount: number
-  /** 累计 fallback 次数。 */
-  fallbackCount: number
+  /** 累计降级路径次数。 */
+  failoverCount: number
   /** 各后端命中次数。 */
   backendHitCountMap: Record<string, number>
   /** 各后端失败次数。 */
   backendFailureCountMap: Record<string, number>
-  /** 各后端作为 fallback 目标的次数。 */
-  backendFallbackCountMap: Record<string, number>
+  /** 各后端作为降级目标的次数。 */
+  backendFailoverCountMap: Record<string, number>
   /** 各后端耗时统计。 */
   backendDurationStatsMap: Record<string, IRenderBackendDurationStats>
   /** 最近一次调度结果。 */
@@ -190,7 +190,7 @@ export interface IRenderBackendManagerStats {
 
 /** 渲染后端管理器，负责按任务选择合适的渲染引擎。 */
 export class RenderBackendManager {
-  /** 已注册的渲染后端列表，按注册顺序作为 fallback 顺序。 */
+  /** 已注册的渲染后端列表，按注册顺序作为备用路径顺序。 */
   private readonly backendList: IRenderBackend[]
   /** 累计调度次数。 */
   private dispatchCount = 0
@@ -200,14 +200,14 @@ export class RenderBackendManager {
   private missCount = 0
   /** 累计后端失败尝试次数。 */
   private failureCount = 0
-  /** 累计 fallback 次数。 */
-  private fallbackCount = 0
+  /** 累计降级路径次数。 */
+  private failoverCount = 0
   /** 各后端命中次数。 */
   private readonly backendHitCountMap: Record<string, number> = {}
   /** 各后端失败次数。 */
   private readonly backendFailureCountMap: Record<string, number> = {}
-  /** 各后端作为 fallback 目标的次数。 */
-  private readonly backendFallbackCountMap: Record<string, number> = {}
+  /** 各后端作为降级目标的次数。 */
+  private readonly backendFailoverCountMap: Record<string, number> = {}
   /** 各后端累计渲染耗时。 */
   private readonly backendTotalDurationMap: Record<string, number> = {}
   /** 各后端最大单次渲染耗时。 */
@@ -279,21 +279,21 @@ export class RenderBackendManager {
       try {
         backend.render(surface, task)
         const duration = performance.now() - startTime
-        const fallback = failedBackendList.length > 0
+        const failover = failedBackendList.length > 0
         this.renderCount++
         this.recordTaskRender(task)
         this.backendHitCountMap[backend.name] =
           (this.backendHitCountMap[backend.name] ?? 0) + 1
-        if (fallback) {
-          this.fallbackCount++
-          this.backendFallbackCountMap[backend.name] =
-            (this.backendFallbackCountMap[backend.name] ?? 0) + 1
+        if (failover) {
+          this.failoverCount++
+          this.backendFailoverCountMap[backend.name] =
+            (this.backendFailoverCountMap[backend.name] ?? 0) + 1
         }
         this.recordBackendDuration(backend.name, duration)
         this.lastResult = {
           rendered: true,
           backendName: backend.name,
-          fallback,
+          failover,
           failedBackendList: failedBackendList.map(item => ({ ...item })),
           duration
         }
@@ -316,7 +316,7 @@ export class RenderBackendManager {
     this.missCount++
     this.lastResult = {
       rendered: false,
-      fallback: false,
+      failover: false,
       failedBackendList: failedBackendList.map(item => ({ ...item })),
       duration: performance.now() - startTime,
       reason: matchedBackendCount
@@ -339,10 +339,10 @@ export class RenderBackendManager {
       renderCount: this.renderCount,
       missCount: this.missCount,
       failureCount: this.failureCount,
-      fallbackCount: this.fallbackCount,
+      failoverCount: this.failoverCount,
       backendHitCountMap: { ...this.backendHitCountMap },
       backendFailureCountMap: { ...this.backendFailureCountMap },
-      backendFallbackCountMap: { ...this.backendFallbackCountMap },
+      backendFailoverCountMap: { ...this.backendFailoverCountMap },
       backendDurationStatsMap: this.getBackendDurationStatsMap(),
       lastResult: this.cloneDispatchResult(this.lastResult),
       capabilityList: this.getCapabilityList(),
@@ -358,13 +358,13 @@ export class RenderBackendManager {
     this.renderCount = 0
     this.missCount = 0
     this.failureCount = 0
-    this.fallbackCount = 0
+    this.failoverCount = 0
     this.lastResult = undefined
     this.recentSampleList.length = 0
     this.pageEngineStatsMap.clear()
     this.clearRecord(this.backendHitCountMap)
     this.clearRecord(this.backendFailureCountMap)
-    this.clearRecord(this.backendFallbackCountMap)
+    this.clearRecord(this.backendFailoverCountMap)
     this.clearRecord(this.backendTotalDurationMap)
     this.clearRecord(this.backendMaxDurationMap)
     this.clearRecord(this.dispatchCountByLayer)
@@ -431,7 +431,7 @@ export class RenderBackendManager {
       priority: task.priority,
       rendered: result.rendered,
       backendName: result.backendName,
-      fallback: result.fallback,
+      failover: result.failover,
       failedBackendNameList: result.failedBackendList.map(item => {
         return item.backendName
       }),
@@ -457,7 +457,7 @@ export class RenderBackendManager {
       lastPriority: task.priority,
       lastRendered: result.rendered,
       lastBackendName: result.backendName,
-      lastFallback: result.fallback,
+      lastFailover: result.failover,
       lastFailedBackendNameList: result.failedBackendList.map(item => {
         return item.backendName
       }),
@@ -467,7 +467,8 @@ export class RenderBackendManager {
       missCount: (prevStats?.missCount ?? 0) + (result.rendered ? 0 : 1),
       failureCount:
         (prevStats?.failureCount ?? 0) + result.failedBackendList.length,
-      fallbackCount: (prevStats?.fallbackCount ?? 0) + (result.fallback ? 1 : 0)
+      failoverCount:
+        (prevStats?.failoverCount ?? 0) + (result.failover ? 1 : 0)
     })
   }
 
@@ -475,7 +476,7 @@ export class RenderBackendManager {
   private getRecentWindowStats(): IRenderBackendRecentWindowStats {
     const backendHitCountMap: Record<string, number> = {}
     const backendFailureCountMap: Record<string, number> = {}
-    const backendFallbackCountMap: Record<string, number> = {}
+    const backendFailoverCountMap: Record<string, number> = {}
     const backendTotalDurationMap: Record<string, number> = {}
     const backendMaxDurationMap: Record<string, number> = {}
     const dispatchCountByLayer: Partial<Record<RenderLayer, number>> = {}
@@ -493,7 +494,7 @@ export class RenderBackendManager {
     let renderCount = 0
     let missCount = 0
     let failureCount = 0
-    let fallbackCount = 0
+    let failoverCount = 0
     let slowCount = 0
 
     this.recentSampleList.forEach(sample => {
@@ -510,10 +511,10 @@ export class RenderBackendManager {
         backendFailureCountMap[backendName] =
           (backendFailureCountMap[backendName] ?? 0) + 1
       })
-      if (sample.fallback && sample.backendName) {
-        fallbackCount++
-        backendFallbackCountMap[sample.backendName] =
-          (backendFallbackCountMap[sample.backendName] ?? 0) + 1
+      if (sample.failover && sample.backendName) {
+        failoverCount++
+        backendFailoverCountMap[sample.backendName] =
+          (backendFailoverCountMap[sample.backendName] ?? 0) + 1
       }
       if (!sample.rendered) {
         missCount++
@@ -542,9 +543,9 @@ export class RenderBackendManager {
       renderCount,
       missCount,
       failureCount,
-      fallbackCount,
+      failoverCount,
       backendFailureCountMap,
-      backendFallbackCountMap,
+      backendFailoverCountMap,
       slowCount,
       slowThreshold: this.slowTaskThreshold,
       averageDuration: this.recentSampleList.length
@@ -617,7 +618,7 @@ export class RenderBackendManager {
     }, {})
   }
 
-  /** 获取已注册后端的能力状态，用于调试多引擎 fallback。 */
+  /** 获取已注册后端的能力状态，用于调试多引擎备用路径。 */
   private getCapabilityList(): IRenderBackendCapability[] {
     return this.backendList.map(backend => {
       const capability =

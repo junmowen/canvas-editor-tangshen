@@ -1,6 +1,6 @@
 import { ControlComponent } from '../../../../dataset/enum/Control'
 import { IElement } from '../../../../interface/Element'
-import { getNonHideElementIndex } from '../../../../utils/element'
+import { getNonHideElementIndex } from '../../../../utils/elementLayout'
 import {
   isControlPlaceholderComponent,
   isControlPrefixComponent,

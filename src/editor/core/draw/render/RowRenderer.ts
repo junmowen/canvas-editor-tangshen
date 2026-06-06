@@ -6,8 +6,14 @@ import { BlockRowRenderer } from '../../modules/block/render/BlockRowRenderer'
 import { CheckableControlRenderer } from '../../modules/control/render/CheckableControlRenderer'
 import { RowControlBorderRenderer } from '../../modules/control/render/RowControlBorderRenderer'
 import { RowGroupRenderer } from '../../modules/group/render/RowGroupRenderer'
+import {
+  isFormulaDebugEnabled,
+  logFormulaDebug,
+  roundFormulaDebugNumber
+} from '../../modules/formula/debug/FormulaDebugLogger'
+import { isFormulaTextElement } from '../../modules/formula/layout/FormulaTextElementLayout'
+import { FormulaTextRowRenderer } from '../../modules/formula/render/FormulaTextRowRenderer'
 import { InlineImageRenderer } from '../../modules/image/render/InlineImageRenderer'
-import { LaTexRowRenderer } from '../../modules/image/render/LaTexRowRenderer'
 import { InlineRowElementRenderer } from '../../modules/inline/render/InlineRowElementRenderer'
 import { ListRowMarkerRenderer } from '../../modules/list/render/ListRowMarkerRenderer'
 import { PageBreakRowRenderer } from '../../modules/page-break/render/PageBreakRowRenderer'
@@ -35,8 +41,8 @@ export class RowRenderer {
   private readonly checkableControlRenderer: CheckableControlRenderer
   private readonly rowControlBorderRenderer: RowControlBorderRenderer
   private readonly rowGroupRenderer: RowGroupRenderer
+  private readonly formulaTextRowRenderer: FormulaTextRowRenderer
   private readonly inlineImageRenderer: InlineImageRenderer
-  private readonly laTexRowRenderer: LaTexRowRenderer
   private readonly inlineRowElementRenderer: InlineRowElementRenderer
   private readonly listRowMarkerRenderer: ListRowMarkerRenderer
   private readonly pageBreakRowRenderer: PageBreakRowRenderer
@@ -56,8 +62,8 @@ export class RowRenderer {
     this.checkableControlRenderer = new CheckableControlRenderer()
     this.rowControlBorderRenderer = new RowControlBorderRenderer()
     this.rowGroupRenderer = new RowGroupRenderer(draw)
+    this.formulaTextRowRenderer = new FormulaTextRowRenderer(draw)
     this.inlineImageRenderer = new InlineImageRenderer()
-    this.laTexRowRenderer = new LaTexRowRenderer()
     this.inlineRowElementRenderer = new InlineRowElementRenderer()
     this.listRowMarkerRenderer = new ListRowMarkerRenderer()
     this.pageBreakRowRenderer = new PageBreakRowRenderer()
@@ -96,7 +102,13 @@ export class RowRenderer {
     ctx: CanvasRenderingContext2D,
     rowPositionList: IDrawRowPayload['positionList'],
     rowHeight: number,
-    preserveTopEdge = false
+    preserveTopEdge = false,
+    /** 是否清理整行正文宽度，公式独占行需要清掉旧文本残影。 */
+    clearFullRowWidth = false,
+    /** 当前页正文宽度，整行清理时使用。 */
+    innerWidth = 0,
+    /** 整行清理的左边界，主正文使用页边距左侧，表格内默认使用当前行左侧。 */
+    fullRowClearStartX?: number
   ) {
     // 每一行先按最小包围盒清理旧像素，避免 selection/highlight 残留。
     let minX = Number.POSITIVE_INFINITY
@@ -127,10 +139,15 @@ export class RowRenderer {
       1,
       Math.ceil(rowHeight) - (preserveTopEdge ? 1 : 0)
     )
+    const clearLeft = clearFullRowWidth
+      ? fullRowClearStartX ?? minX
+      : minX
     ctx.clearRect(
-      Math.max(0, Math.floor(minX)),
+      Math.max(0, Math.floor(clearLeft)),
       clearTop,
-      Math.max(1, Math.ceil(maxX - minX)),
+      clearFullRowWidth
+        ? Math.max(1, Math.ceil(innerWidth))
+        : Math.max(1, Math.ceil(maxX - minX)),
       clearHeight
     )
   }
@@ -216,7 +233,6 @@ export class RowRenderer {
       tableParticle,
       lineBreakParticle,
       imageParticle,
-      laTexParticle,
       hyperlinkParticle,
       superscriptParticle,
       subscriptParticle,
@@ -239,7 +255,40 @@ export class RowRenderer {
         leftTop: [x, y]
       }
     } = rowPosition
+    const logicalPreElement = this.draw
+      .getObjectResolver()
+      .getLayoutMainElementList()[rowPosition.index - 1]
     let nextTableRangeElement = currentTableRangeElement
+    if (
+      isFormulaDebugEnabled() &&
+      (isFormulaTextElement(element) ||
+        isFormulaTextElement(preElement) ||
+        isFormulaTextElement(logicalPreElement))
+    ) {
+      logFormulaDebug('row-render-position', {
+        pageNo,
+        rowNo: rowPosition.rowNo,
+        rowIndex: rowPosition.rowIndex,
+        logicalIndex: rowPosition.index,
+        elementId: element.id,
+        elementType: element.type,
+        elementValue: element.value,
+        elementLatex: element.formula?.latex,
+        rowPreElementId: preElement?.id,
+        rowPreElementType: preElement?.type,
+        logicalPreElementId: logicalPreElement?.id,
+        logicalPreElementType: logicalPreElement?.type,
+        logicalPreElementLatex: logicalPreElement?.formula?.latex,
+        x: roundFormulaDebugNumber(x),
+        lineTop: roundFormulaDebugNumber(y),
+        lineBottom: roundFormulaDebugNumber(rowPosition.coordinate.leftBottom[1]),
+        baselineY: roundFormulaDebugNumber(y + offsetY),
+        rowHeight: roundFormulaDebugNumber(curRow.height),
+        positionLineHeight: roundFormulaDebugNumber(rowPosition.lineHeight),
+        metricsWidth: roundFormulaDebugNumber(metrics.width),
+        metricsHeight: roundFormulaDebugNumber(metrics.height)
+      })
+    }
 
     if ((element.hide || element.control?.hide || element.area?.hide) && !isDesignMode) {
       textParticle.complete()
@@ -248,15 +297,14 @@ export class RowRenderer {
       this.inlineImageRenderer.render(ctx, element, x, y + offsetY, imageParticle, {
         isExport
       })
-    } else if (this.laTexRowRenderer.canRender(element)) {
-      this.laTexRowRenderer.render(
+    } else if (this.formulaTextRowRenderer.canRender(element)) {
+      this.formulaTextRowRenderer.render({
         ctx,
         element,
         x,
-        y + offsetY,
-        textParticle,
-        laTexParticle
-      )
+        y: y + offsetY,
+        textParticle
+      })
     } else if (this.tableRowElementRenderer.canRender(element)) {
       nextTableRangeElement = this.tableRowElementRenderer.render({
         ctx,
@@ -292,7 +340,15 @@ export class RowRenderer {
         subscriptParticle
       })
     } else if (this.separatorRowRenderer.canRender(element)) {
-      this.separatorRowRenderer.render(ctx, element, x, y, zone, separatorParticle)
+      this.separatorRowRenderer.render(
+        ctx,
+        element,
+        x,
+        y,
+        zone,
+        separatorParticle,
+        pageNo
+      )
     } else if (this.pageBreakRowRenderer.canRender(element)) {
       this.pageBreakRowRenderer.render(
         ctx,
@@ -460,13 +516,23 @@ export class RowRenderer {
       /** 纵坐标，用于定位画布或页面内的位置。 */
       y: number
     }> = []
+    const mainContentStartX = this.draw.getMargins(pageNo)[3]
+
+    const shouldClearFullRowWidthInSlice = rowList.some(row => {
+      return row.elementList.some(element => {
+        return this.formulaTextRowRenderer.canRender(element)
+      })
+    })
 
     this.forEachRowPositionSlice(payload, (curRow, rowPositionList) => {
       this.clearRowRenderArea(
         ctx,
         rowPositionList,
         curRow.height,
-        !!payload.tableCellContext && rowPositionList[0]?.rowNo === 0
+        !!payload.tableCellContext && rowPositionList[0]?.rowNo === 0,
+        shouldClearFullRowWidthInSlice,
+        innerWidth,
+        payload.tableCellContext ? undefined : mainContentStartX
       )
     })
     this.rowHighlightRenderer.render(ctx, payload)

@@ -34,7 +34,7 @@
 | 阶段 3 | 已完成 | `TableNavigationService` 已承接并稳定覆盖主导航规则。 |
 | 阶段 4 | 已完成 | snapshot accessor / builder / page-fragment / logical-cell / slice 索引都已进入真实主链。 |
 | 阶段 5 | 已完成 | overlay、per-page host、visible-only、dirty/invalidation、overlay-only highlight、离屏导出都已落地。 |
-| 阶段 6 | 已完成 | 当前阶段定义下的旧链路删除与主链收口任务已完成。 |
+| 阶段 6 | 已完成 | 当前阶段定义下的过渡链路删除与主链收口任务已完成。 |
 
 ### 当前结论
 
@@ -48,11 +48,11 @@
 - 后续仍可继续把回归白名单独立文档化，避免阶段日志和验证清单耦合。
 - 这些事项当前不再构成阶段性阻塞，更适合作为下一轮持续优化处理。
 - `2026-04-21`：`Position.getSelectionPositionList()` 这层只剩单一消费面的公开薄壳也已删除，`CommandAdapt.getRangeContext()` 现已直接基于 `RangeManager.getSelectionContentRange()` 与 `position.getPositionList()` 组装选区位置上下文；`Position` 不再继续持有只服务命令层上下文拼装的跨域包装方法。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
-- `2026-04-21`：`Control.getRange()` 这层仅转发 `getEditBoundaryRange()` 的旧壳也已删除，控件域内部相关调用已直接切到显式编辑边界接口；控件主链不再额外保留一层“旧 range 名称兼容壳”。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
+- `2026-04-21`：`Control.getRange()` 这层仅转发 `getEditBoundaryRange()` 的旧壳也已删除，控件域内部相关调用已直接切到显式编辑边界接口；控件主链不再额外保留一层“旧 range 名称过渡壳”。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
 - `2026-04-21`：随后，`CommandAdapt.getActivePublicRange()/getActiveEditBoundaryRange()` 这两层私有 range 转发壳也已继续删除，内部调用点已直接改为消费公开 `getRange()` 或 `range.getEditBoundaryRange()`；命令层内部的 range 读取路径进一步压平。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
 - `2026-04-21`：`Draw` 里 `drawRow()/drawSelection()` 与 `_lazyRender()/_immediateRender()/_visiblePageRender()` 这几条渲染主链也已继续宿主化：`RowRenderer` 与 `PageRenderer` 不再每次临时 `new`，而是提升为 draw 级成员复用；渲染主链继续朝“draw 统一宿主 + 更少临时对象”收口。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
 - `2026-04-21`：控件域中 `Control.getContainer()/getPosition()/getPreY()` 这三层只服务 popup / picker 宿主定位的包装接口也已删除，`SelectControl` 与 `DateControl` 已改为直接消费 `control.getDraw()` 下的真实宿主对象；控件子域继续减少“Control 再转发一层”的旧包装。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
-- `2026-04-21`：继续往下，`Control.getElementList()` 这层跨域包装接口也已物理删除，`Control` 本体与 `CheckboxControl / RadioControl / TextControl / SelectControl / DateControl` 已统一直接消费 `draw.getElementList()` 或 `control.getDraw().getElementList()`；控件域对“Control 帮子类转发 elementList”的历史壳层继续出清。对应 `npm run type:check`、`npm run lint` 与固定表格回归复跑通过；期间出现过一次 `canvas[data-index]` 的 `beforeEach` 环境波动，重跑受影响 spec 后恢复全绿。
+- `2026-04-21`：继续往下，`Control.getElementList()` 这层跨域包装接口也已物理删除，`Control` 本体与 `CheckboxControl / RadioControl / TextControl / SelectControl / DateControl` 已统一直接消费 `draw.getObjectResolver().getElementList()` 或 `control.getDraw().getObjectResolver().getElementList()`；控件域对“Control 帮子类转发 elementList”的历史壳层继续出清。对应 `npm run type:check`、`npm run lint` 与固定表格回归复跑通过；期间出现过一次 `canvas[data-index]` 的 `beforeEach` 环境波动，重跑受影响 spec 后恢复全绿。
 - `2026-04-21`：`RowRenderer` 内部 selection / 正文绘制里重复的 table 子单元格递归遍历也已收成同一条 `forEachTableCellPayload()` 路径，表格子单元格 payload 组装不再在 `drawSelection()` 与 `drawRow()` 中各自维护一份；渲染主链内部重复逻辑继续下降。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
 - `2026-04-21`：继续往下，`RowRenderer` 中 `drawHighlight()/drawSelection()/drawRow()` 三处各自维护的 row-position 切片循环也已收成同一条 `forEachRowPositionSlice()` 路径；这一轮完整固定回归中曾出现过一次 `table-pagination-merged` 的 `canvas[data-index]` `beforeEach` 环境波动，但重跑受影响 spec 后恢复全绿，说明本轮变更本身未引入行为回归。
 
@@ -391,7 +391,7 @@ TableSelectionProjectionService.ts
 - `2026-04-19`：`GlobalEvent` 页面重新可见恢复、`mouseup` 无布局拖放回绘收口、`Zone.setZone()`、`Area.setAreaProperties()`、`ImageParticle` 浮底图异步回绘、`setMainBadge()/setAreaBadge()` 与 `tableBorderColor()` 也已接入 `pageRenderScope: 'visible'`；当前仍保留全量刷新的主要是背景/水印、搜索导航与导出这组天然全局路径。
 - `2026-04-19`：`Draw.scheduleFrameRender()` 已不再是直通 `render()` 的空壳，而是会对 `isCompute: false + isLazy: false + pageRenderScope: 'visible'` 的高频局部刷新做 RAF 合并；同时在 `mouseup` 结束拖选与滚动可见页刷新链上同步 flush pending frame，保证拖选像素断言与交互收尾稳定。
 - `2026-04-20`：`RenderInvalidationManager` 已正式落地并从 `Draw` 内联逻辑中接管 `visible pages dirty`、RAF 合并调度与 flush/cancel 收口；阶段 5 现在已经不只是在铺 visible-only 分支，而是开始把渲染失效边界从 `Draw` 中抽成独立模块，为后续 `layout/selection/overlay dirty` 继续下沉做准备。
-- `2026-04-20`：`TableOverlayRenderer` 也已正式落地并从 `PageRenderer` 中接管 overlay 页清理与 `selectionCtx` 分发；overlay canvas 已实际接入 DOM，`RowRenderer` 的选区矩形也已切到 overlay 为权威输出、base 仅保留无 overlay 时的 fallback。对应的 Cypress 表格回归已同步改为读取 composited page 结果，不再假设“只采样 base canvas”。
+- `2026-04-20`：`TableOverlayRenderer` 也已正式落地并从 `PageRenderer` 中接管 overlay 页清理与 `selectionCtx` 分发；overlay canvas 已实际接入 DOM，`RowRenderer` 的选区矩形也已切到 overlay 为权威输出、base 仅保留无 overlay 时的备用绘制。对应的 Cypress 表格回归已同步改为读取 composited page 结果，不再假设“只采样 base canvas”。
 - `2026-04-20`：在此基础上，分页页包装下又补出每页独立的 overlay DOM host，`Cursor` 的可视光标层与 `TableTool` 也已切到页级 overlay host 上；当前阶段 5 在“选区像素层”和“表格/光标交互 DOM 层”两条线上都已开始脱离 editor container 的全局叠放模式。
 - `2026-04-20`：`Previewer` 中页内辅助层也已继续收口到页级 overlay host：`resizerSelection` 与拖拽镜像已按图片所在页挂到对应 page wrapper，不再使用全局容器坐标；在此基础上，图片全屏预览 modal 也已从 `document.body` 挪到 editor 自己的 modal host，图片工具链已不再依赖全局 DOM 宿主。
 - `2026-04-20`：在此基础上，`RowRenderer.drawSelection()`、`TableOverlayRenderer.renderVisibleSelectionOverlay()` 与 `RenderInvalidationManager` 也已接通 selection-overlay 专用刷新路径；当前拖选高频帧会优先只刷新相关页 overlay，不再回退到整页 visible render，这意味着阶段 5 已经开始真正消费 `selection dirty / overlay dirty` 这两类失效状态，而不只是预留字段。
@@ -416,7 +416,7 @@ TableSelectionProjectionService.ts
 - `2026-04-20`：在此基础上，`resolveAdjustedPointerPosition.ts` 这层只剩 `TableHitTestService` 单用的非表格命中归一化包装也已并回 service 自身，独立 helper 文件已删除；命中主链里原先分散在 event/utils 的“表格命中 / 非表格命中 / 边界归一化”三段实现现在都已更集中地落到 `TableHitTestService` 一侧。
 - `2026-04-20`：selection-start 域的 helper 归属也已继续修正：`resolveExistingCaretAnchorIndex.ts` 与 `resolvePointerMouseDownIndex.ts` 已从 `range/utils` 挪回 `event/utils`，而 `hitLineStartIndex` 也已从 `ICurrentPosition` 主类型中移除，只在命中域内部结果与 boundary / cursor state 层流动；selection-start 与命中主链的职责边界进一步清晰。
 - `2026-04-21`：随后，`resolveTableCellPositionByPagePoint.ts` 这层也已整段并回 `TableHitTestService` 并删除文件；当前命中主链里原先分散的 `fragment -> cell -> page-point 命中` 实现也已收敛到 service 内部，目录边界进一步贴近真正的职责边界。
-- `2026-04-21`：在此基础上，`TableHitTestService` 也已开始固定持有 `snapshotAccessor` 而不是在命中主链里重复临时构造；同时 `resolveFragmentCellSlice()` 里对快照 map 的冗余 fallback 已删除，service 内部的快照访问方式继续统一收口到 accessor。
+- `2026-04-21`：在此基础上，`TableHitTestService` 也已开始固定持有 `snapshotAccessor` 而不是在命中主链里重复临时构造；同时 `resolveFragmentCellSlice()` 里对快照 map 的冗余备用查找已删除，service 内部的快照访问方式继续统一收口到 accessor。
 - `2026-04-21`：随后，`TableHitTestService.resolvePointerPosition()` 也已明确拆成“内部扩展命中结果”和“对外公共命中结果”两层，`hitTargetIndex / hitLineStartIndex` 这类内部辅助字段不再随公共命中结果对外扩散；命中主链的对外边界继续收紧。
 - `2026-04-21`：继续往下，`TableHitTestService` 内部又删掉了 `resolveTableCellByPagePoint()` 与 `resolveTablePointerPositionByAnyPageLocalPoint()` 这两层单用实现，并让 `resolveSnapshotTableElementHit()` 直接消费前一步 page-point 命中已带回的 `activeSlice`；命中 service 内部的层级和重复查询继续下降。
 - `2026-04-21`：在此基础上，`Draw` 也已开始持有 `TableHitTestService` 与 `TableLayoutSnapshotAccessor` 两个 draw 级单例，`CommandAdapt`、事件链和 selection/导航/命中相关模块不再继续各自临时构造；命中主链与快照访问主链都在朝“draw 级单例服务 + 更少局部 new”收口。
@@ -634,13 +634,13 @@ TableSelectionProjectionService.ts
 
 - 重构期会同时影响表格、分页、选区、导航
 - 过渡期可能短时间内引入新回归
-- 如果保留旧逻辑过多，会导致新旧链路并存，收益减半
+- 如果保留旧逻辑过多，会导致双轨并存，收益减半
 
 ### 10.2 控制措施
 
 1. 先做单一语义，不先碰性能
 2. 每一阶段都补高频回归用例
-3. 允许破坏性更新，不做旧链路兼容保留
+3. 允许破坏性更新，不做过渡链路保留
 4. 每完成一阶段，立即删除旧补丁，不让双轨长期共存
 
 ---
@@ -728,7 +728,7 @@ TableSelectionProjectionService.ts
 
 ## 15. 补充说明
 
-本方案默认允许破坏性更新，不要求兼容旧链路。
+本方案默认允许破坏性更新，不要求保留过渡链路。
 
 建议执行原则：
 
@@ -751,7 +751,7 @@ TableSelectionProjectionService.ts
   - `table-pagination-input`
   - `table-pagination-merged`
   - `table-pagination-mock`
-- 当时阶段结论：运行主链已恢复到 `47 / 47` 固定表格回归全绿，后续继续沿阶段 6 做物理删壳，而不是再回到补丁式兼容。
+- 当时阶段结论：运行主链已恢复到 `47 / 47` 固定表格回归全绿，后续继续沿阶段 6 做物理删壳，而不是再回到补丁式过渡层。
 
 ## 2026-04-22 第二轮补充
 
@@ -811,8 +811,8 @@ TableSelectionProjectionService.ts
   - `resolveExistingCaretAnchorIndex.ts` 已并回 `resolveSelectionStartState.ts`。
   - existing-caret anchor 计算不再额外跨文件跳转。
   - `Position.resolveRowBoundaryPosition()` 也已内联回页边界兜底主链。
-  - `Position.resolveActiveRowBandFallback()` 也已内联回 `getPositionByXY()` 主链。
-  - `Position.resolvePageBoundaryFallback()` 也已内联回 `getPositionByXY()` 主链。
+  - 页内行带兜底 helper 也已内联回 `getPositionByXY()` 主链。
+  - 页边界兜底 helper 也已内联回 `getPositionByXY()` 主链。
   - fresh direct-drag 的 table selection 起点重新回到 hit-range 主路径，`dragAnchorSource` 也已在拖选链上完整透传。
   - `CommandAdapt.getRangeContext()` 已继续拆成编排层 + 局部组装 helper。
   - `RowRenderer.drawSelection()` 已继续拆出跨行列与普通选区两段局部 helper。

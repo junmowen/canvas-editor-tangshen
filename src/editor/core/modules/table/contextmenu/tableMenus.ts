@@ -7,7 +7,7 @@ import {
   TdSlash
 } from '../../../../dataset/enum/table/Table'
 import { IRegisterContextMenu } from '../../../../interface/contextmenu/ContextMenu'
-import { Dialog } from '../../../../../components/dialog/Dialog'
+import { Dialog, IDialogConfirm } from '../../../../../components/dialog/Dialog'
 import { Command } from '../../../command/Command'
 import { resolveTableCellByIndex } from '../utils/TableCellTraversal'
 
@@ -16,9 +16,12 @@ type TableContextMenuContext = Parameters<
   NonNullable<IRegisterContextMenu['callback']>
 >[1]
 
+type DialogPayload = IDialogConfirm[]
+
 // 内置表格右键菜单 key，覆盖边框、行列、合并和对齐操作。
 const {
   TABLE: {
+    PROPERTY,
     BORDER,
     BORDER_ALL,
     BORDER_EMPTY,
@@ -94,6 +97,202 @@ const normalizeColor = (color?: string) => {
   return /^#[0-9A-Fa-f]{6}$/.test(color || '') ? color! : '#000000'
 }
 
+const getDialogValue = (payload: DialogPayload, name: string) => {
+  return payload.find(item => item.name === name)?.value || ''
+}
+
+const parsePositiveNumber = (value: string): number | undefined => {
+  const num = Number(value)
+  return Number.isFinite(num) && num > 0 ? num : undefined
+}
+
+const toBooleanSelectValue = (value?: boolean) => (value ? 'true' : 'false')
+
+const applyCurrentRowProperties = (
+  context: TableContextMenuContext,
+  minHeight: number | undefined,
+  repeatOnPageStart: boolean
+) => {
+  const { tableElement, trIndex } = context
+  if (!tableElement?.trList?.length || trIndex === null) {
+    return tableElement?.trList
+  }
+  return tableElement.trList.map((tr, index) => {
+    if (index !== trIndex) return tr
+    return {
+      ...tr,
+      minHeight,
+      repeatOnPageStart
+    }
+  })
+}
+
+const openTablePropertyDialog = (
+  command: Command,
+  context: TableContextMenuContext
+) => {
+  const table = context.tableElement
+  if (!table?.id) return
+  const td = getFirstSelectedTd(context)
+  const tr =
+    context.trIndex !== null ? table.trList?.[context.trIndex] || null : null
+  new Dialog({
+    title: command.executeTranslate('contextmenu.table.property'),
+    data: [
+      {
+        type: 'select',
+        label: command.executeTranslate('contextmenu.table.borderType'),
+        name: 'borderType',
+        value: table.borderType || TableBorder.ALL,
+        options: [
+          {
+            label: command.executeTranslate('contextmenu.table.borderAll'),
+            value: TableBorder.ALL
+          },
+          {
+            label: command.executeTranslate('contextmenu.table.borderEmpty'),
+            value: TableBorder.EMPTY
+          },
+          {
+            label: command.executeTranslate('contextmenu.table.borderDash'),
+            value: TableBorder.DASH
+          },
+          {
+            label: command.executeTranslate('contextmenu.table.borderExternal'),
+            value: TableBorder.EXTERNAL
+          },
+          {
+            label: command.executeTranslate('contextmenu.table.borderInternal'),
+            value: TableBorder.INTERNAL
+          }
+        ]
+      },
+      {
+        type: 'color',
+        label: command.executeTranslate('contextmenu.table.borderColor'),
+        name: 'borderColor',
+        value: normalizeColor(
+          table.borderColor || context.options.table.defaultBorderColor
+        )
+      },
+      {
+        type: 'number',
+        label: command.executeTranslate('contextmenu.table.borderWidth'),
+        name: 'borderWidth',
+        value: `${table.borderWidth || 1}`,
+        placeholder: '1'
+      },
+      {
+        type: 'number',
+        label: command.executeTranslate('contextmenu.table.borderExternalWidth'),
+        name: 'borderExternalWidth',
+        value: `${table.borderExternalWidth || table.borderWidth || 1}`,
+        placeholder: '1'
+      },
+      {
+        type: 'number',
+        label: command.executeTranslate('contextmenu.table.rowMinHeight'),
+        name: 'rowMinHeight',
+        value: tr?.minHeight ? `${tr.minHeight}` : '',
+        placeholder: `${context.options.table.defaultTrMinHeight}`
+      },
+      {
+        type: 'select',
+        label: command.executeTranslate('contextmenu.table.repeatHeaderRow'),
+        name: 'repeatHeaderRow',
+        value: toBooleanSelectValue(tr?.repeatOnPageStart),
+        options: [
+          {
+            label: command.executeTranslate('contextmenu.table.repeatHeaderNo'),
+            value: 'false'
+          },
+          {
+            label: command.executeTranslate('contextmenu.table.repeatHeaderYes'),
+            value: 'true'
+          }
+        ]
+      },
+      {
+        type: 'color',
+        label: command.executeTranslate('contextmenu.table.cellBackgroundColor'),
+        name: 'cellBackgroundColor',
+        value: normalizeColor(td?.backgroundColor || '#ffffff')
+      },
+      {
+        type: 'select',
+        label: command.executeTranslate('contextmenu.table.verticalAlign'),
+        name: 'verticalAlign',
+        value: td?.verticalAlign || VerticalAlign.TOP,
+        options: [
+          {
+            label: command.executeTranslate('contextmenu.table.verticalAlignTop'),
+            value: VerticalAlign.TOP
+          },
+          {
+            label: command.executeTranslate(
+              'contextmenu.table.verticalAlignMiddle'
+            ),
+            value: VerticalAlign.MIDDLE
+          },
+          {
+            label: command.executeTranslate(
+              'contextmenu.table.verticalAlignBottom'
+            ),
+            value: VerticalAlign.BOTTOM
+          }
+        ]
+      }
+    ],
+    onConfirm: payload => {
+      restoreTableContext(command, context)
+      const borderType = getDialogValue(payload, 'borderType') as TableBorder
+      const borderColor = normalizeColor(getDialogValue(payload, 'borderColor'))
+      const borderWidth = parsePositiveNumber(
+        getDialogValue(payload, 'borderWidth')
+      )
+      const borderExternalWidth =
+        parsePositiveNumber(getDialogValue(payload, 'borderExternalWidth')) ||
+        borderWidth
+      const rowMinHeight = parsePositiveNumber(
+        getDialogValue(payload, 'rowMinHeight')
+      )
+      const repeatOnPageStart =
+        getDialogValue(payload, 'repeatHeaderRow') === 'true'
+      const cellBackgroundColor = normalizeColor(
+        getDialogValue(payload, 'cellBackgroundColor')
+      )
+      const verticalAlign = getDialogValue(
+        payload,
+        'verticalAlign'
+      ) as VerticalAlign
+      const trList = applyCurrentRowProperties(
+        context,
+        rowMinHeight,
+        repeatOnPageStart
+      )
+
+      command.executeUpdateElementById({
+        id: table.id,
+        properties: {
+          borderType,
+          borderColor,
+          borderWidth,
+          borderExternalWidth,
+          trList
+        }
+      })
+      if (td && td.backgroundColor !== cellBackgroundColor) {
+        restoreTableContext(command, context)
+        command.executeTableTdBackgroundColor(cellBackgroundColor)
+      }
+      if (verticalAlign) {
+        restoreTableContext(command, context)
+        command.executeTableTdVerticalAlign(verticalAlign)
+      }
+    }
+  })
+}
+
 const openColorDialog = (
   command: Command,
   titlePath: string,
@@ -150,6 +349,19 @@ const openWidthDialog = (
 export const tableMenus: IRegisterContextMenu[] = [
   {
     isDivider: true
+  },
+  {
+    key: PROPERTY,
+    i18nPath: 'contextmenu.table.property',
+    icon: 'table',
+    when: payload => {
+      return (
+        !payload.isReadonly &&
+        payload.isInTable &&
+        payload.options.mode !== EditorMode.FORM
+      )
+    },
+    callback: openTablePropertyDialog
   },
   {
     key: BORDER,

@@ -2,27 +2,37 @@ import { ImageDisplay } from '../../../../dataset/enum/Common'
 import { ElementType } from '../../../../dataset/enum/Element'
 import { IElement } from '../../../../interface/Element'
 
+/** 判断图片元素在普通排版态下是否可见。 */
+export function isVisibleImageElement(element?: IElement | null) {
+  return !!(
+    element &&
+    !element.hide &&
+    !element.control?.hide &&
+    !element.area?.hide
+  )
+}
+
 /** 判断元素是否需要加入浮动图片位置缓存。 */
 export function shouldCacheFloatImagePosition(element: IElement) {
   return (
-    element.imgDisplay === ImageDisplay.SURROUND ||
-    element.imgDisplay === ImageDisplay.TIGHT ||
-    element.imgDisplay === ImageDisplay.FLOAT_TOP ||
-    element.imgDisplay === ImageDisplay.FLOAT_BOTTOM
+    isVisibleImageElement(element) &&
+    (element.imgDisplay === ImageDisplay.SURROUND ||
+      element.imgDisplay === ImageDisplay.TIGHT ||
+      element.imgDisplay === ImageDisplay.FLOAT_TOP ||
+      element.imgDisplay === ImageDisplay.FLOAT_BOTTOM)
   )
 }
 
 /** 判断元素是否使用图片类垂直偏移。 */
 export function shouldUseImageOffset(element: IElement) {
   return (
-    !element.hide &&
-    ((element.imgDisplay !== ImageDisplay.INLINE &&
-      element.type === ElementType.IMAGE) ||
-      element.type === ElementType.LATEX)
+    isVisibleImageElement(element) &&
+    element.imgDisplay !== ImageDisplay.INLINE &&
+    element.type === ElementType.IMAGE
   )
 }
 
-/** 兼容浮动图片初始坐标为空的情况。 */
+/** 确保浮动图片具备初始坐标。 */
 export function ensureFloatImagePosition(payload: {
   /** 图片元素。 */
   element: IElement

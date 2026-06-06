@@ -298,7 +298,7 @@ export function resolveRowDragHandleAtPoint(payload: {
 }): IResolvedRowDragHandle | null {
   const { draw, x, y, pageNo } = payload
   const rowList = draw.getPageRowList()[pageNo] || []
-  const positionList = draw.getCoordinate().getLayoutMainPositionListByPage(pageNo)
+  const positionList = draw.getCoordinate().getMainPositionListByPage(pageNo)
   const elementList = draw.getObjectResolver().getLayoutMainElementList()
   const { scale } = draw.getOptions()
   let rowPositionOffset = 0

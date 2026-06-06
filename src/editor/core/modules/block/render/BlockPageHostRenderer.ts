@@ -10,7 +10,7 @@ export class BlockPageHostRenderer {
   /** base bitmap cache 命中时重放 DOM/SVG block host。 */
   public render(payload: IDrawPagePayload) {
     const pagePositionList =
-      this.draw.getCoordinate().getLayoutMainPositionListByPage(payload.pageNo)
+      this.draw.getCoordinate().getMainPositionListByPage(payload.pageNo)
     let rowPositionOffset = 0
     for (let i = 0; i < payload.rowList.length; i++) {
       const row = payload.rowList[i]

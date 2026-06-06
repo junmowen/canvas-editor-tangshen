@@ -8,7 +8,7 @@ import {
 } from '../../../src/editor/core/event/pointer/row-drag/RowDragHandle'
 
 function getOriginalElements(editor: Editor) {
-  return (editor as any).draw.getOriginalMainElementList()
+  return (editor as any).draw.getObjectResolver().getOriginalMainElementList()
 }
 
 function getText(editor: Editor) {
@@ -69,8 +69,8 @@ function setTitleAndListValue(editor: Editor) {
 
 function getRowHandlePoint(draw: any, row: any) {
   const positionList = draw
-    .getPosition()
-    .getLayoutMainPositionListByPage(0)
+    .getCoordinate()
+    .getMainPositionListByPage(0)
     .slice(row.startIndex, row.startIndex + row.elementList.length)
   const bounds = getRowDragHandleBounds({
     row,
@@ -87,8 +87,8 @@ function getRowHandlePoint(draw: any, row: any) {
 
 function getRowHandleBounds(draw: any, row: any) {
   const positionList = draw
-    .getPosition()
-    .getLayoutMainPositionListByPage(0)
+    .getCoordinate()
+    .getMainPositionListByPage(0)
     .slice(row.startIndex, row.startIndex + row.elementList.length)
   const bounds = getRowDragHandleBounds({
     row,
@@ -100,7 +100,7 @@ function getRowHandleBounds(draw: any, row: any) {
 }
 
 function getTextRange(draw: any, text: string) {
-  const elementList = draw.getElementList()
+  const elementList = draw.getObjectResolver().getElementList()
   const chars = Array.from(text)
   const startIndex = elementList.findIndex((element: any, index: number) =>
     chars.every((char, offset) => elementList[index + offset]?.value === char)
@@ -134,7 +134,7 @@ describe('issue #621 list item drag reorder', () => {
       ).listId
 
       const draw = (editor as any).draw
-      const elementList = draw.getElementList()
+      const elementList = draw.getObjectResolver().getElementList()
       const firstSecondItemIndex = elementList.findIndex(
         (element: any, index: number) =>
           element.value === '第' && elementList[index + 1]?.value === '二'
@@ -161,8 +161,8 @@ describe('issue #621 list item drag reorder', () => {
         range: dropRange,
         cacheRange,
         cacheElementList: elementList,
-        cachePositionList: draw.getPosition().getPositionList(),
-        cachePositionContext: draw.getPosition().getPositionContext(),
+        cachePositionList: draw.getCoordinate().getPositionList(),
+        cachePositionContext: draw.getCoordinate().getPositionContext(),
         cacheStartIndex: cacheRange.startIndex,
         cacheEndIndex: cacheRange.endIndex,
         dragElementList: elementList.slice(
@@ -188,7 +188,7 @@ describe('issue #621 list item drag reorder', () => {
       })
 
       const listRows = draw
-        .getOriginalRowList()
+        .getObjectResolver().getOriginalRowList()
         .filter((row: any) => row.isList)
       expect(listRows.map((row: any) => row.listIndex)).to.deep.eq([0, 1, 2])
     })
@@ -213,7 +213,7 @@ describe('issue #621 list item drag reorder', () => {
       ).to.eq(null)
 
       const firstPosition = draw
-        .getPosition()
+        .getCoordinate()
         .getPositionList()[getTextRange(draw, '第一项').startIndex + 1]
       cy.wrap({
         pageNo: firstPosition.pageNo,
@@ -265,7 +265,7 @@ describe('issue #621 list item drag reorder', () => {
       const row = draw.getPageRowList()[0].find((item: any) => item.isList)
       const bounds = getRowHandleBounds(draw, row)
       const firstContentPosition =
-        draw.getPosition().getPositionList()[getTextRange(draw, '第一项').startIndex + 1]
+        draw.getCoordinate().getPositionList()[getTextRange(draw, '第一项').startIndex + 1]
       expect(bounds.x + bounds.width).to.be.lessThan(
         firstContentPosition.coordinate.leftTop[0]
       )
@@ -311,7 +311,7 @@ describe('issue #621 list item drag reorder', () => {
       expect(session.isAllowDrag).to.eq(true)
       const range = draw.getRange().getEditBoundaryRange()
       const rangeText = draw
-        .getElementList()
+        .getObjectResolver().getElementList()
         .slice(range.startIndex + 1, range.endIndex + 1)
         .map((element: any) => element.value)
         .join('')
@@ -335,8 +335,8 @@ describe('issue #621 list item drag reorder', () => {
       )
       const startPoint = getRowHandlePoint(draw, listRows[1])
       const thirdRowPositionList = draw
-        .getPosition()
-        .getLayoutMainPositionListByPage(0)
+        .getCoordinate()
+        .getMainPositionListByPage(0)
         .slice(
           listRows[2].startIndex,
           listRows[2].startIndex + listRows[2].elementList.length
@@ -409,7 +409,7 @@ describe('issue #621 list item drag reorder', () => {
       const listRows = draw.getPageRowList()[0].filter((row: any) => row.isList)
       const startPoint = getRowHandlePoint(draw, listRows[1])
       const paragraphPosition =
-        draw.getPosition().getPositionList()[getTextRange(draw, '普通段落').startIndex + 1]
+        draw.getCoordinate().getPositionList()[getTextRange(draw, '普通段落').startIndex + 1]
       const dropPoint = {
         pageNo: paragraphPosition.pageNo,
         x: Math.floor(paragraphPosition.coordinate.leftTop[0]),
@@ -482,7 +482,7 @@ describe('issue #621 list item drag reorder', () => {
       expect(listRows.length).to.eq(2)
       const startPoint = getRowHandlePoint(draw, listRows[1])
       const titlePosition =
-        draw.getPosition().getPositionList()[titleRange.startIndex + 1]
+        draw.getCoordinate().getPositionList()[titleRange.startIndex + 1]
       const dropPoint = {
         pageNo: titlePosition.pageNo,
         x: Math.floor(titlePosition.coordinate.leftTop[0]),
@@ -549,7 +549,7 @@ describe('issue #621 list item drag reorder', () => {
       const startPoint = getRowHandlePoint(draw, paragraphRow)
       const titleRange = getTextRange(draw, '体格检查：')
       const titlePosition =
-        draw.getPosition().getPositionList()[titleRange.endIndex]
+        draw.getCoordinate().getPositionList()[titleRange.endIndex]
       const dropPoint = {
         pageNo: titlePosition.pageNo,
         x: Math.floor(titlePosition.coordinate.rightTop[0]),
@@ -581,7 +581,7 @@ describe('issue #621 list item drag reorder', () => {
     cy.getEditor().then((editor: Editor) => {
       const draw = (editor as any).draw
       const movedElements = draw
-        .getElementList()
+        .getObjectResolver().getElementList()
         .filter((element: any) => '否认特殊接触史。'.includes(element.value))
       expect(movedElements.length).to.be.greaterThan(0)
 

@@ -150,7 +150,7 @@ function resolveTableFirstTextClick(editor: Editor, tableId: string): ClickPoint
   } as any)
   editor.command.executeSetRange(0, 0)
   const draw = (editor as any).draw
-  const tablePositionList = draw.getPosition().getPositionList()
+  const tablePositionList = draw.getCoordinate().getPositionList()
   const firstTextPosition = tablePositionList.find(
     (position: any) => position.value && position.value !== ZERO
   )
@@ -169,7 +169,7 @@ function resolvePlainLeftBlankClick(
   editor.command.executeSetRange(tableIndex, tableIndex)
   const draw = (editor as any).draw
   const elementList = draw.getOriginalElementList()
-  const positionList = draw.getPosition().getOriginalPositionList()
+  const positionList = draw.getCoordinate().getOriginalPositionList()
   const rows = new Map<string, any[]>()
 
   positionList.forEach((position: any) => {
@@ -227,7 +227,7 @@ function resolvePlainBeforeTableLeftBlankClick(
   editor.command.executeSetRange(tableIndex, tableIndex)
   const draw = (editor as any).draw
   const elementList = draw.getOriginalElementList()
-  const positionList = draw.getPosition().getOriginalPositionList()
+  const positionList = draw.getCoordinate().getOriginalPositionList()
   const rows = new Map<string, any[]>()
 
   positionList.forEach((position: any) => {
@@ -337,7 +337,7 @@ function resolveWrappedTableLineStartClick(
   editor.command.executeSetRange(0, 0)
 
   const draw = (editor as any).draw
-  const positionList = draw.getPosition().getPositionList()
+  const positionList = draw.getCoordinate().getPositionList()
   const rows = new Map<string, any[]>()
   positionList.forEach((position: any) => {
     if (!position.value || position.value === ZERO) return
@@ -388,7 +388,7 @@ function resolveWrappedTablePageFirstLineStartClick(
   editor.command.executeSetRange(0, 0)
 
   const draw = (editor as any).draw
-  const positionList = draw.getPosition().getPositionList()
+  const positionList = draw.getCoordinate().getPositionList()
   const rows = new Map<string, any[]>()
   positionList.forEach((position: any) => {
     if (!position.value || position.value === ZERO) return
@@ -457,7 +457,7 @@ describe('left blank click after table click', () => {
       cy.getEditor().then((editor: Editor) => {
         const draw = (editor as any).draw
         const cursor = editor.command.getCursorPosition()
-        expect(draw.getPosition().getPositionContext().isTable).to.eq(false)
+        expect(draw.getCoordinate().getPositionContext().isTable).to.eq(false)
         expect(cursor?.index).to.eq(plainClick.boundaryIndex)
         expect(cursor?.coordinate.rightTop[0]).to.eq(plainClick.headX)
 
@@ -510,7 +510,7 @@ describe('left blank click after table click', () => {
       cy.getEditor().then((editor: Editor) => {
         const draw = (editor as any).draw
         const cursor = editor.command.getCursorPosition()
-        expect(draw.getPosition().getPositionContext().isTable).to.eq(false)
+        expect(draw.getCoordinate().getPositionContext().isTable).to.eq(false)
         expect(cursor?.index).to.eq(plainClick.boundaryIndex)
         expect(cursor?.coordinate.rightTop[0]).to.eq(plainClick.headX)
 
@@ -566,7 +566,7 @@ describe('left blank click after table click', () => {
               cursor,
               range: editor.command.getRange(),
               rawRange: draw.getRange().getEditBoundaryRange(),
-              positionContext: draw.getPosition().getPositionContext(),
+              positionContext: draw.getCoordinate().getPositionContext(),
               aroundText: beforeText?.slice(
                 Math.max(0, cursorIndex - 3),
                 cursorIndex + 6

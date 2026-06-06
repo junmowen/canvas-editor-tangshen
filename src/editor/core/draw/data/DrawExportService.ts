@@ -1,5 +1,8 @@
 import { EditorMode, PageMode } from '../../../dataset/enum/Editor'
-import { IEditorData } from '../../../interface/Editor'
+import {
+  IHeaderFooterPageScopeData,
+  IRuntimeEditorData
+} from '../../../interface/Editor'
 import { IDrawPagePayload } from '../../../interface/Draw'
 import { deepClone } from '../../../utils'
 import { preloadExportBackgroundIfNeeded } from '../../modules/background/export/BackgroundExportPreloadPolicy'
@@ -34,13 +37,15 @@ export class DrawExportService {
     // 深度克隆打印模式数据
     const clonePrintModeData = deepClone(printModeData)
     // 初始化 editor Data Keys 列表。
-    const editorDataKeys: (keyof IEditorData)[] = ['header', 'main', 'footer']
-    // 遍历所有区域，过滤掉辅助元素（如占位符等不适合打印的内容）
-    editorDataKeys.forEach(key => {
-      clonePrintModeData[key] = this.draw.getComponents().control.filterAssistElement(
-        clonePrintModeData[key]
-      )
-    })
+    clonePrintModeData.main = this.draw.getComponents().control.filterAssistElement(
+      clonePrintModeData.main
+    )
+    clonePrintModeData.headerPageScopes = this.filterAssistPageScopes(
+      clonePrintModeData.headerPageScopes
+    )
+    clonePrintModeData.footerPageScopes = this.filterAssistPageScopes(
+      clonePrintModeData.footerPageScopes
+    )
     // 将过滤后的数据设置为当前编辑器数据
     this.draw.setEditorData(clonePrintModeData)
   }
@@ -101,7 +106,7 @@ export class DrawExportService {
       await this.draw.getComponents().imageObserver.allSettled()
       await preloadExportBackgroundIfNeeded(this.draw, exportMode)
 
-      const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
+      const positionList = this.draw.getCoordinate().getMainPositionList()
       const elementList = this.draw.getObjectResolver().getLayoutMainElementList()
       const pageRowList = this.draw.getPageRowList()
       const pageMode = this.draw.getRuntime().getOptions().pageMode
@@ -175,7 +180,7 @@ export class DrawExportService {
    * @param mode - 导出模式
    * @returns 导出所需的完整编辑器数据
    */
-  private getExportData(mode: EditorMode): Required<IEditorData> {
+  private getExportData(mode: EditorMode): IRuntimeEditorData {
     // 深度克隆当前的页眉、正文和页脚数据
     const data = deepClone(this.draw.getObjectResolver().getOriginalEditorData())
     // 非打印模式直接返回原始数据
@@ -184,9 +189,21 @@ export class DrawExportService {
     }
     // 打印模式下过滤辅助元素（如占位符等）
     return {
-      header: this.draw.getComponents().control.filterAssistElement(data.header),
+      headerPageScopes: this.filterAssistPageScopes(data.headerPageScopes),
       main: this.draw.getComponents().control.filterAssistElement(data.main),
-      footer: this.draw.getComponents().control.filterAssistElement(data.footer)
+      footerPageScopes: this.filterAssistPageScopes(data.footerPageScopes)
     }
+  }
+
+  private filterAssistPageScopes(
+    pageScopes?: IHeaderFooterPageScopeData[]
+  ): IHeaderFooterPageScopeData[] | undefined {
+    if (!pageScopes) return undefined
+    return pageScopes.map(scopeData => ({
+      pageScope: scopeData.pageScope,
+      elementList: this.draw.getComponents().control.filterAssistElement(
+        scopeData.elementList
+      )
+    }))
   }
 }

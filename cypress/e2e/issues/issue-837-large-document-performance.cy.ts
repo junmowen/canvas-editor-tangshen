@@ -160,7 +160,7 @@ describe('issue #837 large document performance baseline', () => {
       })
       const duration = performance.now() - start
       const flushStart = performance.now()
-      editor.draw.flushScheduledFrameRender()
+      editor.draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
       const flushDuration = performance.now() - flushStart
 
       expect(duration, 'single character input duration').to.be.lessThan(1000)
@@ -205,7 +205,7 @@ describe('issue #837 large document performance baseline', () => {
       expect(renderCount, 'render before frame flush').to.eq(0)
 
       const flushStart = performance.now()
-      editor.draw.flushScheduledFrameRender()
+      editor.draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
       const flushDuration = performance.now() - flushStart
 
       expect(flushDuration, 'coalesced frame render duration').to.be.lessThan(250)

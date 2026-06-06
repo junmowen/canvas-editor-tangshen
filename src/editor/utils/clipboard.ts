@@ -2,7 +2,8 @@ import { EDITOR_CLIPBOARD } from '../dataset/constant/Editor'
 import { DeepRequired } from '../interface/Common'
 import { IEditorOption } from '../interface/Editor'
 import { IElement } from '../interface/Element'
-import { createDomFromElementList, zipElementList } from './element'
+import { zipElementList } from './elementZip'
+import { createDomFromElementList } from './elementDom'
 
 /** clipboard数据契约，用于约束内部流程中传递的数据结构。 */
 export interface IClipboardData {

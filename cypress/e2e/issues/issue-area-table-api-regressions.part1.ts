@@ -155,7 +155,7 @@ describe('area and table API regressions', () => {
       })
 
       expect(areaId).to.eq('area-from-insert-area')
-      ;(editor as any).draw.flushScheduledFrameRender()
+      ;(editor as any).draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
       const area = editor.command.getAreaValue({
         id: 'area-from-insert-area'
       })
@@ -187,7 +187,7 @@ describe('area and table API regressions', () => {
         id: 'area-set-value',
         value: [{ value: 'updated area value' }]
       })
-      ;(editor as any).draw.flushScheduledFrameRender()
+      ;(editor as any).draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
       const area = editor.command.getAreaValue({
         id: 'area-set-value'
       })
@@ -552,7 +552,7 @@ describe('area and table API regressions', () => {
           ?.value.map(element => element.value)
           .join('')
       const areaIndex = (editor as any).draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .findIndex((element: any) => element.value === 'l')
       expect(areaIndex).to.be.greaterThan(-1)
 
@@ -844,7 +844,7 @@ describe('area and table API regressions', () => {
       expect(text).not.to.contain('inside table')
       expect(text).not.to.contain('after table')
       expect(
-        (editor as any).draw.getPosition().getPositionContext().isTable
+        (editor as any).draw.getCoordinate().getPositionContext().isTable
       ).to.eq(false)
     })
   })
@@ -878,7 +878,7 @@ describe('area and table API regressions', () => {
       })
 
       const table = (editor as any).draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .find((element: any) => element.type === ElementType.TABLE)
       expect(table.id).to.be.a('string')
       expect(table.trList[0].id).to.be.a('string')

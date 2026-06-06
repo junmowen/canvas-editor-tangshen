@@ -24,7 +24,7 @@ export class DocumentChunkIndex {
   private chunkList: IDocumentChunk[] = []
   /** 当前索引版本，每次重建递增。 */
   private version = 0
-  /** 超长段落硬切片阈值，仅在缺少分页布局时作为兜底切片。 */
+  /** 超长段落硬切片阈值，仅在缺少分页布局时作为备用切片。 */
   private readonly maxElementCountPerChunk = 800
   /** 最近一次重建耗时。 */
   private lastBuildDuration = 0

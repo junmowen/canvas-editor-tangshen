@@ -22,7 +22,7 @@ export class TableCellChunkStats {
 
   /** 统一完成重建统计收尾。 */
   public finishRebuild(payload: {
-    /** 原因说明，用于记录降级、跳过或失败的触发条件。 */
+    /** 原因说明，用于记录重建、跳过或失败的触发条件。 */
     reason: string
     /** 起始time，用于日期时间控件的显示或提交。 */
     startTime: number

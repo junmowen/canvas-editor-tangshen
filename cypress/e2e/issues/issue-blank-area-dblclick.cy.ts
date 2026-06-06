@@ -21,7 +21,7 @@ describe('blank area double click', () => {
         footer: []
       })
       const draw = (editor as any).draw
-      draw.flushScheduledFrameRender()
+      draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
       cy.wrap({
         x: draw.getMargins()[3] + 20,
         y: draw.getHeight() - draw.getMargins()[2] - 20
@@ -53,8 +53,8 @@ describe('blank area double click', () => {
         } as any
       )
       const draw = (editor as any).draw
-      draw.flushScheduledFrameRender()
-      const position = draw.getPosition()
+      draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
+      const position = draw.getCoordinate()
       const positionList = position.getPositionList()
       expect(positionList.length).to.be.greaterThan(0)
       position.setPositionList([

@@ -43,8 +43,8 @@ export interface IPageChunkRebalanceStats {
   dirtyRangeLastActualEndPageNo: number | null
   /** dirty range planner 接管异步传播起点次数。 */
   dirtyRangeScheduleTakeoverCount: number
-  /** planner 漏实际页时回退旧异步传播起点次数。 */
-  dirtyRangeScheduleFallbackCount: number
+  /** planner 漏实际页时修正异步传播起点次数。 */
+  dirtyRangeScheduleCorrectionCount: number
 }
 
 /** 页级 chunk rebalance 统计状态，避免 patcher 同时维护算法和指标字段。 */
@@ -75,9 +75,9 @@ export class PageChunkRebalanceStats {
     this.stats.dirtyRangeScheduleTakeoverCount++
   }
 
-  /** 记录 planner 漏页时回退旧传播起点。 */
-  public recordDirtyRangeScheduleFallback() {
-    this.stats.dirtyRangeScheduleFallbackCount++
+  /** 记录 planner 漏页时修正传播起点。 */
+  public recordDirtyRangeScheduleCorrection() {
+    this.stats.dirtyRangeScheduleCorrectionCount++
   }
 
   /** 记录 dirty range planner 旁路结果。 */
@@ -156,7 +156,7 @@ export class PageChunkRebalanceStats {
       dirtyRangeLastActualStartPageNo: null,
       dirtyRangeLastActualEndPageNo: null,
       dirtyRangeScheduleTakeoverCount: 0,
-      dirtyRangeScheduleFallbackCount: 0
+      dirtyRangeScheduleCorrectionCount: 0
     }
   }
 }

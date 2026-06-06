@@ -4,10 +4,10 @@ import { IRenderSurface, RenderLayer } from '../../../render-backend'
 import type { Draw } from '../../../draw/Draw'
 
 /**
- * 第一阶段 overlay 渲染器。
+ * 表格 overlay 渲染器。
  *
- * 当前先负责分页 overlay 画布的清理与上下文分发，
- * 让选区/光标后续可以逐步迁入独立层，而不直接耦合在 PageRenderer 中。
+ * 负责分页 overlay 画布清理与上下文分发，让选区、搜索和控件高亮脱离
+ * PageRenderer 主绘制链路。
  */
 export class TableOverlayRenderer {
   /** 初始化 TableOverlayRenderer 实例并注入运行依赖。 */
@@ -72,7 +72,7 @@ export class TableOverlayRenderer {
    */
   public renderPageOverlay(
     pageNo: number,
-    positionList = this.draw.getCoordinate().getLayoutMainPositionList(),
+    positionList = this.draw.getCoordinate().getMainPositionList(),
     elementList = this.draw.getObjectResolver().getLayoutMainElementList()
   ) {
     const rowList = this.draw.getPageRowList()[pageNo]
@@ -85,7 +85,7 @@ export class TableOverlayRenderer {
     }
     const pagePositionList =
       pageNo >= 0
-        ? this.draw.getCoordinate().getLayoutMainPositionListByPage(pageNo)
+        ? this.draw.getCoordinate().getMainPositionListByPage(pageNo)
         : positionList
     const payload: IDrawRowPayload = {
       elementList,
@@ -108,7 +108,7 @@ export class TableOverlayRenderer {
   public renderVisibleOverlay() {
     // overlay 当前承接的是“可视页上的装饰层”：
     // 选区、搜索高亮、控件高亮都从这里按页分发。
-    const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
+    const positionList = this.draw.getCoordinate().getMainPositionList()
     const elementList = this.draw.getObjectResolver().getLayoutMainElementList()
     const searchRenderPageNoList =
       this.draw.getSearch().consumeSearchRenderPageNoList()

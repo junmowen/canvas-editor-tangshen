@@ -9,7 +9,7 @@ import {
   IRegisterContextMenu
 } from '../../../interface/contextmenu/ContextMenu'
 import { findParent } from '../../../utils'
-import { zipElementList } from '../../../utils/element'
+import { zipElementList } from '../../../utils/elementZip'
 import { Command } from '../../command/Command'
 import { Draw } from '../../draw/Draw'
 import type { DrawCoordinateService } from '../../draw/coordinate/DrawCoordinateService'

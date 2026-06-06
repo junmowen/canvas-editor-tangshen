@@ -56,7 +56,7 @@ export class PageRenderSnapshotBuilder extends PageRenderSnapshotValidator {
     })
   }
 
-  /** 构建单页 base worker 快照；不支持的内容会抛错并触发 Canvas2D fallback。 */
+  /** 构建单页 base worker 快照；不支持的内容会抛错并触发 Canvas2D 备用路径。 */
   public build(
     payload: IBuildWorkerPageSnapshotPayload
   ): IWorkerPageRenderSnapshot {
@@ -75,21 +75,21 @@ export class PageRenderSnapshotBuilder extends PageRenderSnapshotValidator {
         }
       },
       ...this.buildBackgroundCommands(pageNo),
-      ...this.buildMarginCommands(),
+      ...this.buildMarginCommands(pageNo),
       ...this.buildAreaCommands(pageNo),
       ...this.buildFloatingImageCommands(
         pageNo,
         getWorkerSnapshotBottomFloatImageLayerList()
       ),
       ...this.buildMainTextCommands(pagePayload),
-      ...this.buildPlaceholderCommands(),
+      ...this.buildPlaceholderCommands(pageNo),
       ...this.buildPagingFrameCommands(pagePayload),
       ...this.buildFloatingImageCommands(
         pageNo,
         getWorkerSnapshotTopFloatImageLayerList()
       ),
       ...this.buildLineNumberCommands(pagePayload),
-      ...this.buildPageBorderCommands(),
+      ...this.buildPageBorderCommands(pageNo),
       ...this.buildBadgeCommands(pagePayload),
       ...this.buildWatermarkCommands(pagePayload)
     ]

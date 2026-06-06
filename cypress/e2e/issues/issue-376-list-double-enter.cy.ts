@@ -4,7 +4,7 @@ import { ListType } from '../../../src/editor/dataset/enum/List'
 const ZERO = '\u200B'
 
 function getOriginalElements(editor: Editor) {
-  return (editor as any).draw.getOriginalMainElementList()
+  return (editor as any).draw.getObjectResolver().getOriginalMainElementList()
 }
 
 function prepareList(editor: Editor, listType: ListType) {

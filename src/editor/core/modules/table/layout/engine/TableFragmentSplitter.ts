@@ -222,6 +222,8 @@ export class TableFragmentSplitter {
       logicalTableId,
       logicalTableIndex,
       fragmentOrder: 0,
+      tableDisplay: sourceTable.tableDisplay,
+      tableStyleId: sourceTable.tableStyleId,
       colgroup: deepClone(sourceTable.colgroup || []),
       trList,
       borderType: sourceTable.borderType,
@@ -323,7 +325,9 @@ export class TableFragmentSplitter {
           trList[originalStartRowIndex].id,
         rowspan: Math.max(1, tailRowspan),
         value: [],
-        rowList: []
+        rowList: [],
+        // 空续接单元格只用于补齐跨页结构，不能继承原单元格内容高度，否则后续页会出现大块空白。
+        mainHeight: 0
       }
 
       let splitTdPreHeight = splitTrPreHeight
@@ -448,6 +452,8 @@ export class TableFragmentSplitter {
       logicalTableId: fragment.logicalTableId,
       logicalTableIndex: fragment.logicalTableIndex,
       fragmentOrder: fragment.fragmentOrder + 1,
+      tableDisplay: fragment.tableDisplay,
+      tableStyleId: fragment.tableStyleId,
       colgroup: fragment.colgroup,
       trList: tailTrList,
       borderType: fragment.borderType,
@@ -480,16 +486,16 @@ export class TableFragmentSplitter {
     carryHeightList: IFragmentCarryHeightItem[],
     tdPaddingHeight: number,
     scale: number,
-    fallbackMinHeight = 0
+    minRowHeight = 0
   ) {
-    let rowHeight = fallbackMinHeight
+    let rowHeight = minRowHeight
     for (let d = 0; d < carryHeightList.length; d++) {
       const { td, reservedHeight } = carryHeightList[d]
       const tdRowListHeight = td.rowList?.reduce((pre, cur) => pre + cur.height, 0) || 0
       const tdInset = getTableCellContentInset(fragment, td)
       const tdVerticalPadding = tdPaddingHeight + tdInset.top + tdInset.bottom
       const tdContentHeight = tdRowListHeight > 0 ? tdRowListHeight / scale + tdVerticalPadding : td.mainHeight || 0
-      const tdCarryRowHeight = Math.max(fallbackMinHeight, tdContentHeight - reservedHeight)
+      const tdCarryRowHeight = Math.max(minRowHeight, tdContentHeight - reservedHeight)
       if (tdCarryRowHeight > rowHeight) rowHeight = tdCarryRowHeight
     }
     return rowHeight

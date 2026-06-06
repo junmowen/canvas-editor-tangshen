@@ -13,7 +13,7 @@
 | 文件 | 职责 |
 | --- | --- |
 | `BlockRowRenderer.ts` | block 运行态 DOM host 和导出回退绘制切换 |
-| `BlockExportFallbackRenderer.ts` | 导出态 block 的 Canvas2D 占位和 SVG 栅格化回退绘制 |
+| `BlockExportCanvasRenderer.ts` | 导出态 block 的 Canvas2D 占位和 SVG 栅格化绘制 |
 | `BlockRenderLifecycle.ts` | 页面 base surface 重绘前的 block 运行态 host 清理 |
 | `BlockPageHostRenderer.ts` | base bitmap cache 命中后重放当前页 DOM/SVG block host |
 
@@ -23,7 +23,7 @@
 | --- | --- | --- | --- |
 | `BlockRowRenderer.ts` | `canRender(element)` | 判断当前行元素是否是 block 元素 | `RowRenderer` |
 | `BlockRowRenderer.ts` | `render(payload)` | 在运行态调用 block 粒子渲染，导出/打印态走回退绘制 | `RowRenderer` |
-| `BlockExportFallbackRenderer.ts` | `render(ctx, element, x, y)` | 导出态绘制 block 占位或 SVG 栅格化结果 | `BlockRowRenderer.render()` |
+| `BlockExportCanvasRenderer.ts` | `render(ctx, element, x, y)` | 导出态绘制 block 占位或 SVG 栅格化结果 | `BlockRowRenderer.render()` |
 | `BlockRenderLifecycle.ts` | `clearRuntimeHosts()` | 清理所有运行态 block host | `PageRenderer` |
 | `BlockRenderLifecycle.ts` | `clearPageRuntimeHosts(pageNo)` | 清理指定页的运行态 block host | `PageRenderer` |
 | `BlockPageHostRenderer.ts` | `render(payload)` | base bitmap cache 命中后重放当前页 block host | `PageRenderer` |

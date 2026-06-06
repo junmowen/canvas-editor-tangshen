@@ -149,7 +149,7 @@ function toControlTableContext(
   }
 }
 
-/** 兼容外部传入的控件表格上下文，继续交给通用元素树遍历。 */
+/** 将控件表格上下文转换为通用元素树遍历上下文。 */
 function toElementTreeTableContext(
   tableContext: IControlTraversalTableContext | undefined
 ): IElementTreeTableContext | undefined {

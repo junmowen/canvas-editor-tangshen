@@ -235,11 +235,11 @@ interface ITrackChange {
 - `delete`：表示该元素是被删除内容。接受修订时会移除该元素，拒绝修订时会移除 `trackChange` 标记并保留原文。
 - 同一次插入或删除产生的多个元素会使用相同的 `id`，便于按批次接受或拒绝。
 
-保存时留痕数据不会单独生成顶层数组，而是保存在具体元素上。`command.getValue()`、`command.getValueAsync()` 和 `Ctrl + S` 触发的保存结果都会在 `data.header`、`data.main`、`data.footer` 中携带该字段；表格单元格内的内容保存在 `trList[].tdList[].value[]` 中，同样可以携带 `trackChange`。
+保存时留痕数据不会单独生成顶层数组，而是保存在具体元素上。`command.getValue()`、`command.getValueAsync()` 和 `Ctrl + S` 触发的保存结果会在 `data.headerPageScopes[].elementList`、`data.main`、`data.footerPageScopes[].elementList` 中携带该字段；表格单元格内的内容保存在 `trList[].tdList[].value[]` 中，同样可以携带 `trackChange`。
 
 ```typescript
 const saveData: IEditorData = {
-  header: [],
+  headerPageScopes: [],
   main: [
     {
       value: '新增内容',
@@ -289,6 +289,175 @@ const saveData: IEditorData = {
       }
     }
   ],
-  footer: []
+  footerPageScopes: []
 }
+```
+
+## 控件值集与远程选项数据
+
+选择类控件、复选框和单选框的候选项统一使用 `IValueSet`。`code` 是业务保存值，`value` 是显示文本。
+
+```typescript
+interface IValueSet {
+  value: string
+  code: string | number
+}
+
+interface IControlRemoteOptions {
+  loading?: boolean
+  error?: string | null
+  source?: string
+  requestId?: string
+}
+
+interface IControlRemoteOptionLoadOption extends IGetControlValueOption {
+  source?: string
+  requestId?: string
+  params?: unknown
+  isSubmitHistory?: boolean
+}
+
+interface IControlRemoteOptionLoadContext {
+  option: IControlRemoteOptionLoadOption
+  controlId?: string
+  control: IControl
+  value: string | null
+  zone: EditorZone
+}
+
+interface IControlRemoteOptionLoadResult {
+  valueSets: IValueSet[]
+  remote?: IControlRemoteOptions
+}
+
+type IControlRemoteOptionLoader = (
+  payload: IControlRemoteOptionLoadContext
+) => IControlRemoteOptionLoadResult | Promise<IControlRemoteOptionLoadResult>
+
+type ControlRemoteOptionLoadFailureReason =
+  | 'not_found'
+  | 'unsupported'
+  | 'load_failed'
+
+interface IControlRemoteOptionLoadFailure {
+  option: IControlRemoteOptionLoadOption
+  reason: ControlRemoteOptionLoadFailureReason
+  message: string
+  controlId?: string
+}
+
+interface IControlRemoteOptionLoadBatchResult {
+  successCount: number
+  failureList: IControlRemoteOptionLoadFailure[]
+}
+```
+
+编辑器初始化时可以通过 `options.controlInitialProperties` 写入外部候选项，也可以通过 `options.controlRemoteOptionLoader` 接入异步加载。
+
+```typescript
+interface IEditorOption {
+  controlInitialProperties?: ISetControlProperties[]
+  controlInitialValues?: ISetControlValueOption[]
+  controlRemoteOptionLoader?: IControlRemoteOptionLoader
+}
+
+type ISetControlProperties = {
+  id?: string
+  conceptId?: string
+  areaId?: string
+  externalId?: string
+  code?: string | number
+  properties: Partial<Omit<IControl, 'value'>>
+  isSubmitHistory?: boolean
+}
+```
+
+示例：
+
+```javascript
+const instance = new Editor(container, data, {
+  controlInitialProperties: [
+    {
+      externalId: 'patient.city',
+      properties: {
+        valueSets: [
+          { code: 'gz', value: '广州' },
+          { code: 'sz', value: '深圳' }
+        ]
+      }
+    }
+  ],
+  controlRemoteOptionLoader: async ({ option }) => {
+    const response = await fetch(`/dict/${option.source}`)
+    const valueSets = await response.json()
+    return {
+      valueSets,
+      remote: {
+        loading: false,
+        source: option.source,
+        requestId: option.requestId
+      }
+    }
+  }
+})
+```
+
+## OOXML 导入导出数据
+
+`command.getOoxmlPackageParts()` 返回当前文档的 OOXML package 部件集合。固定部件是字符串 XML，`word/media/*` 等媒体部件是二进制字节。
+
+```typescript
+type OoxmlZipPartContent = string | Uint8Array
+
+interface IOoxmlPackageParts {
+  '[Content_Types].xml': string
+  '_rels/.rels': string
+  'word/document.xml': string
+  'word/_rels/document.xml.rels': string
+  'word/styles.xml': string
+  'word/fontTable.xml': string
+  'word/numbering.xml': string
+  'word/settings.xml': string
+  'docProps/core.xml': string
+  'docProps/app.xml': string
+  [path: string]: OoxmlZipPartContent
+}
+```
+
+高层 DOCX 导入结果用于把 DOCX 字节恢复成编辑器数据和页面设置子集。该结构由 OOXML 导入层返回，业务侧可用它做导入调试或自定义导入流程。
+
+```typescript
+interface IOoxmlImportedDocxPackage {
+  parts: Record<string, Uint8Array>
+  textParts: Record<string, string>
+  documentXml: string
+}
+
+interface IOoxmlImportedEditorDataResult extends IOoxmlImportedDocxPackage {
+  data: IEditorData
+  options: Partial<IEditorOption>
+}
+
+interface IOoxmlDocumentImportResult {
+  elementList: IElement[]
+  data: IEditorData
+}
+
+interface IOoxmlDocumentImportOption {
+  relationships?: Record<string, unknown>
+  packageParts?: Record<string, Uint8Array>
+  imageDataUrlCache?: Map<string, string>
+  trackChange?: ITrackChange
+}
+
+interface IOoxmlHeaderFooterImportOption extends IOoxmlDocumentImportOption {
+  rootLocalName: 'hdr' | 'ftr'
+}
+```
+
+常用 API 对应关系：
+
+```typescript
+const parts: IOoxmlPackageParts = instance.command.getOoxmlPackageParts()
+const blob: Blob = instance.command.getOoxmlDocxBlob()
 ```

@@ -70,8 +70,8 @@ export class TextControl implements IControlInstance {
    * @returns 控件值元素列表
    */
   public getValue(context: IControlContext = {}): IElement[] {
-    const elementList = context.elementList || this.control.getElementList()
-    const { startIndex } = context.range || this.control.getEditBoundaryRange()
+    const elementList = context.elementList || this.control.getDraw().getObjectResolver().getElementList()
+    const { startIndex } = context.range || this.control.getDraw().getRange().getEditBoundaryRange()
     return collectControlValueElementList({
       elementList,
       startIndex,
@@ -91,8 +91,8 @@ export class TextControl implements IControlInstance {
     ) {
       return -1
     }
-    const elementList = context.elementList || this.control.getElementList()
-    const range = context.range || this.control.getEditBoundaryRange()
+    const elementList = context.elementList || this.control.getDraw().getObjectResolver().getElementList()
+    const range = context.range || this.control.getDraw().getRange().getEditBoundaryRange()
     // 收缩边界到Value内
     this.control.shrinkBoundary(context)
     const { startIndex, endIndex } = range
@@ -215,8 +215,8 @@ export class TextControl implements IControlInstance {
     ) {
       return -1
     }
-    const elementList = context.elementList || this.control.getElementList()
-    const range = context.range || this.control.getEditBoundaryRange()
+    const elementList = context.elementList || this.control.getDraw().getObjectResolver().getElementList()
+    const range = context.range || this.control.getDraw().getRange().getEditBoundaryRange()
     const { startIndex, endIndex } = range
     return this.control.removeControlValueSegment({
       deleteIndex: startIndex + 1,
@@ -242,8 +242,8 @@ export class TextControl implements IControlInstance {
     if (this.control.getIsDisabledControl()) {
       return null
     }
-    const elementList = this.control.getElementList()
-    const range = this.control.getEditBoundaryRange()
+    const elementList = this.control.getDraw().getObjectResolver().getElementList()
+    const range = this.control.getDraw().getRange().getEditBoundaryRange()
     // 收缩边界到Value内
     this.control.shrinkBoundary()
     const { startIndex, endIndex } = range
@@ -337,11 +337,11 @@ export class TextControl implements IControlInstance {
       return -1
     }
     this.control.shrinkBoundary()
-    const { startIndex, endIndex } = this.control.getEditBoundaryRange()
+    const { startIndex, endIndex } = this.control.getDraw().getRange().getEditBoundaryRange()
     if (startIndex === endIndex) {
       return startIndex
     }
-    const elementList = this.control.getElementList()
+    const elementList = this.control.getDraw().getObjectResolver().getElementList()
     return this.control.removeControlValueSegment({
       deleteIndex: startIndex + 1,
       deleteCount: endIndex - startIndex,

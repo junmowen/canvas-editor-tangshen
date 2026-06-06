@@ -7,7 +7,7 @@ WebGL 不应直接接管正文文字。第一版只接以下任务：
 1. 图片预览缩放、旋转、滤镜、裁剪预览和高分辨率图片降采样。
 2. 输入是 `ImageBitmap` 或 HTMLImageElement 转换后的资源句柄，输出是 `ImageBitmap` 或写回指定 image preview surface。
 3. 正文 base 绘制仍通过 Canvas2D `drawImage` 消费 WebGL 结果，避免 WebGL 与文字排版耦合。
-4. WebGL context 必须有 LRU 资源释放、context lost 监听和 fallback 到 Canvas2D 图片路径。
+4. WebGL context 必须有 LRU 资源释放、context lost 监听和 回退 到 Canvas2D 图片路径。
 5. 导出默认不走 WebGL，除非图片滤镜结果已经固化为缓存 bitmap，避免导出和可视预览不一致。
 
 ### 6.9 DOM / SVG Block 管线边界
@@ -18,7 +18,7 @@ DOM / SVG engine 的核心不是把正文 canvas 改成 DOM，而是把外部 bl
 2. 输入是 block 的布局框、z-index、页码、滚动可见性和业务数据快照。
 3. 输出是 DOM host 挂载 / 更新 / 卸载操作，不参与 base canvas bitmap cache。
 4. block DOM 必须跟随 page wrapper 生命周期，在页面卸载或 bitmap 命中时仍保持正确显示。
-5. 导出时不能依赖 DOM 原节点，必须提供独立的 rasterize / serialize fallback，否则导出路径回退 Canvas2D 或跳过该 engine。
+5. 导出时不能依赖 DOM 原节点，必须提供独立的 rasterize / serialize 回退，否则导出路径回退 Canvas2D 或跳过该 engine。
 
 ### 6.10 调试与压测入口
 

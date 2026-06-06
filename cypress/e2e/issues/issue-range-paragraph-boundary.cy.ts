@@ -10,7 +10,7 @@ describe('range paragraph boundary guard', () => {
     cy.getEditor().then((editor: Editor) => {
       const draw = (editor as any).draw
       const rangeManager = draw.getRange()
-      const elementLength = draw.getElementList().length
+      const elementLength = draw.getObjectResolver().getElementList().length
       // 模拟双击取词时拿到无法映射到主文档 positionList 的逻辑索引。
       rangeManager.setRange(elementLength + 10, elementLength + 10)
 

@@ -10,9 +10,9 @@ function getTable(editor: Editor) {
 
 function getCellBounds(editor: Editor, tableId: string, trIndex: number, tdIndex: number) {
   const draw = (editor as any).draw
-  draw.flushScheduledFrameRender()
+  draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
   const bounds = draw
-    .getTableLayoutSnapshotAccessor()
+    .getServices().tableLayoutSnapshotAccessor
     .getFragmentCellBounds(tableId)
     .find((item: any) => item.trIndex === trIndex && item.tdIndex === tdIndex)
   expect(bounds).to.not.eq(undefined)

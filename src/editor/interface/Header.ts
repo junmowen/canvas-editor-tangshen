@@ -1,6 +1,6 @@
 import { MaxHeightRatio } from '../dataset/enum/Common'
 
-/** header契约，用于约束公开 API中传递的数据结构。 */
+/** header契约，用于约束公开 API中传递的数据结构。内容 pageScope 见 IEditorData.headerPageScopes。 */
 export interface IHeader {
   /** 上侧偏移或边距，用于计算区域边界。 */
   top?: number

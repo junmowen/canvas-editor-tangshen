@@ -4,10 +4,34 @@ import { IElementPosition } from '../../../interface/Element'
 import { IRowElement } from '../../../interface/Row'
 import { LineBreakParticle } from '../../draw/particle/LineBreakParticle'
 import { IWorkerPaintCommand } from './WorkerRenderProtocol'
-import { PageRenderSnapshotRowDecorations } from './PageRenderSnapshotRowDecorations'
+import { PageRenderSnapshotControlBorderCommands } from './PageRenderSnapshotControlBorderCommands'
 
 /** Inline marker commands for separators, line breaks and page breaks. */
-export abstract class PageRenderSnapshotInlineMarkerCommands extends PageRenderSnapshotRowDecorations {
+export abstract class PageRenderSnapshotInlineMarkerCommands extends PageRenderSnapshotControlBorderCommands {
+  /** 输出竖线制表位命令，保证 worker/offscreen 与主线程 TAB 渲染一致。 */
+  protected pushBarTabStopCommand(
+    commandList: IWorkerPaintCommand[],
+    element: IRowElement,
+    rowPosition: IElementPosition,
+    alpha: number
+  ) {
+    if (element.metrics?.tabStopAlignment !== 'bar') return
+    const { scale, defaultColor } = this.draw.getRuntime().getOptions()
+    const x = rowPosition.coordinate.leftTop[0] + element.metrics.width
+    commandList.push({
+      type: 'strokePath',
+      segmentList: [
+        {
+          from: [x, rowPosition.coordinate.leftTop[1]],
+          to: [x, rowPosition.coordinate.leftBottom[1]]
+        }
+      ],
+      strokeStyle: element.color || defaultColor,
+      lineWidth: Math.max(1, scale),
+      alpha
+    })
+  }
+
   /** 写入separatorcommand，追加后续渲染需要的命令数据。 */
   protected pushSeparatorCommand(
     commandList: IWorkerPaintCommand[],

@@ -1,6 +1,7 @@
 import { EditorZone } from '../../../../dataset/enum/Editor'
 import { IElementPosition } from '../../../../interface/Element'
 import { IRow } from '../../../../interface/Row'
+import { pickSurroundElementList } from '../../../../utils/elementLayout'
 import { RenderLayer } from '../../../render-backend'
 import type { Draw } from '../../Draw'
 import { PagePartitioner } from '../PagePartitioner'
@@ -21,6 +22,13 @@ import {
   IPageChunkRebalanceStats,
   PageChunkRebalanceStats
 } from './PageChunkRebalanceStats'
+import {
+  createPageChunkRebalanceAffectedPageNoList,
+  isPageChunkDirtyRangeScheduleSafe,
+  resolvePageChunkTableTailAsyncPageNo,
+  shouldSyncPageChunkTableDescendants,
+  shouldPropagatePageChunkRebalanceNext
+} from './PageChunkRebalancePolicy'
 import { PageChunkRuntimePatcher } from './PageChunkRuntimePatcher'
 import { PageChunkWindowPlanner } from './PageChunkWindowPlanner'
 
@@ -75,7 +83,7 @@ export class PageChunkRebalancePatcher {
     }
     const windowSizeResult = options.isAsync
       ? this.windowPlanner.resolveAsyncWindowSize(context)
-      : this.windowPlanner.resolveSyncWindowSizeWithFallback(context)
+      : this.windowPlanner.resolveSyncWindowSize(context)
     if (windowSizeResult.requiresFullLayout) {
       return {
         patched: false,
@@ -101,7 +109,7 @@ export class PageChunkRebalancePatcher {
           endIndex: chunk.endIndex
         })),
         pageCount: this.draw.getPageRowList().length,
-        positionCount: this.draw.getCoordinate().getLayoutMainPositionList().length,
+        positionCount: this.draw.getCoordinate().getMainPositionList().length,
         layoutElementCount: this.draw.getObjectResolver().getLayoutMainElementList().length,
         tableSnapshotVersion: this.draw.getTableLayoutSnapshotVersion()
       })
@@ -171,21 +179,19 @@ export class PageChunkRebalancePatcher {
     rebalanceResult: IPageChunkRebalanceResult,
     dirtyRangePlan: IDirtyPageRangePlan
   ) {
-    const legacyNextPageNo =
+    const previousWindowNextPageNo =
       context.pageNo + Math.max(0, rebalanceResult.nextPageCount - 1)
-    const isDirtyRangeSafe = rebalanceResult.affectedPageNoList.every(pageNo => {
-      return (
-        pageNo >= dirtyRangePlan.startPageNo &&
-        pageNo <= dirtyRangePlan.endPageNo
-      )
+    const isDirtyRangeSafe = isPageChunkDirtyRangeScheduleSafe({
+      affectedPageNoList: rebalanceResult.affectedPageNoList,
+      dirtyRange: dirtyRangePlan
     })
     const nextPageNo = isDirtyRangeSafe
       ? dirtyRangePlan.endPageNo + 1
-      : legacyNextPageNo
+      : previousWindowNextPageNo
     if (isDirtyRangeSafe) {
       this.stats.recordDirtyRangeScheduleTakeover()
     } else {
-      this.stats.recordDirtyRangeScheduleFallback()
+      this.stats.recordDirtyRangeScheduleCorrection()
     }
     if (!rebalanceResult.requiresSurfaceClear) {
       return nextPageNo
@@ -196,11 +202,15 @@ export class PageChunkRebalancePatcher {
         pageNo: context.pageNo,
         maxForwardPageCount: this.windowPlanner.getMaxTableAwareWindowSize()
       })
-    if (!tableRange || nextPageNo > tableRange.endPageNo) {
-      return nextPageNo
+    const tableAsyncPageNo = resolvePageChunkTableTailAsyncPageNo({
+      nextPageNo,
+      tableRange,
+      pageCount: this.draw.getPageRowList().length
+    })
+    if (!tableRange || !tableAsyncPageNo.skippedTableTail) {
+      return tableAsyncPageNo.pageNo
     }
-    const afterTablePageNo = tableRange.endPageNo + 1
-    if (afterTablePageNo >= this.draw.getPageRowList().length) {
+    if (tableAsyncPageNo.pageNo === null) {
       if (isChunkDebugEnabled()) {
         logChunkDebug('page-rebalance:skip-table-tail-async', {
           pageNo: context.pageNo,
@@ -216,13 +226,13 @@ export class PageChunkRebalancePatcher {
       logChunkDebug('page-rebalance:skip-table-tail-async', {
         pageNo: context.pageNo,
         nextPageNo,
-        afterTablePageNo,
+        afterTablePageNo: tableAsyncPageNo.afterTablePageNo,
         tableStartPageNo: tableRange.startPageNo,
         tableEndPageNo: tableRange.endPageNo,
         pageCount: this.draw.getPageRowList().length
       })
     }
-    return afterTablePageNo
+    return tableAsyncPageNo.pageNo
   }
 
   /** 获取页级 rebalance 统计。 */
@@ -254,7 +264,7 @@ export class PageChunkRebalancePatcher {
     })
     const oldWindowEndPageNo = context.pageNo + oldWindowPageCount - 1
     const oldEndIndex = this.windowPlanner.resolveWindowEndIndex({
-      fallbackChunkList: windowChunkList,
+      windowChunkList,
       startPageNo: context.pageNo,
       pageCount: oldWindowPageCount,
       elementList
@@ -274,10 +284,11 @@ export class PageChunkRebalancePatcher {
       startX: context.startX,
       startY: context.startY,
       pageHeight: this.draw.getHeight(),
-      mainOuterHeight: this.draw.getMainOuterHeight(),
-      isPagingMode: true,
+      mainOuterHeight: this.draw.getMainOuterHeight(context.pageNo),
+      startPageNo: context.pageNo,
+      isPagingPageMode: true,
       innerWidth: context.innerWidth,
-      surroundElementList: [],
+      surroundElementList: pickSurroundElementList(elementList),
       elementList: windowElementList,
       sourceStartIndex: startIndex
     })
@@ -309,10 +320,13 @@ export class PageChunkRebalancePatcher {
         context.pageNo,
         oldWindowPageRowList.length
       )
-    const shouldSyncTableDescendants =
-      oldTableAffectedPageNoList.length > 0 ||
-      this.runtimePatcher.hasTableRows(oldWindowPageRowList) ||
-      this.runtimePatcher.hasTableRows(nextPageRowList)
+    const hasOldTableRows = this.runtimePatcher.hasTableRows(oldWindowPageRowList)
+    const hasNextTableRows = this.runtimePatcher.hasTableRows(nextPageRowList)
+    const shouldSyncTableDescendants = shouldSyncPageChunkTableDescendants({
+      oldTableAffectedPageNoList,
+      hasOldTableRows,
+      hasNextTableRows
+    })
     if (isChunkDebugEnabled()) {
       logChunkDebug('page-rebalance:measure', {
         pageNo: context.pageNo,
@@ -327,8 +341,8 @@ export class PageChunkRebalancePatcher {
         nextRowsPerPage: nextPageRowList.map(pageRows => pageRows.length),
         oldTableAffectedPageNoList,
         shouldSyncTableDescendants,
-        hasOldTableRows: this.runtimePatcher.hasTableRows(oldWindowPageRowList),
-        hasNextTableRows: this.runtimePatcher.hasTableRows(nextPageRowList)
+        hasOldTableRows,
+        hasNextTableRows
       })
     }
     return {
@@ -348,12 +362,12 @@ export class PageChunkRebalancePatcher {
       oldPageCount: oldWindowPageRowList.length,
       nextPageCount: nextPageRowList.length,
       oldWindowEndPageNo,
-      shouldPropagateNext: this.shouldPropagateNext({
+      shouldPropagateNext: shouldPropagatePageChunkRebalanceNext({
         windowChunkList,
         pageRowList: nextPageRowList,
         insertedCount: context.insertedCount
       }),
-      affectedPageNoList: this.createAffectedPageNoList({
+      affectedPageNoList: createPageChunkRebalanceAffectedPageNoList({
         startPageNo: context.pageNo,
         oldPageCount: oldWindowPageRowList.length,
         nextPageCount: nextPageRowList.length,
@@ -381,7 +395,7 @@ export class PageChunkRebalancePatcher {
     if (!pageRows.length) {
       return
     }
-    const margins = this.draw.getMargins()
+    const margins = this.draw.getMargins(pageNo)
     this.patch(
       {
         chunk,
@@ -397,7 +411,7 @@ export class PageChunkRebalancePatcher {
         insertedCount: 0,
         startX: margins[3],
         startY: margins[0] + this.draw.getHeader().getExtraHeight(),
-        innerWidth: this.draw.getInnerWidth()
+        innerWidth: this.draw.getInnerWidth(pageNo)
       },
       { isAsync: true }
     )
@@ -436,19 +450,20 @@ export class PageChunkRebalancePatcher {
     startPageNo: number
   }): IElementPosition[] {
     const positionList: IElementPosition[] = []
-    const margins = this.draw.getMargins()
-    const startX = margins[3]
-    const startY = margins[0] + this.draw.getHeader().getExtraHeight()
-    const innerWidth = this.draw.getInnerWidth()
     for (let pageOffset = 0; pageOffset < payload.pageRowList.length; pageOffset++) {
       const rowList = payload.pageRowList[pageOffset]
       if (!rowList.length) {
         continue
       }
+      const pageNo = payload.startPageNo + pageOffset
+      const margins = this.draw.getMargins(pageNo)
+      const startX = margins[3]
+      const startY = margins[0] + this.draw.getHeader().getExtraHeight()
+      const innerWidth = this.draw.getInnerWidth(pageNo)
       this.draw.getCoordinate().computePageRowPosition({
         positionList,
         rowList,
-        pageNo: payload.startPageNo + pageOffset,
+        pageNo,
         startX,
         startY,
         startRowIndex: rowList[0].rowIndex,
@@ -458,32 +473,6 @@ export class PageChunkRebalancePatcher {
       })
     }
     return positionList
-  }
-
-  /** 判断窗口尾页边界是否变化，变化时需要继续同步下一页。 */
-  private shouldPropagateNext(payload: {
-    /** 窗口内分页块列表，保存当前可见范围的布局块。 */
-    windowChunkList: IChunkLayoutPatchContext['chunk'][]
-    /** 页面行列表，保存当前页排版后的行信息。 */
-    pageRowList: IRow[][]
-    /** 已插入数量，用于累加本次写入的元素个数。 */
-    insertedCount: number
-  }) {
-    if (payload.pageRowList.length !== payload.windowChunkList.length) {
-      return true
-    }
-    if (payload.insertedCount < 0) {
-      return true
-    }
-    const lastChunk = payload.windowChunkList[payload.windowChunkList.length - 1]
-    const lastPageRows = payload.pageRowList[payload.pageRowList.length - 1]
-    const lastRow = lastPageRows?.[lastPageRows.length - 1]
-    if (!lastChunk || !lastRow) {
-      return false
-    }
-    const nextEndIndex =
-      lastRow.startIndex + Math.max(0, lastRow.elementList.length - 1)
-    return nextEndIndex !== lastChunk.endIndex + payload.insertedCount
   }
 
   /** 异步页同步完成后刷新受影响可见页。 */
@@ -533,30 +522,6 @@ export class PageChunkRebalancePatcher {
       this.draw.getPageCanvasHost().invalidateBitmapCache(pageNo, RenderLayer.OVERLAY)
     })
     this.draw.getComponents().tableTool.dispose()
-  }
-
-  /** 生成旧页窗口和新页窗口的并集，确保父 chunk 移动后旧表格页也被重绘清空。 */
-  private createAffectedPageNoList(payload: {
-    /** 起始页码，用于限定跨页范围的左边界。 */
-    startPageNo: number
-    /** 旧页面数量，用于判断局部重排后的分页变化。 */
-    oldPageCount: number
-    /** 重排后的页面数量，用于比较分页变化。 */
-    nextPageCount: number
-    /** 是否包含窗口，用于控制当前流程的判断分支。 */
-    shouldIncludeWindow: boolean
-    tableAffectedPageNoList: number[]
-  }) {
-    if (!payload.shouldIncludeWindow) {
-      return [payload.startPageNo]
-    }
-    const pageNoSet = new Set<number>()
-    const pageCount = Math.max(payload.oldPageCount, payload.nextPageCount)
-    for (let offset = 0; offset < pageCount; offset++) {
-      pageNoSet.add(payload.startPageNo + offset)
-    }
-    payload.tableAffectedPageNoList.forEach(pageNo => pageNoSet.add(pageNo))
-    return Array.from(pageNoSet)
   }
 
 }

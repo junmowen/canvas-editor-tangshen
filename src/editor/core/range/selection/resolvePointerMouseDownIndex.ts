@@ -11,8 +11,8 @@ interface IResolvePointerMouseDownIndexPayload {
   currentIndex: number
   /** 命中目标索引，用于定位指针事件落点对应的元素。 */
   hitTargetIndex?: number
-  /** 降级索引，用于定位对应元素、行或片段。 */
-  fallbackIndex: number
+  /** 未命中具体目标时使用的当前索引。 */
+  defaultIndex: number
 }
 
 export function resolvePointerMouseDownIndex(
@@ -23,11 +23,11 @@ export function resolvePointerMouseDownIndex(
     hitTargetPosition,
     currentIndex,
     hitTargetIndex,
-    fallbackIndex
+    defaultIndex
   } = payload
 
   if (!pagePoint || !hitTargetPosition) {
-    return hitTargetIndex ?? fallbackIndex
+    return hitTargetIndex ?? defaultIndex
   }
 
   const collapseThresholdX =

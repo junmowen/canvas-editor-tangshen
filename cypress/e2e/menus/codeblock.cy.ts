@@ -53,9 +53,9 @@ describe('菜单-代码块', () => {
           const draw = (editor as any).draw
           draw.flushAsyncInsertTransaction('codeblock-regression')
           editor.command.executeForceUpdate()
-          draw.flushScheduledFrameRender()
+          draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
           const rowTexts = draw
-            .getOriginalRowList()
+            .getObjectResolver().getOriginalRowList()
             .map((row: any) =>
               row.elementList
                 .map((element: any) => element.value)

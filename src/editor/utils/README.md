@@ -20,6 +20,7 @@
 | --- | --- |
 | `index.ts` | 通用 debounce、clone、对象、字符串、DOM 和比较工具。 |
 | `option.ts` | 编辑器配置合并和默认值补齐。 |
+| `elementZip.ts` | 元素属性挑选和元素列表压缩。 |
 | `element*.ts` | 元素格式化、上下文、DOM 转换、布局、文本和控件工具。 |
 | `clipboard.ts` | 剪贴板相关工具。 |
 | `hotkey.ts` | 快捷键平台键判断。 |
@@ -32,6 +33,7 @@
 | --- | --- | --- | --- |
 | `index.ts` | `debounce()` / `throttle()` / `deepClone()` / `getUUID()` / `splitText()` | 通用节流、克隆、id 和文本拆分。 | core、demo |
 | `option.ts` | `mergeOption()` | 合并编辑器配置并补齐默认值。 | `Editor`、`DrawRuntime` |
+| `elementZip.ts` | `pickElementAttr()` / `zipElementList()` | 提取可保存属性和压缩元素列表。 | getValue、copy、control |
 | `elementFormat.ts` | `formatElementList()` / `unzipElementList()` | 格式化元素列表和拆分文本元素。 | setValue、粘贴、导入 |
 | `elementDom.ts` | `createDomFromElementList()` / `getElementListByHTML()` | 编辑器元素与 HTML DOM 互转。 | copy、paste、导出 |
 | `elementText.ts` | `getTextFromElementList()` / `getSlimCloneElementList()` | 提取纯文本和轻量克隆元素。 | copy、search、worker |

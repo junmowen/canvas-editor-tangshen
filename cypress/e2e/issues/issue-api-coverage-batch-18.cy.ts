@@ -4,7 +4,7 @@ import { TableDisplay } from '../../../src/editor/dataset/enum/table/Table'
 
 function getTableRowCount(editor: Editor) {
   return (editor as any).draw
-    .getOriginalRowList()
+    .getObjectResolver().getOriginalRowList()
     .filter((row: any) =>
       row.elementList.some((element: any) => element.type === ElementType.TABLE)
     ).length

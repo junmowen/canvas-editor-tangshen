@@ -5,16 +5,21 @@ import { IElement, IElementPosition } from '../../../interface/Element'
 import { IRowElement } from '../../../interface/Row'
 import { ITableFragmentDescriptor } from '../../../interface/table/TableFragment'
 import { isCheckboxHitElement, isRadioHitElement } from '../../modules/control/hittest/ControlHitTest'
+import { ElementType } from '../../../dataset/enum/Element'
 import {
-  isImageElement,
-  isLatexElement
-} from '../../modules/image/layout/InlineImageElementLayout'
+  isFormulaDebugEnabled,
+  logFormulaDebug,
+  roundFormulaDebugNumber
+} from '../../modules/formula/debug/FormulaDebugLogger'
+import { isFormulaTextElement } from '../../modules/formula/layout/FormulaTextElementLayout'
+import { resolveFormulaDisplayText } from '../../modules/formula/model/FormulaTextModel'
+import { isImageElement } from '../../modules/image/layout/InlineImageElementLayout'
 import { isPageBreakElement } from '../../modules/page-break/layout/PageBreakElementLayout'
 import { isTabElement } from '../../modules/paragraph/layout/TabElementLayout'
 import { isSeparatorElement } from '../../modules/separator/layout/SeparatorElementLayout'
 import { isTableElement } from '../../modules/table/layout/TableRowLayoutPolicy'
 import { IWorkerPaintCommand } from './WorkerRenderProtocol'
-import { PageRenderSnapshotInlineCommands } from './PageRenderSnapshotInlineCommands'
+import { PageRenderSnapshotListCommands } from './PageRenderSnapshotListCommands'
 
 /** 行文本state契约，用于约束内部流程中传递的数据结构。 */
 interface IRowTextState {
@@ -62,7 +67,7 @@ interface IPushRowElementCommandPayload {
 }
 
 /** Dispatches one row element to the matching worker command producer. */
-export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSnapshotInlineCommands {
+export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSnapshotListCommands {
   /** 写入行元素commands，追加后续渲染需要的命令数据。 */
   protected pushRowElementCommands(payload: IPushRowElementCommandPayload) {
     const {
@@ -115,6 +120,9 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
     }
     if (isTabElement(element)) {
       this.flushRowTextState(commandList, textState, alpha)
+      if (rowPosition) {
+        this.pushBarTabStopCommand(commandList, element, rowPosition, alpha)
+      }
       this.recordDecoratedNonTextElement(payload)
       return
     }
@@ -122,14 +130,6 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
       this.flushRowTextState(commandList, textState, alpha)
       if (rowPosition && !this.isFloatingImage(element)) {
         this.pushImageCommand(commandList, element, rowPosition, alpha)
-      }
-      this.recordDecoratedNonTextElement(payload)
-      return
-    }
-    if (isLatexElement(element)) {
-      this.flushRowTextState(commandList, textState, alpha)
-      if (rowPosition) {
-        this.pushLaTexCommand(commandList, element, rowPosition, alpha)
       }
       this.recordDecoratedNonTextElement(payload)
       return
@@ -163,7 +163,71 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
       this.recordDecoratedNonTextElement(payload)
       return
     }
+    if (isFormulaTextElement(element)) {
+      this.flushRowTextState(commandList, textState, alpha)
+      this.pushFormulaTextCommand(payload)
+      this.recordDecoratedNonTextElement(payload)
+      return
+    }
     this.pushTextElementCommand(payload)
+  }
+
+  /** 写入公式文本控件 command，确保 worker 渲染不再退化成普通 LaTeX 展示文本。 */
+  private pushFormulaTextCommand(payload: IPushRowElementCommandPayload) {
+    const { commandList, element, rowPosition, alpha } = payload
+    if (!rowPosition) return
+    const formulaRenderElement = {
+      ...element,
+      type: ElementType.TEXT
+    }
+    const { font, fillStyle } = this.resolveTextPaintStyle(formulaRenderElement)
+    const latex = element.formula?.latex ?? element.value
+    const displayText = resolveFormulaDisplayText(latex)
+    const debug = isFormulaDebugEnabled()
+    if (debug) {
+      logFormulaDebug('worker-command', {
+        id: element.id,
+        latex,
+        displayText,
+        x: roundFormulaDebugNumber(rowPosition.coordinate.leftTop[0]),
+        baselineY: roundFormulaDebugNumber(
+          rowPosition.coordinate.leftTop[1] + rowPosition.ascent
+        ),
+        lineTop: roundFormulaDebugNumber(rowPosition.coordinate.leftTop[1]),
+        lineBottom: roundFormulaDebugNumber(rowPosition.coordinate.leftBottom[1]),
+        lineHeight: roundFormulaDebugNumber(rowPosition.lineHeight),
+        metricsWidth: roundFormulaDebugNumber(element.metrics?.width),
+        metricsHeight: roundFormulaDebugNumber(element.metrics?.height),
+        metricsAscent: roundFormulaDebugNumber(
+          element.metrics?.boundingBoxAscent
+        ),
+        metricsDescent: roundFormulaDebugNumber(
+          element.metrics?.boundingBoxDescent
+        ),
+        font,
+        fillStyle
+      })
+    }
+    commandList.push({
+      type: 'formulaText',
+      latex,
+      displayText,
+      x: rowPosition.coordinate.leftTop[0],
+      y: rowPosition.coordinate.leftTop[1] + rowPosition.ascent,
+      font,
+      defaultSize:
+        element.actualSize ||
+        element.size ||
+        this.draw.getRuntime().getOptions().defaultSize,
+      metricsWidth: element.metrics?.width,
+      metricsAscent: element.metrics?.boundingBoxAscent,
+      metricsDescent: element.metrics?.boundingBoxDescent,
+      fillStyle,
+      placeholderText: element.formula?.placeholderText,
+      placeholderColor: element.formula?.placeholderColor,
+      alpha,
+      debug
+    })
   }
 
   /** 记录decoratednon文本元素，把当前命中结果写入缓存或统计。 */
@@ -197,6 +261,7 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
     if (
       rowPosition &&
       (element.value === ' ' || element.value === '\u00A0') &&
+      !this.draw.getRuntime().getOptions().lineBreak.disabled &&
       this.draw.getMode() !== EditorMode.CLEAN &&
       this.draw.getMode() !== EditorMode.PRINT
     ) {
@@ -217,8 +282,9 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
       controlBorderState,
       alpha
     } = payload
+    const renderElement = element
     const { font: nextFont, fillStyle: nextFillStyle } =
-      this.resolveTextPaintStyle(element)
+      this.resolveTextPaintStyle(renderElement)
     if (!rowPosition) {
       this.flushRowTextState(commandList, textState, alpha)
       this.recordDecoratedNonTextElement(payload)
@@ -228,8 +294,9 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
     const nextY =
       rowPosition.coordinate.leftTop[1] +
       rowPosition.ascent +
-      this.resolveInlineTextOffsetY(element)
-    const isStandaloneText = this.shouldDrawStandaloneText(element)
+      this.resolveInlineTextOffsetY(renderElement)
+    const isStandaloneText =
+      isFormulaTextElement(element) || this.shouldDrawStandaloneText(renderElement)
     if (!textState.text) {
       textState.x = nextX
       textState.y = nextY
@@ -250,7 +317,7 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
     if (isStandaloneText) {
       this.flushTextCommand(
         commandList,
-        element.value,
+        renderElement.value,
         nextX,
         nextY,
         nextFont,
@@ -258,7 +325,7 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
         alpha
       )
     } else {
-      textState.text += element.value
+      textState.text += renderElement.value
     }
     this.recordControlBorderCommand(
       commandList,
@@ -276,6 +343,15 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
       rowPosition,
       alpha
     )
+    if (
+      rowPosition &&
+      (element.value === ' ' || element.value === '\u00A0') &&
+      !this.draw.getRuntime().getOptions().lineBreak.disabled &&
+      this.draw.getMode() !== EditorMode.CLEAN &&
+      this.draw.getMode() !== EditorMode.PRINT
+    ) {
+      this.pushSpaceMarkerCommands(commandList, element, rowPosition, alpha)
+    }
   }
 
   protected flushRowTextState(

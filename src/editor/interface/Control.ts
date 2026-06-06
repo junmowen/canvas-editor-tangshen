@@ -36,6 +36,36 @@ export interface IControlSelect {
     /** 是否允许手动输入，用于控制选择控件的自由录入能力。 */
     inputAble?: boolean
   }
+  /** 级联配置，用于根据父控件当前值刷新当前控件的候选项。 */
+  cascade?: IControlCascade
+  /** 远程选项状态，用于业务侧回填接口加载状态、错误和快照版本。 */
+  remote?: IControlRemoteOptions
+}
+
+/** 控件级联配置，用于约束父子选择项联动关系。 */
+export interface IControlCascade {
+  /** 父控件唯一标识，用于匹配 controlId。 */
+  parentId?: string
+  /** 父控件概念标识，用于匹配业务语义。 */
+  parentConceptId?: string
+  /** 父控件外部系统标识，用于匹配业务字段。 */
+  parentExternalId?: string
+  /** 父控件业务编码，用于匹配业务字段编码。 */
+  parentCode?: string | number
+  /** 选项映射表，key 为父控件当前值，value 为子控件候选项。 */
+  valueSetMap: Record<string, IValueSet[]>
+}
+
+/** 控件远程选项状态，用于记录业务加载过程和失败信息。 */
+export interface IControlRemoteOptions {
+  /** 是否正在加载远程选项。 */
+  loading?: boolean
+  /** 加载失败信息，成功时为空。 */
+  error?: string | null
+  /** 远程数据源标识，用于业务侧区分接口或字典。 */
+  source?: string
+  /** 请求标识，用于避免旧请求覆盖新结果。 */
+  requestId?: string
 }
 
 /** 控件复选框契约，用于约束公开 API中传递的数据结构。 */
@@ -72,6 +102,8 @@ export interface IControlDate {
 export interface IControlHighlightRule {
   /** 搜索关键字，用于匹配文档内容或控件值。 */
   keyword: string
+  /** 是否高亮整个控件，用于校验失败这类不依赖具体文字命中的场景。 */
+  isFullControl?: boolean
   /** 透明度系数，用于控制绘制结果的不透明程度。 */
   alpha?: number
   /** 背景颜色，用于填充元素或区域底色。 */
@@ -82,10 +114,16 @@ export interface IControlHighlightRule {
 export interface IControlHighlight {
   /** 规则列表，保存控件校验或匹配规则。 */
   ruleList: IControlHighlightRule[]
+  /** 高亮来源，用于区分搜索高亮、校验高亮等不同业务写入。 */
+  source?: string
   /** 唯一标识，用于关联、查找或更新对应数据。 */
   id?: string
   /** 控件概念标识，用于匹配同一业务语义的控件。 */
   conceptId?: string
+  /** 外部系统标识，用于按业务字段匹配控件。 */
+  externalId?: string
+  /** 业务编码，用于按业务字段编码匹配控件。 */
+  code?: string | number
 }
 
 /** 控件规则，控制该能力的启用条件和约束。 */
@@ -94,10 +132,22 @@ export interface IControlRule {
   deletable?: boolean
   /** 是否禁用，用于阻止交互、编辑或菜单动作。 */
   disabled?: boolean
+  /** 是否必填，用于控件提交前的基础校验。 */
+  required?: boolean
+  /** 校验规则列表，用于同步校验控件值。 */
+  validateRules?: IControlValidateRule[]
   /** pastedisabled开关，用于控制当前流程的判断分支。 */
   pasteDisabled?: boolean
   /** 是否隐藏，用于控制界面项或元素可见性。 */
   hide?: boolean
+}
+
+/** 控件同步校验规则，用于提交前检查控件值。 */
+export interface IControlValidateRule {
+  /** 正则表达式字符串，用于匹配控件当前值。 */
+  pattern?: string
+  /** 校验失败提示，用于业务侧展示。 */
+  message?: string
 }
 
 /** 控件基础信息，保存该对象最小必要配置。 */
@@ -245,6 +295,161 @@ export interface IGetControlValueOption {
   conceptId?: string
   /** 区域标识，用于关联控件或元素所在的编辑区域。 */
   areaId?: string
+  /** 外部系统标识，用于按业务字段匹配控件。 */
+  externalId?: string
+  /** 业务编码，用于按业务字段编码匹配控件。 */
+  code?: string | number
+}
+
+/** 控件校验选项，用于限定校验范围。 */
+export interface IControlValidateOption extends IGetControlValueOption {
+  /** 是否派发校验事件，默认派发。 */
+  isEmitEvent?: boolean
+  /** 是否把校验失败项同步到控件高亮覆盖层。 */
+  isApplyHighlight?: boolean
+  /** 校验失败高亮颜色，默认使用错误红色。 */
+  highlightColor?: string
+  /** 校验失败高亮透明度，默认使用浅红底。 */
+  highlightAlpha?: number
+}
+
+/** 控件校验失败原因。 */
+export type ControlValidateFailureReason = 'required' | 'pattern' | 'cross_field'
+
+/** 跨字段控件校验类型。 */
+export type ControlCrossValidateRuleType =
+  | 'equals'
+  | 'notEquals'
+  | 'requiredWhen'
+  | 'emptyWhen'
+
+/** 跨字段控件校验规则，用于声明常见字段联动约束。 */
+export interface IControlCrossValidateRule {
+  /** 目标控件，校验失败时错误挂到该控件。 */
+  target: IGetControlValueOption
+  /** 依赖控件，用于读取条件或比较值。 */
+  dependency: IGetControlValueOption
+  /** 校验类型。 */
+  type: ControlCrossValidateRuleType
+  /** 依赖控件需要匹配的值；不传时 requiredWhen/emptyWhen 使用依赖控件非空作为条件。 */
+  dependencyValue?: string | number | boolean | null
+  /** 校验失败提示，用于业务侧展示。 */
+  message?: string
+}
+
+/** 控件校验失败项。 */
+export interface IControlValidateFailure {
+  /** 控件标识，用于关联同一控件的开始、值和结束元素。 */
+  controlId?: string
+  /** 控件配置对象，描述当前控件的行为和取值规则。 */
+  control: IControl
+  /** 当前值，用于保存控件、输入或配置的实际内容。 */
+  value: string | null
+  /** 所在编辑区域。 */
+  zone: EditorZone
+  /** 失败原因。 */
+  reason: ControlValidateFailureReason
+  /** 失败说明，用于业务侧展示。 */
+  message: string
+}
+
+/** 控件校验结果。 */
+export interface IControlValidateResult {
+  /** 是否全部通过校验。 */
+  isValid: boolean
+  /** 失败项列表。 */
+  failureList: IControlValidateFailure[]
+}
+
+/** 控件异步校验上下文，供业务侧追加后端或跨字段校验结果。 */
+export interface IControlAsyncValidateContext {
+  /** 当前同步校验结果。 */
+  result: IControlValidateResult
+  /** 本次校验选项。 */
+  option: IControlValidateOption
+}
+
+/** 控件异步校验器，允许业务侧返回额外失败项。 */
+export type IControlAsyncValidator = (
+  payload: IControlAsyncValidateContext
+) =>
+  | IControlValidateResult
+  | Promise<IControlValidateResult | void>
+  | void
+
+/** 控件远程选项加载选项，用于限定需要刷新候选项的控件范围。 */
+export interface IControlRemoteOptionLoadOption extends IGetControlValueOption {
+  /** 远程数据源标识，用于业务侧区分接口或字典。 */
+  source?: string
+  /** 请求标识，用于避免旧请求覆盖新结果。 */
+  requestId?: string
+  /** 业务参数对象，用于向远程加载器透传父级值、搜索词或上下文。 */
+  params?: unknown
+  /** 是否提交历史记录，用于控制远程选项刷新是否可撤销。 */
+  isSubmitHistory?: boolean
+}
+
+/** 控件远程选项加载上下文，供业务侧读取当前控件信息并返回候选项。 */
+export interface IControlRemoteOptionLoadContext {
+  /** 本次加载选项。 */
+  option: IControlRemoteOptionLoadOption
+  /** 控件标识，用于关联同一控件的开始、值和结束元素。 */
+  controlId?: string
+  /** 控件配置对象，描述当前控件的行为和取值规则。 */
+  control: IControl
+  /** 当前值，用于保存控件、输入或配置的实际内容。 */
+  value: string | null
+  /** 所在编辑区域。 */
+  zone: EditorZone
+}
+
+/** 控件远程选项加载返回值，用于同时回填候选项和远程状态。 */
+export interface IControlRemoteOptionLoadResult {
+  /** 值集合，用于保存远程接口返回的候选项。 */
+  valueSets: IValueSet[]
+  /** 远程选项状态，用于业务侧回填接口加载状态、错误和快照版本。 */
+  remote?: IControlRemoteOptions
+}
+
+/** 控件远程选项加载器，允许业务侧按控件上下文异步返回候选项。 */
+export type IControlRemoteOptionLoader = (
+  payload: IControlRemoteOptionLoadContext
+) => IControlRemoteOptionLoadResult | Promise<IControlRemoteOptionLoadResult>
+
+/** 控件远程选项加载失败原因。 */
+export type ControlRemoteOptionLoadFailureReason =
+  | 'not_found'
+  | 'unsupported'
+  | 'load_failed'
+
+/** 控件远程选项加载失败项。 */
+export interface IControlRemoteOptionLoadFailure {
+  /** 原始操作项，用于业务侧定位失败数据。 */
+  option: IControlRemoteOptionLoadOption
+  /** 失败原因，用于业务侧展示或重试。 */
+  reason: ControlRemoteOptionLoadFailureReason
+  /** 失败说明，用于日志和调试。 */
+  message: string
+  /** 控件标识，用于关联同一控件的开始、值和结束元素。 */
+  controlId?: string
+}
+
+/** 控件远程选项批量加载结果。 */
+export interface IControlRemoteOptionLoadBatchResult {
+  /** 成功加载并写入候选项的控件数量。 */
+  successCount: number
+  /** 未能执行的失败项列表。 */
+  failureList: IControlRemoteOptionLoadFailure[]
+}
+
+/** 控件 schema，用于把模板控件与业务字段、默认规则和默认值稳定绑定。 */
+export interface IControlSchema extends IGetControlValueOption {
+  /** 控件属性集合，用于集中定义选项、必填、校验、只读、禁用等模板规则。 */
+  properties?: Partial<Omit<IControl, 'value'>>
+  /** 元素属性集合，用于写入 externalId、extension 等控件入口元素业务属性。 */
+  elementProperties?: Pick<IElement, 'externalId' | 'extension'>
+  /** 默认值，用于模板加载时写入控件初始显示值，实例化值可继续覆盖。 */
+  defaultValue?: string | IElement[] | null
 }
 
 export type IGetControlValueResult = (Omit<IControl, 'value'> & {
@@ -266,10 +471,35 @@ export interface ISetControlValueOption {
   conceptId?: string
   /** 区域标识，用于关联控件或元素所在的编辑区域。 */
   areaId?: string
+  /** 外部系统标识，用于按业务字段匹配控件。 */
+  externalId?: string
+  /** 业务编码，用于按业务字段编码匹配控件。 */
+  code?: string | number
   /** 当前值，用于保存控件、输入或配置的实际内容。 */
   value: string | IElement[] | null
   /** 是否提交历史记录，用于控制本次变更是否可撤销。 */
   isSubmitHistory?: boolean
+}
+
+/** 控件批量操作失败原因。 */
+export type ControlBatchFailureReason = 'not_found'
+
+/** 控件批量操作失败项。 */
+export interface IControlBatchFailure<TOption> {
+  /** 原始操作项，用于业务侧定位失败数据。 */
+  option: TOption
+  /** 失败原因，用于业务侧展示或重试。 */
+  reason: ControlBatchFailureReason
+  /** 失败说明，用于日志和调试。 */
+  message: string
+}
+
+/** 控件批量操作结果。 */
+export interface IControlBatchSetResult<TOption> {
+  /** 成功匹配并执行的操作项数量。 */
+  successCount: number
+  /** 未能执行的失败项列表。 */
+  failureList: IControlBatchFailure<TOption>[]
 }
 
 /** 设置控件extension选项，用于约束调用方可传入的可选配置。 */
@@ -280,6 +510,10 @@ export interface ISetControlExtensionOption {
   conceptId?: string
   /** 区域标识，用于关联控件或元素所在的编辑区域。 */
   areaId?: string
+  /** 外部系统标识，用于按业务字段匹配控件。 */
+  externalId?: string
+  /** 业务编码，用于按业务字段编码匹配控件。 */
+  code?: string | number
   /** 扩展数据对象，用于承载业务侧自定义字段。 */
   extension: unknown
 }
@@ -295,6 +529,10 @@ export type ISetControlProperties = {
   conceptId?: string
   /** 区域标识，用于关联控件或元素所在的编辑区域。 */
   areaId?: string
+  /** 外部系统标识，用于按业务字段匹配控件。 */
+  externalId?: string
+  /** 业务编码，用于按业务字段编码匹配控件。 */
+  code?: string | number
   /** 属性集合，用于批量携带元素样式或业务配置。 */
   properties: Partial<Omit<IControl, 'value'>>
   /** 是否提交历史记录，用于控制本次变更是否可撤销。 */

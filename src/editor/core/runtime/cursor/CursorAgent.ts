@@ -36,6 +36,7 @@ export class CursorAgent {
     this.agentCursorDom = agentCursorDom
     // 事件
     agentCursorDom.onkeydown = (evt: KeyboardEvent) => this._keyDown(evt)
+    agentCursorDom.onkeyup = (evt: KeyboardEvent) => this._keyUp(evt)
     agentCursorDom.oninput = this._input.bind(this)
     agentCursorDom.onpaste = (evt: ClipboardEvent) => this._paste(evt)
     agentCursorDom.addEventListener(
@@ -54,6 +55,14 @@ export class CursorAgent {
 
   private _keyDown(evt: KeyboardEvent) {
     this.inputController.keydown(evt)
+  }
+
+  private _keyUp(evt: KeyboardEvent) {
+    if (evt.isComposing || evt.key.length !== 1) return
+    const data = this.agentCursorDom.value
+    if (data) {
+      this.inputController.input(data)
+    }
   }
 
   /** 处理文本输入事件，把输入内容写入当前光标位置。 */

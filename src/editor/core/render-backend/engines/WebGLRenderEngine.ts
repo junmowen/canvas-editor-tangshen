@@ -109,7 +109,7 @@ export class WebGLRenderEngine implements IRenderBackend {
   /**
    * 执行 WebGL 渲染任务。
    *
-   * 图片任务走 WebGL shader，其他兼容任务回退到 execute。
+   * 图片任务走 WebGL shader，其他任务交给 execute 完成。
    *
    * @param _surface - 目标渲染 surface
    * @param _task - 渲染任务描述

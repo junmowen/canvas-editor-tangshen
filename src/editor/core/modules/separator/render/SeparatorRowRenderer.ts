@@ -17,8 +17,10 @@ export class SeparatorRowRenderer {
     x: number,
     y: number,
     zone: EditorZone | undefined,
-    separatorParticle: ReturnType<Draw['getComponents']>['separatorParticle']
+    separatorParticle: ReturnType<Draw['getComponents']>['separatorParticle'],
+    pageNo = 0
   ) {
-    separatorParticle.render(ctx, element, x, y, zone)
+    // 透传页码给分隔线粒子，保证页眉页脚全宽线按当前页边距渲染。
+    separatorParticle.render(ctx, element, x, y, zone, pageNo)
   }
 }

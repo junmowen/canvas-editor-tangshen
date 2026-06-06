@@ -20,6 +20,8 @@ import { TableLayoutSnapshotBuilder } from '../../modules/table/layout/TableLayo
 import { TableLayoutSnapshotAccessor } from '../../modules/table/layout/TableLayoutSnapshotAccessor'
 import { RowLayoutEngine } from '../layout/RowLayoutEngine'
 import { DrawLayoutPipeline } from '../layout/DrawLayoutPipeline'
+import { TypesettingLayoutStructureBuilder } from '../layout/TypesettingLayoutStructureBuilder'
+import { PageColumnLayoutService } from '../layout/PageColumnLayoutService'
 import { DocumentChunkIndex } from '../layout/DocumentChunkIndex'
 import { ChunkLayoutCache } from '../layout/ChunkLayoutCache'
 import { TableChunkRangeIndex } from '../../modules/table/layout/engine/TableChunkRangeIndex'
@@ -66,6 +68,10 @@ export class DrawServiceRegistry {
   public readonly tableLayoutSnapshotAccessor: TableLayoutSnapshotAccessor
   /** 行布局引擎：负责把元素流排版成行。 */
   public readonly rowLayoutEngine: RowLayoutEngine
+  /** 排版结构构建器：负责生成段落块/栏/页中间层快照。 */
+  public readonly typesettingLayoutStructureBuilder: TypesettingLayoutStructureBuilder
+  /** 页面栏区服务：负责统一计算分栏正文区域。 */
+  public readonly pageColumnLayoutService: PageColumnLayoutService
   /** 文档 chunk 索引：负责维护段落 / chunk 脏范围和页码覆盖。 */
   public readonly documentChunkIndex: DocumentChunkIndex
   /** chunk 布局缓存工具：负责 chunk 布局缓存的读写、失效和统计。 */
@@ -150,6 +156,9 @@ export class DrawServiceRegistry {
     this.tableLayoutSnapshotBuilder = new TableLayoutSnapshotBuilder(draw)
     this.tableLayoutSnapshotAccessor = new TableLayoutSnapshotAccessor(draw)
     this.rowLayoutEngine = new RowLayoutEngine(draw)
+    this.pageColumnLayoutService = new PageColumnLayoutService(draw)
+    this.typesettingLayoutStructureBuilder =
+      new TypesettingLayoutStructureBuilder(draw)
     this.chunkLayoutCache = new ChunkLayoutCache(draw)
     this.documentChunkIndex = new DocumentChunkIndex(draw)
     this.tableChunkRangeIndex = new TableChunkRangeIndex(draw)

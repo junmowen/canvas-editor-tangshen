@@ -13,9 +13,9 @@ import { TitleLevel } from '../../../src/editor/dataset/enum/Title'
 import { WatermarkType } from '../../../src/editor/dataset/enum/Watermark'
 import {
   createDomFromElementList,
-  getElementListByHTML,
-  getTextFromElementList
-} from '../../../src/editor/utils/element'
+  getElementListByHTML
+} from '../../../src/editor/utils/elementDom'
+import { getTextFromElementList } from '../../../src/editor/utils/elementText'
 
 const transparentPng =
   'data:image/png;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
@@ -275,8 +275,8 @@ describe('recent issue API regressions', () => {
       )
 
       const draw = (editor as any).draw
-      draw.flushScheduledFrameRender()
-      const positionList = draw.getPosition().getPositionList()
+      draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
+      const positionList = draw.getCoordinate().getPositionList()
       const itemStartIndexes = elementList.flatMap((element, index) =>
         element.value === ZERO ? [index] : []
       )
@@ -502,7 +502,7 @@ describe('recent issue API regressions', () => {
       editor.command.executeSetRange(8, 8)
       editor.command.executeApplyPainterStyle()
 
-      const elementList = (editor as any).draw.getElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getElementList()
       const targetStartIndex = elementList.findIndex(
         (element: any, index: number) =>
           element.value === 't' &&
@@ -772,11 +772,11 @@ describe('recent issue API regressions', () => {
       })
 
       const draw = (editor as any).draw
-      draw.flushScheduledFrameRender()
+      draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
       const imageIndex = draw
-        .getElementList()
+        .getObjectResolver().getElementList()
         .findIndex((element: any) => element.id === 'event-image')
-      const position = draw.getPosition().getPositionList()[imageIndex]
+      const position = draw.getCoordinate().getPositionList()[imageIndex]
       const clickPoint = {
         x: Math.floor(
           (position.coordinate.leftTop[0] + position.coordinate.rightTop[0]) /

@@ -3,9 +3,14 @@ import {
   IGetOriginValueOption,
   IGetValueOption
 } from '../../../interface/Draw'
-import { IEditorData, IEditorResult } from '../../../interface/Editor'
+import {
+  IEditorData,
+  IHeaderFooterPageScopeData,
+  IEditorResult,
+  IRuntimeEditorData
+} from '../../../interface/Editor'
 import { deepClone } from '../../../utils'
-import { zipElementList } from '../../../utils/element'
+import { zipElementList } from '../../../utils/elementZip'
 import type { Draw } from '../Draw'
 
 /**
@@ -33,11 +38,13 @@ export class DrawValueService {
    */
   public getOriginValue(
     options: IGetOriginValueOption = {}
-  ): Required<IEditorData> {
+  ): IRuntimeEditorData {
     const { pageNo } = options
     const data = this.draw.getObjectResolver().getOriginalEditorData()
     // 获取正文元素列表
     let mainElementList = data.main
+    let headerElementList: IRuntimeEditorData['header']
+    let footerElementList: IRuntimeEditorData['footer']
     // 如果指定了有效页码，获取指定页的元素列表
     if (
       Number.isInteger(pageNo) &&
@@ -48,13 +55,21 @@ export class DrawValueService {
       mainElementList = this.draw.getPageRowList()[pageNo!].flatMap(
         row => row.elementList
       )
+      headerElementList = this.draw.getHeader().getElementList(pageNo)
+      footerElementList = this.draw.getFooter().getElementList(pageNo)
     }
     // 返回完整的编辑器数据
-    return {
-      header: data.header,
-      main: mainElementList,
-      footer: data.footer
+    const result: IRuntimeEditorData = {
+      styles: data.styles,
+      main: mainElementList
     }
+    if (headerElementList) result.header = headerElementList
+    if (footerElementList) result.footer = footerElementList
+    if (pageNo === undefined) {
+      result.headerPageScopes = data.headerPageScopes
+      result.footerPageScopes = data.footerPageScopes
+    }
+    return result
   }
 
   /**
@@ -72,17 +87,34 @@ export class DrawValueService {
     const { extraPickAttrs } = options
     // 压缩各区域的元素列表
     const data: IEditorData = {
-      header: zipElementList(originData.header, {
-        extraPickAttrs
-      }),
+      styles: originData.styles ? deepClone(originData.styles) : undefined,
       // 正文区域需要按区域分类
       main: zipElementList(originData.main, {
         extraPickAttrs,
         isClassifyArea: true
-      }),
-      footer: zipElementList(originData.footer, {
+      })
+    }
+    if (originData.header) {
+      data.header = zipElementList(originData.header, {
         extraPickAttrs
       })
+    }
+    if (originData.footer) {
+      data.footer = zipElementList(originData.footer, {
+        extraPickAttrs
+      })
+    }
+    if (originData.headerPageScopes) {
+      data.headerPageScopes = this.zipPageScopes(
+        originData.headerPageScopes,
+        extraPickAttrs
+      )
+    }
+    if (originData.footerPageScopes) {
+      data.footerPageScopes = this.zipPageScopes(
+        originData.footerPageScopes,
+        extraPickAttrs
+      )
     }
     // 返回完整的编辑器结果，包含版本号、数据和编辑器选项
     return {
@@ -98,24 +130,37 @@ export class DrawValueService {
    * 将页眉、正文和页脚数据写入到对应的组件中。
    *
    * @param payload - 编辑器数据
-   * @param payload.header - 页眉元素列表（可选）
+   * @param payload.headerPageScopes - 页眉作用域元素列表（可选）
    * @param payload.main - 正文元素列表（可选）
-   * @param payload.footer - 页脚元素列表（可选）
+   * @param payload.footerPageScopes - 页脚作用域元素列表（可选）
    */
   public setEditorData(payload: Partial<IEditorData>) {
-    const { header, main, footer } = payload
-    // 如果有页眉数据，设置页眉元素列表
-    if (header) {
-      this.draw.getComponents().header.setElementList(header)
+    const { styles, headerPageScopes, main, footerPageScopes } = payload
+    if (styles !== undefined) {
+      this.draw.getRuntime().replaceDocumentStyles(styles)
+    }
+    if (headerPageScopes) {
+      this.draw.getComponents().header.setPageScopes(headerPageScopes)
     }
     // 如果有正文数据，替换正文元素列表
     if (main) {
       this.draw.replaceMainElementList(main)
     }
-    // 如果有页脚数据，设置页脚元素列表
-    if (footer) {
-      this.draw.getComponents().footer.setElementList(footer)
+    if (footerPageScopes) {
+      this.draw.getComponents().footer.setPageScopes(footerPageScopes)
     }
     this.draw.syncEditor2DocumentTree()
+  }
+
+  private zipPageScopes(
+    pageScopes: IHeaderFooterPageScopeData[],
+    extraPickAttrs?: IGetValueOption['extraPickAttrs']
+  ): IHeaderFooterPageScopeData[] {
+    return pageScopes.map(scopeData => ({
+      pageScope: scopeData.pageScope,
+      elementList: zipElementList(scopeData.elementList, {
+        extraPickAttrs
+      })
+    }))
   }
 }

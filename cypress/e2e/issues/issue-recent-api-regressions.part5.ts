@@ -13,9 +13,9 @@ import { TitleLevel } from '../../../src/editor/dataset/enum/Title'
 import { WatermarkType } from '../../../src/editor/dataset/enum/Watermark'
 import {
   createDomFromElementList,
-  getElementListByHTML,
-  getTextFromElementList
-} from '../../../src/editor/utils/element'
+  getElementListByHTML
+} from '../../../src/editor/utils/elementDom'
+import { getTextFromElementList } from '../../../src/editor/utils/elementText'
 
 const transparentPng =
   'data:image/png;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
@@ -203,7 +203,9 @@ describe('recent issue API regressions', () => {
   it('issue #1234 can restore a document directly from getValue data', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
-        header: [{ value: 'Header value' }],
+        headerPageScopes: [
+          { pageScope: 'all', elementList: [{ value: 'Header value' }] }
+        ],
         main: [
           { value: 'Plain value ' },
           {
@@ -236,7 +238,9 @@ describe('recent issue API regressions', () => {
             ]
           }
         ],
-        footer: [{ value: 'Footer value' }]
+        footerPageScopes: [
+          { pageScope: 'all', elementList: [{ value: 'Footer value' }] }
+        ]
       })
       const saved = editor.command.getValue()
 
@@ -253,7 +257,9 @@ describe('recent issue API regressions', () => {
   it('issue #1241 exports header, main, and footer content through getHTML', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
-        header: [{ value: 'Header HTML' }],
+        headerPageScopes: [
+          { pageScope: 'all', elementList: [{ value: 'Header HTML' }] }
+        ],
         main: [
           { value: 'Main HTML ' },
           {
@@ -263,7 +269,9 @@ describe('recent issue API regressions', () => {
             valueList: [{ value: 'link text' }]
           }
         ],
-        footer: [{ value: 'Footer HTML' }]
+        footerPageScopes: [
+          { pageScope: 'all', elementList: [{ value: 'Footer HTML' }] }
+        ]
       })
 
       const html = editor.command.getHTML()
@@ -451,7 +459,7 @@ describe('recent issue API regressions', () => {
       })
 
       const draw = (editor as any).draw
-      draw.flushScheduledFrameRender()
+      draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
       const canvas = Cypress.$('canvas[data-index="0"]')[0] as HTMLCanvasElement
       const ctx = canvas.getContext('2d')!
       const fillTextCalls: string[] = []

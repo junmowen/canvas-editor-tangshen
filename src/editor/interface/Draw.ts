@@ -92,7 +92,7 @@ export interface IDrawRowPayload {
   zone?: EditorZone
   /** 是否绘制换行符，用于控制格式标记显示。 */
   isDrawLineBreak?: boolean
-  /** 导出绘制标记：禁用 DOM/WebGL 运行时副作用，走稳定 Canvas2D fallback。 */
+  /** 导出绘制标记：禁用 DOM/WebGL 运行时副作用，走稳定 Canvas2D 备用路径。 */
   isExport?: boolean
   /** 选区绘制上下文，用于在页面上渲染当前选择状态。 */
   selectionCtx?: CanvasRenderingContext2D | null
@@ -117,7 +117,7 @@ export interface IDrawFloatPayload {
   pageNo: number
   /** 图片显示配置列表，用于保存当前页内图片的显示状态。 */
   imgDisplays: ImageDisplay[]
-  /** 仅渲染指定区域的浮动元素；不传则按页码并兼容页眉页脚浮动元素。 */
+  /** 仅渲染指定区域的浮动元素；不传则按页码并按需包含页眉页脚浮动元素。 */
   zoneList?: EditorZone[]
   /** 未指定 zoneList 时，是否同时渲染页眉页脚浮动元素。 */
   includeHeaderFooter?: boolean
@@ -135,7 +135,7 @@ export interface IDrawPagePayload {
   rowList: IRow[]
   /** 页码，用于定位分页结果中的目标页面。 */
   pageNo: number
-  /** 导出绘制标记：禁用 DOM/WebGL 运行时副作用，走稳定 Canvas2D fallback。 */
+  /** 导出绘制标记：禁用 DOM/WebGL 运行时副作用，走稳定 Canvas2D 备用路径。 */
   isExport?: boolean
 }
 
@@ -186,14 +186,14 @@ export interface IComputeRowListPayload {
   isFloat?: boolean
   /** 是否来源于表格，用于选择表格内专用排版路径。 */
   isFromTable?: boolean
-  /** 兼容旧布局链路的分页模式字段。 */
-  isPagingMode?: boolean
   /** 是否分页页面模式，用于选择分页或连续布局逻辑。 */
   isPagingPageMode?: boolean
   /** 页面高度，用于计算分页模式下的可视区域。 */
   pageHeight?: number
   /** 主编辑区外部高度，用于计算连续模式可视范围。 */
   mainOuterHeight?: number
+  /** 起始页码，用于局部排版时按真实页码读取镜像页边距和装订线高度。 */
+  startPageNo?: number
   /** 环绕元素列表，保存影响浮动内容排版的元素。 */
   surroundElementList?: IElement[]
   /** elementList 是主文档局部切片时，对应整篇正文的起始索引。 */

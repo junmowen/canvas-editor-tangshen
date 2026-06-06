@@ -70,6 +70,8 @@ export class Command {
   public executeRowFlex: CommandAdapt['rowFlex']
   /** 对外暴露的row margin命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRowMargin: CommandAdapt['rowMargin']
+  /** 对外暴露的row columns命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeRowColumns: CommandAdapt['rowColumns']
   /** 对外暴露的row indent命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRowIndent: CommandAdapt['rowIndent']
   /** 对外暴露的row indent left命令入口，内部代理到 CommandAdapt 对应实现。 */
@@ -78,6 +80,14 @@ export class Command {
   public executeRowIndentRight: CommandAdapt['rowIndentRight']
   /** 对外暴露的row hanging indent命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRowHangingIndent: CommandAdapt['rowHangingIndent']
+  /** 对外暴露的set tab stops命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeSetTabStops: CommandAdapt['setTabStops']
+  /** 对外暴露的set document styles命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeSetDocumentStyles: CommandAdapt['setDocumentStyles']
+  /** 对外暴露的apply document style命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeApplyDocumentStyle: CommandAdapt['applyDocumentStyle']
+  /** 对外暴露的clear document style命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeClearDocumentStyle: CommandAdapt['clearDocumentStyle']
   /** 对外暴露的page number continue命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executePageNumberContinue: CommandAdapt['pageNumberContinue']
   /** 对外暴露的page number restart命令入口，内部代理到 CommandAdapt 对应实现。 */
@@ -212,6 +222,8 @@ export class Command {
   public executeSetLocale: CommandAdapt['setLocale']
   /** 对外暴露的location catalog命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeLocationCatalog: CommandAdapt['locationCatalog']
+  /** 对外暴露的标题定位命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeLocationTitle: CommandAdapt['locationTitle']
   /** 对外暴露的word tool命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeWordTool: CommandAdapt['wordTool']
   /** 对外暴露的set html命令入口，内部代理到 CommandAdapt 对应实现。 */
@@ -238,8 +250,16 @@ export class Command {
   public executeSetControlProperties: CommandAdapt['setControlProperties']
   /** 对外暴露的set control properties list命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetControlPropertiesList: CommandAdapt['setControlPropertiesList']
+  /** 对外暴露的load control remote options命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeLoadControlRemoteOptions: CommandAdapt['loadControlRemoteOptions']
+  /** 对外暴露的load control remote options list命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeLoadControlRemoteOptionsList: CommandAdapt['loadControlRemoteOptionsList']
   /** 对外暴露的set control highlight命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetControlHighlight: CommandAdapt['setControlHighlight']
+  /** 对外暴露的validate control命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeValidateControl: CommandAdapt['validateControl']
+  /** 对外暴露的validate control async命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeValidateControlAsync: CommandAdapt['validateControlAsync']
   /** 对外暴露的location control命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeLocationControl: CommandAdapt['locationControl']
   /** 对外暴露的insert control命令入口，内部代理到 CommandAdapt 对应实现。 */
@@ -267,6 +287,30 @@ export class Command {
   public getOptions: CommandAdapt['getOptions']
   /** 对外暴露的 value 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getValue: CommandAdapt['getValue']
+  /** 对外暴露的 OOXML package parts 查询入口，内部代理到 CommandAdapt 对应实现。 */
+  public getOoxmlPackageParts: CommandAdapt['getOoxmlPackageParts']
+  /** 对外暴露的 OOXML DOCX Blob 查询入口，内部代理到 CommandAdapt 对应实现。 */
+  public getOoxmlDocxBlob: CommandAdapt['getOoxmlDocxBlob']
+  /** 对外暴露的排版中间层快照查询入口。 */
+  public getTypesettingLayoutSnapshot: CommandAdapt['getTypesettingLayoutSnapshot']
+  /** 对外暴露的标题父子树查询入口。 */
+  public getTitleTree: CommandAdapt['getTitleTree']
+  /** 对外暴露的标题父子树节点查询入口。 */
+  public getTitleTreeNode: CommandAdapt['getTitleTreeNode']
+  /** 对外暴露的标题父子树节点批量查询入口。 */
+  public getTitleTreeNodeList: CommandAdapt['getTitleTreeNodeList']
+  /** 对外暴露的标题直接子节点查询入口。 */
+  public getTitleTreeChildList: CommandAdapt['getTitleTreeChildList']
+  /** 对外暴露的标题章节范围查询入口。 */
+  public getTitleTreeRange: CommandAdapt['getTitleTreeRange']
+  /** 对外暴露的公式符号库查询入口。 */
+  public getFormulaSymbolList: CommandAdapt['getFormulaSymbolList']
+  /** 对外暴露的文档样式库查询入口。 */
+  public getDocumentStyles: CommandAdapt['getDocumentStyles']
+  /** 对外暴露的结构化公式查询入口。 */
+  public getFormulaById: CommandAdapt['getFormulaById']
+  /** 对外暴露的 MathML 公式解析入口。 */
+  public parseFormulaMathML: CommandAdapt['parseFormulaMathML']
   /** 对外暴露的 value async 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getValueAsync: CommandAdapt['getValueAsync']
   /** 对外暴露的 area value 查询入口，内部代理到 CommandAdapt 对应实现。 */
@@ -352,10 +396,15 @@ export class Command {
     this.executeList = adapt.list.bind(adapt)
     this.executeRowFlex = adapt.rowFlex.bind(adapt)
     this.executeRowMargin = adapt.rowMargin.bind(adapt)
+    this.executeRowColumns = adapt.rowColumns.bind(adapt)
     this.executeRowIndent = adapt.rowIndent.bind(adapt)
     this.executeRowIndentLeft = adapt.rowIndentLeft.bind(adapt)
     this.executeRowIndentRight = adapt.rowIndentRight.bind(adapt)
     this.executeRowHangingIndent = adapt.rowHangingIndent.bind(adapt)
+    this.executeSetTabStops = adapt.setTabStops.bind(adapt)
+    this.executeSetDocumentStyles = adapt.setDocumentStyles.bind(adapt)
+    this.executeApplyDocumentStyle = adapt.applyDocumentStyle.bind(adapt)
+    this.executeClearDocumentStyle = adapt.clearDocumentStyle.bind(adapt)
     this.executePageNumberContinue = adapt.pageNumberContinue.bind(adapt)
     this.executePageNumberRestart = adapt.pageNumberRestart.bind(adapt)
     this.executePageNumberRange = adapt.pageNumberRange.bind(adapt)
@@ -432,6 +481,7 @@ export class Command {
     this.executeTranslate = adapt.translate.bind(adapt)
     this.executeSetLocale = adapt.setLocale.bind(adapt)
     this.executeLocationCatalog = adapt.locationCatalog.bind(adapt)
+    this.executeLocationTitle = adapt.locationTitle.bind(adapt)
     this.executeWordTool = adapt.wordTool.bind(adapt)
     this.executeSetHTML = adapt.setHTML.bind(adapt)
     this.executeSetGroup = adapt.setGroup.bind(adapt)
@@ -452,6 +502,19 @@ export class Command {
     this.getImage = adapt.getImage.bind(adapt)
     this.getOptions = adapt.getOptions.bind(adapt)
     this.getValue = adapt.getValue.bind(adapt)
+    this.getOoxmlPackageParts = adapt.getOoxmlPackageParts.bind(adapt)
+    this.getOoxmlDocxBlob = adapt.getOoxmlDocxBlob.bind(adapt)
+    this.getTypesettingLayoutSnapshot =
+      adapt.getTypesettingLayoutSnapshot.bind(adapt)
+    this.getTitleTree = adapt.getTitleTree.bind(adapt)
+    this.getTitleTreeNode = adapt.getTitleTreeNode.bind(adapt)
+    this.getTitleTreeNodeList = adapt.getTitleTreeNodeList.bind(adapt)
+    this.getTitleTreeChildList = adapt.getTitleTreeChildList.bind(adapt)
+    this.getTitleTreeRange = adapt.getTitleTreeRange.bind(adapt)
+    this.getFormulaSymbolList = adapt.getFormulaSymbolList.bind(adapt)
+    this.getDocumentStyles = adapt.getDocumentStyles.bind(adapt)
+    this.getFormulaById = adapt.getFormulaById.bind(adapt)
+    this.parseFormulaMathML = adapt.parseFormulaMathML.bind(adapt)
     this.getValueAsync = adapt.getValueAsync.bind(adapt)
     this.getHTML = adapt.getHTML.bind(adapt)
     this.getText = adapt.getText.bind(adapt)
@@ -484,7 +547,13 @@ export class Command {
     this.executeSetControlProperties = adapt.setControlProperties.bind(adapt)
     this.executeSetControlPropertiesList =
       adapt.setControlPropertiesList.bind(adapt)
+    this.executeLoadControlRemoteOptions =
+      adapt.loadControlRemoteOptions.bind(adapt)
+    this.executeLoadControlRemoteOptionsList =
+      adapt.loadControlRemoteOptionsList.bind(adapt)
     this.executeSetControlHighlight = adapt.setControlHighlight.bind(adapt)
+    this.executeValidateControl = adapt.validateControl.bind(adapt)
+    this.executeValidateControlAsync = adapt.validateControlAsync.bind(adapt)
     this.getControlValue = adapt.getControlValue.bind(adapt)
     this.getControlList = adapt.getControlList.bind(adapt)
     this.executeLocationControl = adapt.locationControl.bind(adapt)

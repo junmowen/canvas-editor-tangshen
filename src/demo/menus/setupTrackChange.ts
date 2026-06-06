@@ -1,5 +1,22 @@
 import { Editor, ElementType, IElement } from '../../editor'
 
+declare global {
+  /** 窗口契约，用于控制演示页修订 UI 调试日志。 */
+  interface Window {
+    /** 修订留痕调试日志开关，默认关闭。 */
+    __CANVAS_EDITOR_TRACK_CHANGE_DEBUG__?: boolean
+  }
+}
+
+/** 输出修订 UI 调试日志，默认关闭以避免控制台噪音。 */
+function logTrackChangeUiDebug(
+  label: string,
+  payload: Record<string, unknown>
+) {
+  if (!window.__CANVAS_EDITOR_TRACK_CHANGE_DEBUG__) return
+  console.log(`[track-change-ui] ${label}`, payload)
+}
+
 export function setupTrackChange(instance: Editor, container: HTMLDivElement) {
   const trackChangeDom = document.querySelector<HTMLDivElement>(
     '.menu-item__track-change'
@@ -150,7 +167,7 @@ export function setupTrackChange(instance: Editor, container: HTMLDivElement) {
       const top = Math.min(Math.max(stableTop, nextTop, minTop), maxTop)
       placement.cardDom.style.top = `${top}px`
       placement.cardDom.style.left = `${placement.left}px`
-      console.log('[track-change-ui] card layout placed', {
+      logTrackChangeUiDebug('card layout placed', {
         recordId: placement.cardDom.dataset.id || '',
         top,
         left: placement.left,
@@ -171,7 +188,7 @@ export function setupTrackChange(instance: Editor, container: HTMLDivElement) {
   function positionReviewCards(
     recordList: ReturnType<typeof instance.command.getTrackChangeList>
   ) {
-    console.log('[track-change-ui] positionReviewCards start', {
+    logTrackChangeUiDebug('positionReviewCards start', {
       recordCount: recordList.length,
       visiblePanel: trackChangePanelDom.classList.contains('is-visible'),
       commentCount: commentDom.querySelectorAll('.comment-item').length
@@ -186,7 +203,7 @@ export function setupTrackChange(instance: Editor, container: HTMLDivElement) {
         `.track-change-card[data-id='${record.id}']`
       )
       if (!cardDom) {
-        console.log('[track-change-ui] card missing', {
+        logTrackChangeUiDebug('card missing', {
           recordId: record.id,
           type: record.type,
           elementCount: record.elementList.length,
@@ -195,7 +212,7 @@ export function setupTrackChange(instance: Editor, container: HTMLDivElement) {
         return
       }
       const anchor = getVisibleTrackChangeAnchor(record)
-      console.log('[track-change-ui] card anchor resolve', {
+      logTrackChangeUiDebug('card anchor resolve', {
         recordId: record.id,
         type: record.type,
         elementCount: record.elementList.length,
@@ -204,7 +221,7 @@ export function setupTrackChange(instance: Editor, container: HTMLDivElement) {
       })
       if (!anchor) {
         cardDom.style.display = 'none'
-        console.log('[track-change-ui] card hidden no visible anchor', {
+        logTrackChangeUiDebug('card hidden no visible anchor', {
           recordId: record.id
         })
         return
@@ -212,7 +229,7 @@ export function setupTrackChange(instance: Editor, container: HTMLDivElement) {
       cardDom.style.display = 'block'
       const { pageContainerRect, sourcePoint } = anchor
       const cardWidth = cardDom.offsetWidth || 392
-      console.log('[track-change-ui] card placement', {
+      logTrackChangeUiDebug('card placement', {
         recordId: record.id,
         sourcePoint,
         cardWidth,
@@ -231,7 +248,7 @@ export function setupTrackChange(instance: Editor, container: HTMLDivElement) {
       const anchor = getVisibleCommentAnchor(commentId)
       if (!anchor) {
         cardDom.style.display = 'none'
-        console.log('[track-change-ui] comment hidden no visible anchor', {
+        logTrackChangeUiDebug('comment hidden no visible anchor', {
           commentId
         })
         return
@@ -246,7 +263,7 @@ export function setupTrackChange(instance: Editor, container: HTMLDivElement) {
       })
     })
     layoutReviewCards(placementList)
-    console.log('[track-change-ui] positionReviewCards done', {
+    logTrackChangeUiDebug('positionReviewCards done', {
       placementCount: placementList.length
     })
   }
@@ -261,7 +278,7 @@ export function setupTrackChange(instance: Editor, container: HTMLDivElement) {
       'is-visible',
       hasComment || (isTrackChangePanelVisible && !!recordList.length)
     )
-    console.log('[track-change-ui] renderReviewLinks', {
+    logTrackChangeUiDebug('renderReviewLinks', {
       recordCount: recordList.length,
       isTrackChangePanelVisible,
       hasComment,
@@ -326,7 +343,7 @@ export function setupTrackChange(instance: Editor, container: HTMLDivElement) {
   }
   function updateTrackChangePanel() {
     const recordList = instance.command.getTrackChangeList()
-    console.log('[track-change-ui] updateTrackChangePanel', {
+    logTrackChangeUiDebug('updateTrackChangePanel', {
       recordCount: recordList.length,
       isTrackChangeEnabled,
       panelVisible: trackChangePanelDom.classList.contains('is-visible'),

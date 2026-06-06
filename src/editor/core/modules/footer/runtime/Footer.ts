@@ -1,9 +1,16 @@
 import { maxHeightRadioMapping } from '../../../../dataset/constant/Common'
 import { EditorZone } from '../../../../dataset/enum/Editor'
 import { DeepRequired } from '../../../../interface/Common'
-import { IEditorOption } from '../../../../interface/Editor'
+import {
+  IEditorOption,
+  IHeaderFooterPageScopeData
+} from '../../../../interface/Editor'
 import { IElement, IElementPosition } from '../../../../interface/Element'
 import { IRow } from '../../../../interface/Row'
+import {
+  ensureHeaderFooterScopedElementList,
+  resolveHeaderFooterScopedElementList
+} from '../../page-setup/runtime/HeaderFooterPageScope'
 import { Zone } from '../../../runtime/zone/Zone'
 import { Draw } from '../../../draw/Draw'
 import type { DrawCoordinateService } from '../../../draw/coordinate/DrawCoordinateService'
@@ -18,20 +25,20 @@ export class Footer {
   /** 编辑器选项快照，读取页面尺寸、样式和功能开关。 */
   private options: DeepRequired<IEditorOption>
 
-  private elementList: IElement[]
-  private rowList: IRow[]
-  private positionList: IElementPosition[]
+  private pageScopes: IHeaderFooterPageScopeData[]
+  private scopedRowList: Array<{
+    elementList: IElement[]
+    rowList: IRow[]
+  }>
 
   /** 初始化 Footer 实例并注入运行依赖。 */
-  constructor(draw: Draw, data?: IElement[]) {
+  constructor(draw: Draw) {
     this.draw = draw
     this.coordinate = draw.getCoordinate()
     this.zone = draw.getZone()
     this.options = draw.getOptions()
-    // 初始化列表
-    this.elementList = data || []
-    this.rowList = []
-    this.positionList = []
+    this.pageScopes = []
+    this.scopedRowList = []
   }
 
   /**
@@ -39,17 +46,27 @@ export class Footer {
    *
    * @returns 页脚行列表
    */
-  public getRowList(): IRow[] {
-    return this.rowList
+  public getRowList(pageNo = 0): IRow[] {
+    const elementList = this.getElementList(pageNo)
+    return (
+      this.scopedRowList.find(item => item.elementList === elementList)
+        ?.rowList || []
+    )
   }
 
-  /**
-   * 设置元素列表。
-   *
-   * @param elementList - 页脚元素列表
-   */
-  public setElementList(elementList: IElement[]) {
-    this.elementList = elementList
+  /** 获取全部已排版的页脚行列表，用于 worker 支持性校验。 */
+  public getAllRowList(): IRow[][] {
+    return this.scopedRowList.map(item => item.rowList)
+  }
+
+  /** 设置按页面作用域划分的页脚数据。 */
+  public setPageScopes(pageScopes?: IHeaderFooterPageScopeData[]) {
+    this.pageScopes = pageScopes || []
+  }
+
+  /** 获取按页面作用域划分的页脚数据。 */
+  public getPageScopes(): IHeaderFooterPageScopeData[] {
+    return this.pageScopes
   }
 
   /**
@@ -57,17 +74,28 @@ export class Footer {
    *
    * @returns 页脚元素列表
    */
-  public getElementList(): IElement[] {
-    return this.elementList
+  public getElementList(pageNo?: number): IElement[] {
+    return resolveHeaderFooterScopedElementList(
+      this.pageScopes,
+      pageNo ?? this.zone.getZonePageNo()
+    )
+  }
+
+  /** 确保指定页存在可编辑页脚元素列表。 */
+  public ensureElementList(pageNo = this.zone.getZonePageNo()): IElement[] {
+    return ensureHeaderFooterScopedElementList(this.pageScopes, pageNo)
   }
 
   /**
-   * 获取位置列表。
+   * 获取指定页页脚位置列表，非首页按当前页边距即时重建。
    *
    * @returns 元素位置列表
    */
-  public getPositionList(): IElementPosition[] {
-    return this.positionList
+  public getPositionList(
+    pageNo = 0,
+    pageHeight = this.draw.getHeight()
+  ): IElementPosition[] {
+    return this._createPositionList(pageNo, pageHeight)
   }
 
   /**
@@ -80,15 +108,6 @@ export class Footer {
     this.recovery()
     // 计算行列表
     this._computeRowList()
-    this.positionList = this._createPositionList(0, this.draw.getHeight())
-  }
-
-  /** 连页高度变化后，同步页脚位置到真实页面底部。 */
-  public syncPositionForPage(pageNo = 0) {
-    this.positionList = this._createPositionList(
-      pageNo,
-      this.draw.getPageCanvasHost().getPageHeight(pageNo)
-    )
   }
 
   /**
@@ -97,8 +116,7 @@ export class Footer {
    * 清空行列表和位置列表。
    */
   public recovery() {
-    this.rowList = []
-    this.positionList = []
+    this.scopedRowList = []
   }
 
   /**
@@ -107,10 +125,25 @@ export class Footer {
    * 使用布局计算器计算页脚的行列表。
    */
   private _computeRowList() {
+    this.pageScopes.forEach(scopeData => {
+      if (
+        this.scopedRowList.some(item => item.elementList === scopeData.elementList)
+      ) {
+        return
+      }
+      this.scopedRowList.push({
+        elementList: scopeData.elementList,
+        rowList: this._computeElementRowList(scopeData.elementList)
+      })
+    })
+  }
+
+  /** 计算单个页脚元素列表的行列表。 */
+  private _computeElementRowList(elementList: IElement[]) {
     const innerWidth = this.draw.getInnerWidth()
-    this.rowList = this.draw.computeRowList({
+    return this.draw.computeRowList({
       innerWidth,
-      elementList: this.elementList,
+      elementList,
       isFloat: true
     })
   }
@@ -124,16 +157,17 @@ export class Footer {
     const positionList: IElementPosition[] = []
     // 获取页脚底部位置
     const footerBottom = this.getFooterBottom()
-    const innerWidth = this.draw.getInnerWidth()
-    const margins = this.draw.getMargins()
+    // 页脚位置按目标页边距计算，镜像页边距下页脚内容需要随奇偶页切换。
+    const innerWidth = this.draw.getInnerWidth(pageNo)
+    const margins = this.draw.getMargins(pageNo)
     const startX = margins[3]
     // 计算起始 Y 坐标（页面底部 - 页脚底部距离 - 页脚高度）
-    const footerHeight = this.getHeight()
+    const footerHeight = this.getHeight(pageNo)
     const startY = pageHeight - footerBottom - footerHeight
     // 计算位置列表
     this.coordinate.computePageRowPosition({
       positionList,
-      rowList: this.rowList,
+      rowList: this.getRowList(pageNo),
       pageNo,
       startRowIndex: 0,
       startIndex: 0,
@@ -162,20 +196,20 @@ export class Footer {
     return Math.floor(height * maxHeightRadioMapping[maxHeightRadio])
   }
 
-  public getHeight(): number {
+  public getHeight(pageNo = 0): number {
     const maxHeight = this.getMaxHeight()
-    const rowHeight = this.getRowHeight()
+    const rowHeight = this.getRowHeight(pageNo)
     return rowHeight > maxHeight ? maxHeight : rowHeight
   }
 
-  public getRowHeight(): number {
-    return this.rowList.reduce((pre, cur) => pre + cur.height, 0)
+  public getRowHeight(pageNo = 0): number {
+    return this.getRowList(pageNo).reduce((pre, cur) => pre + cur.height, 0)
   }
 
-  public getExtraHeight(): number {
+  public getExtraHeight(pageNo = 0): number {
     // 页脚下边距 + 实际高 - 页面上边距
-    const margins = this.draw.getMargins()
-    const footerHeight = this.getHeight()
+    const margins = this.draw.getMargins(pageNo)
+    const footerHeight = this.getHeight(pageNo)
     const footerBottom = this.getFooterBottom()
     const extraHeight = footerBottom + footerHeight - margins[2]
     return extraHeight <= 0 ? 0 : extraHeight
@@ -197,25 +231,28 @@ export class Footer {
     ctx.globalAlpha = this.zone.isFooterActive()
       ? 1
       : this.options.footer.inactiveAlpha
-    const innerWidth = this.draw.getInnerWidth()
+    // 页脚绘制宽度跟随当前页，保证导出和非当前页渲染不会复用首页边距。
+    const innerWidth = this.draw.getInnerWidth(pageNo)
     const maxHeight = this.getMaxHeight()
     // 超出最大高度不渲染
     const rowList: IRow[] = []
     let curRowHeight = 0
-    for (let r = 0; r < this.rowList.length; r++) {
-      const row = this.rowList[r]
+    const sourceRowList = this.getRowList(pageNo)
+    for (let r = 0; r < sourceRowList.length; r++) {
+      const row = sourceRowList[r]
       if (curRowHeight + row.height > maxHeight) {
         break
       }
       rowList.push(row)
       curRowHeight += row.height
     }
-    const positionList =
-      options.pageHeight !== undefined
-        ? this._createPositionList(pageNo, options.pageHeight)
-        : this.positionList
+    const positionList = this.getPositionList(
+      pageNo,
+      options.pageHeight ?? this.draw.getHeight()
+    )
+    const elementList = this.getElementList(pageNo)
     this.draw.drawRow(ctx, {
-      elementList: this.elementList,
+      elementList,
       positionList,
       rowList,
       pageNo,

@@ -8,6 +8,10 @@ interface IControlIdentityOption {
   conceptId?: string
   /** 区域标识，用于关联控件或元素所在的编辑区域。 */
   areaId?: string
+  /** 外部系统标识，用于按业务字段匹配控件。 */
+  externalId?: string
+  /** 业务编码，用于按业务字段编码匹配控件。 */
+  code?: string | number
 }
 
 /** 控件identitymatch调用载荷，聚合执行该操作所需的输入数据。 */
@@ -41,6 +45,12 @@ export function isControlIdentityMatched<T extends IControlIdentityOption>(
   return (
     (!!option.id && element.controlId === option.id) ||
     (!!option.conceptId && element.control?.conceptId === option.conceptId) ||
+    (!!option.externalId && element.externalId === option.externalId) ||
+    (option.code !== undefined &&
+      option.code !== null &&
+      element.control?.code !== undefined &&
+      element.control.code !== null &&
+      String(element.control.code) === String(option.code)) ||
     (!!option.areaId &&
       (element.areaId === option.areaId ||
         (isIncludeScopeArea && scopeAreaId === option.areaId)))

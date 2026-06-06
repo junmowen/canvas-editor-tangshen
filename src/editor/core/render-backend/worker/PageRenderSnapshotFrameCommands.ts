@@ -5,10 +5,10 @@ import { IDrawPagePayload } from '../../../interface/Draw'
 import { resolveWorkerSnapshotPageNumberX } from '../../modules/page-number/render/PageNumberWorkerSnapshotPolicy'
 import { PageNumber } from '../../modules/page-number/runtime/PageNumber'
 import { IWorkerPaintCommand } from './WorkerRenderProtocol'
-import { PageRenderSnapshotPageCommands } from './PageRenderSnapshotPageCommands'
+import { PageRenderSnapshotPageDecorationCommands } from './PageRenderSnapshotPageDecorationCommands'
 
 /** Paging frame, page number and watermark commands. */
-export abstract class PageRenderSnapshotFrameCommands extends PageRenderSnapshotPageCommands {
+export abstract class PageRenderSnapshotFrameCommands extends PageRenderSnapshotPageDecorationCommands {
   protected buildPagingFrameCommands(
     payload: IDrawPagePayload
   ): IWorkerPaintCommand[] {
@@ -16,27 +16,31 @@ export abstract class PageRenderSnapshotFrameCommands extends PageRenderSnapshot
     const commandList: IWorkerPaintCommand[] = []
     const options = this.draw.getRuntime().getOptions()
     if (!options.header.disabled) {
-      this.buildHeaderCommands(commandList)
+      this.buildHeaderCommands(commandList, payload.pageNo)
     }
     if (!options.pageNumber.disabled) {
       this.buildPageNumberCommands(commandList, payload.pageNo)
     }
     if (!options.footer.disabled) {
-      this.buildFooterCommands(commandList)
+      this.buildFooterCommands(commandList, payload.pageNo)
     }
     return commandList
   }
 
   /** 生成页眉文本命令。 */
-  protected buildHeaderCommands(commandList: IWorkerPaintCommand[]) {
+  protected buildHeaderCommands(
+    commandList: IWorkerPaintCommand[],
+    pageNo: number
+  ) {
     const header = this.draw.getHeader()
+    // 页眉位置在 worker 快照中也按目标页重建，避免奇偶页镜像边距下横向错位。
     this.buildRowTextCommands(
       commandList,
       this.getRenderableFrameRowList(
-        header.getRowList(),
+        header.getRowList(pageNo),
         header.getMaxHeight()
       ),
-      header.getPositionList(),
+      header.getPositionList(pageNo),
       this.draw.getZone().isHeaderActive()
         ? 1
         : this.draw.getRuntime().getOptions().header.inactiveAlpha
@@ -44,15 +48,19 @@ export abstract class PageRenderSnapshotFrameCommands extends PageRenderSnapshot
   }
 
   /** 生成页脚文本命令。 */
-  protected buildFooterCommands(commandList: IWorkerPaintCommand[]) {
+  protected buildFooterCommands(
+    commandList: IWorkerPaintCommand[],
+    pageNo: number
+  ) {
     const footer = this.draw.getFooter()
+    // 页脚位置在 worker 快照中也按目标页重建，保证导出/非当前页渲染和主线程一致。
     this.buildRowTextCommands(
       commandList,
       this.getRenderableFrameRowList(
-        footer.getRowList(),
+        footer.getRowList(pageNo),
         footer.getMaxHeight()
       ),
-      footer.getPositionList(),
+      footer.getPositionList(pageNo),
       this.draw.getZone().isFooterActive()
         ? 1
         : this.draw.getRuntime().getOptions().footer.inactiveAlpha
@@ -75,7 +83,8 @@ export abstract class PageRenderSnapshotFrameCommands extends PageRenderSnapshot
     )
     const pageNumberBottom =
       this.draw.getServices().metricsService.getPageNumberBottom()
-    const margins = this.draw.getMargins()
+    // 页码对齐策略依赖当前页边距，worker 快照必须和主线程同页计算。
+    const margins = this.draw.getMargins(pageNo)
     const x = resolveWorkerSnapshotPageNumberX({
       rowFlex,
       pageWidth: this.draw.getWidth(),

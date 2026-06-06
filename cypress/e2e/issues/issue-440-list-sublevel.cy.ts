@@ -3,7 +3,7 @@ import type Editor from '../../../src/editor'
 const ZERO = '\u200B'
 
 function getOriginalElements(editor: Editor) {
-  return (editor as any).draw.getOriginalMainElementList()
+  return (editor as any).draw.getObjectResolver().getOriginalMainElementList()
 }
 
 function createListDocument(itemCount: number) {
@@ -63,7 +63,7 @@ function createTextElements(text: string, attrs: Record<string, any> = {}) {
 }
 
 function findRowByText(editor: Editor, text: string) {
-  const rows = (editor as any).draw.getOriginalRowList()
+  const rows = (editor as any).draw.getObjectResolver().getOriginalRowList()
   return rows.find((row: any) =>
     row.elementList.map((element: any) => element.value).join('').includes(text)
   )
@@ -146,7 +146,7 @@ describe('issue #440 - list sublevel editing', () => {
 
     cy.getEditor().then((editor: Editor) => {
       const draw = (editor as any).draw
-      draw.flushScheduledFrameRender()
+      draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
 
       const secondItem = getParagraphByText(editor, '二')
       secondItem.elementList
@@ -246,7 +246,7 @@ describe('issue #440 - list sublevel editing', () => {
 
       const stats = editor.getRenderBackendStats()
       const updatedRow = draw
-        .getRowList()
+        .getObjectResolver().getRowList()
         .find((row: any) => row.startIndex === laterPageRow.startIndex)
 
       expect(stats.layout.computeCount, '输入态不应回退整篇 layout').to.eq(0)

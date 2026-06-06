@@ -38,7 +38,8 @@ export function shouldDrawWorkerSnapshotStandaloneText(element: IRowElement) {
       element.rowFlex === RowFlex.JUSTIFY ||
       element.type === ElementType.HYPERLINK ||
       element.type === ElementType.SUPERSCRIPT ||
-      element.type === ElementType.SUBSCRIPT
+      element.type === ElementType.SUBSCRIPT ||
+      element.type === ElementType.LATEX
   )
 }
 
@@ -71,6 +72,7 @@ export function isWorkerSnapshotTextElement(element: IRowElement) {
     type === ElementType.DATE ||
     type === ElementType.TAB ||
     type === ElementType.SUPERSCRIPT ||
-    type === ElementType.SUBSCRIPT
+    type === ElementType.SUBSCRIPT ||
+    type === ElementType.LATEX
   )
 }

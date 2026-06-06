@@ -179,7 +179,7 @@ describe('1000 页编辑性能压测', () => {
           expect(stats.chunkLayout.pageRebalancePendingPageCount).to.eq(0)
         }).then(() => {
           const pageRowList = draw.getPageRowList()
-          const positionList = draw.getPosition().getLayoutMainPositionList()
+          const positionList = draw.getCoordinate().getMainPositionList()
           const middlePageNo = Math.floor(pageRowList.length / 2)
           const middlePageRows = pageRowList[middlePageNo] || []
           const middlePagePositionCount = positionList.filter(
@@ -335,7 +335,7 @@ describe('1000 页编辑性能压测', () => {
         })
         expect(editor.getRenderBackendStats().asyncInsert.active).to.eq(true)
 
-        const elementList = draw.getElementList()
+        const elementList = draw.getObjectResolver().getElementList()
         draw.spliceElementList(elementList, 1, 5)
         draw.render({
           curIndex: 1,
@@ -720,7 +720,7 @@ describe('1000 页编辑性能压测', () => {
     })
   })
 
-  it('keeps large paste inside table cells on synchronous fallback path', () => {
+  it('keeps large paste inside table cells on synchronous recovery path', () => {
     cy.getEditor().then((editor: any) => {
       editor.command.executeSetValue(
         {
@@ -768,14 +768,14 @@ describe('1000 页编辑性能压测', () => {
         .join('')
       expect(stats.asyncInsert.startedCount).to.eq(0)
       expect(stats.asyncInsert.active).to.eq(false)
-      expect(stats.asyncInsert.syncFallbackCount).to.eq(1)
-      expect(stats.asyncInsert.tableSyncFallbackCount).to.eq(1)
-      expect(stats.asyncInsert.lastSyncFallbackReason).to.eq('table-context')
+      expect(stats.asyncInsert.syncRecoveryCount).to.eq(1)
+      expect(stats.asyncInsert.tableSyncRecoveryCount).to.eq(1)
+      expect(stats.asyncInsert.lastSyncRecoveryReason).to.eq('table-context')
       expect(cellText).to.include('performance-page-1199')
     })
   })
 
-  it('keeps large paste inside active controls on synchronous fallback path', () => {
+  it('keeps large paste inside active controls on synchronous recovery path', () => {
     cy.getEditor().then((editor: any) => {
       editor.command.executeSetValue({
         header: [],
@@ -792,7 +792,7 @@ describe('1000 页编辑性能压测', () => {
         ],
         footer: []
       })
-      const elementList = editor.draw.getOriginalMainElementList()
+      const elementList = editor.draw.getObjectResolver().getOriginalMainElementList()
       const insertIndex = elementList.findIndex(
         (element: any) => element.value === '关'
       )
@@ -816,20 +816,24 @@ describe('1000 页编辑性能压测', () => {
         .join('')
       expect(stats.asyncInsert.startedCount).to.eq(0)
       expect(stats.asyncInsert.active).to.eq(false)
-      expect(stats.asyncInsert.syncFallbackCount).to.eq(1)
-      expect(stats.asyncInsert.controlSyncFallbackCount).to.eq(1)
-      expect(stats.asyncInsert.lastSyncFallbackReason).to.eq('control-context')
+      expect(stats.asyncInsert.syncRecoveryCount).to.eq(1)
+      expect(stats.asyncInsert.controlSyncRecoveryCount).to.eq(1)
+      expect(stats.asyncInsert.lastSyncRecoveryReason).to.eq('control-context')
       expect(controlValue).to.include('performance-page-1199')
     })
   })
 
-  it('keeps large paste inside header and footer on synchronous fallback path', () => {
+  it('keeps large paste inside header and footer on synchronous recovery path', () => {
     cy.getEditor().then((editor: any) => {
       editor.command.executeSetValue(
         {
-          header: [{ value: 'header-anchor' }],
+          headerPageScopes: [
+            { pageScope: 'all', elementList: [{ value: 'header-anchor' }] }
+          ],
           main: [{ value: 'main-anchor' }],
-          footer: [{ value: 'footer-anchor' }]
+          footerPageScopes: [
+            { pageScope: 'all', elementList: [{ value: 'footer-anchor' }] }
+          ]
         },
         {
           isSetCursor: true
@@ -842,15 +846,15 @@ describe('1000 页编辑性能压测', () => {
       const headerText = `header-large-paste-start ${'h'.repeat(1100)} header-large-paste-end`
       editor.command.executeInsertElementList([{ value: headerText }])
       let stats = editor.getRenderBackendStats()
-      let value = editor.command.getValue()
-      let mergedText = value.data.header
+      let value = editor.command.getValue({ pageNo: 0 })
+      let mergedText = value.data.header!
         .map((element: { value?: string }) => element.value || '')
         .join('')
       expect(stats.asyncInsert.startedCount).to.eq(0)
       expect(stats.asyncInsert.active).to.eq(false)
-      expect(stats.asyncInsert.syncFallbackCount).to.eq(1)
-      expect(stats.asyncInsert.headerSyncFallbackCount).to.eq(1)
-      expect(stats.asyncInsert.lastSyncFallbackReason).to.eq('header-context')
+      expect(stats.asyncInsert.syncRecoveryCount).to.eq(1)
+      expect(stats.asyncInsert.headerSyncRecoveryCount).to.eq(1)
+      expect(stats.asyncInsert.lastSyncRecoveryReason).to.eq('header-context')
       expect(mergedText).to.include('header-large-paste-end')
 
       editor.command.executeSetZone(EditorZone.FOOTER)
@@ -859,15 +863,15 @@ describe('1000 页编辑性能压测', () => {
       const footerText = `footer-large-paste-start ${'f'.repeat(1100)} footer-large-paste-end`
       editor.command.executeInsertElementList([{ value: footerText }])
       stats = editor.getRenderBackendStats()
-      value = editor.command.getValue()
-      mergedText = value.data.footer
+      value = editor.command.getValue({ pageNo: 0 })
+      mergedText = value.data.footer!
         .map((element: { value?: string }) => element.value || '')
         .join('')
       expect(stats.asyncInsert.startedCount).to.eq(0)
       expect(stats.asyncInsert.active).to.eq(false)
-      expect(stats.asyncInsert.syncFallbackCount).to.eq(1)
-      expect(stats.asyncInsert.footerSyncFallbackCount).to.eq(1)
-      expect(stats.asyncInsert.lastSyncFallbackReason).to.eq('footer-context')
+      expect(stats.asyncInsert.syncRecoveryCount).to.eq(1)
+      expect(stats.asyncInsert.footerSyncRecoveryCount).to.eq(1)
+      expect(stats.asyncInsert.lastSyncRecoveryReason).to.eq('footer-context')
       expect(mergedText).to.include('footer-large-paste-end')
     })
   })

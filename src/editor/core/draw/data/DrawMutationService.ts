@@ -10,7 +10,7 @@ import {
   ISpliceElementListOption
 } from '../../../interface/Element'
 import { deepClone } from '../../../utils'
-import { formatElementList } from '../../../utils/element'
+import { formatElementList } from '../../../utils/elementFormat'
 import { canDeleteControlValueInFormMode } from '../../modules/control/policy/ControlDeletionPolicy'
 import { isPlainTextElement } from '../../modules/paragraph/layout/ParagraphRowLayoutPolicy'
 import type { Draw } from '../Draw'
@@ -19,6 +19,11 @@ import {
   createRawInsertBatchList,
   getRawInsertWeight
 } from './DrawInsertBatcher'
+import {
+  applySpliceInsertElements,
+  IDrawMutationDeleteRecord,
+  resolveExternalSpliceMutationRecord
+} from './DrawMutationSplicePolicy'
 import {
   AsyncInsertTransactionManager,
   IAsyncInsertBatchInsertOption,
@@ -176,29 +181,29 @@ export class DrawMutationService {
   ) {
     const rawWeight = getRawInsertWeight(payload)
     if (rawWeight <= ASYNC_INSERT_THRESHOLD) {
-      this.asyncInsertTransactionManager.recordSyncFallback('below-threshold')
+      this.asyncInsertTransactionManager.recordSyncRecovery('below-threshold')
       return false
     }
     if (options.asyncInsertTransactionId) {
-      this.asyncInsertTransactionManager.recordSyncFallback(
+      this.asyncInsertTransactionManager.recordSyncRecovery(
         'async-transaction-batch'
       )
       return false
     }
     if (this.draw.getZone().isHeaderActive()) {
-      this.asyncInsertTransactionManager.recordSyncFallback('header-context')
+      this.asyncInsertTransactionManager.recordSyncRecovery('header-context')
       return false
     }
     if (this.draw.getZone().isFooterActive()) {
-      this.asyncInsertTransactionManager.recordSyncFallback('footer-context')
+      this.asyncInsertTransactionManager.recordSyncRecovery('footer-context')
       return false
     }
     if (this.draw.getCoordinate().getPositionContext().isTable) {
-      this.asyncInsertTransactionManager.recordSyncFallback('table-context')
+      this.asyncInsertTransactionManager.recordSyncRecovery('table-context')
       return false
     }
     if (this.draw.getComponents().control.getActiveControl()) {
-      this.asyncInsertTransactionManager.recordSyncFallback('control-context')
+      this.asyncInsertTransactionManager.recordSyncRecovery('control-context')
       return false
     }
     const batchList = createRawInsertBatchList(payload)
@@ -350,7 +355,7 @@ export class DrawMutationService {
       elementList === this.draw.getObjectResolver().getOriginalMainElementList()
     const oldLength = isMainElementListMutation ? elementList.length : 0
     // 记录删除前的元素签名，供文档文本存储同步裁剪。
-    const deleteRecordList: Array<{ index: number; signature: string }> = []
+    const deleteRecordList: IDrawMutationDeleteRecord[] = []
     if (!this.isInternalInsertSplice) {
       this.asyncInsertTransactionManager.cancel('splice-element-list')
     }
@@ -453,68 +458,31 @@ export class DrawMutationService {
     }
     // 如果有需要插入的元素
     if (items?.length) {
-      // 粘贴和批量输入必须一次移动数组尾部，不能逐元素 splice 整篇文档。
-      // 底层 splice 入口可能被表格、控件等路径直接调用，因此这里也兜底打插入痕迹。
-      this.draw.getTrackChange().markInsertList(items)
-      this.insertElementListByChunks(elementList, start, items)
+      applySpliceInsertElements({
+        elementList,
+        start,
+        items,
+        chunkSize: DrawMutationService.INSERT_CHUNK_SIZE,
+        markInsertList: insertList => {
+          this.draw.getTrackChange().markInsertList(insertList)
+        }
+      })
     }
     if (isMainElementListMutation) {
       const insertCount = items?.length || 0
-      const actualDeleteCount = Math.max(
-        0,
-        oldLength + insertCount - elementList.length
-      )
-      const insertStart = this.normalizeSpliceStart(start, oldLength)
-      const insertSignatureList = insertCount
-        ? elementList.slice(insertStart, insertStart + insertCount).map(element => {
+      this.draw.recordDocumentTextStoreExternalMutation(
+        resolveExternalSpliceMutationRecord({
+          elementList,
+          start,
+          oldLength,
+          insertCount,
+          deleteRecordList,
+          createSignature: element => {
             return this.draw.createDocumentTextStoreElementSignature(element)
-          })
-        : []
-      this.draw.recordDocumentTextStoreExternalMutation({
-        start,
-        deleteCount: actualDeleteCount,
-        insertCount,
-        insertSignatureList,
-        deleteIndexList: deleteRecordList.map(record => record.index),
-        deleteSignatureList: deleteRecordList.map(record => record.signature)
-      })
-    }
-  }
-
-  /**
-   * 分片批量插入元素。
-   *
-   * 大文档在靠前位置粘贴时，逐元素 splice 会反复移动后续几十万节点；
-   * 这里按片插入，把数组搬移次数降到极少，保持粘贴链路可预测。
-   *
-   * @param elementList - 目标元素数组
-   * @param start - 插入起点
-   * @param items - 待插入元素
-   */
-  private insertElementListByChunks(
-    elementList: IElement[],
-    start: number,
-    items: IElement[]
-  ) {
-    for (
-      let offset = 0;
-      offset < items.length;
-      offset += DrawMutationService.INSERT_CHUNK_SIZE
-    ) {
-      const chunk = items.slice(
-        offset,
-        offset + DrawMutationService.INSERT_CHUNK_SIZE
+          }
+        })
       )
-      elementList.splice(start + offset, 0, ...chunk)
     }
-  }
-
-  /** 按数组 splice 语义归一化起点，用于外部数组写入的 mirror 签名采样。 */
-  private normalizeSpliceStart(start: number, length: number) {
-    if (start < 0) {
-      return Math.max(length + start, 0)
-    }
-    return Math.min(start, length)
   }
 
   /** 标记当前 splice 来自 insertElementList 内部，避免后台大粘贴事务被自身批次取消。 */
@@ -540,12 +508,28 @@ export class DrawMutationService {
   public setValue(payload: Partial<IEditorData>, options?: ISetValueOption) {
     this.asyncInsertTransactionManager.cancel('set-value')
     // 深度克隆输入数据
-    const { header, main, footer } = deepClone(payload)
+    const {
+      styles,
+      headerPageScopes,
+      main,
+      footerPageScopes
+    } = deepClone(payload)
     // 如果所有区域都为空，直接返回
-    if (!header && !main && !footer) return
+    if (
+      styles === undefined &&
+      !headerPageScopes &&
+      !main &&
+      !footerPageScopes
+    ) {
+      return
+    }
     const { isSetCursor = false } = options || {}
     // 整理各区域数据
-    const pageComponentData = [header, main, footer]
+    const pageComponentData = [
+      ...(headerPageScopes?.map(scopeData => scopeData.elementList) || []),
+      main,
+      ...(footerPageScopes?.map(scopeData => scopeData.elementList) || [])
+    ]
     // 遍历每个区域，格式化元素列表
     pageComponentData.forEach(data => {
       if (!data) return
@@ -556,9 +540,10 @@ export class DrawMutationService {
     })
     // 设置编辑器数据
     this.draw.setEditorData({
-      header,
+      styles,
+      headerPageScopes,
       main,
-      footer
+      footerPageScopes
     })
     // 恢复历史记录
     this.draw.getComponents().historyManager.recovery()

@@ -128,14 +128,24 @@ function createClinicTemplate(minPageCount: number) {
   }
   main.push(createText(`clinic-template-end-${minPageCount}\n`))
   return {
-    header: [
-      createText('唐神医院门诊病历\n'),
-      createText('姓名：测试患者  科室：呼吸内科\n')
+    headerPageScopes: [
+      {
+        pageScope: 'all',
+        elementList: [
+          createText('唐神医院门诊病历\n'),
+          createText('姓名：测试患者  科室：呼吸内科\n')
+        ]
+      }
     ],
     main,
-    footer: [
-      createText('本病历仅用于性能压测与回归验证\n'),
-      createText('医师：系统测试\n')
+    footerPageScopes: [
+      {
+        pageScope: 'all',
+        elementList: [
+          createText('本病历仅用于性能压测与回归验证\n'),
+          createText('医师：系统测试\n')
+        ]
+      }
     ]
   }
 }
@@ -157,8 +167,8 @@ function getPlainText(elementList: Array<{ value?: string }>) {
 
 function findTextIndexOnPage(editor: any, pageNo: number) {
   const position = editor.draw
-    .getPosition()
-    .getLayoutMainPositionListByPage(pageNo)
+    .getCoordinate()
+    .getMainPositionListByPage(pageNo)
     .find((item: any) => {
       // 中段正文锚点必须避开标题和控件，否则插入会落入结构化标题或控件值。
       return (
@@ -182,8 +192,8 @@ function assertTemplateIntegrity(editor: any, minPageCount: number) {
   const mainText = getPlainText(main)
   const middlePageNo = Math.floor(pageRowList.length / 2)
   const middlePagePositionCount = draw
-    .getPosition()
-    .getLayoutMainPositionListByPage(middlePageNo).length
+    .getCoordinate()
+    .getMainPositionListByPage(middlePageNo).length
 
   expect(pageRowList.length).to.be.at.least(minPageCount)
   expect(getPlainText(value.header)).to.include('唐神医院门诊病历')
@@ -206,7 +216,7 @@ function waitForAsyncQueues(editor: any) {
 
 function assertDocumentTextStoreStats(editor: any) {
   const stats = editor.getRenderBackendStats()
-  const mainLength = editor.draw.getOriginalMainElementList().length
+  const mainLength = editor.draw.getObjectResolver().getOriginalMainElementList().length
   expect(stats.documentTextStore).to.exist
   expect(stats.documentTextStore.type).to.eq('array')
   expect(stats.documentTextStore.length).to.eq(mainLength)
@@ -330,7 +340,7 @@ describe('真实门诊病历模板压测基线', () => {
           expect(text).to.include('复诊记录')
           expect(text).to.include('中段补录')
 
-          const elementList = editor.draw.getOriginalMainElementList()
+          const elementList = editor.draw.getObjectResolver().getOriginalMainElementList()
           const tableIndex = elementList.findIndex((element: any) => {
             return element.id === 'clinic-cross-page-table'
           })
@@ -366,7 +376,7 @@ describe('真实门诊病历模板压测基线', () => {
             assertTemplateIntegrity(editor, 100)
 
             const deleteIndex = editor.draw
-              .getOriginalMainElementList()
+              .getObjectResolver().getOriginalMainElementList()
               .findIndex((element: any) => element.value === '中')
             expect(deleteIndex, '应找到中段补录的正文字符').to.be.greaterThan(-1)
             const textBeforeDelete = getPlainText(

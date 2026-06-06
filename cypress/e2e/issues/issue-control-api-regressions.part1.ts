@@ -225,9 +225,9 @@ describe('control API regressions', () => {
       })
 
       const draw = (editor as any).draw
-      draw.flushScheduledFrameRender()
-      const elementList = draw.getOriginalMainElementList()
-      const positionList = draw.getPosition().getOriginalPositionList()
+      draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
+      const elementList = draw.getObjectResolver().getOriginalMainElementList()
+      const positionList = draw.getCoordinate().getOriginalPositionList()
       const controlValueIndexes = elementList.reduce(
         (indexes: number[], element: any, index: number) => {
           if (
@@ -281,7 +281,7 @@ describe('control API regressions', () => {
         dispatch('mouseup')
         dispatch('click')
 
-        draw.flushScheduledFrameRender()
+        draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
 
         const context = editor.command.getRangeContext()
         expect(draw.getRange().getSelectionElementList()).to.not.eq(null)
@@ -324,9 +324,9 @@ describe('control API regressions', () => {
       })
 
       const draw = (editor as any).draw
-      draw.flushScheduledFrameRender()
-      const elementList = draw.getOriginalMainElementList()
-      const positionList = draw.getPosition().getOriginalPositionList()
+      draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
+      const elementList = draw.getObjectResolver().getOriginalMainElementList()
+      const positionList = draw.getCoordinate().getOriginalPositionList()
       const controlId = elementList.find(
         (element: any) => element.control?.conceptId === 'disabledControl'
       )?.controlId
@@ -380,7 +380,7 @@ describe('control API regressions', () => {
       cy.getEditor().then((nextEditor: Editor) => {
         const nextDraw = (nextEditor as any).draw
         const cursor = nextEditor.command.getCursorPosition()
-        const nextElementList = nextDraw.getOriginalMainElementList()
+        const nextElementList = nextDraw.getObjectResolver().getOriginalMainElementList()
         const nextControlId = nextElementList.find(
           (element: any) => element.control?.conceptId === 'disabledControl'
         )?.controlId
@@ -639,7 +639,7 @@ describe('control API regressions', () => {
       })
 
       const rawText = (editor as any).draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .map((element: any) => element.value)
         .join('')
         .replace(/\u200B/g, '')
@@ -680,7 +680,7 @@ describe('control API regressions', () => {
         postText: ' 后文本'
       })
       const rawText = (editor as any).draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .map((element: any) => element.value)
         .join('')
         .replace(/\u200B/g, '')
@@ -711,7 +711,7 @@ describe('control API regressions', () => {
       } as any)
 
       const rawControl = (editor as any).draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .find(
           (element: any) => element.control?.conceptId === 'globalEmptyAffix'
         )
@@ -733,7 +733,7 @@ describe('control API regressions', () => {
       })
 
       const rawText = (editor as any).draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .map((element: any) => element.value)
         .join('')
         .replace(/\u200B/g, '')
@@ -763,7 +763,7 @@ describe('control API regressions', () => {
         ]
       })
 
-      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const controlIndexes = elementList.reduce(
         (indexes: number[], element: any, index: number) => {
           if (element.control?.conceptId === 'protectedControl') {
@@ -812,7 +812,7 @@ describe('control API regressions', () => {
         ]
       })
 
-      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const firstControlIndex = elementList.findIndex(
         (element: any) =>
           element.control?.conceptId === 'deleteProtectedDisabled'
@@ -835,7 +835,7 @@ describe('control API regressions', () => {
         })
         expect(
           (nextEditor as any).draw
-            .getOriginalMainElementList()
+            .getObjectResolver().getOriginalMainElementList()
             .some(
               (element: any) =>
                 element.control?.conceptId === 'deleteProtectedDisabled'

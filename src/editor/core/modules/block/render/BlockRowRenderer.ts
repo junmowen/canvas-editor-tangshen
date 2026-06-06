@@ -1,13 +1,13 @@
 import { ElementType } from '../../../../dataset/enum/Element'
 import { IDrawRowPayload } from '../../../../interface/Draw'
 import type { Draw } from '../../../draw/Draw'
-import { BlockExportFallbackRenderer } from './BlockExportFallbackRenderer'
+import { BlockExportCanvasRenderer } from './BlockExportCanvasRenderer'
 
 type RowElement = IDrawRowPayload['rowList'][number]['elementList'][number]
 
-/** block 行内渲染器，封装运行态 DOM host 和导出回退绘制切换。 */
+/** block 行内渲染器，封装运行态 DOM host 和导出 Canvas 绘制切换。 */
 export class BlockRowRenderer {
-  private readonly exportFallbackRenderer = new BlockExportFallbackRenderer()
+  private readonly exportCanvasRenderer = new BlockExportCanvasRenderer()
 
   public canRender(element: RowElement) {
     return element.type === ElementType.BLOCK
@@ -27,7 +27,7 @@ export class BlockRowRenderer {
       payload
     textParticle.complete()
     if (isExport) {
-      this.exportFallbackRenderer.render(ctx, element, x, y)
+      this.exportCanvasRenderer.render(ctx, element, x, y)
       return
     }
     blockParticle.render(pageNo, element, x, y)

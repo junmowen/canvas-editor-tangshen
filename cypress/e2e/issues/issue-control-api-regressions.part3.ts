@@ -331,6 +331,66 @@ describe('control API regressions', () => {
     })
   })
 
+  it('does not let dynamically hidden text controls push following text', () => {
+    cy.getEditor().then((editor: Editor) => {
+      editor.command.executeSetValue({
+        main: [
+          { value: 'A' },
+          {
+            type: ElementType.CONTROL,
+            value: '',
+            control: {
+              conceptId: 'hiddenLayoutText',
+              type: ControlType.TEXT,
+              value: [{ value: 'hidden text that used to keep its width' }],
+              placeholder: 'hidden'
+            }
+          },
+          { value: 'B' }
+        ]
+      })
+
+      const getTextPosition = (value: string) => {
+        const draw = (editor as any).draw
+        const elementList = draw.getObjectResolver().getElementList()
+        const index = elementList.findIndex(
+          (element: any) => element.value === value && !element.controlId
+        )
+        expect(index, `${value} element index`).to.be.greaterThan(-1)
+        return draw.getCoordinate().getOriginalPositionList()[index]
+      }
+
+      const prefixBefore = getTextPosition('A')
+      const suffixBefore = getTextPosition('B')
+      const prefixBeforeRight = prefixBefore.coordinate.rightTop[0]
+      const suffixBeforeLeft = suffixBefore.coordinate.leftTop[0]
+      expect(
+        suffixBeforeLeft,
+        'control has visible width before hide'
+      ).to.be.greaterThan(prefixBeforeRight)
+
+      editor.command.executeSetControlProperties({
+        conceptId: 'hiddenLayoutText',
+        properties: {
+          hide: true
+        }
+      })
+
+      const prefixAfter = getTextPosition('A')
+      const suffixAfter = getTextPosition('B')
+      const prefixAfterRight = prefixAfter.coordinate.rightTop[0]
+      const suffixAfterLeft = suffixAfter.coordinate.leftTop[0]
+      expect(
+        suffixAfterLeft,
+        'following text shifts left after hide'
+      ).to.be.lessThan(suffixBeforeLeft)
+      expect(
+        suffixAfterLeft,
+        'hidden control contributes no width'
+      ).to.be.closeTo(prefixAfterRight, 0.5)
+    })
+  })
+
   it('issue #1036 lets Backspace pass hidden non-deletable controls', () => {
     cy.getEditor().then((editor: Editor) => {
       editor.command.executeSetValue({
@@ -352,7 +412,7 @@ describe('control API regressions', () => {
         ]
       })
 
-      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       editor.command.executeSetRange(
         elementList.length - 1,
         elementList.length - 1
@@ -367,7 +427,7 @@ describe('control API regressions', () => {
           expect(text).to.eq('11')
           expect(
             (editor as any).draw
-              .getOriginalMainElementList()
+              .getObjectResolver().getOriginalMainElementList()
               .some(
                 (element: any) =>
                   element.control?.conceptId === 'hiddenLockedControl'
@@ -540,7 +600,7 @@ describe('control API regressions', () => {
         innerText: '未通过'
       })
 
-      const elementList = (editor as any).draw.getElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getElementList()
       const checkboxOption = elementList.find(
         (element: any) =>
           element.control?.conceptId === 'numericCheckbox' &&
@@ -581,8 +641,8 @@ describe('control API regressions', () => {
       editor.command.executeMode(EditorMode.FORM)
 
       const draw = (editor as any).draw
-      const elementList = draw.getOriginalMainElementList()
-      const positionList = draw.getPosition().getOriginalPositionList()
+      const elementList = draw.getObjectResolver().getOriginalMainElementList()
+      const positionList = draw.getCoordinate().getOriginalPositionList()
       const checkboxIndex = elementList.findIndex(
         (element: any) =>
           element.control?.conceptId === 'formCheckbox' &&
@@ -592,7 +652,7 @@ describe('control API regressions', () => {
       expect(checkboxIndex).to.be.greaterThan(-1)
 
       const position = positionList[checkboxIndex]
-      const layoutElement = draw.getElementList()[checkboxIndex]
+      const layoutElement = draw.getObjectResolver().getElementList()[checkboxIndex]
       const pageWrapper = draw.getPageCanvasHost().getPageWrapperList()[
         position.pageNo
       ]
@@ -643,7 +703,7 @@ describe('control API regressions', () => {
       })
 
       const placeholderElements = (editor as any).draw
-        .getElementList()
+        .getObjectResolver().getElementList()
         .filter(
           (element: any) =>
             element.control?.conceptId === 'selectPlaceholder' &&
@@ -680,7 +740,7 @@ describe('control API regressions', () => {
         ]
       })
 
-      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const placeholderIndex = elementList.findIndex(
         (element: any) =>
           element.control?.conceptId === 'inputAbleSelect' &&
@@ -695,7 +755,7 @@ describe('control API regressions', () => {
       .then(() => {
         cy.getEditor().then((editor: Editor) => {
           const valueText = (editor as any).draw
-            .getOriginalMainElementList()
+            .getObjectResolver().getOriginalMainElementList()
             .filter(
               (element: any) =>
                 element.control?.conceptId === 'inputAbleSelect' &&
@@ -708,7 +768,7 @@ describe('control API regressions', () => {
       })
 
     cy.getEditor().then((editor: Editor) => {
-      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const firstValueIndex = elementList.findIndex(
         (element: any) =>
           element.control?.conceptId === 'inputAbleSelect' &&
@@ -723,7 +783,7 @@ describe('control API regressions', () => {
       .then(() => {
         cy.getEditor().then((editor: Editor) => {
           const valueText = (editor as any).draw
-            .getOriginalMainElementList()
+            .getObjectResolver().getOriginalMainElementList()
             .filter(
               (element: any) =>
                 element.control?.conceptId === 'inputAbleSelect' &&
@@ -759,7 +819,7 @@ describe('control API regressions', () => {
         ]
       })
 
-      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const placeholderIndex = elementList.findIndex(
         (element: any) =>
           element.control?.conceptId === 'scrollingMultiSelect' &&
@@ -809,7 +869,7 @@ describe('control API regressions', () => {
       })
 
       const placeholderElements = (editor as any).draw
-        .getElementList()
+        .getObjectResolver().getElementList()
         .filter(
           (element: any) =>
             element.control?.conceptId === 'multilinePlaceholder' &&

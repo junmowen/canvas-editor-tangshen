@@ -11,6 +11,7 @@ import {
   EditorZone,
   ElementType,
   IElement,
+  ITabStop,
   KeyMap,
   ListStyle,
   ListType,
@@ -38,27 +39,37 @@ window.onload = function () {
   const instance = new Editor(
     container,
     {
-      header: [
+      headerPageScopes: [
         {
-          value: '第一人民医院',
-          size: 32,
-          rowFlex: RowFlex.CENTER
-        },
-        {
-          value: '\n门诊病历',
-          size: 18,
-          rowFlex: RowFlex.CENTER
-        },
-        {
-          value: '\n',
-          type: ElementType.SEPARATOR
+          pageScope: 'all',
+          elementList: [
+            {
+              value: '第一人民医院',
+              size: 32,
+              rowFlex: RowFlex.CENTER
+            },
+            {
+              value: '\n门诊病历',
+              size: 18,
+              rowFlex: RowFlex.CENTER
+            },
+            {
+              value: '\n',
+              type: ElementType.SEPARATOR
+            }
+          ]
         }
       ],
       main: <IElement[]>data,
-      footer: [
+      footerPageScopes: [
         {
-          value: 'canvas-editor',
-          size: 12
+          pageScope: 'all',
+          elementList: [
+            {
+              value: 'canvas-editor',
+              size: 12
+            }
+          ]
         }
       ]
     },
@@ -131,6 +142,28 @@ window.onload = function () {
       console.log('format')
       instance.command.executeFormat()
     }
+
+  const formatMarkerDom =
+    document.querySelector<HTMLDivElement>('.menu-item__format-marker')!
+  /** 同步格式标记按钮状态，空格灰点和换行符都由 lineBreak 配置控制。 */
+  const syncFormatMarkerState = () => {
+    formatMarkerDom.classList.toggle(
+      'active',
+      !instance.command.getOptions().lineBreak.disabled
+    )
+  }
+  syncFormatMarkerState()
+  formatMarkerDom.onclick = function () {
+    const options = instance.command.getOptions()
+    const nextDisabled = !options.lineBreak.disabled
+    instance.command.executeUpdateOptions({
+      lineBreak: {
+        ...options.lineBreak,
+        disabled: nextDisabled
+      }
+    })
+    syncFormatMarkerState()
+  }
 
   // 3. | 字体 | 字体变大 | 字体变小 | 加粗 | 斜体 | 下划线 | 删除线 | 上标 | 下标 | 字体颜色 | 背景色 |
   const fontDom = document.querySelector<HTMLDivElement>('.menu-item__font')!
@@ -400,6 +433,242 @@ window.onload = function () {
     rowIndentOptionDom.classList.remove('visible')
   }
 
+  const tabStopsDom =
+    document.querySelector<HTMLDivElement>('.menu-item__tab-stops')!
+  const tabStopsOptionDom =
+    tabStopsDom.querySelector<HTMLDivElement>('.options')!
+  const tabStopsRulerTrackDom = tabStopsDom.querySelector<HTMLDivElement>(
+    '.tab-stops-ruler__track'
+  )!
+  const TAB_STOPS_RULER_MAX_POSITION = 240
+  const TAB_STOPS_RULER_DUPLICATE_DISTANCE = 4
+  let currentTabStops: ITabStop[] = []
+
+  /** 归一化制表位列表，保证 demo 菜单和命令 API 使用同一份排序规则。 */
+  const normalizeMenuTabStops = (tabStops: ITabStop[]) => {
+    return tabStops
+      .filter(tabStop => Number.isFinite(tabStop.position) && tabStop.position >= 0)
+      .map(tabStop => ({
+        position: tabStop.position,
+        alignment: tabStop.alignment || 'left'
+      }))
+      .sort((a, b) => a.position - b.position)
+  }
+
+  /** 把当前段落制表位格式化成自定义弹窗中的多行文本。 */
+  const formatTabStopsText = (tabStops: ITabStop[]) => {
+    return normalizeMenuTabStops(tabStops)
+      .map(tabStop => `${tabStop.position}:${tabStop.alignment || 'left'}`)
+      .join('\n')
+  }
+
+  /** 解析自定义弹窗输入，格式为 position:alignment，一行一个制表位。 */
+  const parseTabStopsText = (value: string): ITabStop[] => {
+    return normalizeMenuTabStops(
+      value
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(Boolean)
+        .map(line => {
+          const [positionText, alignmentText = 'left'] = line.split(':')
+          const alignment = alignmentText.trim()
+          return {
+            position: Number(positionText),
+            alignment: ['left', 'right', 'center', 'decimal', 'bar'].includes(
+              alignment
+            )
+              ? (alignment as ITabStop['alignment'])
+              : 'left'
+          }
+        })
+    )
+  }
+
+  /** 同步顶部制表位菜单回显，当前段落有制表位时按钮高亮并标记匹配快捷项。 */
+  const syncTabStopsMenu = (tabStops: ITabStop[] | null | undefined) => {
+    currentTabStops = normalizeMenuTabStops(tabStops || [])
+    tabStopsDom.classList.toggle('active', currentTabStops.length > 0)
+    renderTabStopsRulerHandles()
+    tabStopsOptionDom
+      .querySelectorAll<HTMLLIElement>('li')
+      .forEach(li => li.classList.remove('active'))
+    if (currentTabStops.length !== 1 || currentTabStops[0].position !== 120) {
+      return
+    }
+    const alignment = currentTabStops[0].alignment || 'left'
+    tabStopsOptionDom
+      .querySelector<HTMLLIElement>(`[data-tab-stop-preset='${alignment}']`)
+      ?.classList.add('active')
+  }
+
+  /** 根据当前制表位列表重绘所有标尺手柄。 */
+  const renderTabStopsRulerHandles = () => {
+    tabStopsRulerTrackDom
+      .querySelectorAll('.tab-stops-ruler__handle')
+      .forEach(handle => handle.remove())
+    const trackWidth = tabStopsRulerTrackDom.clientWidth || 1
+    currentTabStops.forEach((tabStop, index) => {
+      const handle = document.createElement('span')
+      handle.className = 'tab-stops-ruler__handle'
+      handle.dataset.tabStopIndex = `${index}`
+      handle.title = '拖动调整，双击删除'
+      handle.style.left = `${resolveRulerHandleLeft(tabStop.position, trackWidth)}px`
+      tabStopsRulerTrackDom.append(handle)
+    })
+  }
+
+  /** 把制表位位置换算成标尺手柄 left 坐标。 */
+  const resolveRulerHandleLeft = (position: number, trackWidth: number) => {
+    return (
+      (Math.min(position, TAB_STOPS_RULER_MAX_POSITION) /
+        TAB_STOPS_RULER_MAX_POSITION) *
+      trackWidth
+    )
+  }
+
+  /** 把标尺上的鼠标位置转换为文档制表位位置。 */
+  const resolveTabStopPositionFromRulerEvent = (evt: MouseEvent) => {
+    const rect = tabStopsRulerTrackDom.getBoundingClientRect()
+    const offset = Math.min(Math.max(evt.clientX - rect.left, 0), rect.width)
+    return Math.round((offset / Math.max(rect.width, 1)) * TAB_STOPS_RULER_MAX_POSITION)
+  }
+
+  /** 写入标尺上的制表位列表并刷新回显。 */
+  const applyRulerTabStops = (tabStops: ITabStop[]) => {
+    const nextTabStops = normalizeMenuTabStops(tabStops)
+    instance.command.executeSetTabStops(nextTabStops)
+    syncTabStopsMenu(nextTabStops)
+  }
+
+  /** 应用标尺产生的制表位位置：命中旧手柄则移动，否则新增。 */
+  const applyRulerTabStopPosition = (position: number, targetIndex?: number) => {
+    const nextTabStops = currentTabStops.slice()
+    if (targetIndex !== undefined && nextTabStops[targetIndex]) {
+      nextTabStops[targetIndex] = {
+        ...nextTabStops[targetIndex],
+        position
+      }
+      applyRulerTabStops(nextTabStops)
+      return
+    }
+    const nearestIndex = nextTabStops.findIndex(
+      tabStop => Math.abs(tabStop.position - position) <= TAB_STOPS_RULER_DUPLICATE_DISTANCE
+    )
+    if (nearestIndex >= 0) {
+      nextTabStops[nearestIndex] = {
+        ...nextTabStops[nearestIndex],
+        position
+      }
+    } else {
+      nextTabStops.push({
+        position,
+        alignment: currentTabStops[0]?.alignment || 'left'
+      })
+    }
+    applyRulerTabStops(nextTabStops)
+  }
+
+  /** 启动标尺拖拽配置，只允许拖动已有手柄，空白区域由 click 负责新增。 */
+  const startTabStopsRulerDrag = (evt: MouseEvent) => {
+    const target = evt.target as HTMLElement
+    const handle = target.closest<HTMLElement>('.tab-stops-ruler__handle')
+    if (!handle) return
+    const handleIndex = Number(handle.dataset.tabStopIndex)
+    let hasMoved = false
+    const onMouseMove = (moveEvt: MouseEvent) => {
+      hasMoved = true
+      applyRulerTabStopPosition(
+        resolveTabStopPositionFromRulerEvent(moveEvt),
+        handleIndex
+      )
+    }
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+      // 未移动时保留普通点击/双击语义，避免按下手柄就重绘导致双击删除丢失目标。
+      if (!hasMoved) return
+    }
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }
+
+  /** 打开制表位自定义配置弹窗，支持批量输入多个制表位。 */
+  const openTabStopsDialog = () => {
+    new Dialog({
+      title: '制表位',
+      data: [
+        {
+          type: 'textarea',
+          label: '制表位',
+          name: 'tabStops',
+          width: 300,
+          height: 120,
+          value: formatTabStopsText(currentTabStops),
+          placeholder: '每行一个，例如：120:left'
+        }
+      ],
+      onConfirm: payload => {
+        const text = String(
+          payload.find(item => item.name === 'tabStops')?.value || ''
+        )
+        const tabStops = parseTabStopsText(text)
+        instance.command.executeSetTabStops(tabStops.length ? tabStops : null)
+        syncTabStopsMenu(tabStops)
+      }
+    })
+  }
+
+  tabStopsDom.onclick = function (evt) {
+    const target = evt.target as HTMLElement
+    if (target.closest('.options')) return
+    tabStopsOptionDom.classList.toggle('visible')
+    renderTabStopsRulerHandles()
+  }
+  tabStopsRulerTrackDom.addEventListener('mousedown', startTabStopsRulerDrag)
+  tabStopsRulerTrackDom.addEventListener('click', evt => {
+    evt.preventDefault()
+    evt.stopPropagation()
+    const handle = (evt.target as HTMLElement).closest('.tab-stops-ruler__handle')
+    if (handle) return
+    applyRulerTabStopPosition(resolveTabStopPositionFromRulerEvent(evt))
+  })
+  tabStopsRulerTrackDom.addEventListener('dblclick', evt => {
+    evt.preventDefault()
+    evt.stopPropagation()
+    const handle = (evt.target as HTMLElement).closest<HTMLElement>(
+      '.tab-stops-ruler__handle'
+    )
+    if (!handle) return
+    const targetIndex = Number(handle.dataset.tabStopIndex)
+    applyRulerTabStops(currentTabStops.filter((_, index) => index !== targetIndex))
+  })
+  tabStopsOptionDom.onclick = function (evt) {
+    evt.stopPropagation()
+    const li = (evt.target as HTMLElement).closest<HTMLLIElement>('li')
+    const preset = li?.dataset.tabStopPreset
+    if (!preset) return
+    if (preset === 'custom') {
+      openTabStopsDialog()
+      tabStopsOptionDom.classList.remove('visible')
+      return
+    }
+    if (preset === 'clear') {
+      instance.command.executeSetTabStops(null)
+      syncTabStopsMenu(null)
+      tabStopsOptionDom.classList.remove('visible')
+      return
+    }
+    const tabStops = [
+      {
+        position: 120,
+        alignment: preset as ITabStop['alignment']
+      }
+    ]
+    instance.command.executeSetTabStops(tabStops)
+    syncTabStopsMenu(tabStops)
+    tabStopsOptionDom.classList.remove('visible')
+  }
+
   const listDom = document.querySelector<HTMLDivElement>('.menu-item__list')!
   listDom.title = `列表(${isApple ? '⌘' : 'Ctrl'}+Shift+U)`
   const listOptionDom = listDom.querySelector<HTMLDivElement>('.options')!
@@ -496,6 +765,18 @@ window.onload = function () {
   printDom.onclick = function () {
     console.log('print')
     instance.command.executePrint()
+  }
+  const docxDom = document.querySelector<HTMLDivElement>('.menu-item__docx')!
+  docxDom.title = '导出DOCX'
+  docxDom.onclick = function () {
+    // DOCX 导出使用命令层最小 OOXML Blob，方便手动用 WPS/ONLYOFFICE 打开验证。
+    const blob = instance.command.getOoxmlDocxBlob()
+    const href = URL.createObjectURL(blob)
+    const downloadLink = document.createElement('a')
+    downloadLink.href = href
+    downloadLink.download = `canvas-editor-${Date.now()}.docx`
+    downloadLink.click()
+    URL.revokeObjectURL(href)
   }
 
   const {
@@ -640,6 +921,7 @@ window.onload = function () {
         `[data-rowindent-chars='${activeRowIndent}']`
       )
     curRowIndentDom?.classList.add('active')
+    syncTabStopsMenu(payload.tabStops)
 
     // 功能
     payload.undo

@@ -1,7 +1,7 @@
 import { IElement } from '../../../interface/Element'
 import { ICopyOption } from '../../../interface/Event'
 import { writeElementList } from '../../../utils/clipboard'
-import { getTextFromElementList } from '../../../utils/element'
+import { getTextFromElementList } from '../../../utils/elementText'
 import { IOverrideResult } from '../../extension/override/Override'
 import { resolveTableCopyElementList } from '../../modules/table/interaction/resolveTableCopyElementList'
 import { CanvasEvent } from '../CanvasEvent'

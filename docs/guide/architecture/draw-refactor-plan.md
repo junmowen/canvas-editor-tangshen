@@ -41,7 +41,7 @@
 
 当前 `Draw.ts` 已经收缩到约 `718` 行。
 
-当前 `Draw` 仍保留较多 getter 和部分运行时状态，主要是为了兼容现有依赖，避免一次性把整个编辑器外围模块全部改穿。
+当前 `Draw` 仍保留较多 getter 和部分运行时状态，主要是为了维持现有依赖迁移节奏，避免一次性把整个编辑器外围模块全部改穿。
 
 ## 外围清理进展
 
@@ -182,7 +182,7 @@
 - `DrawRuntime`: 持有运行时主状态
 - `DrawComponentRegistry`: 持有重型组件实例
 - `DrawServiceRegistry`: 持有流程型 service / pipeline / bridge
-- `Draw`: 只负责 facade、兼容 getter 和少量 glue
+- `Draw`: 只负责 facade、过渡 getter 和少量 glue
 
 当前这已经可以视为阶段性完成结构，而不是中间态。
 
@@ -237,7 +237,7 @@
 2. `getComponents()`
 3. `getServices()`
 4. `getPageCanvasHost()`
-5. `getTableLayoutSnapshotAccessor()`
+5. `getServices().tableLayoutSnapshotAccessor`
 6. `getTableLayoutSnapshot()`
 7. `getViewState()`
 8. `getOptions()`
@@ -295,7 +295,7 @@
 
 这些 getter 主要已经是给内部模块过渡使用，应继续通过 registry 直连逐步削减：
 
-1. `getTableLayoutSnapshotAccessor()`
+1. `getServices().tableLayoutSnapshotAccessor`
 2. `getTableOverlayRenderer()`
 3. `getSearch()`
 4. `getControl()`
@@ -349,7 +349,7 @@
 
 - `PageCanvasHost` 构造时会调用 `draw.getWidth()` / `draw.getHeight()`
 - `Zone` 构造时会调用 `draw.getI18n()`
-- `RangeManager` 构造时会调用 `draw.getPosition()` / `draw.getHistoryManager()`
+- `RangeManager` 构造时会调用 `draw.getCoordinate()` / `draw.getHistoryManager()`
 - `TableOperate` 构造时会调用 `draw.getTableTool()` / `draw.getTableParticle()`
 - `GlobalEvent` 构造时会调用 `draw.getPreviewer()` / `draw.getControl()` / `draw.getDateParticle()` 等
 
@@ -520,7 +520,7 @@
 
 问题：
 
-- 导出通过“暂时篡改整个 Draw 运行时状态”完成
+- 导出通过“临时切换整个 Draw 运行时状态”完成
 - 可工作，但维护成本高，异常恢复和状态一致性风险大
 
 ### H. 历史、光标、清理
@@ -965,7 +965,7 @@ postRenderEffects.run(payload, layoutResult)
 
 1. 对外公开 API 门面
 2. 子系统实例装配
-3. 少量兼容性 getter
+3. 少量过渡 getter
 4. `render()` 的高层协调调用
 5. `destroy()`
 
@@ -1079,7 +1079,7 @@ postRenderEffects.run(payload, layoutResult)
 
 ### 不建议先删 getter
 
-getter 太多，但它们是兼容层。  
+getter 太多，但它们是过渡层。  
 第一阶段可以保留，由 `Draw` 转发到新模块；等外围代码迁移后再删除。
 
 ### 不建议先动 observer / particle 体系
@@ -1154,7 +1154,7 @@ src/editor/core/draw/data/DrawExportService.ts
 - `pageList` 等数组不要再由 `Draw` 直接暴露可写引用
 - 通过 host 提供只读访问器或受控方法
 
-## 4. 对外 API 兼容风险
+## 4. 对外 API 变更风险
 
 风险：
 
@@ -1162,7 +1162,7 @@ src/editor/core/draw/data/DrawExportService.ts
 
 规避：
 
-- `Draw` 继续保留兼容方法
+- `Draw` 继续保留公开方法
 - 内部先迁移实现，不急着改对外接口
 
 ---

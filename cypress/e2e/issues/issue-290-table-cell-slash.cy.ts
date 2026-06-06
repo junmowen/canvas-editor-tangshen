@@ -112,10 +112,10 @@ describe('issue #290 table cell slash', () => {
 
         editor.command.executeBlur()
         draw.render({ isSetCursor: false })
-        draw.flushScheduledFrameRender()
+        draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
 
         const bounds = draw
-          .getTableLayoutSnapshotAccessor()
+          .getServices().tableLayoutSnapshotAccessor
           .getFragmentCellBounds(latestTable.id!)
           .find((item: any) => item.trIndex === 0 && item.tdIndex === 0)
         expect(bounds).to.not.eq(undefined)

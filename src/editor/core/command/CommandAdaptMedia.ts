@@ -4,7 +4,7 @@ import { IDrawImagePayload } from '../../interface/Draw'
 import { IElement } from '../../interface/Element'
 import { IWatermark } from '../../interface/Watermark'
 import { getUUID } from '../../utils'
-import { formatElementContext } from '../../utils/element'
+import { formatElementContext } from '../../utils/elementContext'
 import {
   applyImageDisplayChange,
   createCommandImageElement,
@@ -64,7 +64,7 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     const { elementList, startElement, endElement } =
       targetResolver.resolveRangeBoundaryElements()
     const selectedElementList = this.range.getSelectionElementList() || []
-    // 超链接入口不只看当前光标，还要兼容选区两端和相邻元素。
+    // 超链接入口不只看当前光标，还要覆盖选区两端和相邻元素。
     const nextElement = targetResolver.resolveRangeElement({
       elementList,
       anchor: 'end',

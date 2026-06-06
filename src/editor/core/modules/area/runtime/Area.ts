@@ -16,7 +16,8 @@ import { EditorZone } from '../../../../dataset/enum/Editor'
 import { LocationPosition } from '../../../../dataset/enum/Common'
 import { RangeManager } from '../../../range/RangeManager'
 import { Zone } from '../../../runtime/zone/Zone'
-import { formatElementList, zipElementList } from '../../../../utils/element'
+import { zipElementList } from '../../../../utils/elementZip'
+import { formatElementList } from '../../../../utils/elementFormat'
 import { AreaMode } from '../../../../dataset/enum/Area'
 import { IRange } from '../../../../interface/Range'
 import { IElementPosition } from '../../../../interface/Element'
@@ -132,8 +133,9 @@ export class Area {
   public render(ctx: CanvasRenderingContext2D, pageNo: number) {
     if (!this.areaInfoMap.size) return
     ctx.save()
-    const margins = this.draw.getMargins()
-    const width = this.draw.getInnerWidth()
+    // 区域背景和边框需要使用当前页边距，避免镜像页边距下跨页区域横向错位。
+    const margins = this.draw.getMargins(pageNo)
+    const width = this.draw.getInnerWidth(pageNo)
     for (const areaInfoItem of this.areaInfoMap) {
       const { area, positionList } = areaInfoItem[1]
       if (
@@ -182,7 +184,7 @@ export class Area {
   public compute() {
     this.areaInfoMap.clear()
     const elementList = this.draw.getObjectResolver().getOriginalMainElementList()
-    const positionList = this.coordinate.getLayoutMainPositionList()
+    const positionList = this.coordinate.getMainPositionList()
     for (let e = 0; e < elementList.length; e++) {
       const element = elementList[e]
       const areaId = element.areaId
@@ -280,7 +282,7 @@ export class Area {
         // 区域内部最前
         if (element.areaId !== areaId) continue
       }
-      const positionList = this.coordinate.getLayoutMainPositionList()
+      const positionList = this.coordinate.getMainPositionList()
       return {
         range: {
           startIndex: e,
@@ -370,7 +372,7 @@ export class Area {
       areaInfo = this.areaInfoMap.get(areaId)
     }
     if (!areaInfo) return
-    // 删除旧数据并替换新的格式化数据
+    // 用新的格式化数据替换当前区域内容。
     const { positionList } = areaInfo
     const elementList = this.draw.getObjectResolver().getOriginalMainElementList()
     const valueList = payload.value

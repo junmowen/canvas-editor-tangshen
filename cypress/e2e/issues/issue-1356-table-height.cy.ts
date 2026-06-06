@@ -1,9 +1,7 @@
 import Editor from '../../../src/editor'
 import { ElementType } from '../../../src/editor/dataset/enum/Element'
-import {
-  formatElementList,
-  pickSurroundElementList
-} from '../../../src/editor/utils/element'
+import { formatElementList } from '../../../src/editor/utils/elementFormat'
+import { pickSurroundElementList } from '../../../src/editor/utils/elementLayout'
 
 function getEditorUrl() {
   return (

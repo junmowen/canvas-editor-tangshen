@@ -12,9 +12,9 @@ export interface IDocumentTextStore<TElement extends IElement = IElement> {
   /** 当前正文元素数量。 */
   readonly length: number
 
-  /** 返回当前真实数组引用，用于兼容仍按原地数组修改的旧链路。 */
+  /** 返回当前真实数组引用，供仍需原地修改正文数组的写路径使用。 */
   getRawList(): TElement[]
-  /** 返回当前正文元素列表。数组实现下必须保持和旧链路同一个引用。 */
+  /** 返回当前正文元素列表。数组实现下保持同一个正文数组引用。 */
   toElementList(): TElement[]
   /** 读取正文片段，不改变底层数据。 */
   slice(start?: number, end?: number): TElement[]
@@ -26,7 +26,7 @@ export interface IDocumentTextStore<TElement extends IElement = IElement> {
   delete(start: number, deleteCount: number): TElement[]
   /** 替换整篇正文数组引用，用于 setValue、完整 layout 截断等主链路。 */
   replaceAll(elementList: TElement[]): void
-  /** 记录仍由旧链路直接修改数组的写操作，用于评估后续 store API 覆盖度。 */
+  /** 记录直接修改正文数组的写操作，用于评估 store API 覆盖度。 */
   recordExternalMutation(operation: IDocumentTextStoreOperation): void
   /** 获取当前 store 观测统计。 */
   getStats(): IDocumentTextStoreStats
@@ -45,7 +45,7 @@ export type TDocumentTextStoreOperationType =
 
 /** document文本storeoperation契约，用于约束内部流程中传递的数据结构。 */
 export interface IDocumentTextStoreOperation {
-  /** 操作类型。external-* 表示仍由旧数组链路直接完成写入。 */
+  /** 操作类型。external-* 表示由 store API 外部的直接数组写路径完成。 */
   type: TDocumentTextStoreOperationType
   /** 操作起点。replace-all 没有局部起点时为 null。 */
   start: number | null
@@ -57,7 +57,7 @@ export interface IDocumentTextStoreOperation {
   insertSignatureList?: string[]
   /** 统计窗口中保留的插入签名数量，避免把签名列表暴露到调试对象。 */
   insertSignatureCount?: number
-  /** 删除元素原始索引列表，仅供 mirror 精确重放旧数组删除。 */
+  /** 删除元素原始索引列表，仅供 mirror 精确重放直接数组删除。 */
   deleteIndexList?: number[]
   /** 删除元素的轻量签名列表，仅供 mirror 校验和重放。 */
   deleteSignatureList?: string[]
@@ -79,7 +79,7 @@ export interface IDocumentTextStoreStats {
   length: number
   /** store API 记录到的总操作数。 */
   operationCount: number
-  /** 旧链路直接数组写入次数。 */
+  /** 直接数组写入次数。 */
   externalMutationCount: number
   /** 最近一次操作。 */
   lastOperation: IDocumentTextStoreOperation | null
@@ -147,7 +147,7 @@ export class ArrayDocumentTextStore<TElement extends IElement = IElement>
   private versionValue = 0
   /** 已记录操作总数。 */
   private operationCount = 0
-  /** 旧链路直接数组写入次数。 */
+  /** 直接数组写入次数。 */
   private externalMutationCount = 0
   /** 最近一次操作。 */
   private lastOperation: IDocumentTextStoreOperation | null = null
@@ -364,7 +364,7 @@ export class ArrayDocumentTextStore<TElement extends IElement = IElement>
     isReplayed: boolean
     /** 是否已跳过，用于记录镜像回放中未执行的操作。 */
     isSkipped: boolean
-    /** 原因说明，用于记录降级、跳过或失败的触发条件。 */
+    /** 原因说明，用于记录刷新、跳过或失败的触发条件。 */
     reason: string
   } {
     if (operation.type === 'replace-all') {

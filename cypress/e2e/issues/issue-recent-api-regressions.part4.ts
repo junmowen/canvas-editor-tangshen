@@ -13,9 +13,9 @@ import { TitleLevel } from '../../../src/editor/dataset/enum/Title'
 import { WatermarkType } from '../../../src/editor/dataset/enum/Watermark'
 import {
   createDomFromElementList,
-  getElementListByHTML,
-  getTextFromElementList
-} from '../../../src/editor/utils/element'
+  getElementListByHTML
+} from '../../../src/editor/utils/elementDom'
+import { getTextFromElementList } from '../../../src/editor/utils/elementText'
 
 const transparentPng =
   'data:image/png;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
@@ -206,7 +206,7 @@ describe('recent issue API regressions', () => {
         main: [{ value: 'first line\nsecond line' }]
       })
       const positionList = (editor as any).draw
-        .getPosition()
+        .getCoordinate()
         .getPositionList()
       const rowIndexPositions = positionList.filter(
         (position: any) => position.rowIndex === 1
@@ -283,7 +283,7 @@ describe('recent issue API regressions', () => {
         ]
       })
 
-      const positionList = (editor as any).draw.getPosition().getPositionList()
+      const positionList = (editor as any).draw.getCoordinate().getPositionList()
       const secondVisualRow = positionList.filter(
         (position: any) => position.rowIndex === 1
       )
@@ -348,7 +348,7 @@ describe('recent issue API regressions', () => {
       ])
       const after = editor.command.getCursorPosition()
       const expected = (editor as any).draw
-        .getPosition()
+        .getCoordinate()
         .getPositionList()[cursorIndex]
 
       expect(after).to.not.eq(null)
@@ -385,7 +385,7 @@ describe('recent issue API regressions', () => {
       editor.command.executePageScale(1.1)
 
       const after = editor.command.getCursorPosition()
-      const expected = draw.getPosition().getPositionList()[cursorIndex]
+      const expected = draw.getCoordinate().getPositionList()[cursorIndex]
 
       expect(after).to.not.eq(null)
       expect(after!.index).to.eq(cursorIndex)
@@ -438,7 +438,7 @@ describe('recent issue API regressions', () => {
       expect(readonlyEditor.command.getValue().data.main[0].value).to.eq(
         'readonly content visible'
       )
-      expect((readonlyEditor as any).draw.getRowList().length).to.be.greaterThan(
+      expect((readonlyEditor as any).draw.getObjectResolver().getRowList().length).to.be.greaterThan(
         0
       )
       readonlyEditor.destroy()
@@ -459,7 +459,7 @@ describe('recent issue API regressions', () => {
         expect(editor.command.getValue().data.main[0].value).to.eq(
           `template switch ${index}`
         )
-        expect((editor as any).draw.getRowList().length).to.be.greaterThan(0)
+        expect((editor as any).draw.getObjectResolver().getRowList().length).to.be.greaterThan(0)
       }
     })
   })

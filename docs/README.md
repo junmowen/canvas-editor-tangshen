@@ -7,6 +7,7 @@
 | `index.md` | VitePress 中文首页 |
 | `.vitepress/` | VitePress 配置、导航和构建配置 |
 | `guide/` | 使用指南、API、插件、架构、表格和渲染后端专题 |
+| `typesetting/` | 排版能力专题文档、推进计划和方案归档 |
 | `issue-regression/` | GitHub issue 快照、回归覆盖和失败项跟踪 |
 | `en/` | 英文文档 |
 | `public/` | 文档站静态资源 |

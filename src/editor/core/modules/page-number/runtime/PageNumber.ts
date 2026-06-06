@@ -80,7 +80,8 @@ export class PageNumber {
     ctx.font = `${size * scale}px ${font}`
     // 计算x位置-居左、居中、居右
     let x = 0
-    const margins = this.draw.getMargins()
+    // 页码左对齐/右对齐依赖当前页内外边距，镜像页边距时不能复用首页边距。
+    const margins = this.draw.getMargins(pageNo)
     const { width: textWidth } = ctx.measureText(text)
     if (rowFlex === RowFlex.CENTER) {
       x = (width - textWidth) / 2

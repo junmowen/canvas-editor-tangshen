@@ -7,7 +7,7 @@
 默认前提：
 
 - 允许破坏性更新
-- 不保留旧链路兼容
+- 不保留过渡链路双轨
 - 完成一个阶段后，旧补丁逻辑必须物理删除
 
 ---
@@ -22,7 +22,7 @@
 | 阶段 3 | 拆分导航规则 | `TableNavigationService` | P0 |
 | 阶段 4 | 布局快照化 | `TableLayoutSnapshot` / builder | P1 |
 | 阶段 5 | 渲染与性能优化 | overlay 渲染、增量刷新 | P1 |
-| 阶段 6 | 旧链路删除与收口 | 删除补丁、清理重复逻辑 | P0 |
+| 阶段 6 | 过渡链路删除与收口 | 删除补丁、清理重复逻辑 | P0 |
 
 ---
 
@@ -38,7 +38,7 @@
 | 阶段 3 | 已完成 | 导航规则已集中到 `TableNavigationService` 并进入真实主链。 |
 | 阶段 4 | 已完成 | snapshot builder / accessor / 关键索引都已进入真实主链并服务命中/导航/渲染。 |
 | 阶段 5 | 已完成 | overlay、dirty、visible-only、overlay-only 和离屏导出已全部落地。 |
-| 阶段 6 | 已完成 | 当前阶段定义下的旧链路删除与主链收口任务已完成，后续仅剩持续优化。 |
+| 阶段 6 | 已完成 | 当前阶段定义下的过渡链路删除与主链收口任务已完成，后续仅剩持续优化。 |
 
 ### 当前阶段收束结论
 
@@ -46,7 +46,7 @@
 - 现阶段剩余事项更适合作为下一轮持续优化：
   - 继续按需压平 `Position.getPositionByXY()`、`CommandAdapt.getRangeContext()`、`RowRenderer` 等热点大方法内部层级。
   - 把固定回归集合进一步文档化成独立白名单。
-  - 对少数仍然存在的历史命名或兼容公开面做温和收尾，而不是再以“阶段阻塞项”处理。
+  - 对少数仍然存在的历史命名或过渡公开面做温和收尾，而不是再以“阶段阻塞项”处理。
 
 ### 本轮新增完成项
 
@@ -59,7 +59,7 @@
 - `Draw` 中 `RowRenderer` 与 `PageRenderer` 已提升为 draw 级成员复用，`drawRow()/drawSelection()` 与分页渲染主链不再重复临时 `new` 渲染器对象。
 - `Draw.drawRow()/drawSelection()` 这两层仅转发到 `RowRenderer` 单例的包装层也已物理删除，相关调用点已直接切到 `draw.getRowRenderer()`。
 - `Control.getContainer()/getPosition()/getPreY()` 这三层只服务 popup / picker 宿主定位的包装接口也已物理删除，`SelectControl` 与 `DateControl` 已直接走 `control.getDraw()` 读取真实宿主对象。
-- `Control.getElementList()` 这层跨域包装接口也已物理删除，`Control` 本体与 `CheckboxControl / RadioControl / TextControl / SelectControl / DateControl` 已统一直接消费 `draw.getElementList()` 或 `control.getDraw().getElementList()`。
+- `Control.getElementList()` 这层跨域包装接口也已物理删除，`Control` 本体与 `CheckboxControl / RadioControl / TextControl / SelectControl / DateControl` 已统一直接消费 `draw.getObjectResolver().getElementList()` 或 `control.getDraw().getObjectResolver().getElementList()`。
 - `Control.getEditBoundaryRange()` 这层控件域编辑边界转发壳也已物理删除，`Control` 本体与 `CheckboxControl / RadioControl / TextControl / SelectControl / DateControl` 已统一直接消费真实 `draw.getRange().getEditBoundaryRange()`。
 - `RowRenderer` 内部 selection / 正文绘制中重复的 table 子单元格递归遍历也已并到同一条 `forEachTableCellPayload()` 路径，tableCellContext 组装不再维护两份。
 - 对应 `npm run type:check`、`npm run lint` 与固定 `table-selection-nonpaged / table-pagination-input / table-pagination-merged / table-pagination-mock` 47 条回归再次单次全绿。
@@ -93,7 +93,7 @@
 - [ ] 明确必须通过的用例集合
 - [ ] 标记允许临时波动的非核心行为
 - [ ] 建立重构期间的文件改动白名单
-- [ ] 明确旧链路删除策略，禁止双轨长期共存
+- [ ] 明确过渡链路删除策略，禁止双轨长期共存
 
 ### 重点文件
 
@@ -274,10 +274,10 @@
 - `2026-04-17`：快照已补充 `fragmentTableId -> logicalTableId` 映射，减少运行期对 `sliceList` 的线性查找。
 - `2026-04-17`：快照已补充 `logicalTableId -> logicalTableIndex` 映射，并用于 `CommandAdapt / RangeManager` 的表格索引定位。
 - `2026-04-17`：快照已补充 `cellKey -> sliceStartIndexes` 索引，并用于 `CommandAdapt / RangeManager` 的当前 slice 定位。
-- `2026-04-17`：快照已补充 `logical cell + fragment tr/td -> slice` 别名索引，用于消除 `resolveSliceByPositionContext()` / `resolveSliceByFragmentContext()` 中的 fallback 线性查找。
-- `2026-04-17`：快照已补充 `logical cell + pageNo -> slice` 索引，并用于 `RangeManager` 的当前 fragment fallback 定位。
+- `2026-04-17`：快照已补充 `logical cell + fragment tr/td -> slice` 别名索引，用于消除 `resolveSliceByPositionContext()` / `resolveSliceByFragmentContext()` 中的备用线性查找。
+- `2026-04-17`：快照已补充 `logical cell + pageNo -> slice` 索引，并用于 `RangeManager` 的当前 fragment 备用定位。
 - `2026-04-17`：快照已补充 fragment 单元格边界索引，`resolveTableCellPositionByPagePoint()` 不再遍历 fragment 的 `tr/td` 二维结构。
-- `2026-04-17`：`resolveTableCellPositionByPagePoint()` 已切到 snapshot 页级 fragment 索引，不再全量扫描 `getLayoutMainPositionList()`。
+- `2026-04-17`：`resolveTableCellPositionByPagePoint()` 已切到 snapshot 页级 fragment 索引，不再全量扫描 `getMainPositionList()`。
 - `2026-04-17`：slice 已补充 `rowBands / firstVisibleOffset` 元数据，`resolveTableCellPositionByPagePoint()` 已改为先缩到当前 row band 再找字符盒。
 - `2026-04-17`：`PageRenderer` 已先切当前页 `positionList`，`RowRenderer` 不再重复执行 `positionList.filter(pageNo)`。
 - `2026-04-17`：`Position` 已补充 `pageNo + index -> position` 查找缓存，并用于 `resolveSelectionStartState()` 的 existing-caret 邻位查询与 `getPositionByXY()` 的控件定位。
@@ -287,13 +287,13 @@
 - `2026-04-17`：`Position.getPositionByXY()` 已使用 `pageRowBands` 做二分式 active row band 定位，主命中不再线性查找当前行带。
 - `2026-04-17`：双击选词已改为优先使用 `hitTargetIndex` 定位真实命中字符，避免表格场景下误落到边界索引。
 - `2026-04-17`：`TableHitTestService.resolveTableElementHit()` 已改为优先复用 `resolveTableCellPositionByPagePoint()` 的 snapshot 命中结果，`Position -> table` 主入口不再先走旧的 `tr/td/positionList` 递归扫描。
-- `2026-04-17`：`TableHitTestService.resolveTableElementHit()` 中残留的 `td.positionList` / `lastLetterList` fallback 扫描已删除，表格元素主命中链已只读 snapshot 命中结果。
+- `2026-04-17`：`TableHitTestService.resolveTableElementHit()` 中残留的 `td.positionList` / `lastLetterList` 备用扫描已删除，表格元素主命中链已只读 snapshot 命中结果。
 - `2026-04-17`：`TableHitTestService.resolvePointerPosition()` 已改为 `table-first` 单路由，先走 snapshot 表格命中，再回退正文 `getPositionByXY()`，不再先取正文命中结果再用 `cellAreaPosition` 覆盖。
 - `2026-04-17`：`resolveSelectionStartState()` 中表格专用的起点推导已抽到 `table/selection/resolveTableSelectionStartState.ts`，event utils 只保留 existing-caret 锚点与非表格分支。
 - `2026-04-17`：`resolveSelectionStartState()` 中 existing-caret anchor helper 已抽到 `event/utils/resolveExistingCaretAnchorIndex.ts`，event utils 不再内嵌 merged/slice 约束计算。
 - `2026-04-17`：selection start 剩余的“左右半区决定 `mouseDownIndex`”逻辑已抽为 `event/utils/resolvePointerMouseDownIndex.ts`，`resolveSelectionStartState.ts` 与 `resolveTableSelectionStartState.ts` 进一步退化为编排层。
 - `2026-04-17`：`Position` 中已删除未再被主链消费的 `pageCursorIndexes / rowStart / rowCursorRange / lastLetter` 缓存及其公开 API，避免旧快取分支继续长期滞留。
-- `2026-04-17`：nonpaged selection、pagination-input、merged、adjacent-cell、empty-last-row 回归均重新通过，可继续推进更多 snapshot 化替换与旧链路删除。
+- `2026-04-17`：nonpaged selection、pagination-input、merged、adjacent-cell、empty-last-row 回归均重新通过，可继续推进更多 snapshot 化替换与过渡链路删除。
 
 ### 验收标准
 
@@ -372,7 +372,7 @@
 
 ---
 
-## 阶段 6：旧链路删除与收口
+## 阶段 6：过渡链路删除与收口
 
 ### 目标
 
@@ -398,7 +398,7 @@
 ### 当前进展
 
 - `2026-04-17`：`Position` 中未再被主命中链消费的 `pageCursorIndexes / rowStart / rowCursorRange / lastLetter` 缓存与公开方法已删除，开始把阶段 4 期间残留的过渡 API 真正收口到阶段 6。
-- `2026-04-17`：`TableHitTestService.resolveTableElementHit()` 中旧的 `td.positionList` 递归命中 fallback 已删除，`Position -> table` 的主点击命中不再保留旧扫描链。
+- `2026-04-17`：`TableHitTestService.resolveTableElementHit()` 中旧的 `td.positionList` 递归命中备用扫描已删除，`Position -> table` 的主点击命中不再保留旧扫描链。
 - `2026-04-17`：`TableHitTestService.resolvePointerPosition()` 中“先正文命中、再 `cellAreaPosition` 覆盖”的过渡拼接已删除，表格拖选 / 点击命中已收口为 snapshot 表格优先路径。
 - `2026-04-17`：`resolveSelectionStartState()` 中表格起点计算已搬到 `table/selection/resolveTableSelectionStartState.ts`，开始把 selection start 的表格补丁从 event utils 侧抽离。
 - `2026-04-17`：未再被任何主链消费的 `resolveSelectionPointerPosition.ts` 空 wrapper 已删除，event utils 不再保留额外一层表格命中转发。
@@ -419,7 +419,7 @@
 - `2026-04-18`：控件子类、分页渲染器以及 keydown / copy / cut / input / mousedown / mouseup / paste 等事件 handler 也已统一切到显式 `getEditBoundaryRange()`，仓库内部不再保留默认语义不明的 raw range 读取入口。
 - `2026-04-20`：`RowRenderer.drawRow()` 中残留的旧内联选区绘制分支也已物理删除，当前选区矩形只剩 `drawSelection()` 单一路径负责；这意味着 `RowRenderer` 在选区层面已不再维持新旧双轨。
 - `2026-04-20`：`resolveSelectionStartState` / `resolveTableSelectionStartState` 返回值里的 `collapseToIndex` 过渡字段也已物理删除，`mousedown` 初始化链改为直接消费现有 `tdValueIndex` 折叠光标，不再额外维护一条重复的补丁索引语义。
-- `2026-04-20`：`mousedown` 中对 `position.adjustPositionContext()` 的重复 fallback 也已物理删除，当前点击起点解析只剩 `resolveSelectionStartState()` 这一条主链负责，不再保留同一语义的二次兜底分支。
+- `2026-04-20`：`mousedown` 中对 `position.adjustPositionContext()` 的重复备用分支也已物理删除，当前点击起点解析只剩 `resolveSelectionStartState()` 这一条主链负责，不再保留同一语义的二次兜底分支。
 - `2026-04-20`：阶段 6 的测试侧旧假设也已开始同步清理：`cypress/e2e/tmp` 调试用例已物理删除，menu 级 spec 里残留的 `cy.get('canvas')` 老基线也已批量改成显式 `canvas[data-index]`，正式回归不再继续依赖 overlay 接入前的 DOM 结构假设。
 - `2026-04-20`：`resolveSelectionStartState` / `resolveTableSelectionStartState` 返回值里的 `positionContext` 重复字段也已物理删除，`mousedown` 现已直接基于 `positionResult` 组装表格位置上下文；selection-start 返回结构又少了一层重复投影。
 - `2026-04-20`：`ITableHitTestResult` 与 `resolveSelectionBoundary()` 之间的 `boundary.positionResult` 重复结构也已删除，`click / mousemove / mouseup` 等命中链统一直接消费外层 `positionResult`；命中结果数据结构进一步收薄。
@@ -428,7 +428,7 @@
 - `2026-04-20`：`updown.ts` 中残留的 later-fragment 边界特判也已下沉到 `TableNavigationService.resolveVerticalFragmentTransition()`，handler 不再直接内嵌这段分页表格 fragment 跳转判断；阶段 6 里“删 keydown 旧 fragment 分支”已开始实质推进。
 - `2026-04-20`：`table/utils/createTablePositionContext.ts` 已落地并被 `TableNavigationService` 与 `resolveSelectionDragRange()` 共同复用，分页表格 `positionContext` 不再由导航链和拖选链各自手拼一套；同时 `resolveSelectionBoundary()` 已移除对 `Draw` 的假依赖，`RangeManager.getIsCanInput()/shrinkBoundary()` 也已切回显式 `getEditBoundaryRange()`。本轮 `npm run type:check`、`npm run lint` 与 `table-selection-nonpaged / table-pagination-input / table-pagination-merged / table-pagination-mock` 共 47 条回归再次通过。
 - `2026-04-20`：`Position.getPositionByXY()` 中残留的 `TABLE -> TableHitTestService.resolveTableElementHit()` 旧递归命中入口也已物理删除，`Position` 现在只保留正文 / 浮动元素 / 页边界命中；表格命中正式只剩 `TableHitTestService` 单入口负责。对应的 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
-- `2026-04-20`：selection-start 返回结构也继续收薄：`resolveSelectionStartState()` / `resolveTableSelectionStartState()` 里原先散落的 `hitLineStartIndex / cursorDragAnchorIndex / preferDragAnchorOnCaretLine` 已并入统一 `cursorState`，`mousedown` 不再自己做这组三段视觉补丁字段的 fallback 解释。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
+- `2026-04-20`：selection-start 返回结构也继续收薄：`resolveSelectionStartState()` / `resolveTableSelectionStartState()` 里原先散落的 `hitLineStartIndex / cursorDragAnchorIndex / preferDragAnchorOnCaretLine` 已并入统一 `cursorState`，`mousedown` 不再自己做这组三段视觉补丁字段的备用解释。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
 - `2026-04-20`：`Cursor` 内部也已同步去散字段化：`hitLineStartIndex / dragAnchorIndex / preferDragAnchorOnCaretLine` 不再通过三组 getter/clear API 分散暴露，而是统一收口到 `cursor/CursorSelectionState.ts` 与 `Cursor.getSelectionStartCursorState()/clearSelectionStartCursorState()`；`CommandAdapt`、`resolveExistingCaretAnchorIndex()` 与 `Draw` 已全部切到新接口。与此同时，`resolvePointerBoundaryAtPosition.ts` 已统一正文命中与表格命中的“左半区回退一位 + 行首打标”规则，`Position` 与 `resolveTableCellPositionByPagePoint()` 不再各自维护一份半字符边界解释。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
 - `2026-04-20`：在此基础上，`resolveSelectionBoundary()` 也已开始统一承接非表格的行首边界提示，`resolveSelectionStartState()` 不再直接回读 raw `positionResult.hitLineStartIndex` 来生成非表格 `cursorState`；命中结果里的这类补丁字段传播面进一步收窄到 boundary / cursor 两层。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
 - `2026-04-20`：`TableHitTestService.resolveTableElementHit()` 与 `ITableElementHitTestRequest` 这层仅服务旧 `Position` 表格递归命中链的死入口也已物理删除；当前 `TableHitTestService` 只保留 `resolvePointerPosition()/resolve()` 这条仍被主链消费的命中入口。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
@@ -438,11 +438,11 @@
 - `2026-04-20`：随后，`resolveAdjustedPointerPosition.ts` 这层只剩 `TableHitTestService` 单用的非表格命中归一化包装也已并回 `TableHitTestService` 内部，独立 helper 文件已删除；当前 `TableHitTestService` 已同时承接“表格 page-point 命中 + 非表格位置归一化 + 边界归一化”三段原先分散的命中主链逻辑。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
 - `2026-04-20`：selection-start 侧的 helper 边界也继续调整：`resolveExistingCaretAnchorIndex.ts` 与 `resolvePointerMouseDownIndex.ts` 已从 `range/utils` 挪回 `event/utils`，这条只服务 selection-start 的事件链不再继续反向挂在 range 域；与此同时，`hitLineStartIndex` 也已从 `ICurrentPosition` 主类型移除，仅保留在命中域内部结果与 boundary / cursor state 中流动。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
 - `2026-04-21`：在此基础上，`resolveTableCellPositionByPagePoint.ts` 这层也已整段并回 `TableHitTestService` 并物理删除；当前 `TableHitTestService` 已直接内联 `table fragment 定位 / cell 命中 / 非表格归一化 / boundary 归一化` 四段主链逻辑，命中域继续减少单用 helper 文件。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
-- `2026-04-21`：随后，`TableHitTestService` 也已补出稳定的 `snapshotAccessor` 成员，不再在命中主链内反复临时 new accessor；同时 `resolveFragmentCellSlice()` 里对快照 map 的重复 fallback 也已删除，改为直接信任 `TableLayoutSnapshotAccessor.resolveSliceByFragmentContext()`。这轮调整后固定 47 条表格回归仍然单次全绿。
+- `2026-04-21`：随后，`TableHitTestService` 也已补出稳定的 `snapshotAccessor` 成员，不再在命中主链内反复临时 new accessor；同时 `resolveFragmentCellSlice()` 里对快照 map 的重复备用查找也已删除，改为直接信任 `TableLayoutSnapshotAccessor.resolveSliceByFragmentContext()`。这轮调整后固定 47 条表格回归仍然单次全绿。
 - `2026-04-21`：继续收口后，`TableHitTestService.resolvePointerPosition()` 现已明确区分“内部扩展命中结果”和“对外公共命中结果”，`hitTargetIndex / hitLineStartIndex` 不再通过公共 `resolvePointerPosition()` 外泄；同时 `resolveTableCellPositionByPagePoint.ts` 已删除后的残余裸调用也已清理完毕，命中服务当前对外只暴露精简后的公共结构。固定 47 条表格回归再次单次全绿。
 - `2026-04-21`：在此基础上，`TableHitTestService` 内部又继续删掉了两层单用实现：`resolveTableCellByPagePoint()` 已被内联进 `resolveTableCellPositionByPagePoint()`，而 `resolveTablePointerPositionByAnyPageLocalPoint()` 也已被内联回 `resolvePointerPositionInternal()`；同时 `resolveSnapshotTableElementHit()` 不再二次查询 fragment slice，而是直接消费前一步 page-point 命中带回来的 `activeSlice`。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
 - `2026-04-21`：在此基础上，`Draw` 也已开始持有 `TableHitTestService` 单例，`CommandAdapt` 与各条鼠标/selection-start 链不再各自 `new TableHitTestService(draw)`；同时 `TableLayoutSnapshotAccessor` 也已提升为 `Draw` 级单例并被 `CommandAdapt / RangeManager / TableNavigationService / TableSelectionProjectionService / TableHitTestService / TableOperate / RowRenderer / TableLayoutSnapshotStateSync` 及 selection/event helper 共用。当前命中与快照访问两条主链都已从“多处临时实例化”收口到 draw 级单例。固定 47 条表格回归再次单次全绿。
-- `2026-04-21`：随后，`Draw` 也已开始持有 `TableNavigationService` 单例，keydown 主链不再各自 `new TableNavigationService(draw)`；同时 `RangeManager / CommandAdapt / TableOperate / RowRenderer / TableNavigationService / TableSelectionProjectionService / TableLayoutSnapshotStateSync` 这批模块里的本地 snapshot accessor 持有继续删除，而 `TableHitTestService` 也已删除本地 `snapshotAccessor` 字段，改为直接通过 `draw.getTableLayoutSnapshotAccessor()` 取用 draw 级单例。固定 47 条表格回归再次单次全绿。
+- `2026-04-21`：随后，`Draw` 也已开始持有 `TableNavigationService` 单例，keydown 主链不再各自 `new TableNavigationService(draw)`；同时 `RangeManager / CommandAdapt / TableOperate / RowRenderer / TableNavigationService / TableSelectionProjectionService / TableLayoutSnapshotStateSync` 这批模块里的本地 snapshot accessor 持有继续删除，而 `TableHitTestService` 也已删除本地 `snapshotAccessor` 字段，改为直接通过 `draw.getServices().tableLayoutSnapshotAccessor` 取用 draw 级单例。固定 47 条表格回归再次单次全绿。
 - `2026-04-21`：在此基础上，`TableLayoutSnapshotStore.ts` 也已整段并回 `Draw` 并删除文件；快照的 `version / snapshot cache / sync logical table state` 现在都直接由 `Draw` 私有方法维护。与此同时，`TableNavigationService.resolveAdjacentCellNavigation()`、`resolveBoundaryTableEntry()`、`resolveDeleteNavigationIndex()`、`resolveNextFragmentStartIndex()` 与 `resolveEntryCellPositionIndex()` 这批只剩单用或薄转发的导航 helper 也已继续物理收口，`RangeManager` 里 `getLogicalCellSliceList()`、`resolveActiveTableSlice()` 这层壳也已删除。固定 47 条表格回归再次单次全绿。
 - `2026-04-21`：随后，`TableSelectionProjectionService.ts` 也已整段并回 `RangeManager` 并删除文件，selection projection 不再由额外 service 对象承接；与此同时，`TableHitTestService` 对外公共入口现已只剩 `resolve()`，而 `TableNavigationService` 里 `resolveSiblingLogicalCell()` 及 fragment 前后跳转两段单用 slice helper 也已继续内联收口。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
 - `2026-04-21`：继续往下，`TableNavigationService.createInTableNavigationResult()` 与 `resolveVerticalSiblingLogicalCell()` 也已继续内联删除，导航主链里“命中边界 -> 目标单元格 -> 结果组装”这条路径再少了两层中转；`RangeManager.getTextLikeSelection()` 这类已无消费面的公开壳层也已物理删除。对应 `npm run type:check`、`npm run lint` 与固定 47 条表格回归再次单次全绿。
@@ -452,7 +452,7 @@
 - `2026-04-24`：事件层 `applyPositionResultContext.ts` 这层只做字段转发的薄壳也已物理删除，`click / drag / mousedown` 已直接写入 `position.setPositionContext(...)`；阶段 6 当前继续沿“删无语义 event utils 壳层”推进。
 - `2026-04-24`：事件层 `applyResolvedSelectionRange.ts` 这层只做 `rangeManager.setRange(...)` 转发的薄壳也已物理删除，`mousemove / mouseup` 已直接写入编辑边界；阶段 6 当前继续从“删命中写入壳”推进到“删选区写入壳”。
 - `2026-04-24`：`PageRenderer.renderVisiblePages()` 与 `TableOverlayRenderer.renderVisibleOverlay()` 里原先各自维护的一份“相关页集合”合并规则也已收口到 `Draw.resolveVisibleRenderPageNos()`；阶段 6 当前开始继续清理分页渲染主链内部的重复页裁剪逻辑，而不只是删 event 壳层。
-- `2026-04-24`：`PageRenderer` 与 `TableOverlayRenderer` 里原先各自执行的 `positionList.filter(pageNo)` 页级切片也已收口到 `Position.getLayoutMainPositionListByPage()`；阶段 6 当前继续从“删渲染链重复规则”推进到“删渲染链重复数据切片”。
+- `2026-04-24`：`PageRenderer` 与 `TableOverlayRenderer` 里原先各自执行的 `positionList.filter(pageNo)` 页级切片也已收口到 `Position.getMainPositionListByPage()`；阶段 6 当前继续从“删渲染链重复规则”推进到“删渲染链重复数据切片”。
 - `2026-04-24`：`resolvePointerMouseDownIndex.ts` 这层只剩两处消费的薄 helper 也已内联进 `resolveSelectionStartState.ts` 与 `resolveTableSelectionStartState.ts` 并物理删除；阶段 6 当前继续沿“删 event/utils 只读短 helper 壳层”推进。
 - `2026-04-24`：`getEventPagePoint.ts` 也已从 `event/utils` 收口到 `Draw.getEventPagePoint()` 宿主接口，`command / event handlers / debug` 不再通过独立 helper 反向读取 draw 状态；阶段 6 当前继续把“跨域共享但本质依赖 draw 宿主”的工具能力收回到统一宿主边界。
 - `2026-04-24`：`resolvePointerBoundaryAtPosition.ts` 这层“正文命中 + 表格命中”共用的边界解释规则已从 `event/utils` 迁回 `position/utils`；这说明当前阶段 6 不只是删除薄壳，也在持续把仍需保留的共享规则迁回更准确的职责目录。
@@ -460,7 +460,7 @@
 - `2026-04-24`：`CommandAdapt.getActivePublicRange()/getActiveEditBoundaryRange()` 这两层内部 range 读取壳也已物理删除，命令层内部调用点已直接消费公开 `getRange()` 或 `this.range.getEditBoundaryRange()`；阶段 6 当前继续把“主干类内部的中间读取壳”压平到真实宿主接口。
 - `2026-04-24`：`RowRenderer.drawSelection()` 里原先仍保留的一段 `rowPositionOffset + slice` 手写循环也已回收为统一 `forEachRowPositionSlice()` 路径；阶段 6 当前继续从“删对象壳 / 删 helper 壳”推进到“删主干类内部的重复局部循环”。
 - `2026-04-24`：`RowRenderer.drawRow()` 里重复展开的 `payload.selectionCtx || ctx` 也已收口成单一局部 `selectionCtx`；阶段 6 当前继续沿“删主干类内部重复中间值展开”推进，而不引入新语义。
-- `2026-04-24`：`RowRenderer.drawSelection()` 里反复展开的 `this.draw.getRange()` 与 `this.draw.getTableLayoutSnapshotAccessor()` 读取也已收口成单一局部引用；阶段 6 当前继续沿“删主干类内部重复宿主读取”推进。
+- `2026-04-24`：`RowRenderer.drawSelection()` 里反复展开的 `this.draw.getRange()` 与 `this.draw.getServices().tableLayoutSnapshotAccessor` 读取也已收口成单一局部引用；阶段 6 当前继续沿“删主干类内部重复宿主读取”推进。
 - `2026-04-24`：`RowRenderer.drawRow()` 里原先对 `rowPositionList[0]` 的三处重复读取也已收口成单一局部 `rowStartPosition`；阶段 6 当前继续沿“删主干类内部重复局部取值”推进。
 - `2026-04-24`：`RowRenderer.drawRow()` 里反复展开的 `this.draw.getTextParticle()` 也已收口成单一局部 `textParticle`；阶段 6 当前继续沿“删主干类内部重复宿主读取”推进。
 - `2026-04-24`：`RowRenderer.drawRow()` 里反复展开的 `this.draw.getControl()` 也已收口成单一局部 `control`；阶段 6 当前继续沿“删主干类内部重复宿主读取”推进。
@@ -469,13 +469,13 @@
 - `2026-04-24`：`RowRenderer.drawRow()` 中 `Group / TableParticle / ListParticle / LineBreakParticle / ImageParticle / LaTexParticle / HyperlinkParticle / SuperscriptParticle / SubscriptParticle` 这一组高频 getter 也已收口成局部引用；阶段 6 当前继续批量压平渲染主链内部的重复宿主读取，而不是继续保留散点 getter 展开。
 - `2026-04-25`：`RowRenderer.drawRow()` 中零散残留的 `SeparatorParticle / PageBreakParticle / CheckboxParticle / RadioParticle / BlockParticle` 也已继续收口成局部引用；与此同时，`drawSelection()` 中重复读取的 `rangeMinWidth` 也已收口为单一局部常量。阶段 6 当前继续把渲染主链内部的散点 getter 与常量读取批量压平。
 - `2026-04-25`：`RowRenderer.drawRow()` 中零散残留的 `getElementSize()/getElementFont()` 与 `snapshotAccessor.isSameLogicalTable()` 读取也已继续收口到局部引用；阶段 6 当前继续把渲染主链内部仍然散落的宿主方法读取压平。
-- `2026-04-25`：`RowRenderer.drawSelection()` 中对 `this.draw.getPosition()` 的散点读取，以及 `drawRow()` 中对 `getElementRowMargin()` 的重复读取也已收口成局部引用；阶段 6 当前继续把渲染主链内部的散点宿主读取压平成单一局部上下文。
+- `2026-04-25`：`RowRenderer.drawSelection()` 中对 `this.draw.getCoordinate()` 的散点读取，以及 `drawRow()` 中对 `getElementRowMargin()` 的重复读取也已收口成局部引用；阶段 6 当前继续把渲染主链内部的散点宿主读取压平成单一局部上下文。
 - `2026-04-25`：`RowRenderer.drawFragmentCellTopBorder()` 与 `drawRow()` 中零散残留的 `snapshotAccessor / rangeManager` 读取也已继续收口成局部引用；阶段 6 当前继续把渲染主链内部的散点宿主读取压平成单一局部上下文。
 - `2026-04-25`：`Position.getPositionLookupKey()` 这层只做键拼接的单用途壳也已删除，lookup map 构建与读取现已直接内联使用 ``${pageNo}_${index}``；阶段 6 当前继续从“删重复宿主读取”推进到“删 position 基础设施里的单用途小壳”。
 - `2026-04-25`：`Position.getPageRowBands()` 这层只剩内部消费的查表壳也已删除，页内 row-band 读取现在直接基于 `getPageRowBandsLookupMap(...).get(pageNo)` 内联完成；阶段 6 当前继续从“删 lookup 小壳”推进到“删 position 基础设施里的内部查表壳层”。
 - `2026-04-25`：`Position.getSelectionPositionList()` 这层只剩命令层单处消费的公开薄壳也已删除，`CommandAdapt.getRangeContext()` 已直接基于 `RangeManager.getSelectionContentRange()` 与 `position.getPositionList()` 组装选区位置列表；阶段 6 当前继续把 `Position` 中只服务单一上层的公开包装方法收回到消费点。
-- `2026-04-25`：`Position.getMainPositionList()` 这层已无消费面的公开壳也已删除；阶段 6 当前继续把 `Position` 中“历史上为兼容保留、当前已无真实消费”的公开读取面物理收口。
-- `2026-04-25`：`Position.getOriginalMainPositionList()` 这层与 `getLayoutMainPositionList()` 完全同值的公开壳也已删除，`CommandAdapt / WorkerManager / Area / LineNumber` 已统一改为直接消费 `getLayoutMainPositionList()`；阶段 6 当前继续把 `Position` 中重复语义的公开读取面物理收口。
+- `2026-04-25`：`Position.getMainPositionList()` 这层已无消费面的公开壳也已删除；阶段 6 当前继续把 `Position` 中“历史上为过渡保留、当前已无真实消费”的公开读取面物理收口。
+- `2026-04-25`：`Position.getOriginalMainPositionList()` 这层与 `getMainPositionList()` 完全同值的公开壳也已删除，`CommandAdapt / WorkerManager / Area / LineNumber` 已统一改为直接消费 `getMainPositionList()`；阶段 6 当前继续把 `Position` 中重复语义的公开读取面物理收口。
 - `2026-04-25`：`CommandAdapt.getCursorPosition()` 中重复读取的 `getEditBoundaryRange()` 与 `getOriginalElementList()` 也已收口成局部上下文，命令层这条高频公开读取入口又少了一层重复宿主访问。
 - `2026-04-25`：`CommandAdapt.getRangeContext()` 中重复展开的 `getCursorPosition()` 读取也已收口成单一局部 `cursorPosition`；阶段 6 当前继续沿“压平命令层高频公开读取入口内部的重复公开读取”推进。
 - `2026-04-25`：`CommandAdapt.getRangeContext()` 中对 `draw.getCursor().getSelectionStartCursorState()` 的散点读取也已收口成局部 `selectionStartCursorState`；阶段 6 当前继续把命令层高频公开读取入口内部的重复宿主访问压平成单一局部上下文。
@@ -483,9 +483,9 @@
 - `2026-04-25`：`CommandAdapt.resolveSelectionPositionList()` 这层单行转发壳也已物理删除，`getRangeContext()` 已直接消费 `position.getSelectionPositionList()`；阶段 6 当前继续把命令层内部只剩一处消费的中间读取壳压平到真实宿主接口。
 - `2026-04-25`：`Position.getActivePageRowBand()` 这层只剩内部单处消费的壳也已删除，页内 active row band 的二分查找已内联回 `getPositionByXY()` 主链；阶段 6 当前继续从“删 helper 壳”推进到“删 position 主链内部的单用方法层”。
 - `2026-04-25`：`resolveExistingCaretAnchorIndex.ts` 这层只剩 `resolveSelectionStartState.ts` 单处消费的 selection-start helper 也已并回主文件并物理删除；existing-caret anchor 计算现在直接与 selection-start 命中结果同地维护，事件起点链又少了一层文件跳转。对应 `npm run type:check` 已通过。
-- `2026-04-25`：`Position.resolveRowBoundaryPosition()` 这层只被 `resolvePageBoundaryFallback()` 单处消费的页边界兜底 helper 也已内联删除；`Position` 页边界主链继续减少一层内部方法跳转。对应 `npm run type:check` 已通过。
-- `2026-04-25`：`Position.resolveActiveRowBandFallback()` 这层只被 `getPositionByXY()` 单处消费的页内行带兜底 helper 也已内联删除；`Position` 主命中链继续减少一层内部方法跳转。对应 `npm run type:check` 已通过。
-- `2026-04-25`：`Position.resolvePageBoundaryFallback()` 这层只被 `getPositionByXY()` 单处消费的页边界兜底 helper 也已内联删除；`Position.getPositionByXY()` 周边最外层的页内/页边界中转层已继续压平。对应 `npm run type:check`、`npm run lint` 已通过。
+- `2026-04-25`：`Position.resolveRowBoundaryPosition()` 这层只被页边界兜底逻辑单处消费，也已内联删除；`Position` 页边界主链继续减少一层内部方法跳转。对应 `npm run type:check` 已通过。
+- `2026-04-25`：页内行带兜底 helper 只被 `getPositionByXY()` 单处消费，也已内联删除；`Position` 主命中链继续减少一层内部方法跳转。对应 `npm run type:check` 已通过。
+- `2026-04-25`：页边界兜底 helper 只被 `getPositionByXY()` 单处消费，也已内联删除；`Position.getPositionByXY()` 周边最外层的页内/页边界中转层已继续压平。对应 `npm run type:check`、`npm run lint` 已通过。
 - `2026-04-25`：拖选主链里 `mousemove / mouseup -> resolveSelectionDragRange()` 也已补齐 `dragAnchorSource` 透传，同时 `resolveTableSelectionStartState()` 不再为 fresh direct-drag 硬塞 pointer anchor；分页 mock 场景里“直接按下右拖不松手时首字符丢失、复制与高亮不一致”的回归已修复。对应固定基线 `table-selection-nonpaged / table-pagination-input / table-pagination-merged / table-pagination-mock` 共 `57 / 57` 已重新跑通。
 - `2026-04-25`：`CommandAdapt.getRangeContext()` 也已继续拆出边界元素、位置解析、range rect 组装与标题信息回溯这 4 段局部 helper，命令层高频公开读取入口继续从“大方法堆逻辑”向“编排层 + 局部组装函数”收口。对应 `npm run type:check`、`npm run lint` 已通过。
 - `2026-04-25`：`RowRenderer.drawSelection()` 也已继续把“跨行列表格选区裁决”和“普通选区矩形绘制”拆成局部 helper，选区绘制主链继续从“混合裁决 + 混合绘制”向更明确的编排层收口。对应固定核心基线 `57 / 57` 已重新跑通。
@@ -562,7 +562,7 @@
 
 - [ ] 删除旧补丁链路
 - [ ] 删除旧分支
-- [ ] 删除临时兼容逻辑
+- [ ] 删除临时过渡逻辑
 - [ ] 清理遗留调试代码
 
 ---
@@ -572,7 +572,7 @@
 ### Done 判定
 
 - [ ] 所有核心回归用例通过
-- [ ] 没有新增旧链路兼容补丁
+- [ ] 没有新增过渡链路补丁
 - [ ] 新逻辑有单一入口
 - [ ] 旧逻辑已物理删除或明确标记下一阶段删除
 - [ ] 文档同步更新
@@ -598,7 +598,7 @@
 - 提交 3：键盘导航抽离
 - 提交 4：布局快照化
 - 提交 5：overlay 与增量渲染
-- 提交 6：旧链路删除
+- 提交 6：过渡链路删除
 
 ---
 
@@ -620,7 +620,7 @@
   - 修复 paged / mock / nonpaged 三类 same-char re-drag 起始锚点不一致问题。
   - fixed-set 回归重新收敛到 `47 / 47` 全绿。
 - 当前阶段 6 的真实剩余工作收束为：
-  - 继续删除 event / command / position / renderer 内仍然只做转发或历史兼容命名的壳层。
+  - 继续删除 event / command / position / renderer 内仍然只做转发或历史过渡命名的壳层。
   - 在保持固定回归集全绿的前提下，继续压平主链内部重复逻辑。
   - 文档随每一轮主链收口同步更新，不再保留与真实状态脱节的“历史进行时”描述。
 
@@ -673,8 +673,8 @@
 - [x] 删除 selection-start 链上的单用 helper 文件 `resolveExistingCaretAnchorIndex.ts`
 - [x] 重新执行 `npm run type:check`
 - [x] 将 `Position.resolveRowBoundaryPosition()` 内联回页边界兜底主链
-- [x] 将 `Position.resolveActiveRowBandFallback()` 内联回 `getPositionByXY()` 主链
-- [x] 将 `Position.resolvePageBoundaryFallback()` 内联回 `getPositionByXY()` 主链
+- [x] 将页内行带兜底 helper 内联回 `getPositionByXY()` 主链
+- [x] 将页边界兜底 helper 内联回 `getPositionByXY()` 主链
 - [x] 修复 fresh direct-drag 下 table selection 首字符丢失问题
 - [x] 重新执行 `npm run lint`
 - [x] 重新执行固定基线：

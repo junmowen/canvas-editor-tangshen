@@ -27,7 +27,8 @@ export class FooterPageBorder {
       scale,
       pageBorder: { padding }
     } = this.options
-    const margins = this.draw.getMargins()
+    // 页脚边框底部要跟随当前页底边距，并纳入顶部/内侧装订线和镜像页边距。
+    const margins = this.draw.getMargins(pageNo)
     const footerExtraHeight = this.draw.getFooter().getExtraHeight()
     const bottomGapRatio = 0.25
     return Math.max(

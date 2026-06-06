@@ -6,7 +6,8 @@ import {
 } from '../../../../../dataset/constant/Element'
 import { IElement } from '../../../../../interface/Element'
 import { deepClone, omitObject } from '../../../../../utils'
-import { formatElementContext, formatElementList } from '../../../../../utils/element'
+import { formatElementContext } from '../../../../../utils/elementContext'
+import { formatElementList } from '../../../../../utils/elementFormat'
 import {
   cutControlDragSourceIfNeeded,
   insertDragDropIntoActiveControl

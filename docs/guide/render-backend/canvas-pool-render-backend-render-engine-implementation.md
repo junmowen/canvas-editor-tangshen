@@ -15,4 +15,4 @@
 
 1. 14.6 的新增状态只写入对应专题页，不再把进展、缺口、roadmap 和模块清单混在同一页。
 2. `PageRenderSnapshotBuilder.ts` 当前只作为 facade；新增 worker snapshot 能力必须落到对应的 `PageRenderSnapshot*` 分域模块。
-3. WebGL 图片任务和 DOM / SVG block 任务继续保持独立 reason 和独立 fallback，不进入正文文字 worker snapshot。
+3. WebGL 图片任务和 DOM / SVG block 任务继续保持独立 reason 和独立 回退，不进入正文文字 worker snapshot。

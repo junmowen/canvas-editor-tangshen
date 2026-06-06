@@ -136,8 +136,8 @@ export class SelectControl implements IControlInstance {
    * @returns 控件值元素列表
    */
   public getValue(context: IControlContext = {}): IElement[] {
-    const elementList = context.elementList || this.control.getElementList()
-    const { startIndex } = context.range || this.control.getEditBoundaryRange()
+    const elementList = context.elementList || this.control.getDraw().getObjectResolver().getElementList()
+    const { startIndex } = context.range || this.control.getDraw().getRange().getEditBoundaryRange()
     return collectControlValueElementList({ elementList, startIndex })
   }
 
@@ -154,8 +154,8 @@ export class SelectControl implements IControlInstance {
     ) {
       return -1
     }
-    const elementList = context.elementList || this.control.getElementList()
-    const range = context.range || this.control.getEditBoundaryRange()
+    const elementList = context.elementList || this.control.getDraw().getObjectResolver().getElementList()
+    const range = context.range || this.control.getDraw().getRange().getEditBoundaryRange()
     // 收缩边界到Value内
     this.control.shrinkBoundary(context)
     const { startIndex, endIndex } = range
@@ -187,8 +187,8 @@ export class SelectControl implements IControlInstance {
     if (this.control.getIsDisabledControl()) {
       return null
     }
-    const elementList = this.control.getElementList()
-    const range = this.control.getEditBoundaryRange()
+    const elementList = this.control.getDraw().getObjectResolver().getElementList()
+    const range = this.control.getDraw().getRange().getEditBoundaryRange()
     // 收缩边界到Value内
     this.control.shrinkBoundary()
     const { startIndex, endIndex } = range
@@ -274,7 +274,7 @@ export class SelectControl implements IControlInstance {
       return -1
     }
     this.control.shrinkBoundary()
-    const { startIndex, endIndex } = this.control.getEditBoundaryRange()
+    const { startIndex, endIndex } = this.control.getDraw().getRange().getEditBoundaryRange()
     if (startIndex === endIndex) {
       return startIndex
     }
@@ -291,8 +291,8 @@ export class SelectControl implements IControlInstance {
     if (!isIgnoreDisabledRule && this.control.getIsDisabledControl(context)) {
       return -1
     }
-    const elementList = context.elementList || this.control.getElementList()
-    const { startIndex } = context.range || this.control.getEditBoundaryRange()
+    const elementList = context.elementList || this.control.getDraw().getObjectResolver().getElementList()
+    const { startIndex } = context.range || this.control.getDraw().getRange().getEditBoundaryRange()
     const boundary = resolveControlValueBoundary({
       elementList,
       startIndex,
@@ -346,8 +346,8 @@ export class SelectControl implements IControlInstance {
     ) {
       return
     }
-    const elementList = context.elementList || this.control.getElementList()
-    const range = context.range || this.control.getEditBoundaryRange()
+    const elementList = context.elementList || this.control.getDraw().getObjectResolver().getElementList()
+    const range = context.range || this.control.getDraw().getRange().getEditBoundaryRange()
     const control = this.element.control!
     const normalizedCode = String(code)
     const newCodes = normalizedCode.split(this.VALUE_DELIMITER)
@@ -449,11 +449,11 @@ export class SelectControl implements IControlInstance {
     const control = this.element.control!
     const valueSets = control.valueSets
     if (!Array.isArray(valueSets) || !valueSets.length) return
-    const range = this.control.getEditBoundaryRange()
+    const range = this.control.getDraw().getRange().getEditBoundaryRange()
     const draw = this.control.getDraw()
     const controlBoundary = draw.getTargetResolver().resolveControlBoundaryElements({
       range,
-      elementList: this.control.getElementList()
+      elementList: draw.getObjectResolver().getElementList()
     })
     const position =
       resolvePositionAtIndex(draw, range.endIndex) ||
@@ -502,11 +502,12 @@ export class SelectControl implements IControlInstance {
       },
       lineHeight
     } = position
-    const preY = this.control.getPreY()
+    const pageNo = resolvePositionAtIndex(draw, range.endIndex)?.pageNo ?? draw.getPageNo()
+    const preY = draw.getPageCanvasHost().getPageTop(pageNo)
     selectPopupContainer.style.left = `${left}px`
     selectPopupContainer.style.top = `${top + preY + lineHeight}px`
     // 追加至container
-    const container = this.control.getContainer()
+    const container = draw.getPageCanvasHost().getContainer()
     container.append(selectPopupContainer)
     selectPopupContainer.scrollTop = this.popupScrollTop
     this.selectDom = selectPopupContainer
@@ -524,8 +525,8 @@ export class SelectControl implements IControlInstance {
     ) {
       return
     }
-    const { startIndex } = this.control.getEditBoundaryRange()
-    const elementList = this.control.getElementList()
+    const { startIndex } = this.control.getDraw().getRange().getEditBoundaryRange()
+    const elementList = this.control.getDraw().getObjectResolver().getElementList()
     // 用 resolver 统一判断当前光标是否还停留在同一个控件结构里。
     const controlBoundary = this.control.getDraw().getTargetResolver().resolveControlBoundaryElements({
       range: {

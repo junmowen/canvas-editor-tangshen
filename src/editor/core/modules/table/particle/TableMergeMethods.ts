@@ -262,7 +262,7 @@ const tableMergeMethods = {
       context.tdIndex === undefined
     ) return
 
-    // 暂时忽略跨行跨列选择。
+    // 跨行列选区不执行单元格拆分。
     const range = this.range.getEditBoundaryRange()
     if (range.isCrossRowCol) return
     const { tdIndex, trIndex, element } = context
@@ -327,7 +327,7 @@ const tableMergeMethods = {
       context.tdIndex === undefined
     ) return
 
-    // 暂时忽略跨行跨列选择。
+    // 跨行列选区不执行单元格拆分。
     const range = this.range.getEditBoundaryRange()
     if (range.isCrossRowCol) return
     const { tdIndex, trIndex, element } = context

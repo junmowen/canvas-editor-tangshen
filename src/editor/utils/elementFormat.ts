@@ -1,5 +1,9 @@
 import { deepClone, getUUID, pickObject, splitText } from '.'
-import { LaTexParticle } from '../core/modules/image/particle/latex/LaTexParticle'
+import { completeFormulaDerivedFormats } from '../core/modules/formula/model/FormulaSerializer'
+import {
+  isFormulaEmptyPlaceholderValue,
+  resolveFormulaDisplayText
+} from '../core/modules/formula/model/FormulaTextModel'
 import { ZERO } from '../dataset/constant/Common'
 import {
   CONTROL_STYLE_ATTR,
@@ -291,11 +295,6 @@ export function formatElementList(
       }
       i--
     } else if (el.type === ElementType.CONTROL) {
-      // 兼容控件内容类型错误
-      if (!el.control) {
-        i++
-        continue
-      }
       const {
         prefix,
         postfix,
@@ -306,7 +305,7 @@ export function formatElementList(
         code,
         type,
         valueSets
-      } = el.control
+      } = el.control!
       const {
         editorOptions: {
           control: controlOption,
@@ -325,7 +324,8 @@ export function formatElementList(
       // 控件上下文提取（压缩后的控件上下文无法提取）
       const controlContext = pickObject(el, [
         ...EDITOR_ELEMENT_CONTEXT_ATTR,
-        ...EDITOR_ROW_ATTR
+        ...EDITOR_ROW_ATTR,
+        'externalId'
       ])
       if (parentControlId) {
         controlContext.parentControlId = parentControlId
@@ -625,13 +625,31 @@ export function formatElementList(
       el.id = el.id || getUUID()
     }
     if (el.type === ElementType.LATEX) {
-      const { svg, width, height } = LaTexParticle.convertLaTextToSVG(el.value)
-      el.width = el.width || width
-      el.height = el.height || height
-      el.laTexSVG = svg
+      // 公式控件按文本节点参与段落排版，不能再写入 SVG 图片尺寸，否则会回到图片布局路径。
+      const rawLatexValue = el.formula?.latex ?? el.value
+      const latexValue = isFormulaEmptyPlaceholderValue(rawLatexValue)
+        ? ''
+        : rawLatexValue
+      if (el.formula?.ast) {
+        el.formula = completeFormulaDerivedFormats({
+          ...el.formula,
+          latex: latexValue,
+          displayText:
+            el.formula.displayText || resolveFormulaDisplayText(latexValue)
+        })
+      } else if (el.formula) {
+        el.formula = {
+          ...el.formula,
+          latex: latexValue,
+          displayText:
+            el.formula.displayText || resolveFormulaDisplayText(latexValue)
+        }
+      }
+      delete el.width
+      delete el.height
+      delete el.laTexSVG
       el.id = el.id || getUUID()
     }
     i++
   }
 }
-

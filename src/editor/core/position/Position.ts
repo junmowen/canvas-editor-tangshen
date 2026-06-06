@@ -1,4 +1,5 @@
 import { ZERO } from '../../dataset/constant/Common'
+import { EditorZone } from '../../dataset/enum/Editor'
 import {
   IComputePageRowPositionPayload,
   IComputePageRowPositionResult,
@@ -14,7 +15,8 @@ import { deepClone, isRectIntersect } from '../../utils'
 import { DeepRequired } from '../../interface/Common'
 import { EventBus } from '../event/eventbus/EventBus'
 import { EventBusMap } from '../../interface/EventBus'
-import { getIsBlockElement } from '../../utils/element'
+import { getIsBlockElement } from '../../utils/elementLayout'
+import { isSurroundRectInColumnRect } from '../../utils/elementLayout'
 import {
   ensureFloatImagePosition,
   resolveScaledFloatImageRect,
@@ -41,6 +43,10 @@ type TPageRowBand = {
   top: number
   /** 下侧偏移或边距，用于计算区域边界。 */
   bottom: number
+  /** 左侧边界，用于多栏同高行命中时按横坐标选择目标栏。 */
+  left: number
+  /** 右侧边界，用于多栏同高行命中时按横坐标选择目标栏。 */
+  right: number
   /** 起始位置，用于描述范围、拖拽或扫描的入口。 */
   start: number
   /** 结束数值，用于当前布局、统计或索引计算。 */
@@ -122,14 +128,12 @@ export class Position {
     return this.getTablePositionList(this.draw.getObjectResolver().getLayoutMainElementList())
   }
 
-  /**
-   * 兼容布局态调用方使用的主文档位置列表读取方法。
-   */
-  public getLayoutMainPositionList(): IElementPosition[] {
+  /** 读取主文档布局位置列表。 */
+  public getMainPositionList(): IElementPosition[] {
     return this.positionList
   }
 
-  public getLayoutMainPositionListByPage(pageNo: number): IElementPosition[] {
+  public getMainPositionListByPage(pageNo: number): IElementPosition[] {
     const positionList = this.positionList
     const pageRowBands =
       this.getPageRowBandsLookupMap(positionList).get(pageNo) || []
@@ -185,11 +189,61 @@ export class Position {
     } = this.options
     let x = startX
     let y = startY
+    // 只有正文排版消费分页器写入的 columnIndex；页眉、页脚和表格必须保留调用方传入的区域坐标。
+    const isMainColumnPosition =
+      !payload.isTable && payload.zone === EditorZone.MAIN
+    // 当前栏索引用于在多栏页面内切换行起点和纵向游标。
+    let currentColumnIndex = 0
+    if (isMainColumnPosition && rowList[0]) {
+      const initialColumn = this.draw
+        .getServices()
+        .pageColumnLayoutService.getColumn(
+          pageNo,
+          rowList[0].columnIndex || 0,
+          rowList[0].columns
+        )
+      currentColumnIndex = initialColumn.index
+      x = initialColumn.rect.x
+      y = rowList[0].columnStartY ?? initialColumn.rect.y
+    }
     let index = startIndex
     for (let i = 0; i < rowList.length; i++) {
       const curRow = rowList[i]
       if (!curRow?.elementList?.length) continue
-      x += resolveRowFlexOffsetX({ row: curRow, innerWidth })
+      // 行级栏索引由分页器写入，position 阶段只消费最终落位。
+      const rowColumnIndex = curRow.columnIndex || 0
+      if (isMainColumnPosition && rowColumnIndex !== currentColumnIndex) {
+        const column = this.draw
+          .getServices()
+          .pageColumnLayoutService.getColumn(
+            pageNo,
+            rowColumnIndex,
+            curRow.columns
+          )
+        currentColumnIndex = rowColumnIndex
+        x = column.rect.x
+        y = curRow.columnStartY ?? column.rect.y
+      }
+      // 当前行起点和可用宽度必须跟随所在栏，否则居中/右对齐会按整页偏移。
+      const rowStartX = isMainColumnPosition
+        ? this.draw
+            .getServices()
+            .pageColumnLayoutService.getColumn(
+              pageNo,
+              rowColumnIndex,
+              curRow.columns
+            ).rect.x
+        : startX
+      const rowInnerWidth = isMainColumnPosition
+        ? this.draw
+            .getServices()
+            .pageColumnLayoutService.getColumn(
+              pageNo,
+              rowColumnIndex,
+              curRow.columns
+            ).rect.width
+        : innerWidth
+      x += resolveRowFlexOffsetX({ row: curRow, innerWidth: rowInnerWidth })
       // 当前行X/Y轴偏移量
       x += curRow.offsetX || 0
       y += curRow.offsetY || 0
@@ -338,7 +392,7 @@ export class Position {
           y = tablePositionResult.y
         }
       }
-      x = startX
+      x = rowStartX
       y += curRow.height
     }
     return { x, y, index }
@@ -376,18 +430,18 @@ export class Position {
     this.pageRowBandsLookupMapCache = new WeakMap()
     this.positionList = []
     // 按每页行计算
-    const innerWidth = this.draw.getInnerWidth()
     const pageRowList = this.draw.getPageRowList()
-    const margins = this.draw.getMargins()
-    const startX = margins[3]
-    // 起始位置受页眉影响
-    const header = this.draw.getHeader()
-    const extraHeight = header.getExtraHeight()
-    const startY = margins[0] + extraHeight
     let startRowIndex = 0
     for (let i = 0; i < pageRowList.length; i++) {
       const rowList = pageRowList[i]
       const startIndex = rowList[0]?.startIndex
+      // 整篇 position 重算也逐页读取边距，避免非首页增量和全量路径不一致。
+      const margins = this.draw.getMargins(i)
+      const startX = margins[3]
+      const header = this.draw.getHeader()
+      const extraHeight = header.getExtraHeight()
+      const startY = margins[0] + extraHeight
+      const innerWidth = this.draw.getInnerWidth(i)
       this.computePageRowPosition({
         positionList: this.positionList,
         rowList,
@@ -396,7 +450,8 @@ export class Position {
         startIndex,
         startX,
         startY,
-        innerWidth
+        innerWidth,
+        zone: EditorZone.MAIN
       })
       startRowIndex += rowList.length
     }
@@ -415,12 +470,6 @@ export class Position {
     const nextPositionList = this.positionList.filter(
       position => position.pageNo < startPageNo
     )
-    const innerWidth = this.draw.getInnerWidth()
-    const margins = this.draw.getMargins()
-    const startX = margins[3]
-    const header = this.draw.getHeader()
-    const extraHeight = header.getExtraHeight()
-    const startY = margins[0] + extraHeight
     let startRowIndex = 0
     for (let pageNo = 0; pageNo < startPageNo; pageNo++) {
       startRowIndex += pageRowList[pageNo]?.length || 0
@@ -428,6 +477,13 @@ export class Position {
     for (let pageNo = startPageNo; pageNo < pageRowList.length; pageNo++) {
       const rowList = pageRowList[pageNo]
       const startIndex = rowList[0]?.startIndex
+      // 局部重算从目标页读取边距，避免后续页增量 position 回退到首页边距。
+      const margins = this.draw.getMargins(pageNo)
+      const startX = margins[3]
+      const header = this.draw.getHeader()
+      const extraHeight = header.getExtraHeight()
+      const startY = margins[0] + extraHeight
+      const innerWidth = this.draw.getInnerWidth(pageNo)
       this.computePageRowPosition({
         positionList: nextPositionList,
         rowList,
@@ -436,7 +492,8 @@ export class Position {
         startIndex,
         startX,
         startY,
-        innerWidth
+        innerWidth,
+        zone: EditorZone.MAIN
       })
       startRowIndex += rowList.length
     }
@@ -527,12 +584,16 @@ export class Position {
       const pageRowBands = pageRowBandsMap.get(position.pageNo)
       const top = position.coordinate.leftTop[1]
       const bottom = position.coordinate.leftBottom[1]
+      const left = position.coordinate.leftTop[0] - (position.left || 0)
+      const right = position.coordinate.rightTop[0]
       if (!pageRowBands) {
         pageRowBandsMap.set(position.pageNo, [
           {
             rowNo: position.rowNo,
             top,
             bottom,
+            left,
+            right,
             start: cursor,
             end: cursor
           }
@@ -543,12 +604,16 @@ export class Position {
       if (currentBand.rowNo === position.rowNo) {
         currentBand.top = Math.min(currentBand.top, top)
         currentBand.bottom = Math.max(currentBand.bottom, bottom)
+        currentBand.left = Math.min(currentBand.left, left)
+        currentBand.right = Math.max(currentBand.right, right)
         currentBand.end = cursor
       } else {
         pageRowBands.push({
           rowNo: position.rowNo,
           top,
           bottom,
+          left,
+          right,
           start: cursor,
           end: cursor
         })
@@ -607,6 +672,20 @@ export class Position {
           scale
         })
         if (!surroundRect || surroundRect.pageNo !== pageNo) continue
+        const columnCount = Math.max(
+          1,
+          Math.floor(row.columns?.count || this.options.columns.count || 1)
+        )
+        if (columnCount > 1) {
+          const column = this.draw
+            .getServices()
+            .pageColumnLayoutService.getColumn(
+              pageNo,
+              row.columnIndex || 0,
+              row.columns
+            )
+          if (!isSurroundRectInColumnRect(surroundRect, column.rect)) continue
+        }
         if (isRectIntersect(rowElementRect, surroundRect)) {
           row.isSurround = true
           // 需向左移动距离：浮动元素宽度 + 浮动元素左上坐标 - 元素左上坐标

@@ -275,7 +275,7 @@ export class TableLayoutSnapshotBuilder {
   private collectFragmentPositionsByPageNo() {
     // 创建 fragment Positions By Page No 实例。
     const fragmentPositionsByPageNo = new Map<number, IElementPosition[]>()
-    const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
+    const positionList = this.draw.getCoordinate().getMainPositionList()
 
     for (let index = 0; index < positionList.length; index++) {
       const position = positionList[index]
@@ -575,13 +575,13 @@ export class TableLayoutSnapshotBuilder {
       return directLocation
     }
 
-    const fallbackLocation = logicalTableLookup.tdLocationById.get(logicalTdId)
-    if (fallbackLocation) {
-      return fallbackLocation
+    const idLocation = logicalTableLookup.tdLocationById.get(logicalTdId)
+    if (idLocation) {
+      return idLocation
     }
 
-    const fallbackTrIndex = logicalTableLookup.trIndexById.get(logicalTrId)
-    if (fallbackTrIndex === undefined) {
+    const logicalTrIndex = logicalTableLookup.trIndexById.get(logicalTrId)
+    if (logicalTrIndex === undefined) {
       return null
     }
 

@@ -1,6 +1,6 @@
 import { ElementType } from '../../../../dataset/enum/Element'
 import { IElement } from '../../../../interface/Element'
-import { formatElementContext } from '../../../../utils/element'
+import { formatElementContext } from '../../../../utils/elementContext'
 import { Draw } from '../../../draw/Draw'
 import { isEditorDisabled } from '../../../shared/utils/editorState'
 

@@ -6,10 +6,7 @@ import { IRowElement } from '../../../interface/Row'
 import { ITableFragmentDescriptor } from '../../../interface/table/TableFragment'
 import { ZERO } from '../../../dataset/constant/Common'
 import { isCheckboxHitElement, isRadioHitElement } from '../../modules/control/hittest/ControlHitTest'
-import {
-  isImageElement,
-  isLatexElement
-} from '../../modules/image/layout/InlineImageElementLayout'
+import { isImageElement } from '../../modules/image/layout/InlineImageElementLayout'
 import { isWorkerSnapshotSupportedFloatingImage } from '../../modules/image/render/WorkerSnapshotImageRenderPolicy'
 import { isPageBreakElement } from '../../modules/page-break/layout/PageBreakElementLayout'
 import { isSeparatorElement } from '../../modules/separator/layout/SeparatorElementLayout'
@@ -82,12 +79,6 @@ export abstract class PageRenderSnapshotValidator extends PageRenderSnapshotFram
     if (isPageBreakElement(element)) {
       return
     }
-    if (isLatexElement(element)) {
-      if (!element.laTexSVG) {
-        throw new Error('worker snapshot does not support incomplete latex')
-      }
-      return
-    }
     if (!isWorkerSnapshotTextElement(element)) {
       throw new Error(`worker snapshot does not support element type=${type}`)
     }
@@ -148,10 +139,14 @@ export abstract class PageRenderSnapshotValidator extends PageRenderSnapshotFram
     const options = this.draw.getRuntime().getOptions()
     if (!this.draw.isPagingPageMode()) return
     if (!options.header.disabled) {
-      this.assertFrameRowsSupported(this.draw.getHeader().getRowList())
+      this.draw.getHeader().getAllRowList().forEach(rowList => {
+        this.assertFrameRowsSupported(rowList)
+      })
     }
     if (!options.footer.disabled) {
-      this.assertFrameRowsSupported(this.draw.getFooter().getRowList())
+      this.draw.getFooter().getAllRowList().forEach(rowList => {
+        this.assertFrameRowsSupported(rowList)
+      })
     }
   }
 

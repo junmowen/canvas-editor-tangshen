@@ -23,7 +23,7 @@
 6. 已新增 `getSurfaceList(layer)`，批量渲染可以按 layer 读取 surface 状态。
 7. `Zone`、`GlobalEvent`、`TableHitTestService` 已不再依赖 `Draw.getPageList()`，`Draw.getPageList()` facade 已移除。
 8. `Background`、`Margin`、`Previewer`、`TableTool` 已迁移到 `getSurface()`，不再通过 `Draw.getPage()` 或 `PageCanvasHost.getPage()` 直接读取单 canvas。
-9. `Draw.getPage()`、`PageCanvasHost.getPage()`、`PageCanvasHost.getOverlayPage()` 以及 `getPageList()` / `getOverlayPageList()` / `getCtxList()` / `getOverlayCtxList()` 低层兼容入口已移除。
+9. `Draw.getPage()`、`PageCanvasHost.getPage()`、`PageCanvasHost.getOverlayPage()` 以及 `getPageList()` / `getOverlayPageList()` / `getCtxList()` / `getOverlayCtxList()` 低层过渡入口已移除。
 10. 已新增 `Canvas2DRenderEngine` 和 `Overlay2DRenderEngine`，并通过 `RenderBackendManager` 接入 base / overlay 的同步渲染任务，当前绘制算法保持不变。
 11. `PageRenderer.drawPage()` 和 `TableOverlayRenderer.prepareSelectionContext()` 已开始提交 `base-visible` / `overlay-visible` task，为后续 OffscreenCanvas、WebGL 或 worker engine 预留统一调度边界。
 12. `DrawExportService` 已改为按页申请临时 `EXPORT` / `OVERLAY` surface，再进行 dataURL 导出，不再切换 `PageCanvasHost` 的 detached 状态。

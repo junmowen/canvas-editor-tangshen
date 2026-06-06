@@ -65,7 +65,7 @@ canvas 复用后，`ctx` 状态如果没有完整重置，会出现字体、透�
 1. 新建 `CanvasPool`，复制当前 `PageCanvasHost.canvasPool` 能力。
 2. 新建 `RenderSurfaceManager`，承接 `mountCanvas()` / `unmountCanvas()`。
 3. `PageCanvasHost` 只保留 DOM host 与 page wrapper 管理。
-4. 兼容保留旧 getter，避免一次性改动所有渲染器。
+4. 保留过渡 getter，避免一次性改动所有渲染器。
 5. 再把 `PageRenderer`、`TableOverlayRenderer`、`DrawExportService` 迁到 surface API。
 6. 最后接入 `RenderBackendManager` 和引擎选择。
 
@@ -77,6 +77,6 @@ canvas 复用后，`ctx` 状态如果没有完整重置，会出现字体、透�
 
 1. 类必须有中文注释，说明职责和边界。
 2. 函数必须有中文注释，说明入参、返回值和副作用。
-3. 属性必须有中文注释，说明保存的数据、生命周期和是否为兼容字段。
+3. 属性必须有中文注释，说明保存的数据、生命周期和是否为过渡字段。
 4. 关键代码块必须有中文注释，说明为什么这样处理，而不只描述代码表面行为。
 5. 多引擎、池化、导出、DPR、canvas 状态重置相关代码必须优先补注释。

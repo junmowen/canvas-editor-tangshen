@@ -86,7 +86,7 @@ render-backend/
 
 | 内容 / 场景 | 默认引擎 | 说明 |
 | --- | --- | --- |
-| 正文、段落、普通表格 | Canvas2D | 保持现有实现兼容 |
+| 正文、段落、普通表格 | Canvas2D | 保持现有实现一致 |
 | selection、search、control highlight | Overlay2D | 独立 overlay 刷新 |
 | 大文档静态页缓存 | OffscreenCanvas / ImageBitmap | 后台绘制后主线程合成 |
 | 高频光标、辅助线、拖选反馈 | Overlay2D | 小区域清理与重绘 |

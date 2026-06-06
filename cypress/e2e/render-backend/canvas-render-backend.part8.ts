@@ -742,7 +742,7 @@ function getFirstMountedBaseCanvas(doc: Document): HTMLCanvasElement {
 function redrawPageWithoutInvalidatingBaseBitmap(draw: any, pageNo: number) {
   draw.getServices().pageRenderer.drawPage({
     elementList: draw.getLayoutMainElementList(),
-    positionList: draw.getPosition().getLayoutMainPositionList(),
+    positionList: draw.getCoordinate().getMainPositionList(),
     rowList: draw.getPageRowList()[pageNo],
     pageNo
   })
@@ -852,7 +852,7 @@ describe('canvas 池与渲染后端浏览器级回归', () => {
       expect(draw.getPageRowList().length, '空文档分页页数').to.eq(1)
       draw.setPageNo(1)
       draw.getRange().setRange(-1, -1)
-      draw.getPosition().setCursorPosition(null)
+      draw.getCoordinate().setCursorPosition(null)
       draw.getPageCanvasHost().invalidateAllBitmapCache()
       draw.getServices().workerRenderScheduler.dispose()
       editor.resetRenderBackendStats()

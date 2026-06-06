@@ -3,8 +3,8 @@ import { ElementType } from '../../../src/editor/dataset/enum/Element'
 
 function getTextRows(editor: Editor) {
   const draw = (editor as any).draw
-  draw.flushScheduledFrameRender()
-  return draw.getOriginalRowList().filter((row: any) =>
+  draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
+  return draw.getObjectResolver().getOriginalRowList().filter((row: any) =>
     row.elementList.some((element: any) => !element.type && element.value !== '\u200B')
   )
 }
@@ -111,7 +111,7 @@ describe('issue API coverage batch 16', () => {
       const currentHeight = draw.getHeight()
       const mainOuterHeight = draw.getMainOuterHeight()
       const contentHeight = draw
-        .getRowList()
+        .getObjectResolver().getRowList()
         .reduce((sum: number, row: any) => sum + row.height + (row.offsetY || 0), 0)
 
       expect(originalHeight).to.eq(pageHeight)

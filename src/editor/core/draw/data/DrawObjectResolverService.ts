@@ -1,5 +1,5 @@
 import { EditorZone } from '../../../dataset/enum/Editor'
-import { IEditorData } from '../../../interface/Editor'
+import { IRuntimeEditorData } from '../../../interface/Editor'
 import { IElement } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
 import { ITd } from '../../../interface/table/Td'
@@ -15,16 +15,16 @@ export class DrawObjectResolverService {
   /** 初始化 DrawObjectResolverService 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
 
-  public getHeaderElementList(): IElement[] {
-    return this.draw.getServices().dataAccess.getHeaderElementList()
+  public getHeaderElementList(pageNo?: number): IElement[] {
+    return this.draw.getServices().dataAccess.getHeaderElementList(pageNo)
   }
 
   public getHeaderElement(index: number): IElement | undefined {
     return this.getHeaderElementList()[index]
   }
 
-  public getFooterElementList(): IElement[] {
-    return this.draw.getServices().dataAccess.getFooterElementList()
+  public getFooterElementList(pageNo?: number): IElement[] {
+    return this.draw.getServices().dataAccess.getFooterElementList(pageNo)
   }
 
   public getFooterElement(index: number): IElement | undefined {
@@ -122,11 +122,13 @@ export class DrawObjectResolverService {
   }
 
   /** 获取完整原始编辑器数据，统一 header/main/footer 聚合来源。 */
-  public getOriginalEditorData(): Required<IEditorData> {
+  public getOriginalEditorData(): IRuntimeEditorData {
+    const styles = this.draw.getRuntime().getEditor2DocumentTree().styles
     return {
-      header: this.getHeaderElementList(),
+      styles,
+      headerPageScopes: this.draw.getComponents().header.getPageScopes(),
       main: this.getOriginalMainElementList(),
-      footer: this.getFooterElementList()
+      footerPageScopes: this.draw.getComponents().footer.getPageScopes()
     }
   }
 

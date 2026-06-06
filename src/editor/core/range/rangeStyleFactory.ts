@@ -57,11 +57,7 @@ export function createSelectionRangeStyle(payload: {
     keepWithNext: Boolean(activeElement.keepWithNext),
     keepLines: Boolean(activeElement.keepLines),
     widowControl: Boolean(activeElement.widowControl),
-    tabStops: activeElement.tabStops
-      ? activeElement.tabStops.map(stop => ({
-          ...stop
-        }))
-      : null,
+    tabStops: resolveSelectionTabStops(activeElement, selectionElements),
     dashArray: activeElement.dashArray || [],
     level: activeElement.level || null,
     listType: activeElement.listType || null,
@@ -84,6 +80,40 @@ export function createSelectionRangeStyle(payload: {
     textCombine: activeElement.textCombine ? true : null,
     extension: activeElement.extension ?? null
   }
+}
+
+/** 解析选区制表位回显值：多段完全一致才回显，混合配置返回 null。 */
+function resolveSelectionTabStops(
+  activeElement: IElement,
+  selectionElements: IElement[]
+): IRangeStyle['tabStops'] {
+  const activeTabStops = activeElement.tabStops || null
+  for (const element of selectionElements) {
+    if (!isSameTabStops(activeTabStops, element.tabStops || null)) {
+      return null
+    }
+  }
+  return activeTabStops ? activeTabStops.map(tabStop => ({ ...tabStop })) : null
+}
+
+/** 判断两组制表位是否一致，避免多段不同配置时工具栏误回显。 */
+function isSameTabStops(
+  left: IElement['tabStops'] | null,
+  right: IElement['tabStops'] | null
+) {
+  if (!left?.length && !right?.length) return true
+  if (!left?.length || !right?.length || left.length !== right.length) {
+    return false
+  }
+  for (let index = 0; index < left.length; index++) {
+    if (
+      left[index].position !== right[index].position ||
+      (left[index].alignment || 'left') !== (right[index].alignment || 'left')
+    ) {
+      return false
+    }
+  }
+  return true
 }
 
 /**

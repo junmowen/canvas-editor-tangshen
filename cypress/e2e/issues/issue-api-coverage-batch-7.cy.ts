@@ -53,8 +53,8 @@ describe('issue API coverage batch 7', () => {
       })
 
       const draw = (editor as any).draw
-      const elementList = draw.getOriginalMainElementList()
-      const positionList = draw.getPosition().getOriginalPositionList()
+      const elementList = draw.getObjectResolver().getOriginalMainElementList()
+      const positionList = draw.getCoordinate().getOriginalPositionList()
       const valueIndex = elementList.findIndex(
         (element: any) =>
           element.control?.conceptId === 'clickedControl' &&
@@ -192,7 +192,7 @@ describe('issue API coverage batch 7', () => {
       })
 
       const worldIndex = (editor as any).draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .findIndex((element: any) => element.value === 'W')
       expect(worldIndex).to.be.greaterThan(-1)
 

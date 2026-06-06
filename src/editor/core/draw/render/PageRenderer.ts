@@ -91,7 +91,7 @@ export class PageRenderer {
   /**
    * 输入态 canvas 快速重绘。
    *
-   * 优先做 chunk / 段落真实局部重排；如果 chunk 不安全，再兜底尝试单行重绘。
+   * 优先做 chunk / 段落真实局部重排；如果 chunk 不安全，再尝试单行重绘。
    * 失败时不做假预览，等待后台 layout。
    */
   public renderTypingChunkPreview(payload: {
@@ -347,7 +347,7 @@ export class PageRenderer {
             // 先从画布池挂载画布
             this.draw.getPageCanvasHost().mountCanvas(index)
 
-            const currentPositionList = this.draw.getCoordinate().getLayoutMainPositionList()
+            const currentPositionList = this.draw.getCoordinate().getMainPositionList()
             const currentElementList = this.draw.getObjectResolver().getLayoutMainElementList()
             const currentRowList = this.draw.getPageRowList()[index]
 
@@ -375,7 +375,7 @@ export class PageRenderer {
   }
 
   public immediateRender() {
-    const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
+    const positionList = this.draw.getCoordinate().getMainPositionList()
     const elementList = this.draw.getObjectResolver().getLayoutMainElementList()
     for (let i = 0; i < this.draw.getPageRowList().length; i++) {
       this.draw.getPageCanvasHost().mountCanvas(i)
@@ -390,7 +390,7 @@ export class PageRenderer {
 
   /** 仅渲染当前视口内可见的页面。 */
   public renderVisiblePages() {
-    const positionList = this.draw.getCoordinate().getLayoutMainPositionList()
+    const positionList = this.draw.getCoordinate().getMainPositionList()
     const elementList = this.draw.getObjectResolver().getLayoutMainElementList()
     const searchRenderPageNoList =
       this.pageSearchRenderer.consumeRenderPageNoList()

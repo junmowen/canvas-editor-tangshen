@@ -109,7 +109,7 @@ describe('area and table API regressions', () => {
         main: [{ value: 'before grouped after' }]
       })
 
-      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const startIndex = elementList.findIndex(
         (element: any) => element.value === 'g'
       )
@@ -196,8 +196,8 @@ describe('area and table API regressions', () => {
       })
 
       const draw = (editor as any).draw
-      const elementList = draw.getOriginalMainElementList()
-      const positionList = draw.getPosition().getOriginalPositionList()
+      const elementList = draw.getObjectResolver().getOriginalMainElementList()
+      const positionList = draw.getCoordinate().getOriginalPositionList()
       const areaIndex = elementList.findIndex(
         (element: any) => element.areaId === 'hover-area'
       )
@@ -276,7 +276,7 @@ describe('area and table API regressions', () => {
 
       const draw = (editor as any).draw
       const cellBounds = draw
-        .getTableLayoutSnapshotAccessor()
+        .getServices().tableLayoutSnapshotAccessor
         .getFragmentCellBounds('hit-table')
         .find((bounds: any) => bounds.trIndex === 0 && bounds.tdIndex === 1)
       expect(cellBounds).to.exist

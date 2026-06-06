@@ -79,7 +79,21 @@ export class ChunkPatchGuard {
     if (!chunkStartPosition) {
       return this.fail('position-miss')
     }
-    const margins = this.draw.getMargins()
+    const margins = this.draw.getMargins(pageNo)
+    const sourceRow = oldChunkRows[0]
+    const sourceColumn = this.draw
+      .getServices()
+      .pageColumnLayoutService.getColumn(
+        pageNo,
+        sourceRow.columnIndex || 0,
+        sourceRow.columns
+      )
+    const innerWidth = this.draw
+      .getServices()
+      .pageColumnLayoutService.getMeasurementColumnWidth(
+        pageNo,
+        sourceRow.columns
+      )
     // 页级 chunk 从正文页顶重新测量；段落 chunk 仍沿用原 chunk 首字符 Y。
     const startY =
       chunk.kind === 'page'
@@ -95,9 +109,9 @@ export class ChunkPatchGuard {
         endIndex,
         oldEndIndex,
         insertedCount,
-        startX: margins[3],
+        startX: sourceColumn.rect.x,
         startY,
-        innerWidth: this.draw.getInnerWidth()
+        innerWidth
       },
       result: { patched: true }
     }

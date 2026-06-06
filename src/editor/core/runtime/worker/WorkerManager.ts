@@ -40,7 +40,7 @@ export class WorkerManager {
       new CatalogWorker(),
       {
         elementList: this.getOriginalMainElementListPayload(),
-        positionList: this.draw.getCoordinate().getLayoutMainPositionList()
+        positionList: this.draw.getCoordinate().getMainPositionList()
       },
       {
         isTerminateAfterSettled: true

@@ -32,6 +32,8 @@ export interface ICurrentPosition {
   isTable?: boolean
   /** 是否直接命中，用于控制当前流程的判断分支。 */
   isDirectHit?: boolean
+  /** 是否命中公式边缘扩展区，用于区分落光标和打开公式编辑器。 */
+  isFormulaEdgeHit?: boolean
   /** forcenot右侧boundary命中开关，用于控制当前流程的判断分支。 */
   forceNotRightBoundaryHit?: boolean
   /** 表格行索引，用于定位当前表格内的目标行。 */

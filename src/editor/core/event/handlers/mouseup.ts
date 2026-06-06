@@ -1,6 +1,7 @@
 import { CanvasEvent } from '../CanvasEvent'
 import { debugMouseup } from '../debug/mouseup'
 import { runDragCommitIntent } from '../pointer/intents/drag-drop/DragCommitIntent'
+import { replayMousedownAfterUncommittedDrag } from '../pointer/policy/DragMouseupRecoveryPolicy'
 
 /**
  * 处理鼠标抬起事件。
@@ -18,12 +19,7 @@ export function mouseup(evt: MouseEvent, host: CanvasEvent) {
     const coordinates = draw.getCoordinate().getPointerCoordinates(evt, session.lastPointerCoordinates)
     session.lastPointerCoordinates = coordinates
     if (runDragCommitIntent({ host, evt, coordinates })) return
-    if (session.isAllowDrag) {
-      // 兜底处理拖拽结束但仍停留在 drag 状态的异常分支。
-      if (session.dragSnapshot.range?.startIndex !== session.dragSnapshot.range?.endIndex) {
-        host.mousedown(evt)
-      }
-    }
+    replayMousedownAfterUncommittedDrag({ host, evt })
   } finally {
     debugMouseup(evt, host, 'after')
   }

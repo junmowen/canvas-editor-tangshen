@@ -5,10 +5,7 @@ import {
 } from '../../../../dataset/constant/Element'
 import { IElement } from '../../../../interface/Element'
 import { insertIntoActiveControl } from '../../../modules/control/interaction/insertIntoActiveControl'
-import {
-  shouldCopyStyleForEnterAnchor,
-  shouldPreventEnterInActiveControl
-} from '../../../modules/control/policy/ControlEnterPolicy'
+import { shouldCopyStyleForEnterAnchor } from '../../../modules/control/policy/ControlEnterPolicy'
 import {
   applyListWrapForShiftEnter,
   tryUnsetEmptyListOnEnter
@@ -16,6 +13,7 @@ import {
 import { normalizeAreaContextForEnter } from '../../../modules/area/interaction/AreaEnterPolicy'
 import { shouldCopyEnterAnchorAcrossTitleBoundary } from '../../../modules/title/interaction/TitleEnterPolicy'
 import { CanvasEvent } from '../../CanvasEvent'
+import { tryRecoverPreventedControlEnter } from '../policy/EnterControlRecoveryPolicy'
 import { insertWithContext } from '../shared/insertWithContext'
 
 export function runEnterIntent(evt: KeyboardEvent, host: CanvasEvent) {
@@ -74,7 +72,7 @@ export function runEnterIntent(evt: KeyboardEvent, host: CanvasEvent) {
   }
 
   const control = draw.getControl()
-  if (shouldPreventEnterInActiveControl(control)) {
+  if (tryRecoverPreventedControlEnter({ draw, control, endIndex })) {
     evt.preventDefault()
     return
   }

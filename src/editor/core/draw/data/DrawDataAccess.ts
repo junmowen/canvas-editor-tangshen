@@ -24,8 +24,8 @@ export class DrawDataAccess {
    *
    * @returns 页眉区域的元素数组
    */
-  public getHeaderElementList(): IElement[] {
-    return this.draw.getComponents().header.getElementList()
+  public getHeaderElementList(pageNo?: number): IElement[] {
+    return this.draw.getComponents().header.getElementList(pageNo)
   }
 
   /**
@@ -33,8 +33,8 @@ export class DrawDataAccess {
    *
    * @returns 页脚区域的元素数组
    */
-  public getFooterElementList(): IElement[] {
-    return this.draw.getComponents().footer.getElementList()
+  public getFooterElementList(pageNo?: number): IElement[] {
+    return this.draw.getComponents().footer.getElementList(pageNo)
   }
 
   /**
@@ -58,11 +58,11 @@ export class DrawDataAccess {
     const zoneManager = this.draw.getZone()
     // 如果页眉区域激活，返回页眉元素列表
     if (zoneManager.isHeaderActive()) {
-      return this.getHeaderElementList()
+      return this.getHeaderElementList(zoneManager.getZonePageNo())
     }
     // 如果页脚区域激活，返回页脚元素列表
     if (zoneManager.isFooterActive()) {
-      return this.getFooterElementList()
+      return this.getFooterElementList(zoneManager.getZonePageNo())
     }
     // 否则返回正文区域的原始元素列表
     return this.draw.getObjectResolver().getOriginalMainElementList()
@@ -152,11 +152,15 @@ export class DrawDataAccess {
     const zoneManager = this.draw.getZone()
     // 如果页眉区域激活，返回页眉行列表
     if (zoneManager.isHeaderActive()) {
-      return this.draw.getComponents().header.getRowList()
+      return this.draw.getComponents().header.getRowList(
+        zoneManager.getZonePageNo()
+      )
     }
     // 如果页脚区域激活，返回页脚行列表
     if (zoneManager.isFooterActive()) {
-      return this.draw.getComponents().footer.getRowList()
+      return this.draw.getComponents().footer.getRowList(
+        zoneManager.getZonePageNo()
+      )
     }
     // 否则返回运行时行列表
     return this.draw.getRuntime().getRuntimeRowList()

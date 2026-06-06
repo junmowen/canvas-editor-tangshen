@@ -219,6 +219,56 @@ const {
 const locale = await instance.command.getLocale()
 ```
 
+## getOoxmlPackageParts
+
+功能：获取当前文档的 OOXML package 部件集合，可用于调试 DOCX XML、接入自定义打包或对比导出结果。
+
+用法：
+
+```javascript
+const parts = instance.command.getOoxmlPackageParts()
+```
+
+返回值：
+
+```typescript
+interface IOoxmlPackageParts {
+  '[Content_Types].xml': string
+  '_rels/.rels': string
+  'word/document.xml': string
+  'word/_rels/document.xml.rels': string
+  'word/styles.xml': string
+  'word/fontTable.xml': string
+  'word/numbering.xml': string
+  'word/settings.xml': string
+  'docProps/core.xml': string
+  'docProps/app.xml': string
+  [path: string]: string | Uint8Array
+}
+```
+
+- `word/header*.xml`、`word/footer*.xml`：存在页眉页脚作用域时生成。
+- `word/media/*`：存在图片、签章等媒体资源时生成，值为二进制字节。
+- 调用前会刷新当前异步插入事务，返回的是当前编辑器状态对应的 package 快照。
+
+## getOoxmlDocxBlob
+
+功能：获取当前文档的 DOCX Blob。
+
+用法：
+
+```javascript
+const blob = instance.command.getOoxmlDocxBlob()
+```
+
+返回值：
+
+```typescript
+Blob
+```
+
+返回的 Blob 类型为 DOCX MIME，可用于下载、上传或后续打印链路。
+
 ## getGroupIds
 
 功能：获取所有成组 id

@@ -10,7 +10,7 @@ export interface ICanvasPoolAcquireOptions {
   height: number
   /** 设备像素比，用于计算 backing store 尺寸。 */
   dpr: number
-  /** 是否创建透明上下文，当前阶段默认保持透明以兼容旧清屏行为。 */
+  /** 是否创建透明上下文，默认保持透明以匹配当前清屏语义。 */
   alpha?: boolean
 }
 

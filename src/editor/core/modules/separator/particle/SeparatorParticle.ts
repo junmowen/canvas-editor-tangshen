@@ -38,7 +38,8 @@ export class SeparatorParticle {
     element: IRowElement,
     x: number,
     y: number,
-    zone?: EditorZone
+    zone?: EditorZone,
+    pageNo = 0
   ) {
     // 保存当前上下文状态
     ctx.save()
@@ -47,12 +48,13 @@ export class SeparatorParticle {
       scale,
       separator: { lineWidth, strokeStyle }
     } = this.options
-    const margins = this.draw.getMargins()
+    // 页眉页脚分隔线要跟随当前页边距，镜像页边距下左右端点不能沿用首页。
+    const margins = this.draw.getMargins(pageNo)
     const marginIndicatorSize =
       this.draw.getServices().metricsService.getMarginIndicatorSize()
     const edgeGap = marginIndicatorSize / 4
     const renderedWidth = (element.width || 0) * scale
-    const innerWidth = this.draw.getInnerWidth()
+    const innerWidth = this.draw.getInnerWidth(pageNo)
     const isHeaderFooterSeparator =
       (zone === EditorZone.HEADER || zone === EditorZone.FOOTER) &&
       renderedWidth >= innerWidth - 1
@@ -71,7 +73,7 @@ export class SeparatorParticle {
     // 计算 Y 坐标（四舍五入避免绘制模糊）
     const offsetY = Math.round(
       isHeaderFooterSeparator
-        ? this.resolveHeaderFooterSeparatorY(y, edgeGap, zone)
+        ? this.resolveHeaderFooterSeparatorY(y, edgeGap, zone, pageNo)
         : y
     )
     // 将原点移动到线条中心
@@ -90,9 +92,11 @@ export class SeparatorParticle {
   private resolveHeaderFooterSeparatorY(
     y: number,
     edgeGap: number,
-    zone?: EditorZone
+    zone?: EditorZone,
+    pageNo = 0
   ): number {
-    const margins = this.draw.getMargins()
+    // 页眉页脚分隔线的上下端点同样按当前页边距计算。
+    const margins = this.draw.getMargins(pageNo)
     if (zone === EditorZone.HEADER) {
       return margins[0] + edgeGap
     }

@@ -91,9 +91,9 @@ export class DateControl implements IControlInstance {
    * @returns 控件值的起始和结束索引，不存在时返回 null
    */
   public getValueRange(context: IControlContext = {}): [number, number] | null {
-    const elementList = context.elementList || this.control.getElementList()
+    const elementList = context.elementList || this.control.getDraw().getObjectResolver().getElementList()
     const { startIndex } =
-      context.range || this.control.getEditBoundaryRange()
+      context.range || this.control.getDraw().getRange().getEditBoundaryRange()
     return resolveControlValueBoundary({ elementList, startIndex })
   }
 
@@ -104,9 +104,9 @@ export class DateControl implements IControlInstance {
    * @returns 控件值元素列表
    */
   public getValue(context: IControlContext = {}): IElement[] {
-    const elementList = context.elementList || this.control.getElementList()
+    const elementList = context.elementList || this.control.getDraw().getObjectResolver().getElementList()
     const { startIndex } =
-      context.range || this.control.getEditBoundaryRange()
+      context.range || this.control.getDraw().getRange().getEditBoundaryRange()
     return collectControlValueElementList({ elementList, startIndex })
   }
 
@@ -130,8 +130,8 @@ export class DateControl implements IControlInstance {
     ) {
       return -1
     }
-    const elementList = context.elementList || this.control.getElementList()
-    const range = context.range || this.control.getEditBoundaryRange()
+    const elementList = context.elementList || this.control.getDraw().getObjectResolver().getElementList()
+    const range = context.range || this.control.getDraw().getRange().getEditBoundaryRange()
     const targetResolver = this.draw.getTargetResolver()
     // 收缩边界到Value内
     this.control.shrinkBoundary(context)
@@ -202,8 +202,8 @@ export class DateControl implements IControlInstance {
     ) {
       return
     }
-    const elementList = context.elementList || this.control.getElementList()
-    const range = context.range || this.control.getEditBoundaryRange()
+    const elementList = context.elementList || this.control.getDraw().getObjectResolver().getElementList()
+    const range = context.range || this.control.getDraw().getRange().getEditBoundaryRange()
     // 样式赋值元素-默认值的第一个字符样式，否则取默认样式
     const valueElement = this.getValue(context)[0]
     const startElement = this.draw.getTargetResolver().resolveRangeElement({
@@ -249,8 +249,8 @@ export class DateControl implements IControlInstance {
     if (this.control.getIsDisabledControl()) {
       return null
     }
-    const elementList = this.control.getElementList()
-    const range = this.control.getEditBoundaryRange()
+    const elementList = this.control.getDraw().getObjectResolver().getElementList()
+    const range = this.control.getDraw().getRange().getEditBoundaryRange()
     // 收缩边界到Value内
     this.control.shrinkBoundary()
     const { startIndex, endIndex } = range
@@ -323,11 +323,11 @@ export class DateControl implements IControlInstance {
       return -1
     }
     this.control.shrinkBoundary()
-    const { startIndex, endIndex } = this.control.getEditBoundaryRange()
+    const { startIndex, endIndex } = this.control.getDraw().getRange().getEditBoundaryRange()
     if (startIndex === endIndex) {
       return startIndex
     }
-    const elementList = this.control.getElementList()
+    const elementList = this.control.getDraw().getObjectResolver().getElementList()
     return this.control.removeControlValueSegment({
       deleteIndex: startIndex + 1,
       deleteCount: endIndex - startIndex,
@@ -344,11 +344,11 @@ export class DateControl implements IControlInstance {
     ) {
       return
     }
-    const { endIndex } = this.control.getEditBoundaryRange()
+    const { endIndex } = this.control.getDraw().getRange().getEditBoundaryRange()
     const position = resolvePositionAtIndex(this.control.getDraw(), endIndex)
     if (!position) return
     const elementList = this.draw.getObjectResolver().getElementList()
-    const { startIndex } = this.control.getEditBoundaryRange()
+    const { startIndex } = this.control.getDraw().getRange().getEditBoundaryRange()
     // 日期弹窗只在当前光标仍属于同一控件结构时才打开。
     const controlBoundary = this.draw.getTargetResolver().resolveControlBoundaryElements({
       range: {

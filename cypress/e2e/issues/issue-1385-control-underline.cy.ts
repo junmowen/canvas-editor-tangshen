@@ -95,7 +95,7 @@ describe('issue #1385 - control underline rendering', () => {
         ]
       })
 
-      const data = (editor as any).draw.getOriginalMainElementList()
+      const data = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const valueElements = data.filter(
         element => element.controlComponent === 'value'
       )
@@ -136,7 +136,7 @@ describe('issue #1385 - control underline rendering', () => {
         ]
       })
       const controlId = (editor as any).draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .find((element: any) => element.controlId).controlId
 
       editor.command.executeSetControlValue({
@@ -144,7 +144,7 @@ describe('issue #1385 - control underline rendering', () => {
         value: '98175'
       })
 
-      const data = (editor as any).draw.getOriginalMainElementList()
+      const data = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const valueElements = data.filter(
         element => element.controlComponent === 'value'
       )
@@ -180,11 +180,11 @@ describe('issue #1385 - control underline rendering', () => {
       })
 
       const draw = (editor as any).draw
-      draw.flushScheduledFrameRender()
+      draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
       const valueElementIndex = draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .findIndex((element: any) => element.controlComponent === 'value')
-      const position = draw.getPosition().getOriginalPositionList()[
+      const position = draw.getCoordinate().getOriginalPositionList()[
         valueElementIndex
       ]
       const imageList = await editor.command.getImage({
@@ -229,13 +229,13 @@ describe('issue #1385 - control underline rendering', () => {
       })
 
       const draw = (editor as any).draw
-      draw.flushScheduledFrameRender()
+      draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
       const placeholderIndex = draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .findIndex(
           (element: any) => element.controlComponent === 'placeholder'
         )
-      const position = draw.getPosition().getOriginalPositionList()[
+      const position = draw.getCoordinate().getOriginalPositionList()[
         placeholderIndex
       ]
       const imageList = await editor.command.getImage({
@@ -271,7 +271,7 @@ describe('issue #1385 - control underline rendering', () => {
         }
       } as any)
 
-      const data = (editor as any).draw.getOriginalMainElementList()
+      const data = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const controlElement = data.find((element: any) => element.controlId)
       expect(controlElement?.control?.underline).to.eq(true)
       expect(editor.command.getHTML().main).to.contain(

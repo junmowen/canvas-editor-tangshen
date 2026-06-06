@@ -178,8 +178,27 @@
   position: relative;
 }
 
+.menu-item__control-business {
+  position: relative;
+}
+
 .menu-item__control i {
   background-image: url('../assets/images/control.svg');
+}
+
+.menu-item__control-business i {
+  background-image: url('../assets/images/control.svg');
+}
+
+.menu-item__control-business::after {
+  position: absolute;
+  right: -2px;
+  bottom: -1px;
+  content: 'API';
+  font-size: 9px;
+  line-height: 10px;
+  color: #2563eb;
+  background: #fff;
 }
 
 .menu-item__checkbox i {
@@ -192,6 +211,478 @@
 
 .menu-item__latex i {
   background-image: url('../assets/images/latex.svg');
+}
+
+.menu-item__latex {
+  position: relative;
+}
+
+.menu-item__latex .formula-menu-options {
+  width: 180px;
+  overflow: visible;
+  box-sizing: border-box;
+  z-index: 20;
+}
+
+.menu-item__latex .formula-menu-options li {
+  line-height: 20px;
+  white-space: normal;
+  word-break: break-all;
+}
+
+.menu-item__latex .formula-menu-category {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.menu-item__latex .formula-menu-category::after {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  width: 12px;
+  height: 100%;
+  content: '';
+}
+
+.formula-menu-options--submenu-left .formula-menu-category::after {
+  right: 100%;
+  left: unset;
+}
+
+.formula-menu-options--submenu-left .formula-menu-category {
+  position: static;
+}
+
+.formula-menu-options--submenu-left .formula-menu-category::after {
+  display: none;
+}
+
+.formula-menu-category__arrow {
+  color: #8a929f;
+}
+
+.formula-menu-sublist {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  display: none;
+  width: 260px;
+  max-height: 360px;
+  overflow: auto;
+  padding: 10px;
+  margin: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #e2e6ed;
+  border-radius: 2px;
+  box-shadow: 0 2px 12px 0 rgb(56 56 56 / 20%);
+}
+
+.formula-menu-options--submenu-left .formula-menu-sublist {
+  right: 100%;
+  left: unset;
+  top: 10px;
+  max-height: min(640px, calc(100vh - 80px));
+}
+
+.menu-item__latex .formula-menu-category:hover .formula-menu-sublist {
+  display: block;
+}
+
+.menu-item__latex .formula-menu-category.active .formula-menu-sublist {
+  display: block;
+}
+
+.formula-menu-sublist li {
+  min-height: 38px;
+  box-sizing: border-box;
+}
+
+.formula-menu-sublist__label {
+  display: block;
+  color: #1f2937;
+}
+
+.formula-menu-sublist__preview {
+  display: block;
+  margin-top: 2px;
+  max-width: 100%;
+  min-height: 18px;
+  overflow: hidden;
+}
+
+.formula-menu-sublist__preview img {
+  display: block;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.formula-menu-sublist__preview code {
+  color: #6b7280;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.formula-inline-editor {
+  position: absolute;
+  z-index: 6;
+  box-sizing: border-box;
+  padding: 3px 6px;
+  background: #fff;
+  border: 1px solid #2563eb;
+  box-shadow: none;
+  font-family: "Times New Roman", "Cambria Math", "Microsoft YaHei", sans-serif;
+}
+
+.formula-inline-editor__input {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 24px;
+  color: #111827;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.formula-inline-editor__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.formula-inline-editor__field {
+  display: inline-block;
+  min-width: 10px;
+  padding: 0 1px;
+  outline: 0;
+  border-radius: 2px;
+  white-space: pre;
+}
+
+.formula-inline-editor__field:focus {
+  background: #dbeafe;
+}
+
+.formula-inline-editor__fraction {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 2px;
+  vertical-align: middle;
+}
+
+.formula-inline-editor__fraction-numerator {
+  display: inline-flex;
+  justify-content: center;
+  min-width: 22px;
+  padding: 0 3px 1px;
+  border-bottom: 1px solid #111827;
+}
+
+.formula-inline-editor__fraction-denominator {
+  display: inline-flex;
+  justify-content: center;
+  min-width: 22px;
+  padding: 1px 3px 0;
+}
+
+.formula-inline-editor__sqrt {
+  display: inline-flex;
+  align-items: stretch;
+  margin: 0 2px;
+}
+
+.formula-inline-editor__sqrt-sign {
+  display: inline-flex;
+  align-items: flex-end;
+  padding-right: 1px;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.formula-inline-editor__sqrt-radicand {
+  display: inline-flex;
+  align-items: flex-end;
+  /* 根号横线下方保留真实高度，避免编辑态上标被相对定位抬到横线上。 */
+  min-height: 22px;
+  padding: 6px 2px 1px;
+  border-top: 1px solid #111827;
+}
+
+.formula-inline-editor__script {
+  display: inline-block;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.formula-inline-editor__sqrt-radicand .formula-inline-editor__script {
+  /* 根式内部的上下标需要占用顶部空间，否则根号横线会和上标重叠。 */
+  padding-top: 0.45em;
+}
+
+.formula-inline-editor__script sup,
+.formula-inline-editor__script sub {
+  position: relative;
+  display: inline-block;
+  font-size: 70%;
+  line-height: 1;
+}
+
+.formula-inline-editor__script-sup {
+  top: -0.55em;
+}
+
+.formula-inline-editor__script-sub {
+  top: 0.3em;
+}
+
+.formula-inline-editor__field--script {
+  min-width: 6px;
+}
+
+.formula-inline-editor__subsup {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.formula-inline-editor__subsup-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-left: 1px;
+  font-size: 70%;
+  line-height: 1;
+}
+
+.formula-inline-editor__subsup-sup,
+.formula-inline-editor__subsup-sub {
+  display: block;
+  min-height: 0.9em;
+}
+
+.formula-dialog-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  background: rgb(0 0 0 / 45%);
+}
+
+.formula-dialog-container {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.formula-dialog {
+  width: 720px;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 48px);
+  background: #fff;
+  border: 1px solid #dfe4ec;
+  box-shadow: 0 12px 36px rgb(15 23 42 / 22%);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.formula-dialog__title {
+  height: 52px;
+  padding: 0 20px;
+  border-bottom: 1px solid #e5e9f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.formula-dialog__title button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.formula-dialog__body {
+  min-height: 360px;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+}
+
+.formula-dialog__panel {
+  padding: 16px;
+  border-right: 1px solid #e5e9f0;
+  overflow: auto;
+}
+
+.formula-dialog__editor {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.formula-dialog__section-title {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.formula-dialog__template-list,
+.formula-dialog__domain-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.formula-dialog__template,
+.formula-dialog__domain-list button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #d8dee8;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+}
+
+.formula-dialog__template:hover,
+.formula-dialog__domain-list button:hover,
+.formula-dialog__domain-list button.active {
+  border-color: #4b8ff7;
+  color: #1d4ed8;
+  background: #eef5ff;
+}
+
+.formula-dialog__search {
+  width: 100%;
+  height: 30px;
+  box-sizing: border-box;
+  border: 1px solid #d8dee8;
+  padding: 0 8px;
+  margin-bottom: 10px;
+}
+
+.formula-dialog__symbol-list {
+  max-height: 170px;
+  overflow: auto;
+  display: grid;
+  gap: 8px;
+}
+
+.formula-dialog__symbol {
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 1px solid #d8dee8;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.formula-dialog__symbol.active,
+.formula-dialog__symbol:hover {
+  border-color: #4b8ff7;
+  background: #eef5ff;
+}
+
+.formula-dialog__symbol span {
+  display: block;
+  color: #1f2937;
+  font-size: 13px;
+}
+
+.formula-dialog__symbol code {
+  display: block;
+  margin-top: 3px;
+  color: #6b7280;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.formula-dialog__mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #374151;
+}
+
+.formula-dialog__mode select {
+  height: 30px;
+  border: 1px solid #d8dee8;
+  background: #fff;
+}
+
+.formula-dialog__textarea {
+  width: 100%;
+  min-height: 145px;
+  box-sizing: border-box;
+  border: 1px solid #d8dee8;
+  padding: 10px;
+  font-size: 13px;
+  line-height: 20px;
+  resize: vertical;
+}
+
+.formula-dialog__preview {
+  min-height: 64px;
+  padding: 12px;
+  border: 1px solid #d8dee8;
+  background: #f8fafc;
+  color: #111827;
+  word-break: break-all;
+  white-space: pre-wrap;
+  display: flex;
+  align-items: center;
+  overflow: auto;
+}
+
+.formula-dialog__preview-image {
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.formula-dialog__preview-error {
+  color: #b42318;
+}
+
+.formula-dialog__footer {
+  height: 56px;
+  border-top: 1px solid #e5e9f0;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.formula-dialog__footer button {
+  height: 32px;
+  min-width: 76px;
+  border: 1px solid #d8dee8;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+}
+
+.formula-dialog__footer .formula-dialog__confirm {
+  border-color: #4b8ff7;
+  background: #4b8ff7;
+  color: #fff;
 }
 
 .menu-item__date {
@@ -211,7 +702,7 @@
 }
 
 .menu-item .menu-item__control .options {
-  width: 55px;
+  width: 92px;
 }
 
 .menu-item__search {

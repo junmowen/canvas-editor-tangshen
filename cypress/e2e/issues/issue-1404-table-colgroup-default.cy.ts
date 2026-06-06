@@ -52,9 +52,9 @@ describe('issue #1404 - table colgroup default width', () => {
         expect(col.width).to.be.closeTo(expectedColWidth, 0.001)
       })
 
-      ;(draw as any).flushScheduledFrameRender()
+      ;(draw as any).getServices().renderInvalidationManager.flushScheduledFrameRender()
       const firstRowBounds = (draw as any)
-        .getTableLayoutSnapshotAccessor()
+        .getServices().tableLayoutSnapshotAccessor
         .getFragmentCellBounds(table.id)
         .filter((item: any) => item.trIndex === 0)
 

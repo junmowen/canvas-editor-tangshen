@@ -54,12 +54,12 @@ export function resolveSelectionStartState(
   } = boundary
   // 命中结果通常只给逻辑索引，这里统一回填当前/目标坐标，避免各处自己做兜底。
   const currentPosition = resolvePositionAtIndex(draw, currentLocalIndex, {
-    fallbackToLast: true
+    useLastPositionWhenMissing: true
   })
   const hitTargetPosition =
     hitTargetIndex !== undefined
       ? resolvePositionAtIndex(draw, hitTargetIndex, {
-          fallbackToLast: true
+          useLastPositionWhenMissing: true
         }) || currentPosition
       : currentPosition
   const isRepeatCollapsedHit =
@@ -105,7 +105,7 @@ export function resolveSelectionStartState(
     hitTargetPosition,
     currentIndex,
     hitTargetIndex,
-    fallbackIndex: currentIndex
+    defaultIndex: currentIndex
   })
   const isRepeatCollapsedTextHit = !!(
     isRepeatCollapsedHit &&

@@ -6,8 +6,7 @@ import type { IRenderTask } from '../types/RenderTask'
 /**
  * Overlay2D 渲染引擎。
  *
- * 该引擎专门承接 overlay 层任务，后续可独立扩展成局部重绘、脏矩形合并、
- * 高优先级交互反馈等专用路径。
+ * 该引擎专门承接 overlay 层任务，集中处理清理、选区和高优先级交互反馈。
  */
 export class Overlay2DRenderEngine implements IRenderBackend {
   /** 渲染引擎名称，用于后端调度统计。 */
@@ -28,7 +27,7 @@ export class Overlay2DRenderEngine implements IRenderBackend {
   /**
    * 执行 overlay 渲染任务。
    *
-   * 当前阶段仍复用同步 2D 绘制回调，但后续可以在这里接入局部清理和脏矩形合并。
+   * Overlay 任务通过同步 2D 绘制回调执行。
    *
    * @param surface - 目标渲染 surface
    * @param task - 渲染任务描述

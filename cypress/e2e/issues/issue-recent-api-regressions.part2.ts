@@ -13,9 +13,9 @@ import { TitleLevel } from '../../../src/editor/dataset/enum/Title'
 import { WatermarkType } from '../../../src/editor/dataset/enum/Watermark'
 import {
   createDomFromElementList,
-  getElementListByHTML,
-  getTextFromElementList
-} from '../../../src/editor/utils/element'
+  getElementListByHTML
+} from '../../../src/editor/utils/elementDom'
+import { getTextFromElementList } from '../../../src/editor/utils/elementText'
 
 const transparentPng =
   'data:image/png;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
@@ -685,7 +685,7 @@ describe('recent issue API regressions', () => {
       )
 
       const range = editor.command.getRange()
-      const endIndex = (editor as any).draw.getOriginalMainElementList().length - 1
+      const endIndex = (editor as any).draw.getObjectResolver().getOriginalMainElementList().length - 1
       expect(range.startIndex).to.eq(endIndex)
       expect(range.endIndex).to.eq(endIndex)
       expect(editor.command.getCursorPosition()?.index).to.eq(endIndex)

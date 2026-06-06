@@ -4,8 +4,8 @@ import { TitleLevel } from '../../../src/editor/dataset/enum/Title'
 
 function getOriginalRowHeights(editor: Editor) {
   const draw = (editor as any).draw
-  draw.flushScheduledFrameRender()
-  return draw.getOriginalRowList().map((row: any) => row.height)
+  draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
+  return draw.getObjectResolver().getOriginalRowList().map((row: any) => row.height)
 }
 
 function getFirstRowHeight(editor: Editor, main: any[]) {

@@ -158,7 +158,7 @@ describe('issue #425 - control inserted in text control value', () => {
         ]
       })
 
-      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const insertIndex = elementList.findIndex((element: any) => element.value === '关')
       expect(insertIndex).to.be.greaterThan(-1)
       editor.command.executeSetRange(insertIndex, insertIndex)
@@ -251,7 +251,7 @@ describe('issue #425 - control inserted in text control value', () => {
       })
 
       const ageControl = (editor as any).draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .find((element: any) => element.control?.conceptId === 'age')
       expect(ageControl?.controlId).to.be.a('string')
       editor.command.executeSetControlValue({
@@ -296,7 +296,7 @@ describe('issue #425 - control inserted in text control value', () => {
         ]
       })
 
-      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const placeholderIndex = elementList.findIndex(
         (element: any) => element.value === '其'
       )
@@ -318,7 +318,7 @@ describe('issue #425 - control inserted in text control value', () => {
       )
       expect(getMainText(editor)).to.eq('{22}')
       const formattedControlElementList = (editor as any).draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .filter((element: any) => element.controlId)
       expect(formattedControlElementList.some((element: any) => element.parentControlId)).to.eq(
         true
@@ -330,7 +330,7 @@ describe('issue #425 - control inserted in text control value', () => {
       })
       expect(getMainText(editor)).to.eq('{22}')
       const roundTripControlElementList = (editor as any).draw
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
         .filter((element: any) => element.controlId)
       expect(roundTripControlElementList.some((element: any) => element.parentControlId)).to.eq(
         true
@@ -358,7 +358,7 @@ describe('issue #425 - control inserted in text control value', () => {
         ]
       })
 
-      const elementList = (editor as any).draw.getOriginalMainElementList()
+      const elementList = (editor as any).draw.getObjectResolver().getOriginalMainElementList()
       const index = elementList.findIndex((element: any) => element.value === '关')
       expect(index).to.be.greaterThan(-1)
       editor.command.executeSetRange(index, index)

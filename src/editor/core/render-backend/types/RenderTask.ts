@@ -39,7 +39,7 @@ export interface IWebGLImageRenderTaskPayload {
   width: number
   /** 输出 CSS 逻辑高度。 */
   height: number
-  /** 可选基础图片滤镜，由 WebGL shader 和 Canvas2D fallback 共同消费。 */
+  /** 可选基础图片滤镜，由 WebGL shader 和 Canvas2D 备用路径共同消费。 */
   filter?: IImageWebGLFilter
   /** 显式标记当前任务为高分辨率源图降采样输出。 */
   downsample?: boolean
@@ -69,6 +69,6 @@ export interface IRenderTask {
   pagePayload?: IDrawPagePayload
   /** 独立 WebGL 图片任务输入，不参与正文文字排版。 */
   webglImage?: IWebGLImageRenderTaskPayload
-  /** 当前阶段的同步执行回调，后续可替换为 engine 内部实现或 worker 消息。 */
+  /** 同步执行回调，供 Canvas2D、Overlay 和备用路径执行具体绘制。 */
   execute?: RenderTaskExecutor
 }

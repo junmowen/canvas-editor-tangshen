@@ -210,7 +210,7 @@ export class RangeManagerQuery extends RangeManagerState {
    *
    * 双击取词、表格分页碎片或懒渲染状态下，公开 range 可能是逻辑单元格索引，
    * 不一定能直接作为主文档 positionList / elementList 下标使用；此时必须返回 null，
-   * 让上层取词逻辑降级，而不是继续读取 undefined.value。
+   * 让上层取词逻辑安全退出，而不是继续读取 undefined.value。
    */
 
   private isValidPositionElementRange(

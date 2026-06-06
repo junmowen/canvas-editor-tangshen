@@ -2,13 +2,13 @@
 
 ### 6.4 当前核心缺口
 
-当前已经完成的是资源、调度、fallback 和统计基座，还不能算真正完成多引擎渲染。核心缺口如下：
+当前已经完成的是资源、调度、回退 和统计基座，还不能算真正完成多引擎渲染。核心缺口如下：
 
 1. `OffscreenCanvasRenderEngine` 目前仍复用主线程 `task.execute`，没有真实 worker 绘制、没有 `ImageBitmap` 回传，也没有 worker 队列。
 2. 现有 `PageContentPainter`、`RowRenderer`、各种 particle 和 frame painter 仍依赖 `Draw`、DOM、运行时对象和不可序列化上下文，不能直接在 worker 中执行。
 3. 缺少 worker 可消费的页面渲染快照或绘制命令协议，无法把一页的布局、样式、图片、字体和装饰状态稳定传给 worker。
 4. 缺少 worker 结果合成协议，包括 jobId、内容版本、DPR、尺寸、资源版本校验和过期结果丢弃。
-5. 缺少真正的任务调度器：当前页提升、非当前页排队、并发上限、取消、超时、降级和滚动方向预取都还没有进入核心实现。
+5. 缺少真正的任务调度器：当前页提升、非当前页排队、并发上限、取消、超时、备用路径和滚动方向预取都还没有进入核心实现。
 6. WebGL 和 SVG / DOM 仍只是 capability 占位，缺少具体适配对象、输入输出协议和与正文 canvas 的生命周期边界。
 
 因此后续方案必须把“可序列化渲染输入、worker 执行、主线程合成、失效取消和多引擎内容边界”作为核心交付，而不是继续只补统计字段。
@@ -61,11 +61,11 @@ type ICanvasPaintCommand =
 4. worker 调用 `transferToImageBitmap()` 返回 `{ jobId, pageNo, layoutVersion, baseVisualVersion, resourceVersion, width, height, dpr, bitmap }`。
 5. 主线程合成前必须校验 pageNo、jobId 是否仍是该页最新任务，layout / base visual / resource / DPR / 尺寸是否一致。
 6. 校验通过后，主线程只做 `drawImage(bitmap)` 合成到当前页 base surface，并写入 bitmap cache；校验失败则丢弃 bitmap，不触碰当前页面。
-7. worker 抛错、超时、资源缺失、命令不支持或浏览器不支持 OffscreenCanvas 时，任务必须回退 Canvas2D，并把失败原因写入 backend fallback。
+7. worker 抛错、超时、资源缺失、命令不支持或浏览器不支持 OffscreenCanvas 时，任务必须回退 Canvas2D，并把失败原因写入 backend 回退。
 
 这个链路落地后，`offscreen-canvas` 的命中才表示真实后台绘制；当前 `worker-probe` 只能证明优先级和调度保护，不代表核心能力完成。
 
-### 6.7 调度、取消和降级策略
+### 6.7 调度、取消和备用策略
 
 核心调度规则：
 

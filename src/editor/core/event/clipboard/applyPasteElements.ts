@@ -1,5 +1,5 @@
 import { IElement } from '../../../interface/Element'
-import { formatElementContext } from '../../../utils/element'
+import { formatElementContext } from '../../../utils/elementContext'
 import { normalizeStructuredPasteElements } from '../../modules/paragraph/clipboard/normalizeStructuredPasteElements'
 import { CanvasEvent } from '../CanvasEvent'
 

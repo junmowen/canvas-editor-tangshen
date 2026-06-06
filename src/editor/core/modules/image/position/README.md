@@ -20,11 +20,11 @@
 | 文件 | 函数 / 方法 | 作用 | 调用位置 |
 | --- | --- | --- | --- |
 | `ImagePositionPolicy.ts` | `shouldCacheFloatImagePosition(element)` | 判断图片元素是否需要缓存浮动位置。 | `position/Position.ts` |
-| `ImagePositionPolicy.ts` | `shouldUseImageOffset(element)` | 判断图片或 LaTeX 是否需要使用行内垂直偏移。 | `draw/layout/InlineElementLayout.ts` |
+| `ImagePositionPolicy.ts` | `shouldUseImageOffset(element)` | 判断图片是否需要使用行内垂直偏移。 | `draw/layout/InlineElementLayout.ts` |
 | `ImagePositionPolicy.ts` | `ensureFloatImagePosition(payload)` | 在缺少浮动位置时根据当前 position 初始化浮动图片坐标。 | `position/Position.ts` |
 | `ImagePositionPolicy.ts` | `resolveScaledFloatImageRect(payload)` | 根据浮动位置、图片尺寸和缩放计算绘制矩形。 | `position/Position.ts`、图片命中链路 |
 
 ## 维护规则
 
-- 浮动图片位置缓存条件、图片/LaTeX 垂直偏移规则放在这里。
+- 浮动图片位置缓存条件、图片垂直偏移规则放在这里。
 - position 服务只负责套用策略和维护位置列表，不直接枚举图片展示模式。

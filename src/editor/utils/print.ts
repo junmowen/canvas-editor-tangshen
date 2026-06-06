@@ -1,34 +1,7 @@
 import { PaperDirection } from '../dataset/enum/Editor'
+import { resolvePrintImageLayout } from './print/PrintImageLayoutAdapter'
 
-function convertPxToPaperSize(width: number, height: number) {
-  if (width === 1125 && height === 1593) {
-    return {
-      size: 'a3',
-      width: '297mm',
-      height: '420mm'
-    }
-  }
-  if (width === 794 && height === 1123) {
-    return {
-      size: 'a4',
-      width: '210mm',
-      height: '297mm'
-    }
-  }
-  if (width === 565 && height === 796) {
-    return {
-      size: 'a5',
-      width: '148mm',
-      height: '210mm'
-    }
-  }
-  // 其他默认不转换
-  return {
-    size: '',
-    width: `${width}px`,
-    height: `${height}px`
-  }
-}
+export * from './print/svg'
 
 /** 打印图片base64选项，用于约束调用方可传入的可选配置。 */
 export interface IPrintImageBase64Option {
@@ -59,17 +32,11 @@ export function printImageBase64(
   const doc = contentWindow.document
   doc.open()
   const container = document.createElement('div')
-  const paperSize = convertPxToPaperSize(width, height)
+  const printLayout = resolvePrintImageLayout({ width, height, direction })
   base64List.forEach(base64 => {
     const image = document.createElement('img')
-    image.style.width =
-      direction === PaperDirection.HORIZONTAL
-        ? paperSize.height
-        : paperSize.width
-    image.style.height =
-      direction === PaperDirection.HORIZONTAL
-        ? paperSize.width
-        : paperSize.height
+    image.style.width = printLayout.imageWidth
+    image.style.height = printLayout.imageHeight
     image.src = base64
     container.append(image)
   })
@@ -81,9 +48,7 @@ export function printImageBase64(
   }
   @page {
     margin: 0;
-    size: ${paperSize.size} ${
-    direction === PaperDirection.HORIZONTAL ? `landscape` : `portrait`
-  };
+    size: ${printLayout.paperSize.size} ${printLayout.pageOrientation};
   }`
   style.append(document.createTextNode(stylesheet))
   setTimeout(() => {

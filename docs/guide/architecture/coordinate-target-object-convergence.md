@@ -19,7 +19,7 @@ CoordinateService -> TargetResolver -> ObjectResolver -> 业务消费
 
 业务代码不直接访问 `Position`：
 
-- 不使用 `draw.getPosition()`。
+- 不使用 `draw.getCoordinate()`。
 - 不使用 `draw.getComponents().position`。
 - 需要位置列表、光标、命中、positionContext 时走 `draw.getCoordinate()`。
 
@@ -107,7 +107,7 @@ import { walkElementTree, findElementTree } from '../shared/traversal/ElementTre
 `node scripts/verify-architecture.js` 已覆盖以下约束：
 
 - `Position` 只能在 `CoordinateService` 后面。
-- 旧 `draw.getPosition()` 禁止回流，`draw.getInternalPosition()` 只能由 `CoordinateService` 使用。
+- 旧 `draw.getCoordinate()` 禁止回流，`draw.getInternalPosition()` 只能由 `CoordinateService` 使用。
 - `dataAccess` 只能在 `ObjectResolver` 和 service registry 内部使用。
 - runtime 对象列表只能通过 `ObjectResolver` 暴露。
 - table snapshot accessor 只能在 `TargetResolver` 后面。

@@ -2,6 +2,7 @@ import {
   IContentChange,
   IControlChange,
   IControlContentChange,
+  IControlValidate,
   IIntersectionPageNoChange,
   IPageModeChange,
   IPageScaleChange,
@@ -31,6 +32,8 @@ export class Listener {
   public controlChange: IControlChange | null
   /** control Content Change 回调入口，用于通知外部或响应对应事件。 */
   public controlContentChange: IControlContentChange | null
+  /** control Validate 回调入口，用于通知外部或响应对应事件。 */
+  public controlValidate: IControlValidate | null
   /** page Mode Change 回调入口，用于通知外部或响应对应事件。 */
   public pageModeChange: IPageModeChange | null
   /** zone Change 回调入口，用于通知外部或响应对应事件。 */
@@ -47,6 +50,7 @@ export class Listener {
     this.contentChange = null
     this.controlChange = null
     this.controlContentChange = null
+    this.controlValidate = null
     this.pageModeChange = null
     this.zoneChange = null
   }

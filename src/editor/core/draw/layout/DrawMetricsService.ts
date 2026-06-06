@@ -37,24 +37,32 @@ export class DrawMetricsService {
     return Math.floor(this.getOriginalHeight() * this.draw.getRuntime().getOptions().scale)
   }
 
-  public getMainHeight(): number {
-    return this.getHeight() - this.getMainOuterHeight()
+  /** 获取指定页正文区域高度，包含镜像页边距和装订线上下文。 */
+  public getMainHeight(pageNo = 0): number {
+    return this.getHeight() - this.getMainOuterHeight(pageNo)
   }
 
-  public getMainOuterHeight(): number {
-    const margins = this.getMargins()
+  /** 获取指定页正文外部占高，包含上下边距、页眉页脚额外占高和页码占高。 */
+  public getMainOuterHeight(pageNo = 0): number {
+    const margins = this.getMargins(pageNo)
     const headerExtraHeight = this.draw.getComponents().header.getExtraHeight()
     const footerExtraHeight = this.draw.getComponents().footer.getExtraHeight()
-    return margins[0] + margins[2] + headerExtraHeight + footerExtraHeight + this.getPageNumberExtraHeight()
+    return (
+      margins[0] +
+      margins[2] +
+      headerExtraHeight +
+      footerExtraHeight +
+      this.getPageNumberExtraHeight(pageNo)
+    )
   }
 
   /** 获取页码绘制区域超出底边距的额外占高，避免正文和表格 fragment 压到页码上。 */
-  private getPageNumberExtraHeight(): number {
+  private getPageNumberExtraHeight(pageNo = 0): number {
     const options = this.draw.getRuntime().getOptions()
     if (options.pageNumber.disabled) {
       return 0
     }
-    const margins = this.getMargins()
+    const margins = this.getMargins(pageNo)
     const pageNumberTop =
       this.getHeight() -
       this.getPageNumberBottom() -
@@ -64,15 +72,17 @@ export class DrawMetricsService {
     return Math.max(0, mainBottom - pageNumberTop)
   }
 
-  public getInnerWidth(): number {
+  /** 获取指定页缩放后的正文可用宽度，镜像页边距下不同页可能不一致。 */
+  public getInnerWidth(pageNo = 0): number {
     const width = this.getWidth()
-    const margins = this.getMargins()
+    const margins = this.getMargins(pageNo)
     return width - margins[1] - margins[3]
   }
 
-  public getOriginalInnerWidth(): number {
+  /** 获取指定页未缩放的正文可用宽度，供导入导出和表格测量复用。 */
+  public getOriginalInnerWidth(pageNo = 0): number {
     const width = this.getOriginalWidth()
-    const margins = this.getOriginalMargins()
+    const margins = this.getOriginalMargins(pageNo)
     return width - margins[1] - margins[3]
   }
 
@@ -99,17 +109,51 @@ export class DrawMetricsService {
     return this.getOriginalInnerWidth()
   }
 
-  public getMargins(): IMargin {
-    return <IMargin>this.getOriginalMargins().map(
+  /** 获取指定页缩放后的最终页边距，包含镜像页边距和装订线。 */
+  public getMargins(pageNo = 0): IMargin {
+    return <IMargin>this.getOriginalMargins(pageNo).map(
       m => m * this.draw.getRuntime().getOptions().scale
     )
   }
 
-  public getOriginalMargins(): number[] {
+  /** 获取指定页未缩放的最终页边距，包含纸张方向、镜像页边距和装订线。 */
+  public getOriginalMargins(pageNo = 0): IMargin {
     const { margins, paperDirection } = this.draw.getRuntime().getOptions()
-    return paperDirection === PaperDirection.VERTICAL
-      ? margins
+    const directionMargins = paperDirection === PaperDirection.VERTICAL
+      ? <IMargin>[...margins]
       : [margins[1], margins[2], margins[3], margins[0]]
+    return this.resolvePageContextMargins(<IMargin>directionMargins, pageNo)
+  }
+
+  /** 按页码上下文解析镜像页边距和装订线。 */
+  private resolvePageContextMargins(
+    margins: IMargin,
+    pageNo: number
+  ): IMargin {
+    const {
+      gutter,
+      gutterPosition,
+      mirrorMargins
+    } = this.draw.getRuntime().getOptions()
+    const nextMargins: IMargin = [...margins]
+    const normalizedPageNo = Math.max(0, Math.floor(pageNo || 0))
+    if (mirrorMargins && normalizedPageNo % 2 === 1) {
+      const right = nextMargins[1]
+      nextMargins[1] = nextMargins[3]
+      nextMargins[3] = right
+    }
+    if (gutter <= 0) {
+      return nextMargins
+    }
+    if (gutterPosition === 'top') {
+      nextMargins[0] += gutter
+    } else if (gutterPosition === 'inside') {
+      const insideMarginIndex = normalizedPageNo % 2 === 0 ? 3 : 1
+      nextMargins[insideMarginIndex] += gutter
+    } else {
+      nextMargins[3] += gutter
+    }
+    return nextMargins
   }
 
   public getPageGap(): number {

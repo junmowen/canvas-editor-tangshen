@@ -5,11 +5,9 @@ import {
 } from '.'
 
 /**
- * 元素工具门面。
+ * 元素压缩工具。
  *
- * 文件内仅保留元素属性挑选与元素列表压缩逻辑；
- * 格式化、DOM/HTML 互转、控件文本、上下文继承、布局判断、文本导出等职责已拆到相邻模块并在此统一转导出，
- * 以保持历史 import 路径 `utils/element` 兼容。
+ * 格式化、DOM/HTML 互转、控件文本、上下文继承、布局判断和文本导出等职责已拆到相邻模块。
  */
 import { ZERO } from '../dataset/constant/Common'
 import {
@@ -23,43 +21,6 @@ import { ElementType } from '../dataset/enum/Element'
 import { IControlSelect } from '../interface/Control'
 import { IElement } from '../interface/Element'
 import { ITd } from '../interface/table/Td'
-
-export {
-  getControlInlineContentText,
-  getControlInlineText
-} from './elementControl'
-export {
-  formatElementContext,
-  getAnchorElement
-} from './elementContext'
-export {
-  convertRowFlexToJustifyContent,
-  convertRowFlexToTextAlign,
-  convertTextAlignToRowFlex,
-  deleteSurroundElementList,
-  getIsBlockElement,
-  getNonHideElementIndex,
-  isTextLikeElement,
-  pickSurroundElementList,
-  replaceHTMLElementTag
-} from './elementLayout'
-export {
-  getSlimCloneElementList,
-  getTextFromElementList
-} from './elementText'
-export {
-  formatElementList,
-  unzipElementList
-} from './elementFormat'
-export {
-  convertElementToDom,
-  convertTextNodeToElement,
-  createDomFromElementList,
-  getElementListByHTML,
-  groupElementListByRowFlex,
-  splitListElement
-} from './elementDom'
-export type { IGetElementListByHTMLOption } from './elementDom'
 
 export function isSameElementExceptValue(
   source: IElement,
@@ -405,7 +366,8 @@ export function zipElementList(
             type: ElementType.CONTROL,
             value: '',
             control,
-            controlId
+            controlId,
+            externalId: element.externalId
           }
           controlElement.control!.value = zipElementList(valueList, options)
           element = pickElementAttr(controlElement, { extraPickAttrs })
@@ -437,7 +399,8 @@ export function zipElementList(
                 type: ElementType.CONTROL,
                 value: '',
                 control,
-                controlId
+                controlId,
+                externalId: controlElement.externalId
               },
               { extraPickAttrs }
             )
@@ -502,4 +465,3 @@ export function zipElementList(
   }
   return zipElementListData
 }
-

@@ -28,10 +28,14 @@ export class PageBorder {
     ctx.translate(0.5, 0.5)
     ctx.strokeStyle = color
     ctx.lineWidth = lineWidth * scale
-    const x = this.headerBorder.getLeft()
-    const y = this.headerBorder.getTop()
-    const width = this.headerBorder.getWidth()
-    const height = Math.max(0, this.footerBorder.getBottom(pageNo, pageHeight) - y)
+    // 页边框四边依赖当前页边距，避免镜像页边距下边框仍按首页位置绘制。
+    const x = this.headerBorder.getLeft(pageNo)
+    const y = this.headerBorder.getTop(pageNo)
+    const width = this.headerBorder.getWidth(pageNo)
+    const height = Math.max(
+      0,
+      this.footerBorder.getBottom(pageNo, pageHeight) - y
+    )
     ctx.rect(x, y, width, height)
     ctx.stroke()
     ctx.restore()

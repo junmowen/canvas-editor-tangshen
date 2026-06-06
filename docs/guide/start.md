@@ -70,10 +70,15 @@ import Editor from '@hufe921/canvas-editor'
 new Editor(
   document.querySelector('.canvas-editor'),
   {
-    header: [
+    headerPageScopes: [
       {
-        value: 'Header',
-        rowFlex: RowFlex.CENTER
+        pageScope: 'all',
+        elementList: [
+          {
+            value: 'Header',
+            rowFlex: RowFlex.CENTER
+          }
+        ]
       }
     ],
     main: [
@@ -81,10 +86,15 @@ new Editor(
         value: 'Hello World'
       }
     ],
-    footer: [
+    footerPageScopes: [
       {
-        value: 'canvas-editor',
-        size: 12
+        pageScope: 'all',
+        elementList: [
+          {
+            value: 'canvas-editor',
+            size: 12
+          }
+        ]
       }
     ]
   },

@@ -27,6 +27,42 @@ export function shouldApplyRowFlexSpacing(payload: {
   )
 }
 
+/** 把段落缩进值归一化为参与布局的非负像素值。 */
+export function normalizeParagraphIndent(
+  value: number | undefined,
+  scale: number
+) {
+  return Math.max(0, value || 0) * scale
+}
+
+/** 计算段落当前行的左侧缩进偏移。 */
+export function resolveParagraphOffsetX(payload: {
+  element: IElement
+  isParagraphFirstContentElement: boolean
+  scale: number
+}) {
+  const { element, isParagraphFirstContentElement, scale } = payload
+  if (element.listId) return 0
+  const left = normalizeParagraphIndent(element.rowIndentLeft, scale)
+  const firstLine = isParagraphFirstContentElement
+    ? normalizeParagraphIndent(element.rowIndent, scale)
+    : 0
+  const hanging = !isParagraphFirstContentElement
+    ? normalizeParagraphIndent(element.rowHangingIndent, scale)
+    : 0
+  return left + firstLine + hanging
+}
+
+/** 计算段落右缩进占用的行宽。 */
+export function resolveParagraphRightIndent(payload: {
+  element: IElement
+  scale: number
+}) {
+  const { element, scale } = payload
+  if (element.listId) return 0
+  return normalizeParagraphIndent(element.rowIndentRight, scale)
+}
+
 /** 计算非环绕行在居中 / 居右模式下的横向偏移。 */
 export function resolveRowFlexOffsetX(payload: {
   row: IRow

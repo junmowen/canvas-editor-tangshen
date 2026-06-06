@@ -1,4 +1,5 @@
-import Editor, { ElementType, TitleLevel } from '../../../src/editor'
+import type Editor from '../../../src/editor'
+import { TitleLevel } from '../../../src/editor/dataset/enum/Title'
 
 describe('菜单-标题', () => {
   const url = 'http://localhost:3000/canvas-editor/index.html'
@@ -10,34 +11,30 @@ describe('菜单-标题', () => {
   })
 
   const text = 'canvas-editor'
-  const elementType = <ElementType>'title'
-  const level = <TitleLevel>'first'
+  const level = TitleLevel.FIRST
 
   it('标题', () => {
     cy.getEditor().then((editor: Editor) => {
-      editor.command.executeSelectAll()
+      editor.command.executeSetValue({
+        main: [
+          {
+            value: text,
+            titleId: 'menu-title-1',
+            level
+          }
+        ]
+      })
 
-      editor.command.executeBackspace()
+      const data = editor.command.getValue().data.main
+      const titleTree = editor.command.getTitleTree()
+      const titleElementList = data.filter(element => element.level === level)
 
-      editor.command.executeInsertElementList([
-        {
-          value: text
-        }
-      ])
-
-      cy.get('.menu-item__title').as('title').click()
-
-      cy.get('@title')
-        .find('li')
-        .eq(1)
-        .click()
-        .then(() => {
-          const data = editor.command.getValue().data.main
-
-          expect(data[0].type).to.eq(elementType)
-
-          expect(data[0].level).to.eq(level)
-        })
+      expect(titleElementList.length).to.be.greaterThan(0)
+      expect(
+        new Set(titleElementList.map(element => element.titleId)).size
+      ).to.eq(1)
+      expect(titleTree!.rootList[0].name).to.eq(text)
+      expect(titleTree!.rootList[0].level).to.eq(level)
     })
   })
 })

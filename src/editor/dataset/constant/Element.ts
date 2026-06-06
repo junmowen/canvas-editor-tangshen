@@ -22,7 +22,9 @@ export const EDITOR_ELEMENT_STYLE_ATTR: Array<keyof IElement> = [
   'textReflection',
   'textEnclosure',
   'textRuby',
-  'textCombine'
+  'textCombine',
+  'styleId',
+  'styleName'
 ]
 
 // editor row attr 属性白名单，用于复制、压缩或继承元素上下文。
@@ -32,7 +34,9 @@ export const EDITOR_ROW_ATTR: Array<keyof IElement> = [
   'rowIndentLeft',
   'rowIndentRight',
   'rowIndent',
-  'rowHangingIndent'
+  'rowHangingIndent',
+  'columns',
+  'tabStops'
 ]
 
 // editor element copy attr 属性白名单，用于复制、压缩或继承元素上下文。
@@ -52,12 +56,15 @@ export const EDITOR_ELEMENT_COPY_ATTR: Array<keyof IElement> = [
   'hyperlinkId',
   'dateId',
   'dateFormat',
+  'formula',
   'groupIds',
   'rowMargin',
   'rowIndentLeft',
   'rowIndentRight',
   'rowIndent',
   'rowHangingIndent',
+  'columns',
+  'tabStops',
   'listStart',
   'listSymbol',
   'textDecoration',
@@ -69,7 +76,9 @@ export const EDITOR_ELEMENT_COPY_ATTR: Array<keyof IElement> = [
   'textReflection',
   'textEnclosure',
   'textRuby',
-  'textCombine'
+  'textCombine',
+  'styleId',
+  'styleName'
 ]
 
 // editor element zip attr 属性白名单，用于复制、压缩或继承元素上下文。
@@ -90,6 +99,8 @@ export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
   'rowIndentRight',
   'rowIndent',
   'rowHangingIndent',
+  'columns',
+  'tabStops',
   'dashArray',
   'trList',
   'tableToolDisabled',
@@ -110,6 +121,7 @@ export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
   'controlId',
   'checkbox',
   'radio',
+  'formula',
   'dateFormat',
   'block',
   'level',
@@ -145,6 +157,8 @@ export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
   'textEnclosure',
   'textRuby',
   'textCombine',
+  'styleId',
+  'styleName',
   'trackChange',
   'extension',
   'externalId',
@@ -240,8 +254,7 @@ export const TEXTLIKE_ELEMENT_TYPE: ElementType[] = [
 
 // image element type 类型集合，用于快速判断元素类别。
 export const IMAGE_ELEMENT_TYPE: ElementType[] = [
-  ElementType.IMAGE,
-  ElementType.LATEX
+  ElementType.IMAGE
 ]
 
 // block element type 类型集合，用于快速判断元素类别。

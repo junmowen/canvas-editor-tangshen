@@ -20,7 +20,7 @@
 
 | 文件 | 函数 / 方法 | 作用 | 调用位置 |
 | --- | --- | --- | --- |
-| `Position.ts` | `getPositionList()` / `getLayoutMainPositionList()` / `getLayoutMainPositionListByPage()` | 读取当前 position 缓存。 | `DrawCoordinateService`、命中和渲染链路 |
+| `Position.ts` | `getPositionList()` / `getMainPositionList()` / `getMainPositionListByPage()` | 读取当前 position 缓存。 | `DrawCoordinateService`、命中和渲染链路 |
 | `Position.ts` | `computePositionList()` / `computePositionListFromPage()` / `computeRowPosition()` / `computePageRowPosition()` | 计算整篇或分页 position。 | `draw/layout/RowLayoutEngine.ts`、`draw/layout/PagePartitioner.ts` |
 | `Position.ts` | `setCursorPosition()` / `setCursorLogicalIndex()` / `getCursorPosition()` | 管理光标 position 和逻辑索引。 | cursor 和 range 链路 |
 | `PositionHitTestMethods.ts` | `installPositionHitTestMethods(PositionClass)` | 将命中方法安装到 Position。 | `Position.ts` 模块初始化 |

@@ -21,7 +21,7 @@ export interface IPageCanvasHostMetrics {
 export class PageCanvasHost {
   /** 单块 canvas 的最大物理高度，避免连页长文档撞浏览器 canvas 尺寸上限。 */
   private static readonly MAX_CANVAS_TILE_PHYSICAL_HEIGHT = 8192
-  /** 兼容旧版 canvas 阴影视觉；连页分块时阴影必须挂在 wrapper 上。 */
+  /** 页面阴影视觉；连页分块时阴影必须挂在 wrapper 上。 */
   private static readonly PAGE_SHADOW = 'rgb(158 161 165 / 40%) 0px 2px 12px 0px'
   /** 主容器元素，包含所有页面相关元素 */
   private container: HTMLDivElement
@@ -111,7 +111,7 @@ export class PageCanvasHost {
   /**
    * 获取指定层的 surface 列表。
    *
-   * 导出和批量渲染应优先使用该入口，避免重新依赖兼容 canvas 数组。
+   * 导出和批量渲染应优先使用该入口，避免重新依赖底层 canvas 数组。
    *
    * @param layer - 渲染层
    * @returns 按页码排序的 surface 列表

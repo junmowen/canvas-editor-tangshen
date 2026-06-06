@@ -3,6 +3,17 @@ import { IElement } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
 import { shouldFragmentTableRow } from '../../modules/table/layout/TableRowLayoutPolicy'
 import type { Draw } from '../Draw'
+import {
+  shouldBreakForKeepLines,
+  shouldBreakForKeepWithNext,
+  shouldBreakForWidowControl
+} from './PagePartitionKeepPolicy'
+import {
+  getColumnsKey,
+  getRowColumns
+} from './PagePartitionColumnPolicy'
+import { PagePartitionCursor } from './PagePartitionCursor'
+import { placeBalancedLocalColumnSection } from './PagePartitionLocalColumnBalancer'
 
 export interface IPagePartitionResult {
   /** 页面行列表，保存当前页排版后的行信息。 */
@@ -14,6 +25,7 @@ export interface IPagePartitionResult {
   continuousPageHeight?: number
 }
 
+/** 分页/分栏拆分器，负责把行列表放入页和栏。 */
 export class PagePartitioner {
   /** 初始化 PagePartitioner 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {}
@@ -26,53 +38,120 @@ export class PagePartitioner {
       pageNumber: { maxPageNo }
     } = this.draw.getOptions()
     const height = this.draw.getHeight()
-    const marginHeight = this.draw.getMainOuterHeight()
-    const pageContentHeight = height - marginHeight
-    let pageHeight = marginHeight
-    let pageNo = 0
-    let isPageLimitReached = false
+    const cursor = new PagePartitionCursor(
+      this.draw,
+      pageRowList,
+      maxPageNo,
+      getRowColumns(rowList[0])
+    )
 
     if (pageMode === PageMode.CONTINUITY) {
-      pageRowList[0] = rowList
-      pageHeight += rowList.reduce(
+      pageRowList[0] = rowList.map(row => ({
+        ...row,
+        columnIndex: 0
+      }))
+      cursor.pageHeight += rowList.reduce(
         (pre, cur) => pre + cur.height + (cur.offsetY || 0),
         0
       )
       return {
         pageRowList,
         mainElementList,
-        layoutElementList: rowList.flatMap(row => row.elementList),
-        continuousPageHeight: pageHeight
+        layoutElementList: pageRowList[0].flatMap(row => row.elementList),
+        continuousPageHeight: cursor.pageHeight
       }
     }
 
     for (let i = 0; i < rowList.length; i++) {
-      if (isPageLimitReached) {
+      if (cursor.isPageLimitReached) {
         break
       }
       const row = rowList[i]
+      const rowColumns = getRowColumns(row)
+      const rowColumnsKey = getColumnsKey(rowColumns)
+      if (rowColumnsKey !== cursor.currentColumnsKey) {
+        cursor.closeCurrentSection()
+        cursor.resetColumnSection(rowColumns)
+      }
+      if (rowColumns) {
+        i = placeBalancedLocalColumnSection({
+          rowList,
+          startIndex: i,
+          height,
+          cursor
+        })
+        continue
+      }
       const rowOffsetY = row.offsetY || 0
+      const columnLayout = this.draw
+        .getServices()
+        .pageColumnLayoutService.getPageColumnLayout(
+          cursor.pageNo,
+          cursor.currentColumns
+        )
+      const columnCount = columnLayout.columnList.length
+      const isBreakBeforeRow =
+        this.shouldBreakBeforeRow(row, mainElementList) &&
+        pageRowList[cursor.pageNo].length > 0
+      const isKeepWithNextBreak =
+        shouldBreakForKeepWithNext({
+          row,
+          nextRow: rowList[i + 1],
+          pageHeight: cursor.pageHeight,
+          pageLimitHeight: height,
+          pageRows: pageRowList[cursor.pageNo],
+          columnIndex: cursor.columnIndex
+        })
+      const isKeepLinesBreak =
+        shouldBreakForKeepLines({
+          rowList,
+          rowIndex: i,
+          pageHeight: cursor.pageHeight,
+          pageBaseHeight: cursor.marginHeight,
+          pageLimitHeight: height,
+          pageRows: pageRowList[cursor.pageNo],
+          columnIndex: cursor.columnIndex
+        })
+      const isWidowControlBreak =
+        shouldBreakForWidowControl({
+          rowList,
+          rowIndex: i,
+          pageHeight: cursor.pageHeight,
+          pageBaseHeight: cursor.marginHeight,
+          pageLimitHeight: height,
+          pageRows: pageRowList[cursor.pageNo],
+          columnIndex: cursor.columnIndex
+        })
       if (shouldFragmentTableRow({
         row,
         rowOffsetY,
-        pageHeight,
+        pageHeight: cursor.pageHeight,
         pageLimitHeight: height
       })) {
         const { startOnNewPage, rows: fragmentRows } =
           this.draw.getServices().rowLayoutEngine.getTableLayoutEngine().createFragmentRows({
             row,
-            availableHeight: height - pageHeight - rowOffsetY,
-            pageContentHeight
+            availableHeight: height - cursor.pageHeight - rowOffsetY,
+            pageContentHeight: cursor.pageContentHeight
           })
 
-        if ((startOnNewPage || rowList[i - 1]?.isPageBreak) && pageRowList[pageNo].length) {
-          if (Number.isInteger(maxPageNo) && pageNo >= maxPageNo!) {
-            isPageLimitReached = true
-            break
+        if (
+          (startOnNewPage || rowList[i - 1]?.isPageBreak || isBreakBeforeRow) &&
+          pageRowList[cursor.pageNo].length
+        ) {
+          // 表格自然溢出可以进入下一栏，显式分页规则必须进入下一页。
+          if (
+            cursor.columnIndex < columnCount - 1 &&
+            !startOnNewPage &&
+            !rowList[i - 1]?.isPageBreak &&
+            !isBreakBeforeRow
+          ) {
+            cursor.advanceToNextColumn()
+          } else {
+            if (!cursor.advanceToNextPage()) {
+              break
+            }
           }
-          pageNo++
-          pageRowList[pageNo] = []
-          pageHeight = marginHeight
         }
 
         for (let f = 0; f < fragmentRows.length; f++) {
@@ -80,38 +159,47 @@ export class PagePartitioner {
           const fragmentOffsetY = fragmentRow.offsetY || 0
 
           if (
-            fragmentRow.height + fragmentOffsetY + pageHeight > height &&
-            pageRowList[pageNo].length
+            fragmentRow.height + fragmentOffsetY + cursor.pageHeight > height &&
+            pageRowList[cursor.pageNo].length
           ) {
-            if (Number.isInteger(maxPageNo) && pageNo >= maxPageNo!) {
-              isPageLimitReached = true
-              break
+            // 表格 fragment 溢出时优先进入下一栏，最后一栏才进入下一页。
+            if (cursor.columnIndex < columnCount - 1) {
+              cursor.advanceToNextColumn()
+            } else {
+              if (!cursor.advanceToNextPage()) {
+                break
+              }
             }
-            pageNo++
-            pageRowList[pageNo] = []
-            pageHeight = marginHeight
           }
 
-          if (!pageRowList[pageNo]) {
-            pageRowList[pageNo] = []
-          }
-          pageHeight += fragmentRow.height + fragmentOffsetY
-          pageRowList[pageNo].push(fragmentRow)
-
+          cursor.pushPlacedRow(fragmentRow)
         }
         continue
       }
 
-      if (row.height + rowOffsetY + pageHeight > height || rowList[i - 1]?.isPageBreak) {
-        if (Number.isInteger(maxPageNo) && pageNo >= maxPageNo!) {
-          break
+      if (
+        row.height + rowOffsetY + cursor.pageHeight > height ||
+        rowList[i - 1]?.isPageBreak ||
+        isBreakBeforeRow ||
+        isKeepWithNextBreak ||
+        isKeepLinesBreak ||
+        isWidowControlBreak
+      ) {
+        // 普通行自然溢出进入下一栏；手动分页和段前分页仍进入下一页。
+        if (
+          cursor.columnIndex < columnCount - 1 &&
+          !rowList[i - 1]?.isPageBreak &&
+          !isBreakBeforeRow
+        ) {
+          cursor.advanceToNextColumn()
+        } else {
+          if (!cursor.advanceToNextPage()) {
+            break
+          }
         }
-        pageHeight = marginHeight + row.height + rowOffsetY
-        pageRowList.push([row])
-        pageNo++
+        cursor.pushPlacedRow(row)
       } else {
-        pageHeight += row.height + rowOffsetY
-        pageRowList[pageNo].push(row)
+        cursor.pushPlacedRow(row)
       }
     }
 
@@ -127,4 +215,14 @@ export class PagePartitioner {
       )
     }
   }
+
+  /** 判断当前行是否声明段前分页。 */
+  private shouldBreakBeforeRow(row: IRow, mainElementList: IElement[]): boolean {
+    if (!row.elementList.some(element => element.pageBreakBefore)) {
+      return false
+    }
+    const previousElement = mainElementList[row.startIndex - 1]
+    return !previousElement?.pageBreakBefore
+  }
+
 }

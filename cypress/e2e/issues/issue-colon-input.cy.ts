@@ -10,7 +10,7 @@ function visitEditor() {
 
 function getContentRows(editor: Editor) {
   return (editor as any).draw
-    .getOriginalRowList()
+    .getObjectResolver().getOriginalRowList()
     .filter((row: any) =>
       row.elementList.some((element: any) => element.value !== '\u200B')
     )
@@ -18,9 +18,9 @@ function getContentRows(editor: Editor) {
 
 function getRowStartTop(editor: Editor, rowNo: number) {
   const draw = (editor as any).draw
-  draw.flushScheduledFrameRender()
+  draw.getServices().renderInvalidationManager.flushScheduledFrameRender()
   const position = draw
-    .getPosition()
+    .getCoordinate()
     .getOriginalPositionList()
     .find((item: any) => item.rowNo === rowNo && item.value !== '\u200B')
   if (!position) {
@@ -87,7 +87,7 @@ describe('colon input layout', () => {
       editor.command.executeSetRange(2, 2)
       editor.resetRenderBackendStats()
 
-      const sourceCursorPosition = draw.getPosition().getCursorPosition()
+      const sourceCursorPosition = draw.getCoordinate().getCursorPosition()
       expect(sourceCursorPosition?.rowNo).to.eq(0)
     })
 
@@ -96,7 +96,7 @@ describe('colon input layout', () => {
     cy.getEditor().then((editor: Editor) => {
       const draw = (editor as any).draw
       const rows = getContentRows(editor)
-      const cursorPosition = draw.getPosition().getCursorPosition()
+      const cursorPosition = draw.getCoordinate().getCursorPosition()
 
       expect(
         rows[0].elementList.map((element: any) => element.value).join('')
@@ -144,7 +144,7 @@ describe('colon input layout', () => {
         .data.main.map((element: any) => element.value)
         .join('')
       const range = editor.command.getRange()
-      const cursorPosition = draw.getPosition().getCursorPosition()
+      const cursorPosition = draw.getCoordinate().getCursorPosition()
 
       expect(valueText).to.eq('AxyB')
       expect(range.startIndex).to.eq(3)
@@ -205,7 +205,7 @@ describe('colon input layout', () => {
         .data.main.map((element: any) => element.value)
         .join('')
       const range = editor.command.getRange()
-      const cursorPosition = draw.getPosition().getCursorPosition()
+      const cursorPosition = draw.getCoordinate().getCursorPosition()
 
       expect(valueText).to.eq('A呃呃呃B')
       expect(range.startIndex).to.eq(4)
@@ -266,7 +266,7 @@ describe('colon input layout', () => {
         .data.main.map((element: any) => element.value)
         .join('')
       const range = editor.command.getRange()
-      const cursorPosition = draw.getPosition().getCursorPosition()
+      const cursorPosition = draw.getCoordinate().getCursorPosition()
 
       expect(valueText).to.eq('A안녕하B')
       expect(range.startIndex).to.eq(4)
@@ -340,7 +340,7 @@ describe('colon input layout', () => {
           'second row top should stay stable after typing j'
         ).to.be.closeTo(beforeTop, 1)
 
-        const cursorPosition = draw.getPosition().getCursorPosition()
+        const cursorPosition = draw.getCoordinate().getCursorPosition()
         expect(cursorPosition?.rowNo).to.eq(0)
       })
     })

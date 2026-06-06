@@ -104,18 +104,18 @@ export interface IAsyncInsertTransactionStats {
   lastFinalPageCount: number
   /** 当前或最近事务最大单批耗时。 */
   currentMaxBatchDurationMs: number
-  /** 大粘贴同步回退次数。 */
-  syncFallbackCount: number
-  /** 最近一次大粘贴同步回退原因。 */
-  lastSyncFallbackReason: string | null
-  /** 表格上下文大粘贴同步回退次数。 */
-  tableSyncFallbackCount: number
-  /** 控件上下文大粘贴同步回退次数。 */
-  controlSyncFallbackCount: number
-  /** 页眉上下文大粘贴同步回退次数。 */
-  headerSyncFallbackCount: number
-  /** 页脚上下文大粘贴同步回退次数。 */
-  footerSyncFallbackCount: number
+  /** 大粘贴同步接管次数。 */
+  syncRecoveryCount: number
+  /** 最近一次大粘贴同步接管原因。 */
+  lastSyncRecoveryReason: string | null
+  /** 表格上下文大粘贴同步接管次数。 */
+  tableSyncRecoveryCount: number
+  /** 控件上下文大粘贴同步接管次数。 */
+  controlSyncRecoveryCount: number
+  /** 页眉上下文大粘贴同步接管次数。 */
+  headerSyncRecoveryCount: number
+  /** 页脚上下文大粘贴同步接管次数。 */
+  footerSyncRecoveryCount: number
 }
 
 /** 大粘贴后台事务状态机，只负责批次推进、取消和统计。 */
@@ -282,17 +282,17 @@ export class AsyncInsertTransactionManager {
   }
 
   /** 记录大粘贴没有启动后台事务而走同步路径的原因。 */
-  public recordSyncFallback(reason: string) {
-    this.stats.syncFallbackCount++
-    this.stats.lastSyncFallbackReason = reason
+  public recordSyncRecovery(reason: string) {
+    this.stats.syncRecoveryCount++
+    this.stats.lastSyncRecoveryReason = reason
     if (reason === 'table-context') {
-      this.stats.tableSyncFallbackCount++
+      this.stats.tableSyncRecoveryCount++
     } else if (reason === 'control-context') {
-      this.stats.controlSyncFallbackCount++
+      this.stats.controlSyncRecoveryCount++
     } else if (reason === 'header-context') {
-      this.stats.headerSyncFallbackCount++
+      this.stats.headerSyncRecoveryCount++
     } else if (reason === 'footer-context') {
-      this.stats.footerSyncFallbackCount++
+      this.stats.footerSyncRecoveryCount++
     }
   }
 
@@ -473,12 +473,12 @@ export class AsyncInsertTransactionManager {
       maxBatchDurationMs: 0,
       lastFinalPageCount: 0,
       currentMaxBatchDurationMs: 0,
-      syncFallbackCount: 0,
-      lastSyncFallbackReason: null,
-      tableSyncFallbackCount: 0,
-      controlSyncFallbackCount: 0,
-      headerSyncFallbackCount: 0,
-      footerSyncFallbackCount: 0
+      syncRecoveryCount: 0,
+      lastSyncRecoveryReason: null,
+      tableSyncRecoveryCount: 0,
+      controlSyncRecoveryCount: 0,
+      headerSyncRecoveryCount: 0,
+      footerSyncRecoveryCount: 0
     }
   }
 }

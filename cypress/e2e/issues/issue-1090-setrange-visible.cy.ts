@@ -35,7 +35,7 @@ describe('issue #1090 executeSetRange visibility', () => {
       const scrollContainer = findScrollContainer(
         draw.getPageCanvasHost().getContainer()
       )
-      const elementList = draw.getOriginalMainElementList()
+      const elementList = draw.getObjectResolver().getOriginalMainElementList()
       const lastIndex = elementList.length - 1
 
       editor.command.executeFocus({

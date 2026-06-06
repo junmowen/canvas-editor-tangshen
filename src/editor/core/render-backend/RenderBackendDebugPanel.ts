@@ -18,8 +18,8 @@ export interface IRenderBackendDebugSnapshot {
     missCount: number
     /** 失败次数，用于统计渲染或优化路径异常。 */
     failureCount: number
-    /** 降级次数，用于统计回退到备用渲染路径的频率。 */
-    fallbackCount: number
+    /** 降级路径次数，用于统计切换到 Canvas2D 渲染的频率。 */
+    failoverCount: number
     /** slowcount，用于统计当前场景的发生次数。 */
     slowCount: number
     /** 渲染能力列表，记录当前环境可使用的后端特性。 */
@@ -31,8 +31,8 @@ export interface IRenderBackendDebugSnapshot {
     submitCount: number
     /** 成功次数，用于统计渲染任务完成情况。 */
     successCount: number
-    /** 降级次数，用于统计回退到备用渲染路径的频率。 */
-    fallbackCount: number
+    /** 降级路径次数，用于统计切换到 Canvas2D 渲染的频率。 */
+    failoverCount: number
     /** 待处理count，用于统计当前场景的发生次数。 */
     pendingCount: number
     /** 正在执行的任务数量，用于观察后台渲染并发。 */
@@ -41,8 +41,8 @@ export interface IRenderBackendDebugSnapshot {
     queuedCount: number
     /** 熔断状态，用于暂停不稳定的异步渲染路径。 */
     circuitOpen: boolean
-    /** 最近一次降级原因，用于诊断渲染后端回退。 */
-    lastFallbackReason: string
+    /** 最近一次降级路径原因，用于诊断渲染后端切换。 */
+    lastFailoverReason: string
   }
   /** base 渲染来源状态。 */
   baseRenderSource: {

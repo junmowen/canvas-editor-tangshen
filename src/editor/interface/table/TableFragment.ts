@@ -1,4 +1,4 @@
-import { TableBorder } from '../../dataset/enum/table/Table'
+import { TableBorder, TableDisplay } from '../../dataset/enum/table/Table'
 import { IColgroup } from './Colgroup'
 import { ITd } from './Td'
 import { ITr } from './Tr'
@@ -38,6 +38,10 @@ export interface ITableFragmentDescriptor {
   logicalTableIndex: number
   /** 片段order数值，用于当前布局、统计或索引计算。 */
   fragmentOrder: number
+  /** 表格显示方式，用于保留原始表格的块级或行内语义。 */
+  tableDisplay?: TableDisplay
+  /** 表格样式标识，用于跨页片段继续关联原始表格样式。 */
+  tableStyleId?: string
   /** 列组配置，用于描述表格列宽结构。 */
   colgroup?: IColgroup[]
   /** 表格行列表，保存表格的行结构。 */

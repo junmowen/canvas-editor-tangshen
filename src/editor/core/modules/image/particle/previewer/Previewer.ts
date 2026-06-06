@@ -11,6 +11,7 @@ import { downloadFile } from '../../../../../utils'
 import { EventBus } from '../../../../event/eventbus/EventBus'
 import { RenderLayer } from '../../../../render-backend'
 import { Draw } from '../../../../draw/Draw'
+import { resolveFloatingImageRenderPosition } from '../../render/WorkerSnapshotImageRenderPolicy'
 
 /** 图片预览器，负责图片预览弹窗、拖拽缩放选区和当前页交互状态。 */
 export class Previewer {
@@ -104,7 +105,7 @@ export class Previewer {
     element: IElement,
     position: IElementPosition | null = null
   ): number {
-    return element.imgFloatPosition?.pageNo ?? position?.pageNo ?? this.draw.getPageNo()
+    return position?.pageNo ?? element.imgFloatPosition?.pageNo ?? this.draw.getPageNo()
   }
 
   /**
@@ -148,20 +149,28 @@ export class Previewer {
     }
   }
 
-  /** 获取元素位置，向调用方返回当前状态或计算结果。 */
+  /** 获取元素位置，向调用方返回当前横纵坐标或计算结果。 */
   private _getElementPosition(
     element: IElement,
     position: IElementPosition | null = null
-  /** 纵坐标，用于定位画布或页面内的位置。 */
-  /** 横坐标，用于定位画布或页面内的位置。 */
   ): { x: number; y: number } {
     const { scale } = this.options
     let x = 0
     let y = 0
-    // 优先使用浮动位置
+    // 浮动图片优先使用当前布局缓存坐标，避免多栏/分页重排后沿用旧元素坐标。
     if (element.imgFloatPosition) {
-      x = element.imgFloatPosition.x! * scale
-      y = element.imgFloatPosition.y * scale
+      const renderPosition = position
+        ? resolveFloatingImageRenderPosition({
+            floatPosition: {
+              pageNo: this._resolvePageNo(element, position),
+              element,
+              position
+            },
+            scale
+          })
+        : null
+      x = renderPosition ? renderPosition.x : element.imgFloatPosition.x! * scale
+      y = renderPosition ? renderPosition.y : element.imgFloatPosition.y * scale
     } else if (position) {
       const {
         coordinate: {

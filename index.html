@@ -24,6 +24,9 @@
         <div class="menu-item__format" title="清除格式">
           <i></i>
         </div>
+        <div class="menu-item__format-marker" title="显示/隐藏空格和换行标记">
+          <i></i>
+        </div>
       </div>
       <div class="menu-divider"></div>
       <div class="menu-item">
@@ -174,6 +177,36 @@
             </ul>
           </div>
         </div>
+        <div class="page-columns" title="分栏">
+          <i></i>
+          <div class="options">
+            <ul>
+              <li data-page-columns="1">1栏</li>
+              <li data-page-columns="2">2栏</li>
+              <li data-page-columns="3">3栏</li>
+              <li data-page-columns="custom">自定义</li>
+            </ul>
+          </div>
+        </div>
+        <div class="menu-item__tab-stops" title="制表位">
+          <i></i>
+          <div class="options">
+            <div class="tab-stops-ruler">
+              <div class="tab-stops-ruler__label">标尺 0 - 240</div>
+              <div class="tab-stops-ruler__track">
+              </div>
+            </div>
+            <ul>
+              <li data-tab-stop-preset="left">左对齐 120</li>
+              <li data-tab-stop-preset="right">右对齐 120</li>
+              <li data-tab-stop-preset="center">居中 120</li>
+              <li data-tab-stop-preset="decimal">小数点 120</li>
+              <li data-tab-stop-preset="bar">竖线 120</li>
+              <li data-tab-stop-preset="custom">自定义</li>
+              <li data-tab-stop-preset="clear">清除制表位</li>
+            </ul>
+          </div>
+        </div>
         <div class="menu-item__row-indent">
           <i title="段落缩进"></i>
           <div class="options">
@@ -315,14 +348,17 @@
           <i title="控件"></i>
           <div class="options">
             <ul>
-              <li data-control='text'>文本</li>
-              <li data-control="number">数值</li>
-              <li data-control="select">列举</li>
-              <li data-control="date">日期</li>
-              <li data-control="checkbox">复选框</li>
-              <li data-control="radio">单选框</li>
+              <li data-control='text'>文本控件</li>
+              <li data-control="number">数值控件</li>
+              <li data-control="select">下拉控件</li>
+              <li data-control="date">日期控件</li>
+              <li data-control="checkbox">复选框控件</li>
+              <li data-control="radio">单选框控件</li>
             </ul>
           </div>
+        </div>
+        <div class="menu-item__control-business" title="控件业务融合测试">
+          <i></i>
         </div>
         <div class="menu-item__checkbox" title="复选框">
           <i></i>
@@ -330,8 +366,14 @@
         <div class="menu-item__radio" title="单选框">
           <i></i>
         </div>
-        <div class="menu-item__latex" title="LateX">
-          <i></i>
+        <div class="menu-item__latex">
+          <i title="公式"></i>
+          <div class="options formula-menu-options">
+            <ul>
+              <li data-formula-action="blank">LaTeX 空白公式</li>
+              <li data-formula-action="custom">自定义公式</li>
+            </ul>
+          </div>
         </div>
         <div class="menu-item__date">
           <i title="日期"></i>
@@ -372,6 +414,9 @@
         </div>
         <div class="menu-item__print" data-menu="print">
           <i></i>
+        </div>
+        <div class="menu-item__docx" data-menu="docx">
+          <i title="导出DOCX"></i>
         </div>
         <div class="menu-item__track-change" data-menu="track-change">
           <i title="留痕"></i>
@@ -464,9 +509,6 @@
           <i></i>
         </div>
         <div class="page-number-range" title="页码范围">
-          <i></i>
-        </div>
-        <div class="page-columns" title="分栏">
           <i></i>
         </div>
         <div class="fullscreen" title="全屏显示">

@@ -84,21 +84,75 @@ export interface IContextmenuLang {
     edit: string
   }
   image: {
+    /** 图片属性入口，用于打开图片属性配置弹窗。 */
+    property: string
     /** change文本，用于标识、展示或匹配当前对象。 */
     change: string
     /** saveas文本，用于标识、展示或匹配当前对象。 */
     saveAs: string
     /** 文本wrap文本，用于标识、展示或匹配当前对象。 */
     textWrap: string
+    /** 图片显示方式文本。 */
+    display: string
+    /** 图片宽度文本。 */
+    width: string
+    /** 图片高度文本。 */
+    height: string
+    /** 是否锁定宽高比文本。 */
+    lockAspectRatio: string
+    /** 是否锁定尺寸文本。 */
+    sizeLocked: string
+    /** 浮动横坐标文本。 */
+    floatX: string
+    /** 浮动纵坐标文本。 */
+    floatY: string
+    /** 边框颜色文本。 */
+    borderColor: string
+    /** 边框宽度文本。 */
+    borderWidth: string
+    /** 边框圆角文本。 */
+    borderRadius: string
+    /** 阴影颜色文本。 */
+    shadowColor: string
+    /** 阴影模糊文本。 */
+    shadowBlur: string
+    /** 肯定选项文本。 */
+    yes: string
+    /** 否定选项文本。 */
+    no: string
     textWrapType: {
       /** embed文本，用于标识、展示或匹配当前对象。 */
       embed: string
       /** updown文本，用于标识、展示或匹配当前对象。 */
       upDown: string
+      /** surround文本，用于标识、展示或匹配当前对象。 */
+      surround: string
+      /** tight文本，用于标识、展示或匹配当前对象。 */
+      tight: string
+      /** floatTop文本，用于标识、展示或匹配当前对象。 */
+      floatTop: string
+      /** floatBottom文本，用于标识、展示或匹配当前对象。 */
+      floatBottom: string
     }
   }
   /** 表格数据对象，保存行、列和单元格结构。 */
   table: {
+    /** 表格属性入口，用于打开表格属性配置弹窗。 */
+    property: string
+    /** 表格边框类型文本，用于配置表格级边框范围。 */
+    borderType: string
+    /** 外侧边框宽度文本，用于配置表格外框线宽。 */
+    borderExternalWidth: string
+    /** 行最小高度文本，用于配置当前行高策略。 */
+    rowMinHeight: string
+    /** 重复标题行文本，用于配置当前行是否作为跨页表头。 */
+    repeatHeaderRow: string
+    /** 重复标题行否定文本。 */
+    repeatHeaderNo: string
+    /** 重复标题行肯定文本。 */
+    repeatHeaderYes: string
+    /** 单元格背景色文本，用于配置当前单元格底色。 */
+    cellBackgroundColor: string
     /** 插入行col文本，用于标识、展示或匹配当前对象。 */
     insertRowCol: string
     /** 插入上侧行，用于保存或定位表格行结构。 */
@@ -121,7 +175,49 @@ export interface IContextmenuLang {
     mergeCell: string
     /** mergecancel单元格，用于保存或定位表格单元格结构。 */
     mergeCancelCell: string
+    /** 垂直对齐文本，用于配置单元格内容纵向位置。 */
+    verticalAlign: string
+    /** 顶端对齐文本。 */
+    verticalAlignTop: string
+    /** 垂直居中文本。 */
+    verticalAlignMiddle: string
+    /** 底端对齐文本。 */
+    verticalAlignBottom: string
+    /** 表格边框文本，用于打开表格边框子菜单。 */
+    border: string
+    /** 所有框线文本。 */
+    borderAll: string
+    /** 无框线文本。 */
+    borderEmpty: string
+    /** 虚框线文本。 */
+    borderDash: string
+    /** 外侧框线文本。 */
+    borderExternal: string
+    /** 内侧框线文本。 */
+    borderInternal: string
+    /** 表格边框颜色文本。 */
+    borderColor: string
+    /** 表格边框宽度文本。 */
+    borderWidth: string
     /** 自动适配后的菜单宽度。 */
     autoFitWidth: string
+    /** 单元格边框文本。 */
+    borderTd: string
+    /** 单元格上边框文本。 */
+    borderTdTop: string
+    /** 单元格右边框文本。 */
+    borderTdRight: string
+    /** 单元格下边框文本。 */
+    borderTdBottom: string
+    /** 单元格左边框文本。 */
+    borderTdLeft: string
+    /** 单元格边框颜色文本。 */
+    borderTdColor: string
+    /** 单元格边框宽度文本。 */
+    borderTdWidth: string
+    /** 单元格正斜线文本。 */
+    borderTdForward: string
+    /** 单元格反斜线文本。 */
+    borderTdBack: string
   }
 }

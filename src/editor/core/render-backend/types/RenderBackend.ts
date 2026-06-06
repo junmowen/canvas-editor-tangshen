@@ -5,7 +5,7 @@ import { IRenderTask } from './RenderTask'
 export interface IRenderBackend {
   /** 渲染后端名称，用于调试和统计。 */
   name: string
-  /** 获取后端能力状态，用于调试多引擎 fallback。 */
+  /** 获取后端能力状态，用于调试多引擎备用路径。 */
   getCapability?(): {
     /** 当前环境是否支持该后端能力。 */
     supported?: boolean

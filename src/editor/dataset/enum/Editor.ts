@@ -51,8 +51,7 @@ export enum WordBreak {
   BREAK_WORD = 'break-word'
 }
 
-/** 渲染优先级模式，在性能优先和兼容优先之间切换。 */
+/** 渲染优先级模式。 */
 export enum RenderMode {
-  SPEED = 'speed',
-  COMPATIBILITY = 'compatibility'
+  SPEED = 'speed'
 }

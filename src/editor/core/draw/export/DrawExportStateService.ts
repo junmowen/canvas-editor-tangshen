@@ -13,7 +13,7 @@ export class DrawExportStateService {
 
   /** 捕获 Export Render State 对应的当前状态。 */
   public captureExportRenderState() {
-    const { header, main, footer } = this.draw
+    const { headerPageScopes, main, footerPageScopes } = this.draw
       .getObjectResolver()
       .getOriginalEditorData()
     return {
@@ -23,8 +23,8 @@ export class DrawExportStateService {
       zone: this.draw.getComponents().zone.getZone(),
       positionContext: deepClone(this.draw.getCoordinate().getPositionContext()),
       range: deepClone(this.draw.getComponents().range.getEditBoundaryRange()),
-      headerElementList: deepClone(header),
-      footerElementList: deepClone(footer),
+      headerPageScopes: deepClone(headerPageScopes || []),
+      footerPageScopes: deepClone(footerPageScopes || []),
       elementList: deepClone(main)
     }
   }
@@ -38,8 +38,8 @@ export class DrawExportStateService {
     this.draw.setPageNo(state.pageNo)
     this.draw.getComponents().zone.replaceZone(state.zone)
     this.draw.getCoordinate().setPositionContext(deepClone(state.positionContext))
-    this.draw.getComponents().header.setElementList(deepClone(state.headerElementList))
-    this.draw.getComponents().footer.setElementList(deepClone(state.footerElementList))
+    this.draw.getComponents().header.setPageScopes(deepClone(state.headerPageScopes))
+    this.draw.getComponents().footer.setPageScopes(deepClone(state.footerPageScopes))
     this.draw.replaceMainElementList(deepClone(state.elementList))
     this.draw.getComponents().range.replaceRange(deepClone(state.range))
     const isCollapsed = state.range.startIndex === state.range.endIndex

@@ -1,7 +1,7 @@
 import { ElementType } from '../../../../dataset/enum/Element'
 import { IElement } from '../../../../interface/Element'
 import { ITr } from '../../../../interface/table/Tr'
-import { zipElementList } from '../../../../utils/element'
+import { zipElementList } from '../../../../utils/elementZip'
 import { Draw } from '../../../draw/Draw'
 
 /** 根据当前跨行列选区构造可写入剪贴板的表格元素。 */

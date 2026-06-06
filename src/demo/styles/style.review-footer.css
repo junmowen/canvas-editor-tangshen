@@ -295,10 +295,6 @@
   background-image: url('../assets/images/page-break.svg');
 }
 
-.footer .page-columns i {
-  background-image: url('../assets/images/page-mode.svg');
-}
-
 .footer .editor-mode {
   cursor: pointer;
   user-select: none;

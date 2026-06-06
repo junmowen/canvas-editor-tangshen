@@ -15,7 +15,7 @@ export class PageChunkWindowPlanner {
   private readonly syncWindowSize = 2
   /** 大批量插入时同步窗口上限，避免一次粘贴退化成 200 页同步排版。 */
   private readonly maxInsertedSyncWindowSize = 8
-  /** 表格感知同步窗口最大页数，超过时才回退完整 layout，避免局部窗口退化成整篇。 */
+  /** 表格感知同步窗口最大页数，超过时改走完整 layout，避免局部窗口退化成整篇。 */
   private readonly maxTableAwareWindowSize = 8
 
   /** 初始化 PageChunkWindowPlanner 实例并注入运行依赖。 */
@@ -27,7 +27,7 @@ export class PageChunkWindowPlanner {
   }
 
   /** 解析同步窗口大小，如果表格超出窗口限制则要求完整布局。 */
-  public resolveSyncWindowSizeWithFallback(
+  public resolveSyncWindowSize(
     context: IChunkLayoutPatchContext
   ): IPageChunkWindowSizeResult {
     const insertedWindowSize = this.resolveInsertedWindowSize(context)
@@ -111,8 +111,8 @@ export class PageChunkWindowPlanner {
 
   /** 解析实际窗口结束索引，优先按页级 chunk 读取扩展后的旧窗口尾页。 */
   public resolveWindowEndIndex(payload: {
-    /** 降级分页块列表，用于窗口块缺失时继续完成布局。 */
-    fallbackChunkList: IChunkLayoutPatchContext['chunk'][]
+    /** 窗口内分页块列表，用于窗口块缺失时继续完成布局。 */
+    windowChunkList: IChunkLayoutPatchContext['chunk'][]
     /** 起始页码，用于限定跨页范围的左边界。 */
     startPageNo: number
     /** 页面数量，用于描述当前分页结果规模。 */
@@ -135,7 +135,7 @@ export class PageChunkWindowPlanner {
         lastRow.startIndex + Math.max(0, lastRow.elementList.length - 1)
       )
     }
-    return payload.fallbackChunkList[payload.fallbackChunkList.length - 1].endIndex
+    return payload.windowChunkList[payload.windowChunkList.length - 1].endIndex
   }
 
   /** 解析本轮实际测量结束位置；大插入只测固定页窗口，剩余页交给异步传播。 */

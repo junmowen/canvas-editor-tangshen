@@ -60,8 +60,7 @@ describe('#1399 CONTROL backspace', () => {
       })
 
       const elementList = editor.draw
-        .getObjectResolver()
-        .getOriginalMainElementList()
+        .getObjectResolver().getOriginalMainElementList()
       const controlStart = elementList.findIndex(
         (element: any) => element.controlId
       )

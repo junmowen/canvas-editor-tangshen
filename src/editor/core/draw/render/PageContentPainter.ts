@@ -78,7 +78,8 @@ export class PageContentPainter {
       pageMode
     } = this.draw.getOptions()
     const isPrintMode = this.draw.getMode() === EditorMode.PRINT
-    const innerWidth = this.draw.getInnerWidth()
+    // 绘制阶段的正文宽度按目标页计算，保证打印/导出时镜像页边距和装订线不退回首页宽度。
+    const innerWidth = this.draw.getInnerWidth(pageNo)
     const ctx = surface.ctx2d
     const offsetY = options.offsetY || 0
 
@@ -113,7 +114,7 @@ export class PageContentPainter {
       // 不再让 RowRenderer 自己在整份 positionList 上做 pageNo 过滤。
       const pagePositionList =
         pageNo >= 0
-          ? this.draw.getCoordinate().getLayoutMainPositionListByPage(pageNo)
+          ? this.draw.getCoordinate().getMainPositionListByPage(pageNo)
           : positionList
       const index = rowList[0]?.startIndex
       this.draw.drawRow(ctx, {

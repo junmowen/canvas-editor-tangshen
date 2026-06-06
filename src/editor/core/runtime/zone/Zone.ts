@@ -22,6 +22,8 @@ export class Zone {
 
   /** 当前激活的编辑区域。 */
   private currentZone: EditorZone
+  /** 当前激活页眉/页脚对应的页码，用于解析 first/odd/even/all 作用域。 */
+  private currentZonePageNo: number
   private indicatorContainer: HTMLDivElement | null
 
   /** 初始化 Zone 实例并注入运行依赖。 */
@@ -31,6 +33,7 @@ export class Zone {
     this.options = draw.getRuntime().getOptions()
     this.container = draw.getPageCanvasHost().getContainer()
     this.currentZone = EditorZone.MAIN
+    this.currentZonePageNo = 0
     this.indicatorContainer = null
     // 区域提示
     if (!this.options.zone.tipDisabled) {
@@ -54,11 +57,17 @@ export class Zone {
     return this.currentZone
   }
 
-  public replaceZone(payload: EditorZone) {
-    this.currentZone = payload
+  /** 获取当前编辑区对应页码，正文区返回最近一次切区页码。 */
+  public getZonePageNo(): number {
+    return this.currentZonePageNo
   }
 
-  public setZone(payload: EditorZone) {
+  public replaceZone(payload: EditorZone, pageNo = this.currentZonePageNo) {
+    this.currentZone = payload
+    this.currentZonePageNo = Math.max(0, Math.floor(pageNo))
+  }
+
+  public setZone(payload: EditorZone, pageNo = this.currentZonePageNo) {
     const { header, footer } = this.options
     if (
       (!header.editable && payload === EditorZone.HEADER) ||
@@ -66,8 +75,25 @@ export class Zone {
     ) {
       return
     }
-    if (this.currentZone === payload) return
+    const normalizedPageNo = Math.max(0, Math.floor(pageNo))
+    if (
+      this.currentZone === payload &&
+      this.currentZonePageNo === normalizedPageNo
+    ) {
+      if (payload === EditorZone.HEADER) {
+        this.draw.getHeader().ensureElementList(normalizedPageNo)
+      } else if (payload === EditorZone.FOOTER) {
+        this.draw.getFooter().ensureElementList(normalizedPageNo)
+      }
+      return
+    }
     this.currentZone = payload
+    this.currentZonePageNo = normalizedPageNo
+    if (payload === EditorZone.HEADER) {
+      this.draw.getHeader().ensureElementList(normalizedPageNo)
+    } else if (payload === EditorZone.FOOTER) {
+      this.draw.getFooter().ensureElementList(normalizedPageNo)
+    }
     this.draw.getRange().clearRange()
     this.draw.render({
       isSubmitHistory: false,
@@ -116,12 +142,10 @@ export class Zone {
     const { scale } = this.options
     const isHeaderActive = this.isHeaderActive()
     const [offsetX, offsetY] = this.INDICATOR_TITLE_TRANSLATE
-    // 区域指示器按 base surface 数量绘制，避免继续依赖兼容 pageList。
+    // 区域指示器按 base surface 数量绘制，保持与当前页面宿主一致。
     const pageSurfaceList = this.draw
       .getPageCanvasHost()
       .getSurfaceList(RenderLayer.BASE)
-    const margins = this.draw.getMargins()
-    const innerWidth = this.draw.getInnerWidth()
     const pageHeight = this.draw.getHeight()
     const pageGap = this.draw.getPageGap()
     const preY = pageHeight + pageGap
@@ -138,6 +162,9 @@ export class Zone {
       ? header.getHeaderTop()
       : pageHeight - footer.getFooterBottom() - indicatorHeight
     for (let p = 0; p < pageSurfaceList.length; p++) {
+      // 页眉页脚区域指示器逐页读取边距，镜像页边距下奇偶页边框位置不同。
+      const margins = this.draw.getMargins(p)
+      const innerWidth = this.draw.getInnerWidth(p)
       const startY = preY * p + indicatorTop
       const indicatorLeftX = margins[3] - this.INDICATOR_PADDING
       const indicatorRightX = margins[3] + innerWidth + this.INDICATOR_PADDING

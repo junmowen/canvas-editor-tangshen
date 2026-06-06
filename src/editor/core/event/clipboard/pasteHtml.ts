@@ -1,4 +1,4 @@
-import { getElementListByHTML } from '../../../utils/element'
+import { getElementListByHTML } from '../../../utils/elementDom'
 import { isEditorDisabled } from '../../shared/utils/editorState'
 import { CanvasEvent } from '../CanvasEvent'
 import { applyPasteElements } from './applyPasteElements'

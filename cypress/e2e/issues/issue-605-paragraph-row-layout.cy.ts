@@ -2,7 +2,7 @@ import type Editor from '../../../src/editor'
 import { RowFlex } from '../../../src/editor/dataset/enum/Row'
 
 function getOriginalElements(editor: Editor) {
-  return (editor as any).draw.getOriginalMainElementList()
+  return (editor as any).draw.getObjectResolver().getOriginalMainElementList()
 }
 
 function getTextElements(editor: Editor) {
@@ -13,7 +13,7 @@ function getTextElements(editor: Editor) {
 
 function getWrappedContentRows(editor: Editor) {
   return (editor as any).draw
-    .getOriginalRowList()
+    .getObjectResolver().getOriginalRowList()
     .filter((row: any) =>
       row.elementList.some((element: any) => element.value !== '\u200B')
     )

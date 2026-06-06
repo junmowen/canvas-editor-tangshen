@@ -3,6 +3,8 @@ import { EditorZone } from '../../../../dataset/enum/Editor'
 import { ElementType } from '../../../../dataset/enum/Element'
 import { IDrawFloatPayload, IDrawPagePayload } from '../../../../interface/Draw'
 import type { Draw } from '../../../draw/Draw'
+import { isVisibleImageElement } from '../position/ImagePositionPolicy'
+import { resolveFloatingImageRenderPosition } from './WorkerSnapshotImageRenderPolicy'
 
 /** 浮动图片渲染器，负责按页、zone 和展示模式筛选并绘制图片。 */
 export class FloatImageRenderer {
@@ -22,24 +24,33 @@ export class FloatImageRenderer {
     for (let e = 0; e < floatPositionList.length; e++) {
       const floatPosition = floatPositionList[e]
       const element = floatPosition.element
+      const shouldRenderByPage = pageNo === floatPosition.pageNo
       const shouldRenderByZone = zoneList
-        ? zoneList.includes(floatPosition.zone!)
-        : pageNo === floatPosition.pageNo ||
+        ? shouldRenderByPage && zoneList.includes(floatPosition.zone!)
+        : shouldRenderByPage ||
           (includeHeaderFooter &&
+            shouldRenderByPage &&
             (floatPosition.zone === EditorZone.HEADER ||
               floatPosition.zone === EditorZone.FOOTER))
       if (
         shouldRenderByZone &&
+        isVisibleImageElement(element) &&
         element.imgDisplay &&
         imgDisplays.includes(element.imgDisplay) &&
         element.type === ElementType.IMAGE
       ) {
-        const imgFloatPosition = element.imgFloatPosition!
+        const renderPosition = resolveFloatingImageRenderPosition({
+          floatPosition,
+          scale
+        })
+        if (!renderPosition) {
+          continue
+        }
         this.draw.getImageParticle().render(
           ctx,
           element,
-          imgFloatPosition.x * scale,
-          imgFloatPosition.y * scale,
+          renderPosition.x,
+          renderPosition.y,
           {
             isExport: payload.isExport
           }

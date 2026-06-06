@@ -1,5 +1,6 @@
 import { ZERO } from '../../../../../dataset/constant/Common'
 import { ControlComponent } from '../../../../../dataset/enum/Control'
+import { EditorContext } from '../../../../../dataset/enum/Editor'
 import { DeepRequired } from '../../../../../interface/Common'
 import {
   IControlHighlight,
@@ -152,6 +153,24 @@ export class ControlSearch {
           const { ruleList } = highlight
           for (let r = 0; r < ruleList.length; r++) {
             const rule = ruleList[r]
+            if (rule.isFullControl) {
+              // 校验失败等场景需要高亮整个控件，即使控件为空也要覆盖占位符或边界元素。
+              const groupId = `${element.controlId || startIndex}-${r}`
+              for (let c = startIndex; c < newEndIndex; c++) {
+                const controlElement = elementList[c]
+                if (!controlElement?.controlId) continue
+                this.highlightMatchResult.push({
+                  ...rule,
+                  ...tableContext,
+                  type: tableContext?.tableId
+                    ? EditorContext.TABLE
+                    : EditorContext.PAGE,
+                  index: c,
+                  groupId
+                })
+              }
+              continue
+            }
             const searchResult = search.getMatchList(
               rule.keyword,
               controlElementList

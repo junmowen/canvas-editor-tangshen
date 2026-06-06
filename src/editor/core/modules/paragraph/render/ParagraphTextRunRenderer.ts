@@ -37,6 +37,13 @@ export class ParagraphTextRunRenderer {
     } = payload
     if (element.type === ElementType.TAB) {
       textParticle.complete()
+      this.renderBarTabStop({
+        ctx,
+        element,
+        rowPosition,
+        x,
+        options
+      })
       return
     }
     if (
@@ -63,6 +70,7 @@ export class ParagraphTextRunRenderer {
     textParticle.record(ctx, element, x, y)
     if (
       (element.value === ' ' || element.value === '\u00A0') &&
+      !options.lineBreak.disabled &&
       mode !== EditorMode.CLEAN &&
       !isPrintMode
     ) {
@@ -75,5 +83,33 @@ export class ParagraphTextRunRenderer {
       textParticle.complete()
       ctx.restore()
     }
+  }
+
+  /** 绘制竖线制表位：TAB 自身不显示文本，只在命中的 bar 制表位落点画线。 */
+  private renderBarTabStop(payload: {
+    /** Canvas 2D 上下文。 */
+    ctx: CanvasRenderingContext2D
+    /** 当前 TAB 行内元素。 */
+    element: RowElement
+    /** TAB 对应的位置数据。 */
+    rowPosition: RowPosition
+    /** TAB 左侧横坐标。 */
+    x: number
+    /** 编辑器配置，用于读取缩放和默认颜色。 */
+    options: ReturnType<Draw['getOptions']>
+  }) {
+    const { ctx, element, rowPosition, x, options } = payload
+    if (element.metrics?.tabStopAlignment !== 'bar') {
+      return
+    }
+    const lineX = x + element.metrics.width
+    ctx.save()
+    ctx.beginPath()
+    ctx.lineWidth = Math.max(1, options.scale)
+    ctx.strokeStyle = element.color || options.defaultColor
+    ctx.moveTo(lineX, rowPosition.coordinate.leftTop[1])
+    ctx.lineTo(lineX, rowPosition.coordinate.leftBottom[1])
+    ctx.stroke()
+    ctx.restore()
   }
 }

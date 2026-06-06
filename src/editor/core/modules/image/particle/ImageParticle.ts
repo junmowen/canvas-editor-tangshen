@@ -172,7 +172,7 @@ export class ImageParticle {
     this.draw.getComponents().imageObserver.add(promise)
   }
 
-  protected getFallbackImage(width: number, height: number): HTMLImageElement {
+  protected getPlaceholderImage(width: number, height: number): HTMLImageElement {
     const tileSize = 8
     const x = (width - Math.ceil(width / tileSize) * tileSize) / 2
     const y = (height - Math.ceil(height / tileSize) * tileSize) / 2
@@ -187,12 +187,12 @@ export class ImageParticle {
                     </pattern>
                   </defs>
                 </svg>`
-    // 创建 fallback Image 实例。
-    const fallbackImage = new Image()
-    fallbackImage.src = `data:image/svg+xml;base64,${convertStringToBase64(
+    // 创建占位 Image 实例。
+    const placeholderImage = new Image()
+    placeholderImage.src = `data:image/svg+xml;base64,${convertStringToBase64(
       svg
     )}`
-    return fallbackImage
+    return placeholderImage
   }
 
   /** 获取 WebGL 图片预览 bitmap 缓存统计。 */
@@ -291,11 +291,11 @@ export class ImageParticle {
         dpr
       )
       try {
-        const executeCanvas2DFallback = () => {
+        const executeCanvas2DRecovery = () => {
           this.drawImageWithTransform(surface.ctx2d, img, element, width, height)
         }
         if (options.isExport) {
-          executeCanvas2DFallback()
+          executeCanvas2DRecovery()
         } else {
           this.draw.getServices().renderBackendManager.render(surface, {
             pageNo: -1,
@@ -360,10 +360,10 @@ export class ImageParticle {
           }
         }
         img.onerror = error => {
-          const fallbackImage = this.getFallbackImage(width, height)
-          fallbackImage.onload = () => {
-            renderImage(ctx, fallbackImage)
-            this.imageCache.set(element.value, fallbackImage)
+          const placeholderImage = this.getPlaceholderImage(width, height)
+          placeholderImage.onload = () => {
+            renderImage(ctx, placeholderImage)
+            this.imageCache.set(element.value, placeholderImage)
           }
           reject(error)
         }
@@ -496,7 +496,7 @@ export class ImageParticle {
     ])
   }
 
-  /** 按 WebGL 图片任务语义绘制 Canvas2D fallback / export 结果。 */
+  /** 按 WebGL 图片任务语义绘制 Canvas2D 备用路径 / export 结果。 */
   private drawImageWithTransform(
     ctx: CanvasRenderingContext2D,
     img: HTMLImageElement,
@@ -529,7 +529,7 @@ export class ImageParticle {
     ctx.restore()
   }
 
-  /** 读取并裁剪到图片源尺寸内，供 Canvas2D fallback / export 使用。 */
+  /** 读取并裁剪到图片源尺寸内，供 Canvas2D 备用路径 / export 使用。 */
   private getCanvasCrop(element: IElement, img: HTMLImageElement) {
     const sourceWidth = Math.max(1, img.naturalWidth || img.width || 1)
     const sourceHeight = Math.max(1, img.naturalHeight || img.height || 1)
@@ -564,7 +564,7 @@ export class ImageParticle {
     return normalized < 0 ? normalized + 360 : normalized
   }
 
-  /** 将 WebGL 图片滤镜转换为 Canvas2D fallback 可消费的 filter 字符串。 */
+  /** 将 WebGL 图片滤镜转换为 Canvas2D 备用路径可消费的 filter 字符串。 */
   private getCanvasFilter(element: IElement): string {
     if (!element.webglFilter) {
       return 'none'
@@ -580,7 +580,7 @@ export class ImageParticle {
     ].join(' ')
   }
 
-  /** 归一化 WebGL 图片滤镜输入，供缓存键和 Canvas2D fallback 共用。 */
+  /** 归一化 WebGL 图片滤镜输入，供缓存键和 Canvas2D 备用路径共用。 */
   private getNormalizedFilter(element: IElement): {
     /** 灰度系数，用于控制图片滤镜的去色程度。 */
     grayscale: number
