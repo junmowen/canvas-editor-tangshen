@@ -269,6 +269,85 @@ Blob
 
 返回的 Blob 类型为 DOCX MIME，可用于下载、上传或后续打印链路。
 
+## getPdfBlob
+
+功能：获取当前文档的 PDF Blob。内部复用 SVG 打印页面并转换为矢量 PDF，不弹出浏览器打印框。
+
+用法：
+
+```javascript
+const blob = await instance.command.getPdfBlob(options?: IPrintPdfDocumentOption)
+```
+
+返回值：
+
+```typescript
+Blob
+```
+
+返回的 Blob 类型为 PDF，可用于下载或上传。当前链路按页面 SVG 转 PDF，优先保证文字、线条和常规矢量对象清晰；图片资源仍按原始图片数据嵌入。
+
+选项：
+
+```typescript
+interface IPrintPdfDocumentOption {
+  /** 是否压缩 PDF 内容流，默认 true。 */
+  compress?: boolean
+  /** PDF 使用的 TTF 字体列表；包含中文时必须传入至少一个支持中文的字体。 */
+  fonts?: IPrintPdfFontFace[]
+  /** 包含非 ASCII 文本但未提供字体时是否抛错，默认 true。 */
+  requireFontsForUnicodeText?: boolean
+}
+
+interface IPrintPdfFontFace {
+  /** 字体族名称，需要和 SVG font-family 或 aliases 匹配。 */
+  name: string
+  /** 字体文件名，注册 VFS 时使用。未传时根据 name 自动生成。 */
+  fileName?: string
+  /** 字体二进制、base64 或 data URL。 */
+  source?: ArrayBuffer | Uint8Array | string
+  /** 字体文件地址，适合把字体放在静态资源目录后按需加载。 */
+  url?: string
+  /** 额外匹配的 SVG font-family 名称，可包含中文；不会直接注册为 PDF 内部字体名。 */
+  aliases?: string[]
+  /** 需要注册的字体样式。默认注册 normal/bold/italic/bolditalic。 */
+  styles?: string[]
+}
+```
+
+包含中文、日文、韩文等 Unicode 文本时，必须传入支持对应字符的 TTF 字体，否则 PDF 阅读器会因为 jsPDF 默认字体不支持这些字符而出现乱码。
+PDF 内部字体名只能使用 ASCII；`aliases` 只用于把 SVG 中的 `font-family` 映射到已注册字体，业务侧可以放心传入 `微软雅黑`、`宋体` 等中文字体名。
+当 SVG 文本使用未命中的字体族但文本本身包含 Unicode 字符时，导出会自动落到 `fonts[0]` 注册的字体，避免局部文本静默回退到 jsPDF 默认字体。
+
+```javascript
+const blob = await instance.command.getPdfBlob({
+  fonts: [
+    {
+      name: 'Microsoft YaHei',
+      fileName: 'CJK-Regular.ttf',
+      url: '/fonts/CJK-Regular.ttf',
+      styles: ['normal', 'italic'],
+      aliases: ['微软雅黑', 'SimSun', '宋体']
+    },
+    {
+      name: 'Microsoft YaHei',
+      fileName: 'CJK-Bold.ttf',
+      url: '/fonts/CJK-Bold.ttf',
+      styles: ['bold', 'bolditalic'],
+      aliases: ['微软雅黑', 'SimSun', '宋体']
+    }
+  ]
+})
+```
+
+demo 默认从 `public/fonts` 读取本机提取的微软雅黑 Regular/Bold TTF。Windows 本地手动测试前先执行：
+
+```bash
+npm run demo:pdf-fonts
+```
+
+生成的字体文件仅用于本机 demo 验证，已被 git 忽略；生产项目需要传入自有授权字体文件。
+
 ## getGroupIds
 
 功能：获取所有成组 id

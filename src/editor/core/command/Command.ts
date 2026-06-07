@@ -291,6 +291,8 @@ export class Command {
   public getOoxmlPackageParts: CommandAdapt['getOoxmlPackageParts']
   /** 对外暴露的 OOXML DOCX Blob 查询入口，内部代理到 CommandAdapt 对应实现。 */
   public getOoxmlDocxBlob: CommandAdapt['getOoxmlDocxBlob']
+  /** 对外暴露的 PDF Blob 查询入口，内部代理到 CommandAdapt 对应实现。 */
+  public getPdfBlob: CommandAdapt['getPdfBlob']
   /** 对外暴露的排版中间层快照查询入口。 */
   public getTypesettingLayoutSnapshot: CommandAdapt['getTypesettingLayoutSnapshot']
   /** 对外暴露的标题父子树查询入口。 */
@@ -504,6 +506,7 @@ export class Command {
     this.getValue = adapt.getValue.bind(adapt)
     this.getOoxmlPackageParts = adapt.getOoxmlPackageParts.bind(adapt)
     this.getOoxmlDocxBlob = adapt.getOoxmlDocxBlob.bind(adapt)
+    this.getPdfBlob = adapt.getPdfBlob.bind(adapt)
     this.getTypesettingLayoutSnapshot =
       adapt.getTypesettingLayoutSnapshot.bind(adapt)
     this.getTitleTree = adapt.getTitleTree.bind(adapt)

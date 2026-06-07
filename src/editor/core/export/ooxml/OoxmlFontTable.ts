@@ -36,7 +36,7 @@ function collectOoxmlElementFonts(element: IElement, fontSet: Set<string>) {
   if (element.trList?.length) {
     element.trList.forEach(tr => {
       tr.tdList.forEach(td => {
-        ;(td.value || []).forEach(child => collectOoxmlElementFonts(child, fontSet))
+        (td.value || []).forEach(child => collectOoxmlElementFonts(child, fontSet))
       })
     })
   }

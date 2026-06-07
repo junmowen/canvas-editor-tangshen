@@ -321,7 +321,7 @@ function parseLatexDisplayText(value: string): string {
 
 /** 把 LaTeX 片段转换成可参与行布局的文本公式展示值。 */
 export function resolveFormulaDisplayText(latex: string) {
-  let result = latex.trim()
+  const result = latex.trim()
   if (isFormulaEmptyPlaceholderValue(result)) {
     return FORMULA_EMPTY_PLACEHOLDER_TEXT
   }

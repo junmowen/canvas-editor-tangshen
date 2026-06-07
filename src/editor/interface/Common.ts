@@ -9,7 +9,20 @@ export type Primitive =
   | null
 
 /** 内置类型集合，用于递归工具类型中保留原生对象形态。 */
-export type Builtin = Primitive | Function | Date | Error | RegExp
+export type Builtin =
+  | Primitive
+  | Function
+  | Date
+  | Error
+  | RegExp
+  | Node
+  | Element
+  | Document
+  | Window
+  | Blob
+  | File
+  | ArrayBuffer
+  | DataView
 
 /** 深度必填工具类型，用于递归移除对象属性的可选标记。 */
 export type DeepRequired<T> = T extends Error

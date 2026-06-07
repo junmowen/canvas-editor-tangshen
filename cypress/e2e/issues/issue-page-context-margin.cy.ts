@@ -108,18 +108,30 @@ describe('page context margins', () => {
       const draw = (editor as any).draw
       const pathCalls: Array<{ name: string; args: number[] }> = []
       const ctx = {
-        save() {},
-        translate() {},
-        beginPath() {},
+        save() {
+          return undefined
+        },
+        translate() {
+          return undefined
+        },
+        beginPath() {
+          return undefined
+        },
         moveTo(...args: number[]) {
           pathCalls.push({ name: 'moveTo', args })
         },
         lineTo(...args: number[]) {
           pathCalls.push({ name: 'lineTo', args })
         },
-        stroke() {},
-        restore() {},
-        set strokeStyle(_value: string) {}
+        stroke() {
+          return undefined
+        },
+        restore() {
+          return undefined
+        },
+        set strokeStyle(value: string) {
+          void value
+        }
       }
 
       draw.getMargin().render(ctx, 1)
@@ -164,15 +176,27 @@ describe('page context margins', () => {
       const draw = (editor as any).draw
       const rectCalls: Array<{ x: number; y: number; width: number; height: number }> = []
       const ctx = {
-        save() {},
-        translate() {},
+        save() {
+          return undefined
+        },
+        translate() {
+          return undefined
+        },
         rect(x: number, y: number, width: number, height: number) {
           rectCalls.push({ x, y, width, height })
         },
-        stroke() {},
-        restore() {},
-        set strokeStyle(_value: string) {},
-        set lineWidth(_value: number) {}
+        stroke() {
+          return undefined
+        },
+        restore() {
+          return undefined
+        },
+        set strokeStyle(value: string) {
+          void value
+        },
+        set lineWidth(value: number) {
+          void value
+        }
       }
 
       draw.getPageBorder().render(ctx, 1)
@@ -397,23 +421,39 @@ describe('page context margins', () => {
       const draw = (editor as any).draw
       const pathCalls: Array<{ name: string; args: number[] }> = []
       const ctx = {
-        save() {},
-        restore() {},
-        setLineDash() {},
-        translate() {},
-        beginPath() {},
+        save() {
+          return undefined
+        },
+        restore() {
+          return undefined
+        },
+        setLineDash() {
+          return undefined
+        },
+        translate() {
+          return undefined
+        },
+        beginPath() {
+          return undefined
+        },
         moveTo(...args: number[]) {
           pathCalls.push({ name: 'moveTo', args })
         },
         lineTo(...args: number[]) {
           pathCalls.push({ name: 'lineTo', args })
         },
-        stroke() {},
-        set lineWidth(_value: number) {},
+        stroke() {
+          return undefined
+        },
+        set lineWidth(value: number) {
+          void value
+        },
         get lineWidth() {
           return 1
         },
-        set strokeStyle(_value: string) {}
+        set strokeStyle(value: string) {
+          void value
+        }
       }
       const pageNo = 1
       const [, right, , left] = editor.command.getPaperMargin(pageNo)
@@ -684,7 +724,7 @@ describe('page context margins', () => {
   /** 覆盖 TS-03/TS-11 隐藏浮动图片不会进入 worker、SVG 或 canvas 浮动层。 */
   it('skips hidden floating images across SVG worker and canvas paths', () => {
     cy.getEditor().then((editor: any) => {
-      ;[ImageDisplay.FLOAT_TOP, ImageDisplay.SURROUND].forEach(
+      [ImageDisplay.FLOAT_TOP, ImageDisplay.SURROUND].forEach(
         (imgDisplay, index) => {
           const element = {
             id: `hidden-floating-image-${imgDisplay}`,

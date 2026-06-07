@@ -2,6 +2,7 @@ import { PaperDirection } from '../dataset/enum/Editor'
 import { resolvePrintImageLayout } from './print/PrintImageLayoutAdapter'
 
 export * from './print/svg'
+export * from './print/pdf'
 
 /** 打印图片base64选项，用于约束调用方可传入的可选配置。 */
 export interface IPrintImageBase64Option {

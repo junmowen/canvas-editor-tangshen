@@ -453,6 +453,30 @@ interface IOoxmlDocumentImportOption {
 interface IOoxmlHeaderFooterImportOption extends IOoxmlDocumentImportOption {
   rootLocalName: 'hdr' | 'ftr'
 }
+
+interface IPrintPdfDocumentOption {
+  /** 是否压缩 PDF 内容流，默认 true。 */
+  compress?: boolean
+  /** PDF 使用的 TTF 字体列表；包含中文时必须传入至少一个支持中文的字体。 */
+  fonts?: IPrintPdfFontFace[]
+  /** 包含非 ASCII 文本但未提供字体时是否抛错，默认 true。 */
+  requireFontsForUnicodeText?: boolean
+}
+
+interface IPrintPdfFontFace {
+  /** 字体族名称，需要和 SVG font-family 或 aliases 匹配。 */
+  name: string
+  /** 字体文件名，注册 VFS 时使用。未传时根据 name 自动生成。 */
+  fileName?: string
+  /** 字体二进制、base64 或 data URL。 */
+  source?: ArrayBuffer | Uint8Array | string
+  /** 字体文件地址，适合把字体放在静态资源目录后按需加载。 */
+  url?: string
+  /** 额外匹配的 SVG font-family 名称，可包含中文；不会直接注册为 PDF 内部字体名。 */
+  aliases?: string[]
+  /** 需要注册的字体样式。默认注册 normal/bold/italic/bolditalic。 */
+  styles?: string[]
+}
 ```
 
 常用 API 对应关系：
@@ -460,4 +484,26 @@ interface IOoxmlHeaderFooterImportOption extends IOoxmlDocumentImportOption {
 ```typescript
 const parts: IOoxmlPackageParts = instance.command.getOoxmlPackageParts()
 const blob: Blob = instance.command.getOoxmlDocxBlob()
+const pdfBlob: Blob = await instance.command.getPdfBlob()
+const uncompressedPdfBlob: Blob = await instance.command.getPdfBlob({
+  compress: false,
+  fonts: [
+    {
+      name: 'Microsoft YaHei',
+      fileName: 'CJK-Regular.ttf',
+      url: '/fonts/CJK-Regular.ttf',
+      styles: ['normal', 'italic'],
+      aliases: ['微软雅黑', 'SimSun', '宋体']
+    },
+    {
+      name: 'Microsoft YaHei',
+      fileName: 'CJK-Bold.ttf',
+      url: '/fonts/CJK-Bold.ttf',
+      styles: ['bold', 'bolditalic'],
+      aliases: ['微软雅黑', 'SimSun', '宋体']
+    }
+  ]
+})
 ```
+
+PDF 导出包含 CJK 等 Unicode 文本时需要显式传入 TTF 字体。`aliases` 负责把编辑器/SVG 中的 `微软雅黑`、`宋体` 等字体名映射到 jsPDF 可接受的 ASCII 内部字体名；如果文本包含 Unicode 但字体族没有命中任何 alias，会使用 `fonts[0]` 作为默认 CJK 字体。

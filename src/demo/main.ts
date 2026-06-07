@@ -29,6 +29,15 @@ import { IEditorResult } from '../editor/interface/Editor'
 import { Dialog } from '../components/dialog/Dialog'
 import { Signature } from './components/signature/Signature'
 import { debounce, nextTick } from './utils'
+import { createDemoPdfFonts } from './pdfFonts'
+
+function resolveDemoPublicAssetUrl(path: string) {
+  const pathname = window.location.pathname
+  const appBase = pathname.includes('/canvas-editor/')
+    ? `${window.location.origin}/canvas-editor/`
+    : `${window.location.origin}/`
+  return new URL(path, appBase).href
+}
 
 window.onload = function () {
   const isApple =
@@ -777,6 +786,30 @@ window.onload = function () {
     downloadLink.download = `canvas-editor-${Date.now()}.docx`
     downloadLink.click()
     URL.revokeObjectURL(href)
+  }
+  const pdfDom = document.querySelector<HTMLDivElement>('.menu-item__pdf')!
+  pdfDom.title = '导出PDF'
+  pdfDom.onclick = async function () {
+    if (pdfDom.dataset.loading === 'true') return
+    pdfDom.dataset.loading = 'true'
+    pdfDom.classList.add('active')
+    try {
+      const blob = await instance.command.getPdfBlob({
+        fonts: createDemoPdfFonts(resolveDemoPublicAssetUrl)
+      })
+      const href = URL.createObjectURL(blob)
+      const downloadLink = document.createElement('a')
+      downloadLink.href = href
+      downloadLink.download = `canvas-editor-${Date.now()}.pdf`
+      downloadLink.click()
+      URL.revokeObjectURL(href)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      window.alert(`PDF导出失败：${message}`)
+    } finally {
+      pdfDom.dataset.loading = 'false'
+      pdfDom.classList.remove('active')
+    }
   }
 
   const {

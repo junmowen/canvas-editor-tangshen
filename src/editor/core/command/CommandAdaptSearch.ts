@@ -1,6 +1,6 @@
 import { CommandAdaptMedia } from './CommandAdaptMedia'
 import { IReplaceOption, ISearchOption } from '../../interface/Search'
-import { printSvgDocument } from '../../utils/print'
+import { IPrintSvgDocumentPayload, printSvgDocument } from '../../utils/print'
 import { INavigateInfo } from '../modules/search/runtime/Search'
 
 /**
@@ -49,12 +49,10 @@ export class CommandAdaptSearch extends CommandAdaptMedia {
     this.draw.getSearch().replace(payload, option)
   }
 
-  /** 打印当前文档，使用 SVG 矢量文本，避免 Canvas 图片打印导致文字发虚。 */
-  public print() {
-    this.draw.flushAsyncInsertTransaction('command-print-svg')
+  /** 创建 SVG 打印/导出共享载荷，确保 PDF 与浏览器打印消费同一套页面数据。 */
+  protected createPrintSvgDocumentPayload(): IPrintSvgDocumentPayload {
     const pageCount = Math.max(1, this.draw.getPageRowList().length)
-    // SVG 打印需要页面级数据，正文 position 之外还要带上页眉、页脚、页码、水印等装饰层。
-    printSvgDocument({
+    return {
       mainPositionList: this.coordinate.getMainPositionList(),
       pageRowList: this.draw.getPageRowList(),
       headerRowListByPage: Array.from({ length: pageCount }, (_, pageNo) =>
@@ -92,6 +90,12 @@ export class CommandAdaptSearch extends CommandAdaptMedia {
       width: this.options.width,
       height: this.options.height,
       direction: this.options.paperDirection
-    })
+    }
+  }
+
+  /** 打印当前文档，使用 SVG 矢量文本，避免 Canvas 图片打印导致文字发虚。 */
+  public print() {
+    this.draw.flushAsyncInsertTransaction('command-print-svg')
+    printSvgDocument(this.createPrintSvgDocumentPayload())
   }
 }

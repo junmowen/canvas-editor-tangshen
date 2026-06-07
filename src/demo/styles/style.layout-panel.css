@@ -14,6 +14,18 @@
   content: 'W';
 }
 
+.menu-item__pdf i {
+  color: #b42318;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.menu-item__pdf i::before {
+  content: 'P';
+}
+
 .menu-item__track-change {
   position: relative;
 }

@@ -31,7 +31,7 @@
 | TS-11 | 图片对象排版增强 | P2 | 已完成 | 待定 | [详情](#ts-11-图片对象排版增强) |
 | TS-12 | 中文排版细节 | P2 | 已完成 | 待定 | [详情](#ts-12-中文排版细节) |
 | TS-13 | OOXML 完整映射与 DOCX 导入导出 | P3 | 已完成 | 待定 | [详情](#ts-13-ooxml-完整映射与-docx-导入导出) |
-| TS-14 | PDF 导出主线化/插件化 | P3 | 未开始 | 待定 | [详情](#ts-14-pdf-导出主线化插件化) |
+| TS-14 | PDF 导出主线化/插件化 | P3 | 已完成 | 待定 | [详情](#ts-14-pdf-导出主线化插件化) |
 
 ## 风险与约束总览
 
@@ -648,15 +648,21 @@
 
 - 当前排版快照已具备页、栏、段落块和矩形区域数据，可作为 PDF 输出复用页面度量的基础输入。
 - TS-04 已补页码上下文边距查询，后续 PDF 可复用同一套边距计算，避免预览与输出不一致。
-- 当前限制：PDF 架构仍未决策，尚未建立输出基准、像素对比和插件/主线边界。
+- 已确定第一阶段不再绕浏览器打印框，直接通过 `editor.command.getPdfBlob()` 生成无弹窗 PDF Blob。
+- PDF 第一阶段复用 SVG 打印页面作为输入，并通过 `jspdf/svg2pdf.js` 转换为同尺寸矢量 PDF 页面，保证文字和线条清晰。
+- `getPdfBlob()` 已补 TTF 字体注册能力，demo 默认加载静态 CJK Regular/Bold TTF 并把常见中文字体别名映射到同一 PDF 字体，解决 jsPDF 默认字体不支持中文导致的 PDF 乱码和可变字体 Thin 字重偏细问题。
+- PDF 字体加载失败和 Unicode 文本未传字体时会给出明确错误；字体族未命中但文本包含 Unicode 时会落到首个已注册 CJK 字体，避免静默回退成默认字体。
+- demo PDF 字体配置已抽离到 `src/demo/pdfFonts.ts`，本地测试通过 `npm run demo:pdf-fonts` 从 Windows 字体提取微软雅黑 Regular/Bold TTF，生成字体文件不入库。
+- 已新增 PDF Cypress smoke：验证 ASCII SVG 载荷可生成 `%PDF` Blob，验证包含表格、页眉页脚、水印、页码、图片、公式和装饰的复杂打印 SVG 载荷可生成 PDF，验证 Unicode 文本未传字体时会失败。
+- 后续增强：继续补充像素级视觉差异、真实业务模板 PDF 基准和更多图片资源异常场景，不阻塞 TS-14 主线交付。
 
 开发拆分：
 
 | 子项 | 功能 | 状态 | 验收 |
 | --- | --- | --- | --- |
-| TS-14-01 | PDF 架构决策 | 未开始 | 明确主线或插件方案。 |
-| TS-14-02 | PDF 输出链路 | 未开始 | 基准文档可稳定输出 PDF。 |
-| TS-14-03 | PDF 回归测试 | 未开始 | 输出差异可追踪。 |
+| TS-14-01 | PDF 架构决策 | 已完成 | 第一阶段主线化 `getPdfBlob()`，复用 SVG 打印页面并直接生成 PDF Blob。 |
+| TS-14-02 | PDF 输出链路 | 已完成 | SVG 打印页面可直接转换为同尺寸 PDF Blob，demo 提供无弹窗导出入口和 CJK 字体配置。 |
+| TS-14-03 | PDF 回归测试 | 已完成 | 已覆盖 `%PDF` Blob、复杂打印页载荷和 Unicode 无字体拒绝。 |
 
 ## 近期推进顺序
 
@@ -673,6 +679,11 @@
 
 | 日期 | 更新 |
 | --- | --- |
+| 2026-06-06 | TS-14 PDF 第一阶段开始：确认不再绕浏览器打印框，新增无弹窗 `editor.command.getPdfBlob()`，复用 SVG 打印页面载荷并通过 `jspdf/svg2pdf.js` 转换为同尺寸 PDF Blob；demo 顶部补充 PDF 下载按钮，正式 API 文档补充 `getPdfBlob()`。 |
+| 2026-06-06 | TS-14 PDF 中文字体乱码修复：`getPdfBlob()` 新增 `fonts` 选项，支持通过 TTF URL、二进制、base64 或 data URL 注册 PDF 字体；PDF 内部只注册 ASCII 字体名，转换前把 SVG `font-family` 别名映射到该字体，demo 静态资源改为静态 Regular/Bold TTF 并映射微软雅黑、宋体、华文字体等常见 CJK 字体名，避免 SVG 文本转 PDF 后乱码和可变字体 Thin 字重偏细。 |
+| 2026-06-07 | TS-14 PDF 字体前置校验：`getPdfBlob()` 新增 `requireFontsForUnicodeText`，默认在包含 Unicode 文本但未传 PDF 字体时抛出明确错误；字体 URL 加载失败会携带字体名、URL 和 HTTP 状态；demo PDF 导出按钮增加 loading 防重复和失败弹窗。 |
+| 2026-06-07 | TS-14 PDF 字体匹配继续收口：字体 alias 匹配改为大小写无关，未命中字体族但文本含 Unicode 时自动使用首个已注册 CJK 字体；demo PDF 字体配置抽到 `src/demo/pdfFonts.ts`，新增 `cypress/e2e/print/pdf-export.cy.ts` 覆盖 `%PDF` Blob 生成和 Unicode 无字体拒绝。 |
+| 2026-06-07 | TS-14 收口到完成：PDF 回归补充复杂打印 SVG 载荷，覆盖表格边框/背景、页眉页脚、水印、页码、图片、公式、控件装饰和页边框进入 `svg2pdf/jsPDF` 转换；`pdf-export.cy.ts` 3/3 通过，TS-14 状态切为已完成。 |
 | 2026-06-06 | 文档与 API 边界收口：补充 `command/draw/render-backend/export/ooxml` README，明确富文本命令、Draw 门面、渲染后端统计、OOXML 导入导出模块职责；正式 API 文档已补 `getOoxmlPackageParts()`、`getOoxmlDocxBlob()`、`executeLoadControlRemoteOptions()` 和 `executeLoadControlRemoteOptionsList()`；正式数据结构文档已补控件 `valueSets`、远程选项加载、OOXML package 和 DOCX 导入结果结构；`ooxml-model-mapping.md` 新增源码索引、Command API 对应关系和新增字段同步要求；渲染后端统计命名已统一到 `failover*` 当前字段，主流程不再保留历史别名。 |
 | 2026-06-05 | TS-00 命名继续收敛：将栏宽、表格命中、表格快照、OOXML 控件导出、公式视觉盒、worker 公式命令、SVG 打印默认页边距、修订估算矩形和图片加载失败占位图中的非备用路径命名改为 `default/edge/estimated/placeholder` 等明确语义；block 导出 Canvas 绘制器已改为 `BlockExportCanvasRenderer`；剩余备用路径命名仅保留在真实备用路径/统计字段中；`npm run type:check` 通过，公式栏宽回归 1/1 通过。 |
 | 2026-06-05 | TS-00/TS-07 冗余清理继续推进：页眉页脚 runtime 已收口为 `headerPageScopes/footerPageScopes` 单一运行时来源，`Header/Footer` 不再维护旧 `elementList/rowList/positionList` 存储，`getValue()` 全量输出不再回写旧 `header/footer`；同步清理内部误导性命名和注释，渲染后端真实备用路径保留为明确的 Canvas2D 备用路径语义；`npm run type:check` 通过，页眉页脚 scoped/dblclick/API/page context/column position 回归 31/31 通过。 |

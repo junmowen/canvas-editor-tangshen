@@ -42,6 +42,7 @@
     "encoding:check": "node scripts/verify-utf8.js",
     "encoding:check:staged": "node scripts/verify-utf8.js --staged",
     "encoding:check:all": "node scripts/verify-utf8.js --all",
+    "demo:pdf-fonts": "node scripts/prepare-demo-pdf-fonts.mjs",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "issues:verify": "node scripts/verifyIssues.js",
@@ -72,7 +73,9 @@
     "vue": "^3.2.45"
   },
   "dependencies": {
-    "prismjs": "^1.27.0"
+    "jspdf": "^4.2.1",
+    "prismjs": "^1.27.0",
+    "svg2pdf.js": "^2.7.0"
   },
   "simple-git-hooks": {
     "pre-commit": "npm run encoding:check:staged && npm run architecture:check && npm run lint && npm run type:check",

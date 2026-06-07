@@ -89,7 +89,7 @@ function mergeDefined<T extends object>(...sourceList: Array<Partial<T> | undefi
     if (!source) return
     Object.entries(source).forEach(([key, value]) => {
       if (value !== undefined) {
-        ;(result as Record<string, unknown>)[key] = value
+        (result as Record<string, unknown>)[key] = value
       }
     })
   })
@@ -105,7 +105,7 @@ function pickElementStyleFields<K extends readonly (keyof IElement)[]>(
   keyList.forEach(key => {
     const value = element[key]
     if (value !== undefined) {
-      ;(result as Record<keyof IElement, IElement[keyof IElement]>)[key] = value
+      (result as Record<keyof IElement, IElement[keyof IElement]>)[key] = value
     }
   })
   return result

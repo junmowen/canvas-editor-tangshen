@@ -391,18 +391,30 @@ describe('tab indentation scenarios', () => {
       const renderer = new ParagraphTextRunRenderer()
       const pathCalls: Array<{ name: string; args: number[] }> = []
       const ctx = {
-        save() {},
-        restore() {},
-        beginPath() {},
+        save() {
+          return undefined
+        },
+        restore() {
+          return undefined
+        },
+        beginPath() {
+          return undefined
+        },
         moveTo(...args: number[]) {
           pathCalls.push({ name: 'moveTo', args })
         },
         lineTo(...args: number[]) {
           pathCalls.push({ name: 'lineTo', args })
         },
-        stroke() {},
-        set lineWidth(_value: number) {},
-        set strokeStyle(_value: string) {}
+        stroke() {
+          return undefined
+        },
+        set lineWidth(value: number) {
+          void value
+        },
+        set strokeStyle(value: string) {
+          void value
+        }
       }
       renderer.render({
         ctx: ctx as any,
@@ -431,7 +443,9 @@ describe('tab indentation scenarios', () => {
         isPrintMode: false,
         options: editor.command.getOptions(),
         textParticle: {
-          complete() {}
+          complete() {
+            return undefined
+          }
         } as any
       })
 
@@ -662,14 +676,24 @@ describe('tab indentation scenarios', () => {
         let arcCount = 0
         renderer.render({
           ctx: {
-            save() {},
-            restore() {},
-            beginPath() {},
+            save() {
+              return undefined
+            },
+            restore() {
+              return undefined
+            },
+            beginPath() {
+              return undefined
+            },
             arc() {
               arcCount++
             },
-            fill() {},
-            set fillStyle(_value: string) {}
+            fill() {
+              return undefined
+            },
+            set fillStyle(value: string) {
+              void value
+            }
           } as any,
           element: {
             value: ' ',
@@ -698,8 +722,12 @@ describe('tab indentation scenarios', () => {
             }
           },
           textParticle: {
-            record() {},
-            complete() {}
+            record() {
+              return undefined
+            },
+            complete() {
+              return undefined
+            }
           } as any
         })
         return arcCount

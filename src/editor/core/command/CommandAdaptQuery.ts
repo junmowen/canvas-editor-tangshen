@@ -34,6 +34,10 @@ import {
   normalizeFormulaFromElement
 } from '../modules/formula/model/FormulaModel'
 import {
+  createPdfBlobFromPrintSvgDocument,
+  IPrintPdfDocumentOption
+} from '../../utils/print'
+import {
   createOoxmlDocxPackageBlob,
   createOoxmlPackageParts
 } from '../export/ooxml/OoxmlPackage'
@@ -201,6 +205,15 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
     this.draw.flushAsyncInsertTransaction('command-get-ooxml-docx-blob')
     const data = this.draw.getObjectResolver().getOriginalEditorData()
     return createOoxmlDocxPackageBlob(data, this.options)
+  }
+
+  /** 获取当前文档的 PDF Blob，内部复用 SVG 打印页面并转换为矢量 PDF。 */
+  public getPdfBlob(options?: IPrintPdfDocumentOption) {
+    this.draw.flushAsyncInsertTransaction('command-get-pdf-blob')
+    return createPdfBlobFromPrintSvgDocument(
+      this.createPrintSvgDocumentPayload(),
+      options
+    )
   }
 
   /** 异步获取当前文档结构数据。 */
