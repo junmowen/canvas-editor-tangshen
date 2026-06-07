@@ -37,6 +37,7 @@ export default defineConfig({
         items: [
           { text: '指南索引', link: '/guide/' },
           { text: '入门', link: '/guide/start' },
+          { text: '开箱即用模式', link: '/guide/app-mode' },
           { text: '配置', link: '/guide/option' },
           { text: '国际化', link: '/guide/i18n' },
           { text: '数据结构', link: '/guide/schema' }

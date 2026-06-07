@@ -66,6 +66,8 @@ createCanvasEditorApp({
 
 开箱即用模式的菜单、底栏、右键菜单、监听器和注册入口都可以配置。`include` 表示只显示配置过的项，没配置的项不显示；`exclude` 表示在默认项中排除指定项。
 
+完整配置说明见：[开箱即用模式](./app-mode.md)。
+
 ```javascript
 createCanvasEditorApp({
   container: document.querySelector('.canvas-editor'),
