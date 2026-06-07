@@ -7,6 +7,7 @@
 | 路径 | 职责 |
 | --- | --- |
 | `main.ts` | 本地 demo 启动入口，绑定工具栏、监听器、右键菜单和快捷键 |
+| `app-main.ts` | 开箱即用模式 demo 入口，验证 `createCanvasEditorApp()` |
 | `mock.ts` | demo 初始化数据 |
 | `menus/` | demo 工具栏、插入菜单、页脚选项、留痕面板等集成逻辑 |
 | `components/` | demo 专用组件，例如签名面板 |
@@ -33,6 +34,7 @@
 | 文件 / 目录 | 职责 |
 | --- | --- |
 | `main.ts` | 初始化 demo 编辑器和所有工具栏交互。 |
+| `app-main.ts` | 初始化开箱即用模式 app demo。 |
 | `mock.ts` | demo 初始文档数据。 |
 | `menus/` | demo 工具栏、插入菜单、页脚和留痕面板。 |
 | `plugins/` | demo 示例插件。 |

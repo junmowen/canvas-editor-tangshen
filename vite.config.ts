@@ -31,7 +31,42 @@ export default defineConfig(({ mode }) => {
         },
         rollupOptions: {
           output: {
-            sourcemap: true
+            sourcemap: true,
+            inlineDynamicImports: true
+          }
+        }
+      }
+    }
+  }
+  if (mode === 'lib-app') {
+    return {
+      plugins: [
+        {
+          ...typescript({
+            tsconfig: './tsconfig.json',
+            include: ['./src/app/**', './src/editor/**']
+          }),
+          apply: 'build',
+          declaration: true,
+          declarationDir: 'types/',
+          rootDir: '/'
+        }
+      ],
+      build: {
+        emptyOutDir: false,
+        lib: {
+          name: `${name}App`,
+          formats: ['es'],
+          fileName: `${name}-app`,
+          entry: path.resolve(__dirname, 'src/app/index.ts')
+        },
+        rollupOptions: {
+          output: {
+            sourcemap: true,
+            assetFileNames: assetInfo =>
+              assetInfo.name === 'style.css'
+                ? `${name}-app.css`
+                : 'assets/[name][extname]'
           }
         }
       }

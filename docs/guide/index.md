@@ -7,6 +7,7 @@
 | 主题 | 文档 |
 | --- | --- |
 | 快速开始 | [start.md](./start.md) |
+| 编辑器双模式设计 | [editor-package-modes-design.md](./editor-package-modes-design.md) |
 | 编辑器配置 | [option.md](./option.md) |
 | 数据结构 | [schema.md](./schema.md) |
 | 国际化 | [i18n.md](./i18n.md) |
