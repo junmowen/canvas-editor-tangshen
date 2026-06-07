@@ -136,8 +136,7 @@ function createComplexPrintPayload(): IPrintSvgDocumentPayload {
     font: 'Helvetica',
     formula: {
       sourceFormat: 'latex',
-      latex: '{E_k} = hv - {W_0}',
-      displayText: 'Ek = hv - W0'
+      latex: '{E_k} = hv - {W_0}'
     },
     size: 16
   })
@@ -336,7 +335,11 @@ describe('PDF export', () => {
     expect(printSvg).to.contain('stroke="#ff00aa"')
     expect(printSvg).to.contain('#ddeeff')
     expect(printSvg).to.contain('DECOR')
-    expect(printSvg).to.contain('Ek = hv - W0')
+    expect(printSvg).to.contain('data-ce-formula="true"')
+    expect(printSvg).to.contain('font-size="10.4"')
+    expect(printSvg).to.contain('>k</text>')
+    expect(printSvg).to.contain('>0</text>')
+    expect(printSvg).to.not.contain('Eₖ')
     expect(printSvg).to.contain('<image')
     expect(printSvg).to.contain('stroke="#111111"')
 

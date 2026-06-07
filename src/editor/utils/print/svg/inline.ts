@@ -14,6 +14,7 @@ import {
   resolvePrintSvgLatexPayload,
   resolvePrintSvgInlineRenderKind
 } from './PrintSvgInlineRenderAdapter'
+import { createPrintSvgFormula } from './formula'
 
 /** 创建 SVG 文本节点，按当前位置样式输出矢量文字。 */
 function createPrintSvgText(position: IElementPosition, text = position.value) {
@@ -81,7 +82,7 @@ function createPrintSvgLatex(position: IElementPosition) {
   const latexPayload = resolvePrintSvgLatexPayload(position)
   if (!latexPayload) return ''
   if (latexPayload.kind === 'text') {
-    return createPrintSvgText(position, latexPayload.text)
+    return createPrintSvgFormula(position) || createPrintSvgText(position, latexPayload.text)
   }
   return createPrintSvgImage({
     src: latexPayload.src,
