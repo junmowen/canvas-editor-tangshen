@@ -11,7 +11,7 @@ import { ICheckbox } from './Checkbox'
 import {
   IChartGraphic,
   IChartGraphicFragmentDescriptor
-} from './ChartGraphic'
+} from '../core/modules/chart-graphics/model/ChartGraphic'
 import { IControl } from './Control'
 import { IFormula } from './Formula'
 import { IPageColumns } from './PageColumns'

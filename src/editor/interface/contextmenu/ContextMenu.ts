@@ -6,7 +6,7 @@ import { IElement } from '../Element'
 import {
   IChartGraphicHitQueryPayload,
   IChartGraphicHitQueryResult
-} from '../ChartGraphic'
+} from '../../core/modules/chart-graphics/model/ChartGraphic'
 
 /** 上下文menu上下文，汇总流程中需要共享的定位、状态和依赖。 */
 export interface IContextMenuContext {

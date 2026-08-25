@@ -1,6 +1,6 @@
 import {
   IChartGraphicDataSourceRefreshEvent
-} from './ChartGraphic'
+} from '../core/modules/chart-graphics/model/ChartGraphic'
 import {
   IContentChange,
   IControlChange,

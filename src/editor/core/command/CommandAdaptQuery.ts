@@ -23,7 +23,7 @@ import {
   IChartGraphicHitQueryPayload,
   IChartGraphicHitQueryResult,
   IToggleChartGraphicDentalStatusByHitPayload
-} from '../../interface/ChartGraphic'
+ } from '../modules/chart-graphics/model/ChartGraphic'
 import { ISearchResultContext } from '../../interface/Search'
 import { deepClone, getUUID } from '../../utils'
 import {

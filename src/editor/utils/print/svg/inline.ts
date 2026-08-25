@@ -14,7 +14,7 @@ import {
   resolvePrintSvgLatexPayload,
   resolvePrintSvgInlineRenderKind
 } from './PrintSvgInlineRenderAdapter'
-import { createPrintSvgChartGraphic } from './chartGraphic'
+import { createPrintSvgChartGraphic } from '../../../core/modules/chart-graphics/render/ChartGraphicSvgExporter'
 import { createPrintSvgFormula } from './formula'
 
 /** 创建 SVG 文本节点，按当前位置样式输出矢量文字。 */

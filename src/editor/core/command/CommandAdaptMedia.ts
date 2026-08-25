@@ -38,7 +38,7 @@ import {
   IRefreshChartGraphicSourcesResult,
   ChartGraphicTemplateAuditReason,
   IChartGraphicDataSourceRefreshEvent
-} from '../../interface/ChartGraphic'
+ } from '../modules/chart-graphics/model/ChartGraphic'
 import { IDrawImagePayload } from '../../interface/Draw'
 import { IElement } from '../../interface/Element'
 import { IWatermark } from '../../interface/Watermark'

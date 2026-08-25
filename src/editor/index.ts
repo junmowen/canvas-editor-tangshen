@@ -90,7 +90,7 @@ import type {
   IRefreshChartGraphicSourcesPayload,
   IRefreshChartGraphicSourcesResult,
   ChartGraphicTemplateAuditReason
-} from './interface/ChartGraphic'
+ } from './core/modules/chart-graphics/model/ChartGraphic'
 import { Draw } from './core/draw/Draw'
 import { Command } from './core/command/Command'
 import { CommandAdapt } from './core/command/CommandAdapt'

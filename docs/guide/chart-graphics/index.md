@@ -1552,7 +1552,7 @@ Cypress 回归：
 
 | 主题 | 当前代码位置 | 当前状态 |
 | --- | --- | --- |
-| 元素类型与模型 | `src/editor/dataset/enum/Element.ts`、`src/editor/core/modules/chart-graphics/model/ChartGraphic.ts`、`src/editor/interface/ChartGraphic.ts`、`src/editor/interface/Element.ts` | 已落地 `ElementType.CHART_GRAPHIC`、`IChartGraphic` 和图表元素挂载字段 |
+| 元素类型与模型 | `src/editor/dataset/enum/Element.ts`、`src/editor/core/modules/chart-graphics/model/ChartGraphic.ts`、`src/editor/interface/Element.ts` | 已落地 `ElementType.CHART_GRAPHIC`、`IChartGraphic` 和图表元素挂载字段 |
 | 预设与归一化 | `src/editor/core/modules/chart-graphics/presets/ChartGraphicPreset.ts`、`src/editor/core/modules/chart-graphics/presets/index.ts` | 已内置 8 个预设，具备独立预设模块出口，并支持业务侧动态注册、同 id 临时覆盖、注销恢复、基础结构校验、kind 一致性回退、宿主版本 / 能力兼容查询和实例预设版本升级治理 |
 | 插入与 patch 命令 | `src/editor/core/modules/chart-graphics/command/ChartGraphicCommandPolicy.ts`、`src/editor/core/command/Command.ts`、`src/editor/core/command/CommandAdaptMedia.ts` | 已支持插入、整体 patch、切换预设、更新序列 / 标记 / 区间 / 标注 / 牙位，以及设值后的 `on-open` 自动刷新 |
 | 布局测量 | `src/editor/core/modules/chart-graphics/layout/ChartGraphicElementLayout.ts`、`src/editor/core/modules/chart-graphics/layout/ChartGraphicLayoutEngine.ts`、`src/editor/core/modules/chart-graphics/layout/ChartGraphicFragmentPolicy.ts` | 已支持块级测量、超宽等比缩放、超高图表纵向 fragment，以及体温单 / 麻醉记录按时间窗口跨页续图 |
@@ -1560,11 +1560,11 @@ Cypress 回归：
 | 点位抽稀 | `src/editor/core/modules/chart-graphics/render/ChartGraphicSeriesPointPolicy.ts` | 已落地峰值保留抽稀，Canvas2D、SVG 打印和 Worker snapshot 共用 |
 | 心电图渲染 | `src/editor/core/modules/chart-graphics/render/ChartGraphicEcgRenderPolicy.ts`、`src/editor/core/modules/chart-graphics/presets/ChartGraphicPreset.ts` | 已支持 12 导联 ECG 预设、标准纸网格、导联分区、1mV 标定脉冲、高密度抽稀、Canvas / SVG / Worker 和内部命中 |
 | 内部命中 | `src/editor/core/modules/chart-graphics/hittest/ChartGraphicHitTest.ts`、`src/editor/core/command/CommandAdaptQuery.ts` | 已支持本地坐标命中和文档坐标命令查询，覆盖点位 / 标记 / 区间 / 标注 / 牙位 / 图例 |
-| 内部编辑态 | `src/editor/interface/ChartGraphic.ts`、`src/editor/core/command/CommandAdaptMedia.ts` | 已支持 `interaction.internalEditing` 读写、内部多选目标、批量删除、目标有效性检查和只读预览约束 |
+| 内部编辑态 | `src/editor/core/modules/chart-graphics/model/ChartGraphic.ts`、`src/editor/core/command/CommandAdaptMedia.ts` | 已支持 `interaction.internalEditing` 读写、内部多选目标、批量删除、目标有效性检查和只读预览约束 |
 | 默认内部拖拽 | `src/editor/core/modules/chart-graphics/interaction/ChartGraphicDragInteraction.ts`、`src/editor/core/event/pointer/PointerSession.ts` | 已支持 `series-point / mark / region / annotation` 拖拽预览和 `mouseup` 单步历史提交，`readonly` 图表仍阻止改写 |
 | 校验与快照 | `src/editor/core/modules/chart-graphics/model/ChartGraphicValidationPolicy.ts`、`src/editor/core/modules/chart-graphics/runtime/ChartGraphicSnapshotPolicy.ts` | 已支持单图和文档级结构化校验、数据源 warning、预设治理 / 锁定项 warning、fallback warning、性能阈值 warning、医疗业务范围 warning 和归一化快照读取 |
 | Worker snapshot | `src/editor/core/modules/chart-graphics/render/ChartGraphicWorkerSnapshotPolicy.ts`、`src/editor/core/render-backend/worker/WorkerRenderProtocol.ts` | 已输出后台绘制命令，覆盖坐标图、牙位图、ECG、纵向 fragment、time-window fragment、内部 clip 平移和 OffscreenCanvas 路径绘制 |
-| 打印 / 图片导出 | `src/editor/core/modules/chart-graphics/render/ChartGraphicSvgExporter.ts`、`src/editor/utils/print/svg/chartGraphic.ts`、`src/editor/utils/print/svg/inline.ts`、`src/editor/core/command/CommandAdaptQuery.ts` | 已接入 SVG 打印、PDF、`getImage()` raster 导出、纵向 fragment clip、ECG 导联 clip、时间窗口快照和 PDF 导出前 `on-print` 刷新 |
+| 打印 / 图片导出 | `src/editor/core/modules/chart-graphics/render/ChartGraphicSvgExporter.ts`、`src/editor/utils/print/svg/inline.ts`、`src/editor/core/command/CommandAdaptQuery.ts` | 已接入 SVG 打印、PDF、`getImage()` raster 导出、纵向 fragment clip、ECG 导联 clip、时间窗口快照和 PDF 导出前 `on-print` 刷新 |
 | 剪贴板恢复 | `src/editor/core/modules/chart-graphics/serializer/ChartGraphicClipboardSerializer.ts`、`src/editor/utils/elementDom.ts`、`src/editor/core/modules/chart-graphics/render/ChartGraphicSvgExporter.ts` | 已在复制 HTML 和打印 SVG 中写入 `data-ce-chart-graphic-payload`，粘贴 HTML / SVG 时可恢复为 `CHART_GRAPHIC` 元素 |
 | Demo 入口 | `src/app/toolbar.ts` | 已提供“插入图表”下拉，可直接插入 8 个预设 |
 | 回归测试 | `cypress/e2e/chart-graphics/chart-graphics.cy.ts` | 已覆盖插入、patch、预设切换、provider 刷新、命中、校验、Worker、打印 PDF，以及医疗图表时间窗口跨页和后续窗口编辑 |

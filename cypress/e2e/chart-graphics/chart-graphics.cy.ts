@@ -1,5 +1,5 @@
 import type Editor from '../../../src/editor'
-import type { ChartGraphicKind } from '../../../src/editor/interface/ChartGraphic'
+import type { ChartGraphicKind } from '../../../src/editor/core/modules/chart-graphics/model/ChartGraphic'
 import { createDemoPdfFonts } from '../../../src/demo/pdfFonts'
 import {
   createChartGraphicElement,
@@ -27,7 +27,7 @@ import {
   createPdfBlobFromPrintSvgDocument,
   createPrintSvgPageListFromDocument
 } from '../../../src/editor/utils/print'
-import { createPrintSvgChartGraphic } from '../../../src/editor/utils/print/svg/chartGraphic'
+import { createPrintSvgChartGraphic } from '../../../src/editor/core/modules/chart-graphics/render/ChartGraphicSvgExporter'
 import {
   createDomFromElementList,
   getElementListByHTML
