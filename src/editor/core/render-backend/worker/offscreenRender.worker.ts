@@ -400,6 +400,18 @@ async function renderSnapshot(
       }
       ctx.stroke(new Path2D(command.path))
       ctx.restore()
+    } else if (command.type === 'fillSvgPath') {
+      ctx.save()
+      ctx.globalAlpha = command.alpha ?? 1
+      ctx.fillStyle = command.fillStyle
+      if (command.translateX !== undefined || command.translateY !== undefined) {
+        ctx.translate(command.translateX ?? 0, command.translateY ?? 0)
+      }
+      if (command.scaleX !== undefined || command.scaleY !== undefined) {
+        ctx.scale(command.scaleX ?? 1, command.scaleY ?? 1)
+      }
+      ctx.fill(new Path2D(command.path))
+      ctx.restore()
     } else if (command.type === 'fillPath') {
       ctx.save()
       ctx.globalAlpha = command.alpha ?? 1

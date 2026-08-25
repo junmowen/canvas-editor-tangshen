@@ -1,8 +1,11 @@
 import Editor from '../editor'
 import type { IEditorData, IElement } from '../editor'
-import { EditorMode, PageMode, PaperDirection } from '../editor'
+import { EditorMode, KeyMap, PageMode, PaperDirection } from '../editor'
+import { Dialog } from '../components/dialog/Dialog'
 import { INTERNAL_CONTEXT_MENU_KEY } from '../editor/dataset/constant/ContextMenu'
-import { createToolbarItems } from './toolbar'
+import { getFormulaContextMenus } from './formulaTools'
+import { CanvasEditorAppReviewPanels } from './reviewPanels'
+import { createToolbarItems, openSearchPanel } from './toolbar'
 import type {
   CanvasEditorApp,
   CanvasEditorAppBuiltinFooterItemId,
@@ -81,6 +84,31 @@ const BUILTIN_CONTEXT_MENU_KEYS = Object.values(INTERNAL_CONTEXT_MENU_KEY)
   .flatMap(group => Object.values(group))
   .filter((key): key is string => typeof key === 'string')
 
+function getDialogValue(
+  payload: { name: string; value: string }[],
+  name: string
+) {
+  return payload.find(item => item.name === name)?.value || ''
+}
+
+function parseDialogPositiveInteger(
+  value: string,
+  fallback: number,
+  min: number
+) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.max(min, Math.floor(parsed))
+}
+
+function parseDialogOptionalInteger(value: string) {
+  const normalized = value.trim()
+  if (!normalized) return null
+  const parsed = Number(normalized)
+  if (!Number.isFinite(parsed)) return null
+  return Math.max(0, Math.floor(parsed))
+}
+
 export class CanvasEditorAppImpl implements CanvasEditorApp {
   public editor: Editor
   public container: HTMLElement
@@ -94,6 +122,8 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
   private toolbarNodes: Map<string, HTMLElement>
   private disposers: Array<() => void>
   private context: CanvasEditorAppContext
+  private reviewPanels: CanvasEditorAppReviewPanels
+  private pageScaleChangeVersion: number
 
   constructor(options: CreateCanvasEditorAppOptions) {
     this.options = options
@@ -111,6 +141,7 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
     }
     this.toolbarNodes = new Map()
     this.disposers = []
+    this.pageScaleChangeVersion = 0
 
     this.root = document.createElement('div')
     this.toolbar = document.createElement('div')
@@ -129,9 +160,16 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
     this.context = {
       editor: this.editor,
       root: this.root,
-      handlers: options.handlers || {},
+      handlers: {},
       state: this.state
     }
+    this.reviewPanels = new CanvasEditorAppReviewPanels({
+      root: this.root,
+      editorHost: this.editorHost,
+      context: this.context,
+      getOptions: () => this.options
+    })
+    this.context.handlers = this.resolveHandlers(options.handlers)
     this.applyRegisterOptions()
     this.bindEditorListeners()
     this.bindGlobalMenuClose()
@@ -195,7 +233,10 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
         ...options.handlers
       }
     }
-    this.context.handlers = this.options.handlers || {}
+    this.context.handlers = this.resolveHandlers(this.options.handlers)
+    this.reviewPanels.syncLayout()
+    this.reviewPanels.updateComment()
+    this.reviewPanels.updateTrackChangePanel()
     if (options.editor || options.ui?.contextMenu) {
       this.editor.command.executeUpdateOptions(
         this.resolveEditorOptions(this.options.editor) as Parameters<
@@ -258,6 +299,7 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
   public destroy() {
     this.disposers.forEach(dispose => dispose())
     this.disposers = []
+    this.reviewPanels.dispose()
     this.editor.destroy()
     this.root.remove()
   }
@@ -283,10 +325,62 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
       .join(' ')
   }
 
+  private resolveHandlers(handlers: CanvasEditorAppHandlers = {}) {
+    return {
+      toggleCatalog: () => {
+        this.reviewPanels.toggleCatalog()
+      },
+      toggleTrackChange: (
+        _ctx: CanvasEditorAppContext,
+        enabled?: boolean
+      ) => {
+        this.toggleTrackChange(enabled)
+      },
+      toggleTrackChangePanel: (
+        _ctx: CanvasEditorAppContext,
+        visible?: boolean
+      ) => {
+        this.reviewPanels.setTrackChangePanelVisible(visible)
+      },
+      acceptAllTrackChange: () => {
+        this.editor.command.executeAcceptAllTrackChange()
+        this.reviewPanels.updateTrackChangePanel()
+        this.renderToolbarState()
+      },
+      rejectAllTrackChange: () => {
+        this.editor.command.executeRejectAllTrackChange()
+        this.reviewPanels.updateTrackChangePanel()
+        this.renderToolbarState()
+      },
+      ...handlers
+    }
+  }
+
+  private toggleTrackChange(enabled?: boolean) {
+    const trackChange = this.editor.command.getOptions().trackChange
+    const nextEnabled = enabled ?? !trackChange.enabled
+    this.editor.command.executeSetTrackChange({
+      enabled: nextEnabled,
+      author: this.resolveTrackChangeAuthor()
+    })
+    this.reviewPanels.setTrackChangePanelVisible(nextEnabled)
+    this.reviewPanels.updateTrackChangePanel()
+    this.renderToolbarState()
+  }
+
+  private resolveTrackChangeAuthor() {
+    return (
+      this.options.handlers?.getTrackChangeAuthor?.(this.context) ||
+      this.editor.command.getOptions().trackChange.author ||
+      '匿名用户'
+    )
+  }
+
   private bindEditorListeners() {
     this.editor.listener.rangeStyleChange = payload => {
       this.state.rangeStyle = payload
       this.updateCursorPosition()
+      this.reviewPanels.syncActiveComment(payload)
       this.renderToolbarState()
       this.options.listeners?.rangeStyleChange?.(payload)
     }
@@ -296,19 +390,23 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
         'page-no-list',
         this.state.visiblePageNoList.join('、') || '1'
       )
+      this.reviewPanels.scheduleReviewLinksRender()
       this.options.listeners?.visiblePageNoListChange?.(payload)
     }
     this.editor.listener.pageSizeChange = payload => {
       this.state.pageSize = Math.max(1, payload)
       this.updateFooterText('page-size', this.state.pageSize)
+      this.reviewPanels.scheduleReviewLinksRender()
       this.options.listeners?.pageSizeChange?.(payload)
     }
     this.editor.listener.intersectionPageNoChange = payload => {
       this.state.pageNo = Math.max(1, payload + 1)
       this.updateFooterText('page-no', this.state.pageNo)
+      this.reviewPanels.scheduleReviewLinksRender()
       this.options.listeners?.intersectionPageNoChange?.(payload)
     }
     this.editor.listener.pageScaleChange = payload => {
+      this.pageScaleChangeVersion++
       this.state.scale = payload
       this.updateFooterText(
         'page-scale-percentage',
@@ -323,6 +421,7 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
     }
     this.editor.listener.contentChange = () => {
       this.updateWordCount()
+      this.reviewPanels.handleContentChange()
       this.options.listeners?.contentChange?.()
     }
   }
@@ -389,6 +488,7 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
       input.value = String(item.value || '#000000')
       swatch.style.backgroundColor = input.value
       input.oninput = () => {
+        if (this.isToolbarItemDisabled(item)) return
         swatch.style.backgroundColor = input.value
         this.runToolbarItem(item, input.value)
       }
@@ -404,11 +504,82 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
       icon.textContent = item.label
     }
     button.append(icon)
-    button.onclick = () => {
-      if (button.classList.contains('disable')) return
-      this.runToolbarItem(item)
+    if (item.runDblclick) {
+      let clickTimer: number | null = null
+      button.onclick = () => {
+        if (this.isToolbarItemDisabled(item)) return
+        if (clickTimer !== null) {
+          window.clearTimeout(clickTimer)
+        }
+        clickTimer = window.setTimeout(() => {
+          clickTimer = null
+          this.runToolbarItem(item)
+        }, 200)
+      }
+      button.ondblclick = evt => {
+        evt.preventDefault()
+        if (this.isToolbarItemDisabled(item)) return
+        if (clickTimer !== null) {
+          window.clearTimeout(clickTimer)
+          clickTimer = null
+        }
+        Promise.resolve(item.runDblclick?.(this.context)).catch(error => {
+          this.handleError(error)
+        })
+      }
+    } else {
+      button.onclick = () => {
+        if (this.isToolbarItemDisabled(item)) return
+        this.runToolbarItem(item)
+      }
     }
     return button
+  }
+
+  private resolveToolbarSelectLabel(
+    label: string | ((ctx: CanvasEditorAppContext) => string)
+  ) {
+    return typeof label === 'function' ? label(this.context) : label
+  }
+
+  private resolveToolbarValue(item: ToolbarItem) {
+    return typeof item.value === 'function'
+      ? item.value(this.context)
+      : item.value
+  }
+
+  private resolveToolbarSelectedOption(item: ToolbarItem) {
+    const value = this.resolveToolbarValue(item)
+    return (
+      item.options?.find(option => option.value === value) ||
+      item.options?.[0]
+    )
+  }
+
+  private setToolbarSelectText(
+    select: HTMLElement,
+    item: ToolbarItem,
+    label: string
+  ) {
+    const displayLabel = item.label === '' ? '' : label
+    if (select.dataset.label === displayLabel) return
+    select.dataset.label = displayLabel
+    select.textContent = displayLabel
+    if (!displayLabel && item.label !== '') {
+      select.append(document.createElement('i'))
+    }
+  }
+
+  private syncSelectToolbarNode(node: HTMLElement, item: ToolbarItem) {
+    const selected = this.resolveToolbarSelectedOption(item)
+    const select = node.querySelector<HTMLElement>('.select')
+    if (select && selected) {
+      this.setToolbarSelectText(
+        select,
+        item,
+        this.resolveToolbarSelectLabel(selected.label)
+      )
+    }
   }
 
   private createSelectToolbarNode(item: ToolbarItem) {
@@ -418,34 +589,55 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
     const icon = document.createElement('i')
     const select = document.createElement('span')
     select.className = 'select'
-    const selected =
-      item.options?.find(option => option.value === item.value) ||
-      item.options?.[0]
-    select.textContent =
-      item.label === '' ? '' : selected?.label || item.label || item.id
+    const selected = this.resolveToolbarSelectedOption(item)
+    this.setToolbarSelectText(
+      select,
+      item,
+      selected ? this.resolveToolbarSelectLabel(selected.label) : item.label || item.id
+    )
 
     const options = document.createElement('div')
     options.className = 'options'
     const list = document.createElement('ul')
+    const optionNodes: HTMLLIElement[] = []
+    const syncOptionLabels = () => {
+      const value = this.resolveToolbarValue(item)
+      item.options?.forEach((option, index) => {
+        const optionNode = optionNodes[index]
+        if (!optionNode) return
+        const label = this.resolveToolbarSelectLabel(option.label)
+        optionNode.textContent = label
+        optionNode.classList.toggle('active', option.value === value)
+        if (!label) {
+          optionNode.append(document.createElement('i'))
+        }
+      })
+    }
     item.options?.forEach(option => {
       const optionNode = document.createElement('li')
       optionNode.dataset.value = String(option.value)
-      optionNode.textContent = option.label
-      if (!option.label) {
+      const optionLabel = this.resolveToolbarSelectLabel(option.label)
+      optionNode.textContent = optionLabel
+      if (!optionLabel) {
         optionNode.append(document.createElement('i'))
       }
       optionNode.onclick = evt => {
         evt.stopPropagation()
-        select.textContent = item.label === '' ? '' : option.label
+        syncOptionLabels()
+        const label = this.resolveToolbarSelectLabel(option.label)
+        this.setToolbarSelectText(select, item, label)
         options.classList.remove('visible')
         this.syncOptionsOpenClass()
         this.runToolbarItem(item, option.value)
       }
+      optionNodes.push(optionNode)
       list.append(optionNode)
     })
     options.append(list)
     node.onclick = evt => {
       evt.stopPropagation()
+      if (this.isToolbarItemDisabled(item)) return
+      syncOptionLabels()
       this.closeVisibleOptions(options)
       options.classList.toggle('visible')
       this.syncOptionsOpenClass()
@@ -455,6 +647,7 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
   }
 
   private runToolbarItem(item: ToolbarItem, payload?: string | number) {
+    this.closeTransientPanels()
     Promise.resolve(item.run?.(this.context, payload)).catch(error => {
       const handlers: CanvasEditorAppHandlers = this.context.handlers
       if (handlers.onError) {
@@ -463,6 +656,30 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
       }
       throw error
     })
+  }
+
+  private closeTransientPanels() {
+    this.root
+      .querySelectorAll<HTMLElement>(
+        [
+          '.ce-app-table-picker',
+          '.ce-app-page-columns-panel',
+          '.ce-app-row-indent-panel',
+          '.ce-app-tab-stops-panel',
+          '.ce-app-formula-picker',
+          '.ce-app-search-panel'
+        ].join(',')
+      )
+      .forEach(node => node.remove())
+  }
+
+  private isToolbarItemDisabled(item: ToolbarItem) {
+    return (
+      !!item.disabled?.(this.context) ||
+      (this.state.editorModeName === '只读模式' &&
+        item.id !== 'search' &&
+        item.id !== 'print')
+    )
   }
 
   private resolveEditorOptions(editorOptions = this.options.editor) {
@@ -483,12 +700,74 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
     contextMenu = this.options.ui?.contextMenu
   ) {
     if (contextMenu?.mode !== 'none') {
+      const reviewContextMenus = this.reviewPanels.getContextMenus()
+      if (reviewContextMenus.length) {
+        this.editor.register.contextMenuList(reviewContextMenus)
+      }
+      const formulaContextMenus = getFormulaContextMenus(this.context)
+      if (formulaContextMenus.length) {
+        this.editor.register.contextMenuList(formulaContextMenus)
+      }
       if (contextMenu?.menus?.length) {
         this.editor.register.contextMenuList(contextMenu.menus)
       }
       if (register?.contextMenus?.length) {
         this.editor.register.contextMenuList(register.contextMenus)
       }
+    }
+    if (this.options.ui?.layout?.toolbar !== false) {
+      this.editor.register.shortcutList([
+        {
+          key: KeyMap.P,
+          mod: true,
+          isGlobal: true,
+          callback: command => {
+            const result = this.context.handlers.print
+              ? this.context.handlers.print(this.context)
+              : command.executePrint()
+            return result
+          }
+        },
+        {
+          key: KeyMap.F,
+          mod: true,
+          isGlobal: true,
+          callback: command => openSearchPanel(this.context, command.getRangeText())
+        },
+        {
+          key: KeyMap.MINUS,
+          ctrl: true,
+          isGlobal: true,
+          callback: command => {
+            const version = this.pageScaleChangeVersion
+            command.executePageScaleMinus()
+            this.syncScaleFromOptions()
+            this.emitPageScaleChangeFallback(version)
+          }
+        },
+        {
+          key: KeyMap.EQUAL,
+          ctrl: true,
+          isGlobal: true,
+          callback: command => {
+            const version = this.pageScaleChangeVersion
+            command.executePageScaleAdd()
+            this.syncScaleFromOptions()
+            this.emitPageScaleChangeFallback(version)
+          }
+        },
+        {
+          key: KeyMap.ZERO,
+          ctrl: true,
+          isGlobal: true,
+          callback: command => {
+            const version = this.pageScaleChangeVersion
+            command.executePageScaleRecovery()
+            this.syncScaleFromOptions()
+            this.emitPageScaleChangeFallback(version)
+          }
+        }
+      ])
     }
     if (register?.shortcuts?.length) {
       this.editor.register.shortcutList(register.shortcuts)
@@ -520,11 +799,16 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
       const item = toolbarItems.find(toolbarItem => toolbarItem.id === id)
       if (!item) return
       const isActive = !!item.active?.(this.context)
-      const isDisabled = !!item.disabled?.(this.context)
+      const isDisabled = this.isToolbarItemDisabled(item)
       node.classList.toggle('is-active', isActive)
       node.classList.toggle('active', isActive)
       node.classList.toggle('disable', isDisabled)
       node.classList.toggle('no-allow', isDisabled)
+      const input = node.querySelector<HTMLInputElement>('input')
+      if (input) input.disabled = isDisabled
+      if (item.type === 'select') {
+        this.syncSelectToolbarNode(node, item)
+      }
     })
   }
 
@@ -541,9 +825,10 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
 
     const catalogMode = this.createBuiltinFooterItem(
       'catalog',
-      this.createFooterIconButton('catalog-mode', '目录', () =>
-          this.context.handlers.toggleCatalog?.(this.context)
-        )
+      this.createFooterIconButton('catalog-mode', '目录', () => {
+        this.closeTransientPanels()
+        return this.context.handlers.toggleCatalog?.(this.context)
+      })
     )
 
     const pageMode = this.createBuiltinFooterItem(
@@ -640,18 +925,24 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
     if (this.footerItemEnabled('paper-margin')) {
       const paperMargin = this.createBuiltinFooterItem(
         'paper-margin',
-        this.createFooterIconButton('paper-margin', '页边距', () =>
-          this.context.handlers.openPaperMargin?.(this.context)
-        )
+        this.createFooterIconButton('paper-margin', '页边距', () => {
+          if (this.options.handlers?.openPaperMargin) {
+            return this.options.handlers.openPaperMargin(this.context)
+          }
+          return this.openPaperMarginDialog()
+        })
       )
       if (paperMargin) right.append(paperMargin)
     }
     if (this.footerItemEnabled('page-number-range')) {
       const pageNumberRange = this.createBuiltinFooterItem(
         'page-number-range',
-        this.createFooterIconButton('page-number-range', '页码范围', () =>
-          this.context.handlers.openPageNumberRange?.(this.context)
-        )
+        this.createFooterIconButton('page-number-range', '页码范围', () => {
+          if (this.options.handlers?.openPageNumberRange) {
+            return this.options.handlers.openPageNumberRange(this.context)
+          }
+          return this.openPageNumberRangeDialog()
+        })
       )
       if (pageNumberRange) right.append(pageNumberRange)
     }
@@ -669,9 +960,12 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
     if (this.footerItemEnabled('editor-option')) {
       const editorOption = this.createBuiltinFooterItem(
         'editor-option',
-        this.createFooterIconButton('editor-option', '编辑器设置', () =>
-          this.context.handlers.openEditorOptions?.(this.context)
-        )
+        this.createFooterIconButton('editor-option', '编辑器设置', () => {
+          if (this.options.handlers?.openEditorOptions) {
+            return this.options.handlers.openEditorOptions(this.context)
+          }
+          return this.openEditorOptionsDialog()
+        })
       )
       if (editorOption) right.append(editorOption)
     }
@@ -695,6 +989,9 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
   }
 
   private footerItemEnabled(id: CanvasEditorAppFooterItemId) {
+    if (id === 'catalog' && this.options.ui?.layout?.catalog === false) {
+      return false
+    }
     const footer = this.options.ui?.footer
     const include = footer?.include
     if (include && !include.includes(id)) return false
@@ -767,8 +1064,10 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
       'page-scale-minus',
       '缩小(Ctrl+-)',
       () => {
+        const version = this.pageScaleChangeVersion
         this.editor.command.executePageScaleMinus()
         this.syncScaleFromOptions()
+        this.emitPageScaleChangeFallback(version)
       }
     )
     const zoom = document.createElement('span')
@@ -776,15 +1075,19 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
     zoom.title = '显示比例(点击可复原Ctrl+0)'
     zoom.textContent = scale
     zoom.onclick = () => {
+      const version = this.pageScaleChangeVersion
       this.editor.command.executePageScaleRecovery()
       this.syncScaleFromOptions()
+      this.emitPageScaleChangeFallback(version)
     }
     const add = this.createFooterIconButton(
       'page-scale-add',
       '放大(Ctrl+=)',
       () => {
+        const version = this.pageScaleChangeVersion
         this.editor.command.executePageScaleAdd()
         this.syncScaleFromOptions()
+        this.emitPageScaleChangeFallback(version)
       }
     )
     fragment.append(minus, zoom, add)
@@ -829,9 +1132,33 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
     const mode = document.createElement('div')
     mode.className = 'editor-mode'
     mode.title = '编辑模式(编辑、清洁、只读、表单、设计)'
-    mode.textContent =
-      this.state.editorModeName || DEFAULT_STATE.editorModeName
-    mode.onclick = () => this.cycleEditorMode()
+    const label = document.createElement('span')
+    label.className = 'editor-mode__label'
+    label.textContent = this.state.editorModeName || DEFAULT_STATE.editorModeName
+    const optionsNode = document.createElement('div')
+    optionsNode.className = 'options'
+    const list = document.createElement('ul')
+    EDITOR_MODE_OPTIONS.forEach(option => {
+      const item = document.createElement('li')
+      item.dataset.value = option.value
+      item.textContent = option.label
+      item.classList.toggle('active', this.state.editorModeName === option.label)
+      item.onclick = evt => {
+        evt.stopPropagation()
+        optionsNode.classList.remove('visible')
+        this.syncOptionsOpenClass()
+        this.setEditorMode(option)
+      }
+      list.append(item)
+    })
+    optionsNode.append(list)
+    mode.onclick = evt => {
+      evt.stopPropagation()
+      this.closeVisibleOptions(optionsNode)
+      optionsNode.classList.toggle('visible')
+      this.syncOptionsOpenClass()
+    }
+    mode.append(label, optionsNode)
     return mode
   }
 
@@ -911,16 +1238,181 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
     return menu
   }
 
-  private cycleEditorMode() {
-    const currentIndex = EDITOR_MODE_OPTIONS.findIndex(
-      option => option.label === this.state.editorModeName
-    )
-    const next =
-      EDITOR_MODE_OPTIONS[
-        currentIndex === EDITOR_MODE_OPTIONS.length - 1 ? 0 : currentIndex + 1
-      ]
-    this.state.editorModeName = next.label
-    this.editor.command.executeMode(next.value)
+  private openEditorOptionsDialog() {
+    new Dialog({
+      title: '编辑器配置',
+      data: [
+        {
+          type: 'textarea',
+          name: 'option',
+          width: 350,
+          height: 300,
+          required: true,
+          value: JSON.stringify(this.editor.command.getOptions(), null, 2),
+          placeholder: '请输入编辑器配置'
+        }
+      ],
+      onConfirm: payload => {
+        try {
+          const newOptionValue = getDialogValue(payload, 'option')
+          if (!newOptionValue) return
+          this.editor.command.executeUpdateOptions(JSON.parse(newOptionValue))
+        } catch (error) {
+          this.handleError(error)
+        }
+      }
+    })
+  }
+
+  private openPaperMarginDialog() {
+    const [topMargin, rightMargin, bottomMargin, leftMargin] =
+      this.editor.command.getPaperMargin()
+    new Dialog({
+      title: '页边距',
+      data: [
+        {
+          type: 'text',
+          label: '上边距',
+          name: 'top',
+          required: true,
+          value: `${topMargin}`,
+          placeholder: '请输入上边距'
+        },
+        {
+          type: 'text',
+          label: '下边距',
+          name: 'bottom',
+          required: true,
+          value: `${bottomMargin}`,
+          placeholder: '请输入下边距'
+        },
+        {
+          type: 'text',
+          label: '左边距',
+          name: 'left',
+          required: true,
+          value: `${leftMargin}`,
+          placeholder: '请输入左边距'
+        },
+        {
+          type: 'text',
+          label: '右边距',
+          name: 'right',
+          required: true,
+          value: `${rightMargin}`,
+          placeholder: '请输入右边距'
+        }
+      ],
+      onConfirm: payload => {
+        const top = getDialogValue(payload, 'top')
+        const bottom = getDialogValue(payload, 'bottom')
+        const left = getDialogValue(payload, 'left')
+        const right = getDialogValue(payload, 'right')
+        if (!top || !bottom || !left || !right) return
+        this.editor.command.executeSetPaperMargin([
+          Number(top),
+          Number(right),
+          Number(bottom),
+          Number(left)
+        ])
+      }
+    })
+  }
+
+  private openPageNumberRangeDialog() {
+    const pageNumber = this.editor.command.getOptions().pageNumber || {}
+    const fromPageNo = (pageNumber.fromPageNo ?? 0) + 1
+    const isContinueMode =
+      (pageNumber.startPageNo ?? 1) === 1 && (pageNumber.fromPageNo ?? 0) === 0
+
+    new Dialog({
+      title: '页码范围',
+      data: [
+        {
+          type: 'select',
+          label: '编号模式',
+          name: 'mode',
+          required: true,
+          value: isContinueMode ? 'continue' : 'restart',
+          options: [
+            {
+              label: '续编',
+              value: 'continue'
+            },
+            {
+              label: '重新编号',
+              value: 'restart'
+            }
+          ]
+        },
+        {
+          type: 'number',
+          label: '起始页码',
+          name: 'startPageNo',
+          required: true,
+          value: `${pageNumber.startPageNo ?? 1}`,
+          placeholder: '请输入起始页码'
+        },
+        {
+          type: 'number',
+          label: '起始页（1起）',
+          name: 'fromPageNo',
+          required: true,
+          value: `${fromPageNo}`,
+          placeholder: '请输入起始页'
+        },
+        {
+          type: 'number',
+          label: '最大页数',
+          name: 'maxPageNo',
+          value: pageNumber.maxPageNo == null ? '' : `${pageNumber.maxPageNo}`,
+          placeholder: '留空表示不限'
+        }
+      ],
+      onConfirm: payload => {
+        const mode = getDialogValue(payload, 'mode') || 'continue'
+        const startPageNo = parseDialogPositiveInteger(
+          getDialogValue(payload, 'startPageNo'),
+          pageNumber.startPageNo ?? 1,
+          1
+        )
+        const selectedFromPageNo = parseDialogPositiveInteger(
+          getDialogValue(payload, 'fromPageNo'),
+          fromPageNo,
+          1
+        )
+        const maxPageNo = parseDialogOptionalInteger(
+          getDialogValue(payload, 'maxPageNo')
+        )
+
+        if (mode === 'continue') {
+          this.editor.command.executePageNumberContinue()
+        } else {
+          this.editor.command.executePageNumberRestart({
+            startPageNo,
+            fromPageNo: selectedFromPageNo - 1
+          })
+        }
+
+        this.editor.command.executePageNumberRange({
+          fromPageNo: selectedFromPageNo - 1,
+          maxPageNo
+        })
+      }
+    })
+  }
+
+  private handleError(error: unknown) {
+    if (this.context.handlers.onError) {
+      this.context.handlers.onError(error, this.context)
+      return
+    }
+    throw error
+  }
+
+  private setEditorMode(option: (typeof EDITOR_MODE_OPTIONS)[number]) {
+    this.state.editorModeName = option.label
+    this.editor.command.executeMode(option.value)
     this.renderToolbarState()
     this.renderFooter()
   }
@@ -946,6 +1438,11 @@ export class CanvasEditorAppImpl implements CanvasEditorApp {
       'page-scale-percentage',
       `${Math.round(this.state.scale * 100)}%`
     )
+  }
+
+  private emitPageScaleChangeFallback(version: number) {
+    if (this.pageScaleChangeVersion !== version) return
+    this.options.listeners?.pageScaleChange?.(this.state.scale)
   }
 
   private updateFooterText(className: string, value: string | number) {

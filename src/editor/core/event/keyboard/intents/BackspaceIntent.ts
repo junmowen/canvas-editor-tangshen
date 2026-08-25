@@ -27,9 +27,11 @@ export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
   let curIndex: number | null
   let deletedCount = 1
   let editIndex = startIndex
+  let mutationCount = 0
   if (isCrossRowCol) {
     curIndex = clearCrossRowColSelection(draw)
     if (curIndex === null) return
+    mutationCount++
     deletedCount = Math.max(1, endIndex - startIndex)
     editIndex = startIndex + 1
   } else {
@@ -42,6 +44,9 @@ export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
       return
     }
     curIndex = handleBackspaceControlDeletion(control, evt)
+    if (curIndex !== null) {
+      mutationCount++
+    }
     if (curIndex === null) {
       const cursorPosition = draw.getCoordinate().getCursorPosition()
       if (!cursorPosition) return
@@ -58,7 +63,7 @@ export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
         })
         if (tableBackspace) {
           if (tableBackspace.shouldRemoveFirstElement) {
-            draw.spliceElementList(elementList, 0, 1)
+            mutationCount += draw.spliceElementList(elementList, 0, 1)
           }
           draw.getCoordinate().setPositionContext(
             tableBackspace.nextPositionContext
@@ -85,7 +90,7 @@ export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
         rowElementList: rangeManager.getRangeRowElementList()
       })
       if (!isCollapsed) {
-        draw.spliceElementList(
+        mutationCount += draw.spliceElementList(
           elementList,
           startIndex + 1,
           endIndex - startIndex
@@ -93,12 +98,16 @@ export function runBackspaceIntent(evt: KeyboardEvent, host: CanvasEvent) {
         deletedCount = Math.max(1, endIndex - startIndex)
         editIndex = startIndex + 1
       } else {
-        draw.spliceElementList(elementList, index, 1)
+        mutationCount += draw.spliceElementList(elementList, index, 1)
         deletedCount = 1
         editIndex = index
       }
       curIndex = isCollapsed ? index - 1 : startIndex
     }
+  }
+  if (draw.getTrackChange().isEnabled() && mutationCount === 0) {
+    evt.preventDefault()
+    return
   }
   finalizeDeletion({ draw, startIndex, curIndex, deletedCount, editIndex })
 }

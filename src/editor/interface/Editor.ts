@@ -297,6 +297,8 @@ export type IUpdateOption = Omit<
 export interface ISetValueOption {
   /** 是否同步设置光标，用于控制操作完成后的焦点位置。 */
   isSetCursor?: boolean
+  /** 是否在设值后自动刷新 refreshMode 为 on-open 的图表，默认 true。 */
+  isRefreshChartGraphicOnOpen?: boolean
 }
 
 /** focus选项，用于约束调用方可传入的可选配置。 */

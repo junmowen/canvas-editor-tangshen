@@ -128,12 +128,7 @@ export class TrackChangeService {
     const trackChange = this.getEditSessionTrackChange('delete')
     const end = Math.min(elementList.length, start + deleteCount)
     let markedCount = 0
-    for (
-      let index = start;
-      index < elementList.length &&
-      (index < end || (deleteCount === 1 && markedCount < 1));
-      index++
-    ) {
+    for (let index = start; index < end; index++) {
       const element = elementList[index]
       if (!this.canMarkDelete(element)) continue
       if (element.trackChange?.type === 'insert') {

@@ -2,6 +2,7 @@ import { ZERO } from '../../../dataset/constant/Common'
 import { IElement } from '../../../interface/Element'
 import { IRow, IRowElement } from '../../../interface/Row'
 import { isBlockElement } from '../../modules/block/layout/BlockElementLayout'
+import { isChartGraphicElement } from '../../modules/chart-graphics/layout/ChartGraphicElementLayout'
 import { resolveValueStartIndentOffset } from '../../modules/control/layout/ControlRowLayoutPolicy'
 import { isPageBreakElement } from '../../modules/page-break/layout/PageBreakElementLayout'
 import { shouldApplyRowFlexSpacing } from '../../modules/paragraph/layout/ParagraphRowLayoutPolicy'
@@ -87,7 +88,9 @@ export function appendRowElementToCurrentRow(payload: {
   row.width += metricsWidth
   if (
     elementIndex === 0 &&
-    (isBlockElement(elementList[1]) || !!elementList[1]?.areaId)
+    (isBlockElement(elementList[1]) ||
+      isChartGraphicElement(elementList[1]) ||
+      !!elementList[1]?.areaId)
   ) {
     row.height = defaultBasicRowMarginHeight
     row.ascent = defaultBasicRowMarginHeight

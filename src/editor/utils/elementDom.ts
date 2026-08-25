@@ -18,6 +18,11 @@ import { IElement } from '../interface/Element'
 import { ITd } from '../interface/table/Td'
 import { ITr } from '../interface/table/Tr'
 import { resolveFormulaDisplayText } from '../core/modules/formula/model/FormulaTextModel'
+import {
+  CHART_GRAPHIC_CLIPBOARD_PAYLOAD_ATTR,
+  createChartGraphicClipboardDom,
+  decodeChartGraphicClipboardPayload
+} from '../core/modules/chart-graphics/serializer/ChartGraphicClipboardSerializer'
 import { getControlInlineContentText } from './elementControl'
 import { convertRowFlexToJustifyContent, convertRowFlexToTextAlign, convertTextAlignToRowFlex, getIsBlockElement, replaceHTMLElementTag } from './elementLayout'
 import { mergeOption } from './option'
@@ -330,6 +335,8 @@ export function createDomFromElementList(
         if (!element.valueList?.length) continue
         const childDom = buildDom(element.valueList)
         clipboardDom.append(...Array.from(childDom.childNodes))
+      } else if (element.type === ElementType.CHART_GRAPHIC) {
+        clipboardDom.append(createChartGraphicClipboardDom(element))
       } else if (element.type === ElementType.IMAGE) {
         const img = document.createElement('img')
         if (element.value) {
@@ -655,6 +662,13 @@ export function getElementListByHTML(
       const childNodes = dom.childNodes
       for (let n = 0; n < childNodes.length; n++) {
         const node = childNodes[n]
+        const chartGraphicElement = decodeChartGraphicClipboardPayload(
+          (node as HTMLElement).dataset?.[CHART_GRAPHIC_CLIPBOARD_PAYLOAD_ATTR]
+        )
+        if (chartGraphicElement) {
+          elementList.push(chartGraphicElement)
+          continue
+        }
         if ((node as HTMLElement).dataset?.cePageBreak === 'true') {
           elementList.push({
             type: ElementType.PAGE_BREAK,

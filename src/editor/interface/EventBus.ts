@@ -1,4 +1,7 @@
 import {
+  IChartGraphicDataSourceRefreshEvent
+} from './ChartGraphic'
+import {
   IContentChange,
   IControlChange,
   IControlContentChange,
@@ -42,4 +45,7 @@ export interface EventBusMap {
   positionContextChange: IPositionContextChange
   imageSizeChange: IImageSizeChange
   imageMousedown: IImageMousedown
+  chartGraphicDataSourceRefresh: (
+    payload: IChartGraphicDataSourceRefreshEvent
+  ) => void
 }

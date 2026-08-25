@@ -71,6 +71,10 @@ export default defineConfig({
             link: '/guide/table/'
           },
           {
+            text: '图表与图形模块设计',
+            link: '/guide/chart-graphics/'
+          },
+          {
             text: '架构与性能索引',
             link: '/guide/architecture/'
           },

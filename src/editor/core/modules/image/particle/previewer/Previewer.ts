@@ -12,6 +12,7 @@ import { EventBus } from '../../../../event/eventbus/EventBus'
 import { RenderLayer } from '../../../../render-backend'
 import { Draw } from '../../../../draw/Draw'
 import { resolveFloatingImageRenderPosition } from '../../render/WorkerSnapshotImageRenderPolicy'
+import { syncChartGraphicElementSize } from '../../../chart-graphics/command/ChartGraphicCommandPolicy'
 
 /** 图片预览器，负责图片预览弹窗、拖拽缩放选区和当前页交互状态。 */
 export class Previewer {
@@ -238,7 +239,9 @@ export class Previewer {
   }
 
   private _mousedown(evt: MouseEvent) {
-    if (!this.curElement) return
+    if (!this.curElement || this.previewerDrawOption.dragDisable) return
+    this.draw.flushAsyncInsertTransaction('media-resize-start')
+    this.draw.getServices().historyBridge.flushTypingHistory()
     this.canvas = this._resolvePageCanvas(this.currentPageNo)
     // 当前页可能被虚拟滚动卸载，拿不到 canvas 时不启动拖拽，避免空引用副作用。
     if (!this.canvas) return
@@ -273,6 +276,7 @@ export class Previewer {
         if (this.curElement && !this.previewerDrawOption.dragDisable) {
           this.curElement.width = this.width
           this.curElement.height = this.height
+          syncChartGraphicElementSize(this.curElement)
           this.draw.render({
             isSetCursor: true,
             curIndex: this.curPosition?.index
@@ -558,7 +562,7 @@ export class Previewer {
   /** 更新resizerrect，根据最新数据刷新运行态。 */
   public _updateResizerRect(width: number, height: number) {
     const { resizerSize: handleSize, scale } = this.options
-    const isReadonly = this.draw.isReadonly()
+    const isReadonly = this.draw.isReadonly() || !!this.previewerDrawOption.dragDisable
     this.resizerSelection.style.width = `${width}px`
     this.resizerSelection.style.height = `${height}px`
     // handle

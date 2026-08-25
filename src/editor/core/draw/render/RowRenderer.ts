@@ -3,6 +3,7 @@ import { IDrawRowPayload } from '../../../interface/Draw'
 import { IElement } from '../../../interface/Element'
 import { ITableFragmentDescriptor } from '../../../interface/table/TableFragment'
 import { BlockRowRenderer } from '../../modules/block/render/BlockRowRenderer'
+import { ChartGraphicRowRenderer } from '../../modules/chart-graphics/render/ChartGraphicRowRenderer'
 import { CheckableControlRenderer } from '../../modules/control/render/CheckableControlRenderer'
 import { RowControlBorderRenderer } from '../../modules/control/render/RowControlBorderRenderer'
 import { RowGroupRenderer } from '../../modules/group/render/RowGroupRenderer'
@@ -38,6 +39,7 @@ export class RowRenderer {
   /** 只读表格渲染helper依赖，集中处理当前流程的辅助逻辑。 */
   private readonly tableRenderHelper: RowTableRenderHelper
   private readonly blockRowRenderer: BlockRowRenderer
+  private readonly chartGraphicRowRenderer = new ChartGraphicRowRenderer()
   private readonly checkableControlRenderer: CheckableControlRenderer
   private readonly rowControlBorderRenderer: RowControlBorderRenderer
   private readonly rowGroupRenderer: RowGroupRenderer
@@ -382,6 +384,9 @@ export class RowRenderer {
         textParticle,
         blockParticle
       })
+    } else if (this.chartGraphicRowRenderer.canRender(element)) {
+      textParticle.complete()
+      this.chartGraphicRowRenderer.render(ctx, element, x, y + offsetY)
     } else {
       this.paragraphTextRunRenderer.render({
         ctx,

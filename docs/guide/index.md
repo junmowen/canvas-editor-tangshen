@@ -35,6 +35,7 @@
 
 | 主题 | 文档 |
 | --- | --- |
+| 图表与图形模块设计 | [chart-graphics/index.md](./chart-graphics/) |
 | 子目录索引 | [architecture/index.md](./architecture/) |
 | 性能优化方案 | [performance-optimization-plan.md](./architecture/performance-optimization-plan.md) |
 | Draw 重构架构 | [draw-refactor-architecture.md](./architecture/draw-refactor-architecture.md) |

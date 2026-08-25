@@ -8,6 +8,10 @@ import { TableBorder, TableDisplay } from '../dataset/enum/table/Table'
 import { IArea } from './Area'
 import { IBlock } from './Block'
 import { ICheckbox } from './Checkbox'
+import {
+  IChartGraphic,
+  IChartGraphicFragmentDescriptor
+} from './ChartGraphic'
 import { IControl } from './Control'
 import { IFormula } from './Formula'
 import { IPageColumns } from './PageColumns'
@@ -448,6 +452,12 @@ export interface IBlockElement {
   block?: IBlock
 }
 
+/** 图表图形元素，描述文档中的结构化图表对象。 */
+export interface IChartGraphicElement {
+  chartGraphic?: IChartGraphic
+  chartGraphicFragment?: IChartGraphicFragmentDescriptor
+}
+
 /** 区域元素，描述文档元素在该场景下扩展的业务属性。 */
 export interface IAreaElement {
   /** 值列表，保存控件或批量操作的候选值。 */
@@ -476,6 +486,7 @@ export type IElement = IElementBasic &
   IDateElement &
   IImageElement &
   IBlockElement &
+  IChartGraphicElement &
   ITitleElement &
   IListElement &
   IAreaElement

@@ -17,5 +17,6 @@ export enum ElementType {
   DATE = 'date',
   BLOCK = 'block',
   TITLE = 'title',
-  LIST = 'list'
+  LIST = 'list',
+  CHART_GRAPHIC = 'chartGraphic'
 }

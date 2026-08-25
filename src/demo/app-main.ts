@@ -1,8 +1,10 @@
 import { createCanvasEditorApp } from '../app'
-import { data, options as demoEditorOptions } from './mock'
+import { commentList, data, options as demoEditorOptions } from './mock'
 import { ElementType, RowFlex } from '../editor'
 import type { IElement } from '../editor'
+import { Dialog } from '../components/dialog/Dialog'
 import { createDemoPdfFonts } from './pdfFonts'
+import { getDialogValue } from './menus/dialogValue'
 
 const host = document.querySelector<HTMLElement>('#app')!
 
@@ -21,6 +23,47 @@ function downloadBlob(blob: Blob, filename: string) {
   downloadLink.download = filename
   downloadLink.click()
   URL.revokeObjectURL(href)
+}
+
+type DemoComment = (typeof commentList)[number]
+
+function promptComment(draft: { id: string; rangeText: string }) {
+  return new Promise<DemoComment | false>(resolve => {
+    const settle = (value: DemoComment | false) => {
+      resolve(value)
+    }
+    new Dialog({
+      title: '批注',
+      data: [
+        {
+          type: 'textarea',
+          label: '批注',
+          height: 100,
+          name: 'value',
+          required: true,
+          placeholder: '请输入批注'
+        }
+      ],
+      onClose: () => settle(false),
+      onCancel: () => settle(false),
+      onConfirm: payload => {
+        const value = getDialogValue(payload, 'value')
+        if (!value) {
+          settle(false)
+          return
+        }
+        const comment = {
+          id: draft.id,
+          content: value,
+          userName: 'Hufe',
+          rangeText: draft.rangeText,
+          createdDate: new Date().toLocaleString()
+        }
+        commentList.push(comment)
+        settle(comment)
+      }
+    })
+  })
 }
 
 const app = createCanvasEditorApp({
@@ -71,6 +114,15 @@ const app = createCanvasEditorApp({
     preset: 'standard'
   },
   handlers: {
+    getTrackChangeAuthor: () => '君莫问',
+    getComments: () => commentList,
+    createComment: draft => promptComment(draft),
+    deleteComment: commentId => {
+      const index = commentList.findIndex(comment => comment.id === commentId)
+      if (index >= 0) {
+        commentList.splice(index, 1)
+      }
+    },
     save: ctx => {
       Reflect.set(window, 'lastSavedDocument', ctx.editor.command.getValue())
     },

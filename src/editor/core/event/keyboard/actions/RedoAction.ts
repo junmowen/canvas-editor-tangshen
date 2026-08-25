@@ -12,6 +12,7 @@ export function runRedoAction(
   if (draw.isReadonly() && draw.getMode() !== EditorMode.FORM) return true
   draw.getTrackChange().endEditSession()
   draw.flushAsyncInsertTransaction('keyboard-redo')
+  draw.getServices().historyBridge.flushTypingHistory()
   draw.getHistoryManager().redo()
   evt.preventDefault()
   return true

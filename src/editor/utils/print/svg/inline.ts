@@ -14,6 +14,7 @@ import {
   resolvePrintSvgLatexPayload,
   resolvePrintSvgInlineRenderKind
 } from './PrintSvgInlineRenderAdapter'
+import { createPrintSvgChartGraphic } from './chartGraphic'
 import { createPrintSvgFormula } from './formula'
 
 /** 创建 SVG 文本节点，按当前位置样式输出矢量文字。 */
@@ -136,7 +137,9 @@ export function createPrintSvgPageContent(
     }
     if (renderKind !== 'skip') {
       contentList.push(createPrintSvgHighlight(position))
-      if (renderKind === 'image') {
+      if (renderKind === 'chartGraphic') {
+        contentList.push(createPrintSvgChartGraphic(position))
+      } else if (renderKind === 'image') {
         contentList.push(createPrintSvgInlineImage(position))
       } else if (renderKind === 'latex') {
         contentList.push(createPrintSvgLatex(position))

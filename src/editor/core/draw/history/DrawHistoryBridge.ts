@@ -48,6 +48,17 @@ export class DrawHistoryBridge {
     }, this.typingHistoryDelay)
   }
 
+  /** 立即提交等待中的输入态历史，供后续非输入操作建立撤销基线。 */
+  public flushTypingHistory() {
+    if (this.typingHistoryTimer === null) return false
+    const nextCurIndex = this.pendingTypingCurIndex
+    window.clearTimeout(this.typingHistoryTimer)
+    this.typingHistoryTimer = null
+    this.pendingTypingCurIndex = undefined
+    this.commitHistory(nextCurIndex)
+    return true
+  }
+
   /** 取消待提交的输入态历史。 */
   public cancelTypingHistory() {
     if (this.typingHistoryTimer !== null) {

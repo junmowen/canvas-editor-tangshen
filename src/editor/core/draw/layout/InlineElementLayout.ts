@@ -4,6 +4,7 @@ import { ElementType } from '../../../dataset/enum/Element'
 import { IElement, IElementMetrics } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
 import { BlockElementLayout } from '../../modules/block/layout/BlockElementLayout'
+import { ChartGraphicElementLayout } from '../../modules/chart-graphics/layout/ChartGraphicElementLayout'
 import { CheckableControlElementLayout } from '../../modules/control/layout/CheckableControlElementLayout'
 import {
   FormulaTextElementLayout,
@@ -49,6 +50,7 @@ interface IMeasureInlineElementPayload {
  */
 export class InlineElementLayout {
   private readonly blockElementLayout: BlockElementLayout
+  private readonly chartGraphicElementLayout = new ChartGraphicElementLayout()
   private readonly checkableControlElementLayout: CheckableControlElementLayout
   private readonly formulaTextElementLayout: FormulaTextElementLayout
   private readonly inlineImageElementLayout = new InlineImageElementLayout()
@@ -184,6 +186,14 @@ export class InlineElementLayout {
       return metrics
     }
     if (this.blockElementLayout.measure({
+      element,
+      metrics,
+      availableWidth,
+      scale
+    })) {
+      return metrics
+    }
+    if (this.chartGraphicElementLayout.measure({
       element,
       metrics,
       availableWidth,

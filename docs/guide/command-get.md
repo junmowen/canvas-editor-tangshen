@@ -286,6 +286,7 @@ Blob
 ```
 
 返回的 Blob 类型为 PDF，可用于下载或上传。当前链路按页面 SVG 转 PDF，优先保证文字、线条和常规矢量对象清晰；图片资源仍按原始图片数据嵌入。
+如果文档中存在 `source.refreshMode === 'on-print'` 的图表元素，`getPdfBlob()` 会在生成 PDF 前自动执行一次对应图表数据刷新。
 
 选项：
 
@@ -414,12 +415,21 @@ const {
 用法：
 
 ```javascript
-const {
+const positionContext = instance.command.getPositionContextByEvent(
+  evt: MouseEvent,
+  options?: IPositionContextByEventOption
+)
+```
+
+返回值：
+
+```typescript
+interface IPositionContextByEventResult {
   pageNo: number
   element: IElement | null
   rangeRect: RangeRect | null
   tableInfo: ITableInfoByEvent | null
-}[] = await instance.command.getPositionContextByEvent(evt: MouseEvent, options?: IPositionContextByEventOption)
+}
 ```
 
 示例：
@@ -431,7 +441,7 @@ instance.eventBus.on(
     const positionContext = instance.command.getPositionContextByEvent(evt)
     console.log(positionContext)
   }, 200)
-)``
+)
 ```
 
 ## getElementById
@@ -441,8 +451,207 @@ instance.eventBus.on(
 用法：
 
 ```javascript
-const elementList = await instance.command.getElementById(payload: IGetElementByIdOption)
+const elementList = instance.command.getElementById(payload: IGetElementByIdOption)
 ```
+
+## getChartGraphic
+
+功能：根据图表元素 id 读取完整图表模型；不存在或 id 对应元素不是图表时返回 `null`。
+
+用法：
+
+```javascript
+const chart = instance.command.getChartGraphic(id: string)
+```
+
+返回值：
+
+```typescript
+IChartGraphic | null
+```
+
+## getChartGraphicSnapshot
+
+功能：读取图表渲染 / 调试快照，便于确认当前尺寸下的序列点位数量、标记数量和数据源版本。
+
+用法：
+
+```javascript
+const snapshot = instance.command.getChartGraphicSnapshot(id: string)
+```
+
+返回值：
+
+```typescript
+interface IChartGraphicSnapshot {
+  elementId?: string
+  kind: ChartGraphicKind
+  width: number
+  height: number
+  series: {
+    id: string
+    type: IChartSeries['type']
+    rawPointCount: number
+    renderPointCount: number
+  }[]
+  markCount: number
+  regionCount: number
+  annotationCount: number
+  dentalToothCount: number
+  sourceId?: string
+  sourceVersion?: string
+}
+```
+
+## getChartGraphicValidation
+
+功能：读取图表结构化校验结果，覆盖尺寸、坐标轴、序列数据和牙位状态。
+
+用法：
+
+```javascript
+const result = instance.command.getChartGraphicValidation(id: string)
+```
+
+返回值：
+
+```typescript
+interface IChartGraphicValidationResult {
+  valid: boolean
+  errors?: {
+    code: string
+    message: string
+    path?: string
+    severity: 'error' | 'warning'
+  }[]
+  warnings?: {
+    code: string
+    message: string
+    path?: string
+    severity: 'error' | 'warning'
+  }[]
+}
+```
+
+## getChartGraphicDataSourceStateList
+
+功能：读取文档内每个图表的数据源绑定、刷新模式、版本、最近尝试时间、最近成功时间、
+刷新耗时、最近错误和 provider 可用状态。该命令只读，不触发刷新或写入历史。
+
+用法：
+
+```javascript
+const states = instance.command.getChartGraphicDataSourceStateList()
+```
+
+返回值：
+
+```typescript
+IChartGraphicDataSourceState[]
+```
+
+## getChartGraphicDataSourceSummary
+
+功能：汇总文档内图表的数据源绑定和运行可用性，返回未绑定、provider 缺失、最近失败、
+已尝试、曾成功、从未刷新以及各刷新模式的数量和图表 id，并在 `states` 中保留逐图状态。
+
+用法：
+
+```javascript
+const summary = instance.command.getChartGraphicDataSourceSummary()
+```
+
+返回值：
+
+```typescript
+IChartGraphicDataSourceSummary
+```
+
+## getChartGraphicTemplateAuditSummary
+
+功能：汇总图表模板发布前审计结果，组合结构校验、数据源状态和预设治理状态。
+该命令只读，不触发 provider、不修改图表、不写入历史。
+
+用法：
+
+```javascript
+const audit = instance.command.getChartGraphicTemplateAuditSummary()
+```
+
+返回值：
+
+```typescript
+interface IChartGraphicTemplateAuditSummary {
+  publishable: boolean
+  checked: number
+  blockingReasons: ChartGraphicTemplateAuditReason[]
+  warnings: ChartGraphicTemplateAuditReason[]
+  blockingChartIds: string[]
+  warningChartIds: string[]
+  validation: IChartGraphicValidationSummary
+  dataSource: IChartGraphicDataSourceSummary
+  preset: IChartGraphicTemplatePresetAuditSummary
+}
+```
+
+阻断发布的原因包括图表校验 error、provider 缺失、最近刷新失败、已绑定但从未刷新、
+预设缺失和预设类型不匹配。普通 warning、静态未绑定图表和可升级预设只进入
+`warnings`。
+
+## getChartGraphicHit
+
+功能：按文档坐标读取图表内部命中结果，适合业务侧自行封装 hover、右键菜单和轻量编辑交互。
+
+用法：
+
+```javascript
+const hit = instance.command.getChartGraphicHit({
+  x: number,
+  y: number,
+  pageNo?: number,
+  tolerance?: number
+})
+```
+
+返回值：
+
+```typescript
+interface IChartGraphicHitQueryResult {
+  elementId?: string
+  pageNo: number
+  chart: IChartGraphic
+  width: number
+  height: number
+  localX: number
+  localY: number
+  hit: {
+    target:
+      | 'frame'
+      | 'plot-area'
+      | 'series-point'
+      | 'series-line'
+      | 'mark'
+      | 'region'
+      | 'annotation'
+      | 'legend'
+      | 'dental-tooth'
+      | 'dental-surface'
+    seriesId?: string
+    dataIndex?: number
+    markId?: string
+    regionId?: string
+    annotationId?: string
+    toothCode?: string
+    dentalSurface?: DentalSurface
+  }
+}
+```
+
+说明：
+
+- 传入 `pageNo` 时，`x` / `y` 按页内坐标解析。
+- 不传 `pageNo` 时，`y` 按跨页文档坐标解析。
+- 当前实现已覆盖坐标图的 `annotation`、`mark`、`series-point`、`series-line`、`region`、`plot-area`、`frame`，以及牙位图的 `dental-surface`、`dental-tooth`、`legend`、`frame`。
 
 ## getTrackChangeList
 

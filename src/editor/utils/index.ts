@@ -327,6 +327,12 @@ export function convertStringToBase64(input: string) {
   return base64
 }
 
+export function convertBase64ToString(input: string) {
+  const binary = window.atob(input)
+  const data = Uint8Array.from(binary, char => char.charCodeAt(0))
+  return new TextDecoder().decode(data)
+}
+
 export function findScrollContainer(element: HTMLElement) {
   let parent = element.parentElement
   while (parent) {

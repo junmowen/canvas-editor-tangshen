@@ -6,6 +6,8 @@ import { IRowElement } from '../../../interface/Row'
 import { ITableFragmentDescriptor } from '../../../interface/table/TableFragment'
 import { isCheckboxHitElement, isRadioHitElement } from '../../modules/control/hittest/ControlHitTest'
 import { ElementType } from '../../../dataset/enum/Element'
+import { isChartGraphicElement } from '../../modules/chart-graphics/layout/ChartGraphicElementLayout'
+import { pushChartGraphicWorkerSnapshotCommands } from '../../modules/chart-graphics/render/ChartGraphicWorkerSnapshotPolicy'
 import {
   isFormulaDebugEnabled,
   logFormulaDebug,
@@ -91,6 +93,20 @@ export abstract class PageRenderSnapshotRowElementCommands extends PageRenderSna
         rowPosition,
         alpha
       )
+      return
+    }
+    if (isChartGraphicElement(element)) {
+      this.flushRowTextState(commandList, textState, alpha)
+      if (rowPosition) {
+        pushChartGraphicWorkerSnapshotCommands({
+          commandList,
+          element,
+          rowPosition,
+          alpha,
+          scale: this.draw.getRuntime().getOptions().scale
+        })
+      }
+      this.recordDecoratedNonTextElement(payload)
       return
     }
     if (element.value === ZERO) {

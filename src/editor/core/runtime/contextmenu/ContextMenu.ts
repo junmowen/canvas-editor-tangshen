@@ -16,6 +16,7 @@ import type { DrawCoordinateService } from '../../draw/coordinate/DrawCoordinate
 import { I18n } from '../../extension/i18n/I18n'
 import { RangeManager } from '../../range/RangeManager'
 import { controlMenus } from '../../modules/control/contextmenu/controlMenus'
+import { chartGraphicMenus } from '../../modules/chart-graphics/contextmenu/chartGraphicMenus'
 import { globalMenus } from './menus/globalMenus'
 import { hyperlinkMenus } from '../../modules/inline/contextmenu/hyperlinkMenus'
 import { imageMenus } from '../../modules/image/contextmenu/imageMenus'
@@ -67,6 +68,7 @@ export class ContextMenu {
     this.contextMenuList = [
       ...globalMenus,
       ...tableMenus,
+      ...chartGraphicMenus,
       ...imageMenus,
       ...controlMenus,
       ...hyperlinkMenus
@@ -156,6 +158,7 @@ export class ContextMenu {
 
   /** 获取上下文，向调用方返回当前状态或计算结果。 */
   private _getContext(evt: MouseEvent): IContextMenuContext {
+    const pagePoint = this.draw.getCoordinate().getPointerCoordinates(evt).page
     // 是否是只读模式
     const isReadonly = this.draw.isReadonly()
     const {
@@ -194,6 +197,14 @@ export class ContextMenu {
       })
     // 当前区域
     const zone = this.draw.getZone().getZone()
+    const chartGraphicHitPayload =
+      pagePoint && pagePoint.pageIndex !== undefined && pagePoint.pageIndex !== null
+        ? {
+            pageNo: Number(pagePoint.pageIndex),
+            x: pagePoint.x,
+            y: pagePoint.y
+          }
+        : null
     return {
       startElement,
       endElement,
@@ -206,7 +217,11 @@ export class ContextMenu {
       trIndex: tableTrIndex,
       tdIndex: tableTdIndex,
       tableElement,
-      options: this.options
+      options: this.options,
+      chartGraphicHitPayload,
+      chartGraphicHit: chartGraphicHitPayload
+        ? this.command.getChartGraphicHit(chartGraphicHitPayload)
+        : null
     }
   }
 

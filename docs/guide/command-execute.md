@@ -605,6 +605,572 @@ instance.command.executeImage({
 })
 ```
 
+## executeInsertChartGraphic
+
+功能：插入图表 / 医疗图形元素，返回新元素 id；失败时返回 `null`。
+
+用法：
+
+```javascript
+const id = instance.command.executeInsertChartGraphic(payload: IInsertChartGraphicPayload)
+```
+
+示例：
+
+```javascript
+const id = instance.command.executeInsertChartGraphic({
+  kind: 'line',
+  presetId: 'common.line.basic',
+  width: 520,
+  height: 260,
+  title: '体温趋势',
+  series: [
+    {
+      id: 'temperature',
+      name: '体温',
+      type: 'line',
+      symbol: 'circle',
+      data: [
+        { x: '2026-06-01T08:00:00', y: 36.8 },
+        { x: '2026-06-01T12:00:00', y: 37.2 }
+      ]
+    }
+  ]
+})
+```
+
+## executeUpdateChartGraphic
+
+功能：按结构化 patch 更新指定图表模型，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeUpdateChartGraphic(
+  id: string,
+  patch: Partial<IChartGraphic>
+)
+```
+
+## executeApplyChartGraphicPreset
+
+功能：将现有图表切换到指定预设默认模型，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeApplyChartGraphicPreset(
+  id: string,
+  presetId: string
+)
+```
+
+## executeUpdateChartGraphicSeries
+
+功能：按序列 id 更新曲线、散点或波形数据，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeUpdateChartGraphicSeries(
+  id: string,
+  seriesId: string,
+  patch: Partial<IChartSeries>
+)
+```
+
+## executeInsertChartGraphicSeriesPoint
+
+功能：在指定序列中插入单个点位，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeInsertChartGraphicSeriesPoint(
+  id: string,
+  seriesId: string,
+  point: IChartDataPoint
+)
+```
+
+## executeDeleteChartGraphicSeriesPoint
+
+功能：删除指定序列中的单个点位，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeDeleteChartGraphicSeriesPoint(
+  id: string,
+  seriesId: string,
+  dataIndex: number
+)
+```
+
+## executeUpdateChartGraphicSeriesPoint
+
+功能：更新指定序列中的单个点位，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeUpdateChartGraphicSeriesPoint(
+  id: string,
+  seriesId: string,
+  dataIndex: number,
+  patch: ChartGraphicSeriesPointPatch
+)
+```
+
+## executeUpsertChartGraphicMark
+
+功能：新增或更新事件 / 用药 / 警示标记，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeUpsertChartGraphicMark(
+  id: string,
+  mark: IChartMark
+)
+```
+
+## executeDeleteChartGraphicMark
+
+功能：删除指定图表标记，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeDeleteChartGraphicMark(
+  id: string,
+  markId: string
+)
+```
+
+## executeUpsertChartGraphicRegion
+
+功能：新增或更新阶段 / 范围 / 异常区间，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeUpsertChartGraphicRegion(
+  id: string,
+  region: IChartRegion
+)
+```
+
+## executeDeleteChartGraphicRegion
+
+功能：删除指定图表区间，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeDeleteChartGraphicRegion(
+  id: string,
+  regionId: string
+)
+```
+
+## executeUpsertChartGraphicAnnotation
+
+功能：新增或更新文字标注，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeUpsertChartGraphicAnnotation(
+  id: string,
+  annotation: IChartAnnotation
+)
+```
+
+## executeDeleteChartGraphicAnnotation
+
+功能：删除指定文字标注，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeDeleteChartGraphicAnnotation(
+  id: string,
+  annotationId: string
+)
+```
+
+## executeUpdateChartGraphicDentalTooth
+
+功能：更新牙位图中指定牙位的状态或备注，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeUpdateChartGraphicDentalTooth(
+  id: string,
+  code: string,
+  patch: Partial<IDentalToothState>
+)
+```
+
+示例：
+
+```javascript
+instance.command.executeUpdateChartGraphicDentalTooth('dental-1', '18', {
+  status: ['missing', 'implant'],
+  notes: '种植修复'
+})
+```
+
+## executeUpdateChartGraphicDentalSurface
+
+功能：更新牙位图中指定牙面的状态数组；传入 `null` 或空数组时删除该牙面状态，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeUpdateChartGraphicDentalSurface(
+  id: string,
+  code: string,
+  surface: DentalSurface,
+  statusList: DentalToothStatus[] | null
+)
+```
+
+示例：
+
+```javascript
+instance.command.executeUpdateChartGraphicDentalSurface(
+  'dental-1',
+  '18',
+  'occlusal',
+  ['filled']
+)
+
+instance.command.executeUpdateChartGraphicDentalSurface(
+  'dental-1',
+  '18',
+  'mesial',
+  null
+)
+```
+
+## executeToggleChartGraphicDentalToothStatus
+
+功能：切换指定整牙上的单个状态；存在则移除，不存在则追加，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeToggleChartGraphicDentalToothStatus(
+  id: string,
+  code: string,
+  status: DentalToothStatus
+)
+```
+
+## executeToggleChartGraphicDentalSurfaceStatus
+
+功能：切换指定牙面上的单个状态；存在则移除，不存在则追加，成功返回 `true`。
+
+用法：
+
+```javascript
+const ok = instance.command.executeToggleChartGraphicDentalSurfaceStatus(
+  id: string,
+  code: string,
+  surface: DentalSurface,
+  status: DentalToothStatus
+)
+```
+
+示例：
+
+```javascript
+instance.command.executeToggleChartGraphicDentalSurfaceStatus(
+  'dental-1',
+  '18',
+  'occlusal',
+  'filled'
+)
+```
+
+## executeToggleChartGraphicDentalStatusByHit
+
+功能：按文档坐标命中牙位图后，自动切换整牙或牙面的单个状态。命中牙面时走牙面切换；命中整牙时走整牙切换；未命中牙位图时返回 `null`。
+
+用法：
+
+```javascript
+const hit = instance.command.executeToggleChartGraphicDentalStatusByHit({
+  x: number,
+  y: number,
+  pageNo?: number,
+  tolerance?: number,
+  status: DentalToothStatus
+})
+```
+
+示例：
+
+```javascript
+instance.command.executeToggleChartGraphicDentalStatusByHit({
+  pageNo: 0,
+  x: 120,
+  y: 240,
+  status: 'filled'
+})
+```
+
+## executeClearChartGraphicDentalStatusByHit
+
+功能：按文档坐标命中牙位图后，清除该命中目标的状态。命中牙面时只清空该牙面的状态；命中整牙时清空整牙状态和牙面状态；未命中牙位图时返回 `null`。
+
+用法：
+
+```javascript
+const hit = instance.command.executeClearChartGraphicDentalStatusByHit({
+  x: number,
+  y: number,
+  pageNo?: number,
+  tolerance?: number
+})
+```
+
+## executeUpdateChartGraphicSeriesPointByHit
+
+功能：按文档坐标命中 `series-point` 后，直接更新该点位。未命中点位时返回 `null`。
+
+用法：
+
+```javascript
+const hit = instance.command.executeUpdateChartGraphicSeriesPointByHit({
+  x: number,
+  y: number,
+  pageNo?: number,
+  tolerance?: number,
+  patch: ChartGraphicSeriesPointPatch
+})
+```
+
+## executeInsertChartGraphicSeriesPointByHit
+
+功能：按文档坐标命中 `series-line` 后，直接在该序列中插入点位。未命中曲线时返回 `null`。
+
+用法：
+
+```javascript
+const hit = instance.command.executeInsertChartGraphicSeriesPointByHit({
+  x: number,
+  y: number,
+  pageNo?: number,
+  tolerance?: number,
+  label?: string
+})
+```
+
+## executeInsertChartGraphicMarkByHit
+
+功能：按文档坐标命中 `plot-area / series-line / series-point` 后，直接在该位置插入图表标记。未命中可插入区域时返回 `null`。
+
+用法：
+
+```javascript
+const hit = instance.command.executeInsertChartGraphicMarkByHit({
+  x: number,
+  y: number,
+  pageNo?: number,
+  tolerance?: number,
+  id?: string,
+  type?: 'event' | 'medication' | 'warning' | 'custom',
+  label?: string
+})
+```
+
+## executeInsertChartGraphicAnnotationByHit
+
+功能：按文档坐标命中 `plot-area / series-line / series-point` 后，直接在该位置插入文字标注。未命中可插入区域时返回 `null`。
+
+用法：
+
+```javascript
+const hit = instance.command.executeInsertChartGraphicAnnotationByHit({
+  x: number,
+  y: number,
+  pageNo?: number,
+  tolerance?: number,
+  id?: string,
+  text: string
+})
+```
+
+## executeDeleteChartGraphicTargetByHit
+
+功能：按文档坐标命中图表内部对象后，直接删除 `series-point / mark / region / annotation`；命中 `dental-tooth / dental-surface` 时清除对应状态。命中其他目标或未命中时返回 `null`。
+
+用法：
+
+```javascript
+const hit = instance.command.executeDeleteChartGraphicTargetByHit({
+  x: number,
+  y: number,
+  pageNo?: number,
+  tolerance?: number
+})
+```
+
+## executeRefreshChartGraphicSource
+
+功能：根据图表当前 `source` 绑定刷新单个图表数据，返回 `Promise<boolean>`。
+
+用法：
+
+```javascript
+const ok = await instance.command.executeRefreshChartGraphicSource(
+  id: string,
+  options?: IRefreshChartGraphicSourceOption
+)
+```
+
+`options.preview: true` 允许只读模式刷新，并且不写入撤销历史。
+
+## executeRefreshChartGraphicSources
+
+功能：按 `sourceId` 或 `refreshMode` 批量刷新图表数据源，返回结构化统计结果。
+
+用法：
+
+```javascript
+const result = await instance.command.executeRefreshChartGraphicSources(
+  payload?: IRefreshChartGraphicSourcesPayload,
+  options?: IRefreshChartGraphicSourceOption
+)
+```
+
+批量刷新同样支持 `options.preview: true`。
+
+返回值：
+
+```typescript
+interface IRefreshChartGraphicSourcesResult {
+  refreshed: number
+  skipped: number
+  failed: number
+  refreshedChartIds: string[]
+  skippedChartIds: string[]
+  failedChartIds: string[]
+}
+```
+
+提示：
+
+- `getPdfBlob()` 和 `executePrint()` 会在内部自动触发一次 `refreshMode: 'on-print'` 的批量刷新。
+- 普通业务链路仍可在打开文档、提交前或手动点击“刷新数据”时显式调用本命令。
+
+## registerChartGraphicDataProvider
+
+功能：注册图表数据源 provider，供刷新命令按 `sourceId` 拉取业务数据；返回取消注册函数。
+provider 可直接返回结构化 `series / marks / regions / annotations`，也可返回 `records`，
+由图表命令按 `fieldMap` 和 `fieldTransforms` 归一化。默认写回策略为 `replace`；
+可在 `source.mergeStrategy` 或 provider 单次返回的 `strategy` 中声明 `append` 或
+`merge`，用于实时数据追加或按 id / x 增量修正。
+
+用法：
+
+```javascript
+const unregister = instance.command.registerChartGraphicDataProvider(
+  provider: IChartGraphicDataProvider
+)
+```
+
+示例：
+
+```javascript
+const unregister = instance.command.registerChartGraphicDataProvider({
+  sourceId: 'ward-vitals',
+  async load(payload) {
+    return {
+      series: [
+        {
+          id: 'temperature',
+          name: '体温',
+          type: 'line',
+          data: [
+            { x: '2026-06-08T08:00:00', y: 36.8 },
+            { x: '2026-06-08T12:00:00', y: 37.2 }
+          ]
+        }
+      ],
+      source: {
+        ...payload.source,
+        version: '2026-06-08T12:00:00'
+      }
+    }
+  }
+})
+
+await instance.command.executeRefreshChartGraphicSource('chart-1')
+unregister()
+```
+
+增量刷新示例：
+
+```javascript
+instance.command.executeInsertChartGraphic({
+  kind: 'line',
+  source: {
+    sourceId: 'ward-vitals',
+    refreshMode: 'manual',
+    mergeStrategy: 'append'
+  }
+})
+
+instance.command.registerChartGraphicDataProvider({
+  sourceId: 'ward-vitals',
+  async load() {
+    return {
+      strategy: 'merge',
+      series: [
+        {
+          id: 'temperature',
+          type: 'line',
+          data: [{ x: '2026-07-27T12:00:00', y: 37.2 }]
+        }
+      ],
+      marks: [{ id: 'fever-note', type: 'warning', label: '复测' }]
+    }
+  }
+})
+```
+
+`append` 会追加序列点、标记、区间和标注；`merge` 会按序列 `id` 合并，点位对象按
+`x` upsert，标记 / 区间 / 标注按 `id` upsert。高密度波形 `number[]` 没有稳定
+`x` 键，`merge` 下按追加处理。
+
+刷新生命周期事件：
+
+```javascript
+instance.eventBus.on('chartGraphicDataSourceRefresh', event => {
+  if (event.phase === 'before') {
+    // show loading
+  }
+  if (event.phase === 'error') {
+    console.warn(event.chartId, event.error)
+  }
+})
+```
+
+`phase` 包括 `before / success / error / skipped / complete`。provider 缺失会发出
+`skipped -> complete`，provider 抛错会发出 `before -> error -> complete`；payload
+包含 `chartId`、`sourceId`、`refreshMode`、`version`、`status`、`reason`、
+`refreshDurationMs`、`cached` 和 `preview`。
+
+版本化数据源会自动复用幂等 provider 结果缓存：缓存 key 由 `chartId`、`sourceId`、
+`version`、`fieldMap`、`fieldTransforms`、`mergeStrategy` 和图表类型组成。
+`replace` 可缓存；`merge` 仅在不会退化为波形追加时缓存；`append` 和
+`preview: true` 不缓存，避免重复追加或影响只读预览的临时刷新语义。
+
 ## executeHyperlink
 
 功能：插入链接
@@ -925,6 +1491,24 @@ instance.command.executeDeleteElementById(payload: IDeleteElementByIdOption)
 ```javascript
 instance.command.executeSetValue(payload: Partial<IEditorData>, options?: ISetValueOption)
 ```
+
+`ISetValueOption.isRefreshChartGraphicOnOpen` 默认为 `true`，设值后会自动刷新
+`refreshMode: 'on-open'` 的图表；传 `false` 可用于精确恢复离线快照。
+
+## executeSetValueAsync
+
+功能：设置编辑器数据，并等待 `refreshMode: 'on-open'` 的图表数据源刷新完成。
+
+用法：
+
+```javascript
+await instance.command.executeSetValueAsync(
+  payload: Partial<IEditorData>,
+  options?: ISetValueOption
+)
+```
+
+Promise 返回 `IRefreshChartGraphicSourcesResult`。
 
 ## executeRemoveControl
 

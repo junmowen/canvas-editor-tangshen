@@ -12,7 +12,10 @@ interface IViewportPoint {
 
 /** 判断元素是否为图片类拖拽元素。 */
 export function isImageLikeDragElement(element?: IElement | null) {
-  return element?.type === ElementType.IMAGE
+  return (
+    element?.type === ElementType.IMAGE ||
+    element?.type === ElementType.CHART_GRAPHIC
+  )
 }
 
 /** 判断元素是否为浮动图片展示模式。 */

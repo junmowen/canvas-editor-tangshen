@@ -3,6 +3,10 @@ import { EditorZone } from '../../dataset/enum/Editor'
 import { DeepRequired } from '../Common'
 import { IEditorOption } from '../Editor'
 import { IElement } from '../Element'
+import {
+  IChartGraphicHitQueryPayload,
+  IChartGraphicHitQueryResult
+} from '../ChartGraphic'
 
 /** 上下文menu上下文，汇总流程中需要共享的定位、状态和依赖。 */
 export interface IContextMenuContext {
@@ -30,6 +34,10 @@ export interface IContextMenuContext {
   tableElement: IElement | null
   /** 操作配置项，用于调整当前流程的可选行为。 */
   options: DeepRequired<IEditorOption>
+  /** 图表内部命中结果，供图表菜单按牙位 / 牙面上下文决定行为。 */
+  chartGraphicHit?: IChartGraphicHitQueryResult | null
+  /** 图表命中的原始页内坐标载荷，供桥接命令复用。 */
+  chartGraphicHitPayload?: IChartGraphicHitQueryPayload | null
 }
 
 /** register上下文menu契约，用于约束公开 API中传递的数据结构。 */
@@ -134,6 +142,50 @@ export interface IContextmenuLang {
       /** floatBottom文本，用于标识、展示或匹配当前对象。 */
       floatBottom: string
     }
+  }
+  chart: {
+    /** 刷新图表数据菜单文案。 */
+    refreshSource: string
+    /** 清除牙位状态菜单文案。 */
+    clearDentalStatus: string
+    /** 编辑牙位备注菜单文案。 */
+    editDentalNote: string
+    /** 插入标记菜单文案。 */
+    insertMark: string
+    /** 插入标注菜单文案。 */
+    insertAnnotation: string
+    /** 插入点位菜单文案。 */
+    insertPoint: string
+    /** 编辑点位菜单文案。 */
+    editPoint: string
+    /** 编辑标记菜单文案。 */
+    editMark: string
+    /** 编辑区间菜单文案。 */
+    editRegion: string
+    /** 编辑标注菜单文案。 */
+    editAnnotation: string
+    /** 删除点位菜单文案。 */
+    deletePoint: string
+    /** 删除标记菜单文案。 */
+    deleteMark: string
+    /** 删除区间菜单文案。 */
+    deleteRegion: string
+    /** 删除标注文案。 */
+    deleteAnnotation: string
+    /** 牙位状态菜单标题。 */
+    dentalStatus: string
+    /** 缺失状态文案。 */
+    missing: string
+    /** 龋坏状态文案。 */
+    caries: string
+    /** 充填状态文案。 */
+    filled: string
+    /** 根管状态文案。 */
+    rootCanal: string
+    /** 冠修复状态文案。 */
+    crown: string
+    /** 种植状态文案。 */
+    implant: string
   }
   /** 表格数据对象，保存行、列和单元格结构。 */
   table: {

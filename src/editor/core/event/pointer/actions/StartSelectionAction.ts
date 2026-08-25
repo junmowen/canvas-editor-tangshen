@@ -1,6 +1,7 @@
 import { deepClone } from '../../../../utils'
 import { CanvasEvent } from '../../CanvasEvent'
 import { resolveSelectionStartState } from '../../../range/selection/resolveSelectionStartState'
+import { startChartGraphicDragIntent } from '../intents/chart-graphics/ChartGraphicDragIntent'
 import { applyPointerPositionContext } from '../utils/applyPointerPositionContext'
 import { runSelectionStartIntent } from '../intents/selection/SelectionStartIntent'
 import {
@@ -56,5 +57,12 @@ export function startSelectionAction(
     oldPositionContextTdId: oldPositionContext.tdId,
     isReadonly: draw.isReadonly(),
     positionResult
+  })
+  startChartGraphicDragIntent({
+    host,
+    evt,
+    pageNo: pagePoint.pageNo,
+    x: pagePoint.x,
+    y: pagePoint.y
   })
 }

@@ -25,7 +25,10 @@ export function getBackFloatImageHitDisplays() {
 
 /** 判断元素是否可作为图片类直击目标。 */
 export function isImageDirectHitElement(element?: IElement | null) {
-  return element?.type === ElementType.IMAGE
+  return (
+    element?.type === ElementType.IMAGE ||
+    element?.type === ElementType.CHART_GRAPHIC
+  )
 }
 
 /** 判断浮动元素是否属于当前命中层级。 */

@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
         {
           ...typescript({
             tsconfig: './tsconfig.json',
-            include: ['./src/editor/**']
+            include: ['./src/vite-env.d.ts', './src/editor/**']
           }),
           apply: 'build',
           declaration: true,
@@ -44,7 +44,7 @@ export default defineConfig(({ mode }) => {
         {
           ...typescript({
             tsconfig: './tsconfig.json',
-            include: ['./src/app/**', './src/editor/**']
+            include: ['./src/vite-env.d.ts', './src/app/**', './src/editor/**']
           }),
           apply: 'build',
           declaration: true,

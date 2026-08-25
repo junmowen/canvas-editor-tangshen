@@ -1,6 +1,7 @@
 import { PageMode } from '../../../dataset/enum/Editor'
 import { IElement } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
+import { shouldFragmentChartGraphicRow } from '../../modules/chart-graphics/layout/ChartGraphicFragmentPolicy'
 import { shouldFragmentTableRow } from '../../modules/table/layout/TableRowLayoutPolicy'
 import type { Draw } from '../Draw'
 import {
@@ -172,6 +173,67 @@ export class PagePartitioner {
             }
           }
 
+          cursor.pushPlacedRow(fragmentRow)
+        }
+        continue
+      }
+      if (shouldFragmentChartGraphicRow({
+        row,
+        rowOffsetY,
+        pageHeight: cursor.pageHeight,
+        pageLimitHeight: height,
+        pageContentHeight: cursor.pageContentHeight
+      })) {
+        const { startOnNewPage, rows: fragmentRows } =
+          this.draw.getServices().rowLayoutEngine.getChartGraphicLayoutEngine().createFragmentRows({
+            row,
+            availableHeight: height - cursor.pageHeight - rowOffsetY,
+            pageContentHeight: cursor.pageContentHeight
+          })
+
+        if (
+          (startOnNewPage || rowList[i - 1]?.isPageBreak || isBreakBeforeRow) &&
+          pageRowList[cursor.pageNo].length
+        ) {
+          if (
+            cursor.columnIndex < columnCount - 1 &&
+            !startOnNewPage &&
+            !rowList[i - 1]?.isPageBreak &&
+            !isBreakBeforeRow
+          ) {
+            cursor.advanceToNextColumn()
+          } else {
+            if (!cursor.advanceToNextPage()) {
+              break
+            }
+          }
+        }
+
+        for (let f = 0; f < fragmentRows.length; f++) {
+          const fragmentRow = fragmentRows[f]
+          const fragmentOffsetY = fragmentRow.offsetY || 0
+          const fragment = fragmentRow.elementList[0]?.chartGraphicFragment
+          if (
+            f > 0 &&
+            fragment?.pageBreakBefore &&
+            pageRowList[cursor.pageNo].length
+          ) {
+            if (!cursor.advanceToNextPage()) {
+              break
+            }
+          }
+          if (
+            fragmentRow.height + fragmentOffsetY + cursor.pageHeight > height &&
+            pageRowList[cursor.pageNo].length
+          ) {
+            if (cursor.columnIndex < columnCount - 1) {
+              cursor.advanceToNextColumn()
+            } else {
+              if (!cursor.advanceToNextPage()) {
+                break
+              }
+            }
+          }
           cursor.pushPlacedRow(fragmentRow)
         }
         continue

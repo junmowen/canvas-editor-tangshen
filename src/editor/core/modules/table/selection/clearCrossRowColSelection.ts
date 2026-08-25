@@ -9,8 +9,14 @@ export function clearCrossRowColSelection(draw: Draw) {
     for (let c = 0; c < row.length; c++) {
       const col = row[c]
       if (col.value.length > 1) {
-        draw.spliceElementList(col.value, 1, col.value.length - 1)
-        isDeleted = true
+        const mutationCount = draw.spliceElementList(
+          col.value,
+          1,
+          col.value.length - 1
+        )
+        if (mutationCount > 0) {
+          isDeleted = true
+        }
       }
     }
   }

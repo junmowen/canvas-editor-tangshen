@@ -543,7 +543,7 @@ export class Draw {
     items?: IElement[],
     options?: ISpliceElementListOption
   ) {
-    this.services.mutationService.spliceElementList(
+    return this.services.mutationService.spliceElementList(
       elementList,
       start,
       deleteCount,

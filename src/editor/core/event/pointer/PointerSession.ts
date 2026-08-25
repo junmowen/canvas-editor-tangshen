@@ -56,6 +56,41 @@ export interface IPointerMultiClickState {
   tableCellClickResetTimer: number | null
 }
 
+/** chartgraphicdragsession契约，用于约束图表点拖拽过程中的临时状态。 */
+export interface IChartGraphicDragSession {
+  /** 当前拖拽目标类型，用于分发不同图表对象的更新逻辑。 */
+  target: 'series-point' | 'mark' | 'region' | 'annotation'
+  /** 图表元素标识，用于关联正在编辑的图表。 */
+  elementId: string
+  /** 图表渲染宽度，用于坐标反算。 */
+  width: number
+  /** 图表渲染高度，用于坐标反算。 */
+  height: number
+  /** 序列标识，用于定位当前拖拽的数据序列。 */
+  seriesId?: string
+  /** 点位索引，用于定位当前拖拽的数据点。 */
+  dataIndex?: number
+  /** 标记标识，用于定位当前拖拽的事件 / 用药标记。 */
+  markId?: string
+  /** 区间标识，用于定位当前拖拽的阶段 / 范围。 */
+  regionId?: string
+  /** 标注标识，用于定位当前拖拽的文字标注。 */
+  annotationId?: string
+  /** 区间拖拽起点横轴值。 */
+  dragStartX?: number
+  /** 区间拖拽起点纵轴值。 */
+  dragStartY?: number
+  /** 区间拖拽开始时的原始边界。 */
+  originalRegion?: {
+    xStart?: number
+    xEnd?: number
+    yStart?: number
+    yEnd?: number
+  }
+  /** 是否已经写入过拖拽预览。 */
+  isDirty: boolean
+}
+
 /** pointersession契约，用于约束内部流程中传递的数据结构。 */
 export interface IPointerSession {
   /** 是否允许选区，用于控制当前指针会话能否创建文本选择。 */
@@ -69,6 +104,7 @@ export interface IPointerSession {
   mouseDownStartPosition: ICurrentPosition | null
   mouseDownStartCoordinates: IPointerCoordinatePayload | null
   lastPointerCoordinates: IPointerCoordinatePayload | null
+  chartGraphicDrag: IChartGraphicDragSession | null
   multiClick: IPointerMultiClickState
 }
 
@@ -87,6 +123,7 @@ export function createDefaultPointerSession(): IPointerSession {
     mouseDownStartPosition: null,
     mouseDownStartCoordinates: null,
     lastPointerCoordinates: null,
+    chartGraphicDrag: null,
     multiClick: {
       lastTableCellDblclickInfo: null,
       tableCellDblclickCount: 0,

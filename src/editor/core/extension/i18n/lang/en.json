@@ -43,6 +43,29 @@
         "floatBottom": "Float below text"
       }
     },
+      "chart": {
+        "refreshSource": "Refresh chart data",
+        "clearDentalStatus": "Clear dental status",
+        "editDentalNote": "Edit dental note",
+        "insertMark": "Add mark",
+        "insertAnnotation": "Add annotation",
+        "insertPoint": "Insert point",
+        "editPoint": "Edit point",
+      "editMark": "Edit mark",
+      "editRegion": "Edit region",
+      "editAnnotation": "Edit annotation",
+      "deletePoint": "Delete point",
+      "deleteMark": "Delete mark",
+      "deleteRegion": "Delete region",
+      "deleteAnnotation": "Delete annotation",
+      "dentalStatus": "Dental status",
+      "missing": "Missing",
+      "caries": "Caries",
+      "filled": "Filled",
+      "rootCanal": "Root canal",
+      "crown": "Crown",
+      "implant": "Implant"
+    },
     "table": {
       "property": "Table properties",
       "borderType": "Border type",

@@ -29,6 +29,13 @@ function isFloatingImageDisplay(element: IElement) {
   )
 }
 
+function isReadonlyChartGraphic(element: IElement | undefined) {
+  return !!(
+    element?.type === ElementType.CHART_GRAPHIC &&
+    element.chartGraphic?.interaction?.readonly
+  )
+}
+
 /** 图片被鼠标按下选中时，处理预览器、浮动图片和图片事件副作用。 */
 export function handleImageSelectionStart(payload: {
   /** 绘制核心实例。 */
@@ -63,7 +70,7 @@ export function handleImageSelectionStart(payload: {
       draw,
       element,
       isReadonly
-    })
+    }) || isReadonlyChartGraphic(element)
   }
   if (element.type === ElementType.LATEX) {
     previewerDrawOption.mime = 'svg'
@@ -87,6 +94,8 @@ export function renderImagePreviewForDblclick(payload: {
   draw: Draw
   /** 当前命中上下文。 */
   positionContext: {
+    /** 元素索引。 */
+    index?: number
     /** 是否命中图片。 */
     isImage?: boolean
     /** 是否直接命中。 */
@@ -95,6 +104,11 @@ export function renderImagePreviewForDblclick(payload: {
 }) {
   const { draw, positionContext } = payload
   if (!positionContext.isImage || !positionContext.isDirectHit) return false
+  const element =
+    positionContext.index !== undefined
+      ? draw.getObjectResolver().getElementList()[positionContext.index]
+      : null
+  if (element?.type !== ElementType.IMAGE) return false
   draw.getComponents().previewer.render()
   return true
 }

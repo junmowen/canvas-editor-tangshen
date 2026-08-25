@@ -11,8 +11,12 @@ import type { IRegisterShortcut } from '../editor/interface/shortcut/Shortcut'
 
 export type CanvasEditorAppPreset = 'minimal' | 'standard' | 'document' | 'form'
 
+export type ToolbarSelectOptionLabel =
+  | string
+  | ((ctx: CanvasEditorAppContext) => string)
+
 export interface ToolbarSelectOption {
-  label: string
+  label: ToolbarSelectOptionLabel
   value: string | number
 }
 
@@ -29,7 +33,7 @@ export interface ToolbarItem {
   title?: string
   label?: string
   className?: string
-  value?: string | number
+  value?: string | number | ((ctx: CanvasEditorAppContext) => string | number)
   options?: ToolbarSelectOption[]
   when?: (ctx: CanvasEditorAppContext) => boolean
   active?: (ctx: CanvasEditorAppContext) => boolean
@@ -38,6 +42,7 @@ export interface ToolbarItem {
     ctx: CanvasEditorAppContext,
     payload?: string | number
   ) => void | Promise<void>
+  runDblclick?: (ctx: CanvasEditorAppContext) => void | Promise<void>
 }
 
 export interface ToolbarPatch {
@@ -99,6 +104,25 @@ export interface ContextMenuPatch {
 
 export type CanvasEditorAppListeners = Partial<Editor['listener']>
 
+export interface CanvasEditorAppComment {
+  id: string
+  content: string
+  userName?: string
+  rangeText?: string
+  createdDate?: string
+}
+
+export interface CanvasEditorAppCommentDraft {
+  id: string
+  rangeText: string
+}
+
+export type CanvasEditorAppCommentCreateResult =
+  | CanvasEditorAppComment
+  | false
+  | null
+  | void
+
 export interface CanvasEditorAppRegisterOptions {
   contextMenus?: IRegisterContextMenu[]
   shortcuts?: IRegisterShortcut[]
@@ -136,6 +160,30 @@ export interface CanvasEditorAppHandlers {
   print?: (ctx: CanvasEditorAppContext) => void | Promise<void>
   save?: (ctx: CanvasEditorAppContext) => void | Promise<void>
   toggleCatalog?: (ctx: CanvasEditorAppContext) => void | Promise<void>
+  getTrackChangeAuthor?: (ctx: CanvasEditorAppContext) => string
+  toggleTrackChange?: (
+    ctx: CanvasEditorAppContext,
+    enabled?: boolean
+  ) => void | Promise<void>
+  toggleTrackChangePanel?: (
+    ctx: CanvasEditorAppContext,
+    visible?: boolean
+  ) => void | Promise<void>
+  acceptAllTrackChange?: (ctx: CanvasEditorAppContext) => void | Promise<void>
+  rejectAllTrackChange?: (ctx: CanvasEditorAppContext) => void | Promise<void>
+  getComments?: (
+    ctx: CanvasEditorAppContext
+  ) => CanvasEditorAppComment[] | Promise<CanvasEditorAppComment[]>
+  createComment?: (
+    draft: CanvasEditorAppCommentDraft,
+    ctx: CanvasEditorAppContext
+  ) =>
+    | CanvasEditorAppCommentCreateResult
+    | Promise<CanvasEditorAppCommentCreateResult>
+  deleteComment?: (
+    commentId: string,
+    ctx: CanvasEditorAppContext
+  ) => void | Promise<void>
   openPaperMargin?: (ctx: CanvasEditorAppContext) => void | Promise<void>
   openPageNumberRange?: (ctx: CanvasEditorAppContext) => void | Promise<void>
   openEditorOptions?: (ctx: CanvasEditorAppContext) => void | Promise<void>

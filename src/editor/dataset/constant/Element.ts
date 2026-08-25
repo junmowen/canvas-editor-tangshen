@@ -124,6 +124,7 @@ export const EDITOR_ELEMENT_ZIP_ATTR: Array<keyof IElement> = [
   'formula',
   'dateFormat',
   'block',
+  'chartGraphic',
   'level',
   'title',
   'titleId',
@@ -254,7 +255,8 @@ export const TEXTLIKE_ELEMENT_TYPE: ElementType[] = [
 
 // image element type 类型集合，用于快速判断元素类别。
 export const IMAGE_ELEMENT_TYPE: ElementType[] = [
-  ElementType.IMAGE
+  ElementType.IMAGE,
+  ElementType.CHART_GRAPHIC
 ]
 
 // block element type 类型集合，用于快速判断元素类别。

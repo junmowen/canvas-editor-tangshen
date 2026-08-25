@@ -43,6 +43,29 @@
         "floatBottom": "衬于文字下方"
       }
     },
+      "chart": {
+        "refreshSource": "刷新图表数据",
+        "clearDentalStatus": "清除牙位状态",
+        "editDentalNote": "编辑牙位备注",
+        "insertMark": "添加标记",
+        "insertAnnotation": "添加标注",
+        "insertPoint": "插入点位",
+        "editPoint": "编辑点位",
+      "editMark": "编辑标记",
+      "editRegion": "编辑区间",
+      "editAnnotation": "编辑标注",
+      "deletePoint": "删除点位",
+      "deleteMark": "删除标记",
+      "deleteRegion": "删除区间",
+      "deleteAnnotation": "删除标注",
+      "dentalStatus": "牙位状态",
+      "missing": "缺失",
+      "caries": "龋坏",
+      "filled": "充填",
+      "rootCanal": "根管",
+      "crown": "冠修复",
+      "implant": "种植"
+    },
     "table": {
       "property": "表格属性",
       "borderType": "边框类型",

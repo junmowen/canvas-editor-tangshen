@@ -17,11 +17,16 @@ export class PointerSessionController {
     session.isAllowDrag = false
     session.isAllowDrop = false
     session.lastPointerCoordinates = null
+    session.chartGraphicDrag = null
     session.dragSnapshot = {
       range: null,
       elementList: null,
       positionList: null,
       positionContext: null
     }
+  }
+
+  public clearChartGraphicDrag() {
+    this.host.getPointerSession().chartGraphicDrag = null
   }
 }

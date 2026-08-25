@@ -15,6 +15,8 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
   if (draw.isReadonly()) return
   const rangeManager = components.range
   if (!rangeManager.getIsCanInput()) return
+  draw.flushAsyncInsertTransaction('keyboard-delete')
+  draw.getServices().historyBridge.flushTypingHistory()
   const { startIndex, endIndex, isCrossRowCol } =
     rangeManager.getEditBoundaryRange()
   const elementList = draw.getObjectResolver().getElementList()
@@ -25,9 +27,11 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
   let curIndex: number | null
   let deletedCount = 1
   let editIndex = startIndex + 1
+  let mutationCount = 0
   if (isCrossRowCol) {
     curIndex = clearCrossRowColSelection(draw)
     if (curIndex === null) return
+    mutationCount++
     deletedCount = Math.max(1, endIndex - startIndex)
     editIndex = startIndex + 1
   } else {
@@ -49,6 +53,7 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
       })
     }
     if (curIndex !== null) {
+      mutationCount++
       deletedCount = 1
       editIndex = endIndex + 1
     }
@@ -59,14 +64,14 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
       const { index } = cursorPosition
       const positionContext = coordinate.getPositionContext()
       if (positionContext.isDirectHit && positionContext.isImage) {
-        draw.spliceElementList(elementList, index, 1)
+        mutationCount += draw.spliceElementList(elementList, index, 1)
         curIndex = index - 1
         deletedCount = 1
         editIndex = index
       } else {
         const isCollapsed = rangeManager.getIsCollapsed()
         if (!isCollapsed) {
-          draw.spliceElementList(
+          mutationCount += draw.spliceElementList(
             elementList,
             startIndex + 1,
             endIndex - startIndex
@@ -75,7 +80,7 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
           editIndex = startIndex + 1
         } else {
           if (!elementList[index + 1]) return
-          draw.spliceElementList(elementList, index + 1, 1)
+          mutationCount += draw.spliceElementList(elementList, index + 1, 1)
           deletedCount = 1
           editIndex = index + 1
         }
@@ -88,6 +93,10 @@ export function runDeleteIntent(evt: KeyboardEvent, host: CanvasEvent) {
           : startIndex
       }
     }
+  }
+  if (draw.getTrackChange().isEnabled() && mutationCount === 0) {
+    evt.preventDefault()
+    return
   }
   finalizeDeletion({ draw, startIndex, curIndex, deletedCount, editIndex })
 }

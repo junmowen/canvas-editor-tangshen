@@ -7,6 +7,19 @@ import { INavigateInfo } from '../modules/search/runtime/Search'
  * 搜索替换命令适配模块，负责全文搜索、结果导航和替换命令。
  */
 export class CommandAdaptSearch extends CommandAdaptMedia {
+  /** 打印/导出前按 refreshMode 执行图表数据源预刷新。 */
+  protected async preparePrintChartGraphics() {
+    this.draw.flushAsyncInsertTransaction('command-print-chart-graphics-refresh')
+    return this.refreshChartGraphicSourcesInternal(
+      {
+        refreshMode: 'on-print'
+      },
+      {
+        ignoreCommandDisabled: true
+      }
+    )
+  }
+
   /** 执行关键词搜索并返回匹配结果。 */
   public search(payload: string | null, options?: ISearchOption) {
     this.draw.flushAsyncInsertTransaction('command-search')
@@ -94,8 +107,9 @@ export class CommandAdaptSearch extends CommandAdaptMedia {
   }
 
   /** 打印当前文档，使用 SVG 矢量文本，避免 Canvas 图片打印导致文字发虚。 */
-  public print() {
+  public async print() {
     this.draw.flushAsyncInsertTransaction('command-print-svg')
+    await this.preparePrintChartGraphics()
     printSvgDocument(this.createPrintSvgDocumentPayload())
   }
 }

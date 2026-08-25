@@ -142,6 +142,72 @@ export class Command {
   public executeTableSelectAll: CommandAdapt['tableSelectAll']
   /** 对外暴露的image命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeImage: CommandAdapt['image']
+  /** 对外暴露的插入图表图形命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeInsertChartGraphic: CommandAdapt['insertChartGraphic']
+  /** 对外暴露的更新图表图形命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeUpdateChartGraphic: CommandAdapt['updateChartGraphic']
+  /** 对外暴露的套用图表图形预设命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeApplyChartGraphicPreset: CommandAdapt['applyChartGraphicPreset']
+  /** 对外暴露的升级图表图形预设命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeUpgradeChartGraphicPreset: CommandAdapt['upgradeChartGraphicPreset']
+  /** 对外暴露的批量升级图表图形预设命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeUpgradeChartGraphicPresets: CommandAdapt['upgradeChartGraphicPresets']
+  /** 对外暴露的更新图表图形序列命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeUpdateChartGraphicSeries: CommandAdapt['updateChartGraphicSeries']
+  /** 对外暴露的插入图表图形序列点位命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeInsertChartGraphicSeriesPoint: CommandAdapt['insertChartGraphicSeriesPoint']
+  /** 对外暴露的更新图表图形序列点位命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeUpdateChartGraphicSeriesPoint: CommandAdapt['updateChartGraphicSeriesPoint']
+  /** 对外暴露的删除图表图形序列点位命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeDeleteChartGraphicSeriesPoint: CommandAdapt['deleteChartGraphicSeriesPoint']
+  /** 对外暴露的新增或更新图表图形标记命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeUpsertChartGraphicMark: CommandAdapt['upsertChartGraphicMark']
+  /** 对外暴露的删除图表图形标记命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeDeleteChartGraphicMark: CommandAdapt['deleteChartGraphicMark']
+  /** 对外暴露的新增或更新图表图形区间命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeUpsertChartGraphicRegion: CommandAdapt['upsertChartGraphicRegion']
+  /** 对外暴露的删除图表图形区间命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeDeleteChartGraphicRegion: CommandAdapt['deleteChartGraphicRegion']
+  /** 对外暴露的新增或更新图表图形标注命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeUpsertChartGraphicAnnotation: CommandAdapt['upsertChartGraphicAnnotation']
+  /** 对外暴露的删除图表图形标注命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeDeleteChartGraphicAnnotation: CommandAdapt['deleteChartGraphicAnnotation']
+  /** 对外暴露的更新牙位状态命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeUpdateChartGraphicDentalTooth: CommandAdapt['updateChartGraphicDentalTooth']
+  /** 对外暴露的更新牙面状态命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeUpdateChartGraphicDentalSurface: CommandAdapt['updateChartGraphicDentalSurface']
+  /** 对外暴露的切换整牙状态命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeToggleChartGraphicDentalToothStatus: CommandAdapt['toggleChartGraphicDentalToothStatus']
+  /** 对外暴露的切换牙面状态命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeToggleChartGraphicDentalSurfaceStatus: CommandAdapt['toggleChartGraphicDentalSurfaceStatus']
+  /** 对外暴露的按命中结果切换牙位图状态命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeToggleChartGraphicDentalStatusByHit: CommandAdapt['toggleChartGraphicDentalStatusByHit']
+  /** 对外暴露的按命中结果清除牙位图状态命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeClearChartGraphicDentalStatusByHit: CommandAdapt['clearChartGraphicDentalStatusByHit']
+  /** 对外暴露的按命中结果更新图表点位命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeUpdateChartGraphicSeriesPointByHit: CommandAdapt['updateChartGraphicSeriesPointByHit']
+  /** 对外暴露的按命中结果插入图表标记命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeInsertChartGraphicMarkByHit: CommandAdapt['insertChartGraphicMarkByHit']
+  /** 对外暴露的按命中结果插入图表标注命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeInsertChartGraphicAnnotationByHit: CommandAdapt['insertChartGraphicAnnotationByHit']
+  /** 对外暴露的按命中结果插入图表点位命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeInsertChartGraphicSeriesPointByHit: CommandAdapt['insertChartGraphicSeriesPointByHit']
+  /** 对外暴露的按命中结果删除图表内部对象命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeDeleteChartGraphicTargetByHit: CommandAdapt['deleteChartGraphicTargetByHit']
+  /** 对外暴露的刷新图表数据源命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeRefreshChartGraphicSource: CommandAdapt['refreshChartGraphicSource']
+  /** 对外暴露的批量刷新图表数据源命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeRefreshChartGraphicSources: CommandAdapt['refreshChartGraphicSources']
+  /** 对外暴露的设置图表内部编辑态命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeSetChartGraphicInternalEditing: CommandAdapt['setChartGraphicInternalEditing']
+  /** 对外暴露的设置图表内部多选目标命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeSetChartGraphicInternalSelection: CommandAdapt['setChartGraphicInternalSelection']
+  /** 对外暴露的删除图表内部多选目标命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeDeleteChartGraphicInternalSelection: CommandAdapt['deleteChartGraphicInternalSelection']
+  /** 对外暴露的注册图表预设入口，内部代理到 CommandAdapt 对应实现。 */
+  public registerChartGraphicPreset: CommandAdapt['registerChartGraphicPreset']
+  /** 对外暴露的注册图表数据源 provider 入口，内部代理到 CommandAdapt 对应实现。 */
+  public registerChartGraphicDataProvider: CommandAdapt['registerChartGraphicDataProvider']
   /** 对外暴露的hyperlink命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeHyperlink: CommandAdapt['hyperlink']
   /** 对外暴露的delete hyperlink命令入口，内部代理到 CommandAdapt 对应实现。 */
@@ -214,6 +280,8 @@ export class Command {
   public executeDeleteElementById: CommandAdapt['deleteElementById']
   /** 对外暴露的set value命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeSetValue: CommandAdapt['setValue']
+  /** 对外暴露的异步set value命令入口，等待 on-open 图表刷新完成。 */
+  public executeSetValueAsync: CommandAdapt['setValueAsync']
   /** 对外暴露的remove control命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeRemoveControl: CommandAdapt['removeControl']
   /** 对外暴露的translate命令入口，内部代理到 CommandAdapt 对应实现。 */
@@ -356,6 +424,38 @@ export class Command {
   public getPositionContextByEvent: CommandAdapt['getPositionContextByEvent']
   /** 对外暴露的元素 id 查询入口，内部代理到 CommandAdapt 实现。 */
   public getElementById: CommandAdapt['getElementById']
+  /** 对外暴露的图表图形查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphic: CommandAdapt['getChartGraphic']
+  /** 对外暴露的图表预设列表查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicPresetList: CommandAdapt['getChartGraphicPresetList']
+  /** 对外暴露的图表预设兼容性查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicPresetCompatibility: CommandAdapt['getChartGraphicPresetCompatibility']
+  /** 对外暴露的图表预设升级状态查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicPresetUpgradeInfo: CommandAdapt['getChartGraphicPresetUpgradeInfo']
+  /** 对外暴露的图表预设批量升级状态查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicPresetUpgradeInfoList: CommandAdapt['getChartGraphicPresetUpgradeInfoList']
+  /** 对外暴露的图表图形渲染快照查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicSnapshot: CommandAdapt['getChartGraphicSnapshot']
+  /** 对外暴露的图表内部编辑态查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicInternalEditing: CommandAdapt['getChartGraphicInternalEditing']
+  /** 对外暴露的图表内部多选目标查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicInternalSelection: CommandAdapt['getChartGraphicInternalSelection']
+  /** 对外暴露的图表图形校验查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicValidation: CommandAdapt['getChartGraphicValidation']
+  /** 对外暴露的图表图形批量校验查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicValidationList: CommandAdapt['getChartGraphicValidationList']
+  /** 对外暴露的图表图形扁平校验问题查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicValidationIssueList: CommandAdapt['getChartGraphicValidationIssueList']
+  /** 对外暴露的图表图形校验汇总查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicValidationSummary: CommandAdapt['getChartGraphicValidationSummary']
+  /** 对外暴露的图表数据源状态列表查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicDataSourceStateList: CommandAdapt['getChartGraphicDataSourceStateList']
+  /** 对外暴露的图表数据源状态汇总查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicDataSourceSummary: CommandAdapt['getChartGraphicDataSourceSummary']
+  /** 对外暴露的图表模板发布审计入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicTemplateAuditSummary: CommandAdapt['getChartGraphicTemplateAuditSummary']
+  /** 对外暴露的图表图形内部命中查询入口，内部代理到 CommandAdapt 实现。 */
+  public getChartGraphicHit: CommandAdapt['getChartGraphicHit']
   public getTrackChangeList: CommandAdapt['getTrackChangeList']
 
   /** 初始化 Command 实例并注入运行依赖。 */
@@ -438,6 +538,70 @@ export class Command {
     this.executeAutoFitTable = adapt.autoFitTable.bind(adapt)
     this.executeTableSelectAll = adapt.tableSelectAll.bind(adapt)
     this.executeImage = adapt.image.bind(adapt)
+    this.executeInsertChartGraphic = adapt.insertChartGraphic.bind(adapt)
+    this.executeUpdateChartGraphic = adapt.updateChartGraphic.bind(adapt)
+    this.executeApplyChartGraphicPreset =
+      adapt.applyChartGraphicPreset.bind(adapt)
+    this.executeUpgradeChartGraphicPreset =
+      adapt.upgradeChartGraphicPreset.bind(adapt)
+    this.executeUpgradeChartGraphicPresets =
+      adapt.upgradeChartGraphicPresets.bind(adapt)
+    this.executeUpdateChartGraphicSeries =
+      adapt.updateChartGraphicSeries.bind(adapt)
+    this.executeInsertChartGraphicSeriesPoint =
+      adapt.insertChartGraphicSeriesPoint.bind(adapt)
+    this.executeUpdateChartGraphicSeriesPoint =
+      adapt.updateChartGraphicSeriesPoint.bind(adapt)
+    this.executeDeleteChartGraphicSeriesPoint =
+      adapt.deleteChartGraphicSeriesPoint.bind(adapt)
+    this.executeUpsertChartGraphicMark =
+      adapt.upsertChartGraphicMark.bind(adapt)
+    this.executeDeleteChartGraphicMark =
+      adapt.deleteChartGraphicMark.bind(adapt)
+    this.executeUpsertChartGraphicRegion =
+      adapt.upsertChartGraphicRegion.bind(adapt)
+    this.executeDeleteChartGraphicRegion =
+      adapt.deleteChartGraphicRegion.bind(adapt)
+    this.executeUpsertChartGraphicAnnotation =
+      adapt.upsertChartGraphicAnnotation.bind(adapt)
+    this.executeDeleteChartGraphicAnnotation =
+      adapt.deleteChartGraphicAnnotation.bind(adapt)
+    this.executeUpdateChartGraphicDentalTooth =
+      adapt.updateChartGraphicDentalTooth.bind(adapt)
+    this.executeUpdateChartGraphicDentalSurface =
+      adapt.updateChartGraphicDentalSurface.bind(adapt)
+    this.executeToggleChartGraphicDentalToothStatus =
+      adapt.toggleChartGraphicDentalToothStatus.bind(adapt)
+    this.executeToggleChartGraphicDentalSurfaceStatus =
+      adapt.toggleChartGraphicDentalSurfaceStatus.bind(adapt)
+    this.executeToggleChartGraphicDentalStatusByHit =
+      adapt.toggleChartGraphicDentalStatusByHit.bind(adapt)
+    this.executeClearChartGraphicDentalStatusByHit =
+      adapt.clearChartGraphicDentalStatusByHit.bind(adapt)
+    this.executeUpdateChartGraphicSeriesPointByHit =
+      adapt.updateChartGraphicSeriesPointByHit.bind(adapt)
+    this.executeInsertChartGraphicMarkByHit =
+      adapt.insertChartGraphicMarkByHit.bind(adapt)
+    this.executeInsertChartGraphicAnnotationByHit =
+      adapt.insertChartGraphicAnnotationByHit.bind(adapt)
+    this.executeInsertChartGraphicSeriesPointByHit =
+      adapt.insertChartGraphicSeriesPointByHit.bind(adapt)
+    this.executeDeleteChartGraphicTargetByHit =
+      adapt.deleteChartGraphicTargetByHit.bind(adapt)
+    this.executeRefreshChartGraphicSource =
+      adapt.refreshChartGraphicSource.bind(adapt)
+    this.executeRefreshChartGraphicSources =
+      adapt.refreshChartGraphicSources.bind(adapt)
+    this.executeSetChartGraphicInternalEditing =
+      adapt.setChartGraphicInternalEditing.bind(adapt)
+    this.executeSetChartGraphicInternalSelection =
+      adapt.setChartGraphicInternalSelection.bind(adapt)
+    this.executeDeleteChartGraphicInternalSelection =
+      adapt.deleteChartGraphicInternalSelection.bind(adapt)
+    this.registerChartGraphicPreset =
+      adapt.registerChartGraphicPreset.bind(adapt)
+    this.registerChartGraphicDataProvider =
+      adapt.registerChartGraphicDataProvider.bind(adapt)
     this.executeHyperlink = adapt.hyperlink.bind(adapt)
     this.executeDeleteHyperlink = adapt.deleteHyperlink.bind(adapt)
     this.executeCancelHyperlink = adapt.cancelHyperlink.bind(adapt)
@@ -479,6 +643,7 @@ export class Command {
     this.executeUpdateElementById = adapt.updateElementById.bind(adapt)
     this.executeDeleteElementById = adapt.deleteElementById.bind(adapt)
     this.executeSetValue = adapt.setValue.bind(adapt)
+    this.executeSetValueAsync = adapt.setValueAsync.bind(adapt)
     this.executeRemoveControl = adapt.removeControl.bind(adapt)
     this.executeTranslate = adapt.translate.bind(adapt)
     this.executeSetLocale = adapt.setLocale.bind(adapt)
@@ -540,6 +705,35 @@ export class Command {
     this.getTitleValue = adapt.getTitleValue.bind(adapt)
     this.getPositionContextByEvent = adapt.getPositionContextByEvent.bind(adapt)
     this.getElementById = adapt.getElementById.bind(adapt)
+    this.getChartGraphic = adapt.getChartGraphic.bind(adapt)
+    this.getChartGraphicPresetList =
+      adapt.getChartGraphicPresetList.bind(adapt)
+    this.getChartGraphicPresetCompatibility =
+      adapt.getChartGraphicPresetCompatibility.bind(adapt)
+    this.getChartGraphicPresetUpgradeInfo =
+      adapt.getChartGraphicPresetUpgradeInfo.bind(adapt)
+    this.getChartGraphicPresetUpgradeInfoList =
+      adapt.getChartGraphicPresetUpgradeInfoList.bind(adapt)
+    this.getChartGraphicSnapshot = adapt.getChartGraphicSnapshot.bind(adapt)
+    this.getChartGraphicInternalEditing =
+      adapt.getChartGraphicInternalEditing.bind(adapt)
+    this.getChartGraphicInternalSelection =
+      adapt.getChartGraphicInternalSelection.bind(adapt)
+    this.getChartGraphicValidation =
+      adapt.getChartGraphicValidation.bind(adapt)
+    this.getChartGraphicValidationList =
+      adapt.getChartGraphicValidationList.bind(adapt)
+    this.getChartGraphicValidationIssueList =
+      adapt.getChartGraphicValidationIssueList.bind(adapt)
+    this.getChartGraphicValidationSummary =
+      adapt.getChartGraphicValidationSummary.bind(adapt)
+    this.getChartGraphicDataSourceStateList =
+      adapt.getChartGraphicDataSourceStateList.bind(adapt)
+    this.getChartGraphicDataSourceSummary =
+      adapt.getChartGraphicDataSourceSummary.bind(adapt)
+    this.getChartGraphicTemplateAuditSummary =
+      adapt.getChartGraphicTemplateAuditSummary.bind(adapt)
+    this.getChartGraphicHit = adapt.getChartGraphicHit.bind(adapt)
     this.getTrackChangeList = adapt.getTrackChangeList.bind(adapt)
     // 控件
     this.executeSetControlValue = adapt.setControlValue.bind(adapt)

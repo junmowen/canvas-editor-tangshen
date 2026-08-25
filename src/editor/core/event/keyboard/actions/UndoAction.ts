@@ -12,6 +12,7 @@ export function runUndoAction(
   if (draw.isReadonly() && draw.getMode() !== EditorMode.FORM) return true
   draw.getTrackChange().endEditSession()
   draw.flushAsyncInsertTransaction('keyboard-undo')
+  draw.getServices().historyBridge.flushTypingHistory()
   draw.getHistoryManager().undo()
   evt.preventDefault()
   return true

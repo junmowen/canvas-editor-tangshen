@@ -11,8 +11,21 @@ import {
 import { IElement, IElementPosition } from '../../interface/Element'
 import { IDocumentStyle } from '../../interface/Style'
 import { IRange, RangeContext, RangeRect } from '../../interface/Range'
+import {
+  IClearChartGraphicDentalStatusByHitPayload,
+  IInsertChartGraphicAnnotationByHitPayload,
+  IInsertChartGraphicMarkByHitPayload,
+  IInsertChartGraphicSeriesPointByHitPayload,
+  IUpdateChartGraphicSeriesPointByHitPayload,
+  IDeleteChartGraphicTargetByHitPayload,
+  IChartDataPoint,
+  IChartGraphic,
+  IChartGraphicHitQueryPayload,
+  IChartGraphicHitQueryResult,
+  IToggleChartGraphicDentalStatusByHitPayload
+} from '../../interface/ChartGraphic'
 import { ISearchResultContext } from '../../interface/Search'
-import { deepClone } from '../../utils'
+import { deepClone, getUUID } from '../../utils'
 import {
   pickElementAttr,
   zipElementList
@@ -41,6 +54,43 @@ import {
   createOoxmlDocxPackageBlob,
   createOoxmlPackageParts
 } from '../export/ooxml/OoxmlPackage'
+import { queryChartGraphicHitByPoint } from '../modules/chart-graphics/query/ChartGraphicHitQueryPolicy'
+import { resolveChartAxisPointValueFromLocalCoordinate } from '../modules/chart-graphics/render/ChartGraphicCoordinatePolicy'
+
+function resolveChartAxisPositionValue(payload: {
+  chart: IChartGraphic
+  seriesId?: string
+  localX: number
+  localY: number
+  width: number
+  height: number
+}) {
+  const { chart, localX, localY, width, height } = payload
+  return resolveChartAxisPointValueFromLocalCoordinate({
+    chart,
+    width,
+    height,
+    localX,
+    localY
+  })
+}
+
+function resolveChartAxisInsertValue(payload: {
+  chart: IChartGraphic
+  seriesId: string
+  localX: number
+  localY: number
+  width: number
+  height: number
+  label?: string
+}) {
+  const { label, ...pointPayload } = payload
+  const point = resolveChartAxisPositionValue(pointPayload)
+  return {
+    ...point,
+    label
+  } as IChartDataPoint
+}
 
 /**
  * 查询命令适配模块，负责文档数据、选区上下文、关键词上下文等只读结果获取。
@@ -208,12 +258,245 @@ export class CommandAdaptQuery extends CommandAdaptSearch {
   }
 
   /** 获取当前文档的 PDF Blob，内部复用 SVG 打印页面并转换为矢量 PDF。 */
-  public getPdfBlob(options?: IPrintPdfDocumentOption) {
+  public async getPdfBlob(options?: IPrintPdfDocumentOption) {
     this.draw.flushAsyncInsertTransaction('command-get-pdf-blob')
+    await this.preparePrintChartGraphics()
     return createPdfBlobFromPrintSvgDocument(
       this.createPrintSvgDocumentPayload(),
       options
     )
+  }
+
+  /** 按文档坐标命中图表图形内部对象。 */
+  public getChartGraphicHit(
+    payload: IChartGraphicHitQueryPayload
+  ): IChartGraphicHitQueryResult | null {
+    const hit = queryChartGraphicHitByPoint(this.draw, payload)
+    if (!hit) return null
+    return deepClone<IChartGraphicHitQueryResult>({
+      elementId: hit.elementId,
+      pageNo: hit.pageNo,
+      chart: hit.chart,
+      width: hit.width,
+      height: hit.height,
+      localX: hit.localX,
+      localY: hit.localY,
+      hit: hit.hit
+    })
+  }
+
+  /** 按文档坐标命中牙位图并切换整牙或牙面状态。 */
+  public toggleChartGraphicDentalStatusByHit(
+    payload: IToggleChartGraphicDentalStatusByHitPayload
+  ): IChartGraphicHitQueryResult | null {
+    const hit = this.getChartGraphicHit(payload)
+    if (hit?.chart.interaction?.readonly) return null
+    if (!hit?.elementId || !hit.hit.toothCode) return null
+    if (hit.hit.target === 'dental-surface' && hit.hit.dentalSurface) {
+      const ok = this.toggleChartGraphicDentalSurfaceStatus(
+        hit.elementId,
+        hit.hit.toothCode,
+        hit.hit.dentalSurface,
+        payload.status
+      )
+      return ok ? hit : null
+    }
+    if (hit.hit.target === 'dental-tooth') {
+      const ok = this.toggleChartGraphicDentalToothStatus(
+        hit.elementId,
+        hit.hit.toothCode,
+        payload.status
+      )
+      return ok ? hit : null
+    }
+    return null
+  }
+
+  /** 按文档坐标命中图表内部对象并直接删除可删除目标。 */
+  public deleteChartGraphicTargetByHit(
+    payload: IDeleteChartGraphicTargetByHitPayload
+  ): IChartGraphicHitQueryResult | null {
+    const hit = this.getChartGraphicHit(payload)
+    if (hit?.chart.interaction?.readonly) return null
+    if (!hit?.elementId) return null
+    if (
+      hit.hit.target === 'series-point' &&
+      hit.hit.seriesId &&
+      hit.hit.dataIndex !== undefined
+    ) {
+      const ok = this.deleteChartGraphicSeriesPoint(
+        hit.elementId,
+        hit.hit.seriesId,
+        hit.hit.dataIndex
+      )
+      return ok ? hit : null
+    }
+    if (hit.hit.target === 'mark' && hit.hit.markId) {
+      const ok = this.deleteChartGraphicMark(hit.elementId, hit.hit.markId)
+      return ok ? hit : null
+    }
+    if (hit.hit.target === 'region' && hit.hit.regionId) {
+      const ok = this.deleteChartGraphicRegion(hit.elementId, hit.hit.regionId)
+      return ok ? hit : null
+    }
+    if (hit.hit.target === 'annotation' && hit.hit.annotationId) {
+      const ok = this.deleteChartGraphicAnnotation(
+        hit.elementId,
+        hit.hit.annotationId
+      )
+      return ok ? hit : null
+    }
+    if (
+      hit.hit.target === 'dental-surface' ||
+      hit.hit.target === 'dental-tooth'
+    ) {
+      return this.clearChartGraphicDentalStatusByHit(payload)
+    }
+    return null
+  }
+
+  /** 按文档坐标命中牙位图并清除整牙或牙面状态。 */
+  public clearChartGraphicDentalStatusByHit(
+    payload: IClearChartGraphicDentalStatusByHitPayload
+  ): IChartGraphicHitQueryResult | null {
+    const hit = this.getChartGraphicHit(payload)
+    if (hit?.chart.interaction?.readonly) return null
+    if (!hit?.elementId || !hit.hit.toothCode) return null
+    if (hit.hit.target === 'dental-surface' && hit.hit.dentalSurface) {
+      const ok = this.updateChartGraphicDentalSurface(
+        hit.elementId,
+        hit.hit.toothCode,
+        hit.hit.dentalSurface,
+        null
+      )
+      return ok ? hit : null
+    }
+    if (hit.hit.target === 'dental-tooth') {
+      const ok = this.updateChartGraphicDentalTooth(hit.elementId, hit.hit.toothCode, {
+        status: undefined,
+        surfaces: undefined
+      })
+      return ok ? hit : null
+    }
+    return null
+  }
+
+  /** 按文档坐标命中图表点位并更新该点。 */
+  public updateChartGraphicSeriesPointByHit(
+    payload: IUpdateChartGraphicSeriesPointByHitPayload
+  ): IChartGraphicHitQueryResult | null {
+    const hit = this.getChartGraphicHit(payload)
+    if (hit?.chart.interaction?.readonly) return null
+    if (
+      !hit?.elementId ||
+      hit.hit.target !== 'series-point' ||
+      !hit.hit.seriesId ||
+      hit.hit.dataIndex === undefined
+    ) {
+      return null
+    }
+    const ok = this.updateChartGraphicSeriesPoint(
+      hit.elementId,
+      hit.hit.seriesId,
+      hit.hit.dataIndex,
+      payload.patch
+    )
+    return ok ? hit : null
+  }
+
+  /** 按文档坐标命中绘图区后插入新标记。 */
+  public insertChartGraphicMarkByHit(
+    payload: IInsertChartGraphicMarkByHitPayload
+  ): IChartGraphicHitQueryResult | null {
+    const hit = this.getChartGraphicHit(payload)
+    if (hit?.chart.interaction?.readonly) return null
+    if (
+      !hit?.elementId ||
+      (hit.hit.target !== 'plot-area' &&
+        hit.hit.target !== 'series-line' &&
+        hit.hit.target !== 'series-point')
+    ) {
+      return null
+    }
+    const point = resolveChartAxisPositionValue({
+      chart: hit.chart,
+      seriesId: hit.hit.seriesId,
+      localX: hit.localX,
+      localY: hit.localY,
+      width: hit.width,
+      height: hit.height
+    })
+    const ok = this.upsertChartGraphicMark(hit.elementId, {
+      id: payload.id || getUUID(),
+      type: payload.type || 'event',
+      x: point.x,
+      y: point.y,
+      label: payload.label?.trim() || undefined
+    })
+    return ok ? hit : null
+  }
+
+  /** 按文档坐标命中绘图区后插入新标注。 */
+  public insertChartGraphicAnnotationByHit(
+    payload: IInsertChartGraphicAnnotationByHitPayload
+  ): IChartGraphicHitQueryResult | null {
+    const hit = this.getChartGraphicHit(payload)
+    if (hit?.chart.interaction?.readonly) return null
+    if (
+      !hit?.elementId ||
+      (hit.hit.target !== 'plot-area' &&
+        hit.hit.target !== 'series-line' &&
+        hit.hit.target !== 'series-point')
+    ) {
+      return null
+    }
+    const text = payload.text.trim()
+    if (!text) return null
+    const point = resolveChartAxisPositionValue({
+      chart: hit.chart,
+      seriesId: hit.hit.seriesId,
+      localX: hit.localX,
+      localY: hit.localY,
+      width: hit.width,
+      height: hit.height
+    })
+    const ok = this.upsertChartGraphicAnnotation(hit.elementId, {
+      id: payload.id || getUUID(),
+      x: point.x,
+      y: point.y,
+      text
+    })
+    return ok ? hit : null
+  }
+
+  /** 按文档坐标命中曲线后插入新点位。 */
+  public insertChartGraphicSeriesPointByHit(
+    payload: IInsertChartGraphicSeriesPointByHitPayload
+  ): IChartGraphicHitQueryResult | null {
+    const hit = this.getChartGraphicHit(payload)
+    if (hit?.chart.interaction?.readonly) return null
+    if (
+      !hit?.elementId ||
+      hit.hit.target !== 'series-line' ||
+      !hit.hit.seriesId
+    ) {
+      return null
+    }
+    const point = resolveChartAxisInsertValue({
+      chart: hit.chart,
+      seriesId: hit.hit.seriesId,
+      localX: hit.localX,
+      localY: hit.localY,
+      width: hit.width,
+      height: hit.height,
+      label: payload.label
+    })
+    const ok = this.insertChartGraphicSeriesPoint(
+      hit.elementId,
+      hit.hit.seriesId,
+      point
+    )
+    return ok ? hit : null
   }
 
   /** 异步获取当前文档结构数据。 */

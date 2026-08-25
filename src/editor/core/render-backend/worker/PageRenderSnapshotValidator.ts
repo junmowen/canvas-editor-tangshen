@@ -5,6 +5,7 @@ import { IElement } from '../../../interface/Element'
 import { IRowElement } from '../../../interface/Row'
 import { ITableFragmentDescriptor } from '../../../interface/table/TableFragment'
 import { ZERO } from '../../../dataset/constant/Common'
+import { isChartGraphicElement } from '../../modules/chart-graphics/layout/ChartGraphicElementLayout'
 import { isCheckboxHitElement, isRadioHitElement } from '../../modules/control/hittest/ControlHitTest'
 import { isImageElement } from '../../modules/image/layout/InlineImageElementLayout'
 import { isWorkerSnapshotSupportedFloatingImage } from '../../modules/image/render/WorkerSnapshotImageRenderPolicy'
@@ -43,6 +44,9 @@ export abstract class PageRenderSnapshotValidator extends PageRenderSnapshotFram
     element: IRowElement,
     tableFragment?: ITableFragmentDescriptor
   ) {
+    if (isChartGraphicElement(element)) {
+      return
+    }
     if (element.value === ZERO) {
       return
     }

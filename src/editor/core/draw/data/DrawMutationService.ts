@@ -350,10 +350,11 @@ export class DrawMutationService {
     deleteCount: number,
     items?: IElement[],
     options?: ISpliceElementListOption
-  ) {
+  ): number {
     const isMainElementListMutation =
       elementList === this.draw.getObjectResolver().getOriginalMainElementList()
     const oldLength = isMainElementListMutation ? elementList.length : 0
+    let mutationCount = 0
     // 记录删除前的元素签名，供文档文本存储同步裁剪。
     const deleteRecordList: IDrawMutationDeleteRecord[] = []
     if (!this.isInternalInsertSplice) {
@@ -364,7 +365,9 @@ export class DrawMutationService {
     // 如果有需要删除的元素
     if (deleteCount > 0 && this.draw.getTrackChange().isEnabled()) {
       // 留痕删除只打 delete 标记，不立即从文档数组移除。
-      this.draw.getTrackChange().applyDelete(elementList, start, deleteCount)
+      mutationCount += this.draw
+        .getTrackChange()
+        .applyDelete(elementList, start, deleteCount)
     } else if (deleteCount > 0) {
       // 计算结束索引
       const endIndex = start + deleteCount
@@ -436,6 +439,7 @@ export class DrawMutationService {
               })
             }
             elementList.splice(deleteIndex, 1)
+            mutationCount++
           }
           deleteIndex--
         }
@@ -453,7 +457,7 @@ export class DrawMutationService {
               })
             })
         }
-        elementList.splice(start, deleteCount)
+        mutationCount += elementList.splice(start, deleteCount).length
       }
     }
     // 如果有需要插入的元素
@@ -467,8 +471,9 @@ export class DrawMutationService {
           this.draw.getTrackChange().markInsertList(insertList)
         }
       })
+      mutationCount += items.length
     }
-    if (isMainElementListMutation) {
+    if (isMainElementListMutation && mutationCount > 0) {
       const insertCount = items?.length || 0
       this.draw.recordDocumentTextStoreExternalMutation(
         resolveExternalSpliceMutationRecord({
@@ -483,6 +488,7 @@ export class DrawMutationService {
         })
       )
     }
+    return mutationCount
   }
 
   /** 标记当前 splice 来自 insertElementList 内部，避免后台大粘贴事务被自身批次取消。 */

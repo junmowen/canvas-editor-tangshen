@@ -1,5 +1,6 @@
 import { CanvasEvent } from '../CanvasEvent'
 import { debugMouseup } from '../debug/mouseup'
+import { commitChartGraphicDragIntent } from '../pointer/intents/chart-graphics/ChartGraphicDragIntent'
 import { runDragCommitIntent } from '../pointer/intents/drag-drop/DragCommitIntent'
 import { replayMousedownAfterUncommittedDrag } from '../pointer/policy/DragMouseupRecoveryPolicy'
 
@@ -18,6 +19,7 @@ export function mouseup(evt: MouseEvent, host: CanvasEvent) {
     const session = host.getPointerSession()
     const coordinates = draw.getCoordinate().getPointerCoordinates(evt, session.lastPointerCoordinates)
     session.lastPointerCoordinates = coordinates
+    if (commitChartGraphicDragIntent({ host, evt })) return
     if (runDragCommitIntent({ host, evt, coordinates })) return
     replayMousedownAfterUncommittedDrag({ host, evt })
   } finally {

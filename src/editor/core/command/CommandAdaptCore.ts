@@ -58,14 +58,18 @@ export class CommandAdaptCore extends CommandAdaptBase {
     ) {
       return
     }
+    let mutationCount = 0
     if (!isCollapsed) {
-      this.draw.spliceElementList(
+      mutationCount += this.draw.spliceElementList(
         elementList,
         startIndex + 1,
         endIndex - startIndex
       )
     } else {
-      this.draw.spliceElementList(elementList, startIndex, 1)
+      mutationCount += this.draw.spliceElementList(elementList, startIndex, 1)
+    }
+    if (this.draw.getTrackChange().isEnabled() && mutationCount === 0) {
+      return
     }
     let curIndex = isCollapsed ? startIndex - 1 : startIndex
     const typingEditIndex = isCollapsed ? startIndex : startIndex + 1
@@ -380,6 +384,7 @@ export class CommandAdaptCore extends CommandAdaptBase {
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
     this.draw.flushAsyncInsertTransaction('command-undo')
+    this.draw.getServices().historyBridge.flushTypingHistory()
     this.historyManager.undo()
   }
 
@@ -388,6 +393,7 @@ export class CommandAdaptCore extends CommandAdaptBase {
     const isReadonly = this.draw.isReadonly()
     if (isReadonly) return
     this.draw.flushAsyncInsertTransaction('command-redo')
+    this.draw.getServices().historyBridge.flushTypingHistory()
     this.historyManager.redo()
   }
 

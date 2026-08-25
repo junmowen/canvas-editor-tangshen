@@ -2,6 +2,7 @@ import { WordBreak } from '../../../dataset/enum/Editor'
 import { IElement } from '../../../interface/Element'
 import { IRow } from '../../../interface/Row'
 import { isBlockElement } from '../../modules/block/layout/BlockElementLayout'
+import { isChartGraphicElement } from '../../modules/chart-graphics/layout/ChartGraphicElementLayout'
 import { shouldBreakBeforeColumnCheckable } from '../../modules/control/layout/CheckableControlElementLayout'
 import { shouldBreakAtComplexFormulaBoundary } from '../../modules/formula/layout/FormulaTextElementLayout'
 import { isInlineImageElement } from '../../modules/image/layout/InlineImageElementLayout'
@@ -71,6 +72,8 @@ export function resolveRowLayoutBreakDecision(payload: {
     }) ||
     isBlockElement(preElement) ||
     isBlockElement(element) ||
+    isChartGraphicElement(preElement) ||
+    isChartGraphicElement(element) ||
     isInlineImageElement(preElement) ||
     isInlineImageElement(element) ||
     shouldBreakAtFormulaBoundary ||

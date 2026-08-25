@@ -15,6 +15,7 @@ import {
 import { isPageBreakElement } from '../../modules/page-break/layout/PageBreakElementLayout'
 import { resolveRowLayoutCandidateWidth } from './RowLayoutCandidateWidthPolicy'
 import { TableLayoutEngine } from '../../modules/table/layout/engine/TableLayoutEngine'
+import { ChartGraphicLayoutEngine } from '../../modules/chart-graphics/layout/ChartGraphicLayoutEngine'
 import type { Draw } from '../Draw'
 import { InlineElementLayout } from './InlineElementLayout'
 import {
@@ -49,6 +50,8 @@ export class RowLayoutEngine {
   private inlineElementLayout: InlineElementLayout
   /** 表格布局引擎。 */
   private tableLayoutEngine: TableLayoutEngine
+  /** 图表分页布局引擎。 */
+  private chartGraphicLayoutEngine: ChartGraphicLayoutEngine
 
   /** 初始化 RowLayoutEngine 实例并注入运行依赖。 */
   constructor(private readonly draw: Draw) {
@@ -57,11 +60,17 @@ export class RowLayoutEngine {
       draw,
       this.computeRowList.bind(this)
     )
+    this.chartGraphicLayoutEngine = new ChartGraphicLayoutEngine(draw)
   }
 
   /** 获取表格布局引擎实例。 */
   public getTableLayoutEngine() {
     return this.tableLayoutEngine
+  }
+
+  /** 获取图表分页布局引擎实例。 */
+  public getChartGraphicLayoutEngine() {
+    return this.chartGraphicLayoutEngine
   }
 
   /**

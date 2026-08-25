@@ -228,6 +228,25 @@ export interface IWorkerStrokeSvgPathCommand {
   scaleY?: number
 }
 
+/** 后台线程fillsvgpathcommand契约，用于约束内部流程中传递的数据结构。 */
+export interface IWorkerFillSvgPathCommand {
+  type: 'fillSvgPath'
+  /** path文本，用于标识、展示或匹配当前对象。 */
+  path: string
+  /** 填充样式，用于设置 Canvas 填充颜色或图案。 */
+  fillStyle: string
+  /** 透明度系数，用于控制绘制结果的不透明程度。 */
+  alpha?: number
+  /** 横向平移量，用于调整绘制或命中坐标。 */
+  translateX?: number
+  /** 纵向平移量，用于调整绘制或命中坐标。 */
+  translateY?: number
+  /** 缩放x数值，用于当前布局、统计或索引计算。 */
+  scaleX?: number
+  /** 缩放y数值，用于当前布局、统计或索引计算。 */
+  scaleY?: number
+}
+
 /** 后台线程fillpathcommand契约，用于约束内部流程中传递的数据结构。 */
 export interface IWorkerFillPathCommand {
   type: 'fillPath'
@@ -307,6 +326,7 @@ export type IWorkerPaintCommand =
   | IWorkerStrokeRectCommand
   | IWorkerStrokePathCommand
   | IWorkerStrokeSvgPathCommand
+  | IWorkerFillSvgPathCommand
   | IWorkerFillPathCommand
   | IWorkerStrokeCircleCommand
   | IWorkerFillCircleCommand

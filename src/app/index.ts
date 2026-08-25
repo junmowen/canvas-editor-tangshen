@@ -3,6 +3,9 @@ import './styles/app.css'
 export { CanvasEditorAppImpl, createCanvasEditorApp } from './CanvasEditorApp'
 export type {
   CanvasEditorApp,
+  CanvasEditorAppComment,
+  CanvasEditorAppCommentCreateResult,
+  CanvasEditorAppCommentDraft,
   CanvasEditorAppContext,
   CanvasEditorAppFooterItemId,
   CanvasEditorAppHandlers,

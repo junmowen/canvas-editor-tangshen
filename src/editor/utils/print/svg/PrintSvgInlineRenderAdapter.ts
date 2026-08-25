@@ -7,6 +7,7 @@ import { IElement, IElementPosition } from '../../../interface/Element'
 import { measurePrintSvgTextWidth } from './core'
 
 export type TPrintSvgInlineRenderKind =
+  | 'chartGraphic'
   | 'control'
   | 'image'
   | 'latex'
@@ -32,6 +33,8 @@ export function resolvePrintSvgInlineRenderKind(
   if (isPrintSvgControlPosition(position)) return 'control'
   if (isPrintSvgControlAffixPosition(position)) return 'skip'
   switch (position.element?.type) {
+    case ElementType.CHART_GRAPHIC:
+      return 'chartGraphic'
     case ElementType.IMAGE:
       return 'image'
     case ElementType.LATEX:
