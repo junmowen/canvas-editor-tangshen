@@ -6,7 +6,7 @@ import {
   IChartGraphicValidationIssue,
   IChartGraphicValidationResult,
   IChartSeries
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 import {
   resolveChartSeriesDataPoints,
   toChartNumber
@@ -14,7 +14,7 @@ import {
 import {
   findChartGraphicPresetById,
   getChartGraphicPresetUpgradeInfo
-} from './ChartGraphicPreset'
+} from '../presets/ChartGraphicPreset'
 
 const CHART_KIND_SET = new Set<ChartGraphicKind>([
   'vital-signs',

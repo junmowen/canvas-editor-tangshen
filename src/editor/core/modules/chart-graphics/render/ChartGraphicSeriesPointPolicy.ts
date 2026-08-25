@@ -2,7 +2,7 @@ import {
   IChartAxis,
   IChartDataPoint,
   IChartSeries
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 
 /** 归一化后的图表序列点。 */
 export interface IResolvedChartSeriesPoint {

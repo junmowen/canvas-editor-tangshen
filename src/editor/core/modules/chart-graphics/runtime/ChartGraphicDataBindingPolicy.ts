@@ -8,7 +8,7 @@ import {
   IChartMark,
   IChartRegion,
   IChartSeries
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 
 function readMappedValue(
   record: Record<string, unknown>,

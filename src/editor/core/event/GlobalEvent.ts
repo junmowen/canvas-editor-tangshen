@@ -9,7 +9,7 @@ import { clearGlobalInlineEffects } from '../modules/inline/interaction/GlobalIn
 import { TableTool } from '../modules/table/particle/TableTool'
 import { RangeManager } from '../range/RangeManager'
 import { CanvasEvent } from './CanvasEvent'
-import { commitChartGraphicDragIntent } from './pointer/intents/chart-graphics/ChartGraphicDragIntent'
+import { commitChartGraphicDragInteraction } from '../modules/chart-graphics/interaction/ChartGraphicDragInteraction'
 import { INTERNAL_SHORTCUT_KEY } from '../../dataset/constant/Shortcut'
 import { RenderLayer } from '../render-backend'
 
@@ -118,7 +118,7 @@ export class GlobalEvent {
   /** 画布事件能力开关函数，用于按场景启用或禁用交互。 */
   public setCanvasEventAbility = (evt?: Event) => {
     if (evt instanceof MouseEvent) {
-      commitChartGraphicDragIntent({
+      commitChartGraphicDragInteraction({
         host: this.canvasEvent,
         evt
       })

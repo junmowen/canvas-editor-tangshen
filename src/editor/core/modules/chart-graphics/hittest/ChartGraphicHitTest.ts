@@ -3,7 +3,7 @@ import {
   IChartGraphic,
   IChartGraphicHitResult,
   IChartSeries
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 import {
   isPointInDentalPolygon,
   resolveDentalToothPathGeometry

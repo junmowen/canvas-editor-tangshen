@@ -1,4 +1,4 @@
-import { IChartGraphicFragmentDescriptor } from '../../../../interface/ChartGraphic'
+import { IChartGraphicFragmentDescriptor } from '../model/ChartGraphic'
 import { IElementMetrics } from '../../../../interface/Element'
 import { IRow, IRowElement } from '../../../../interface/Row'
 import type { Draw } from '../../../draw/Draw'

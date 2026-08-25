@@ -5,4 +5,4 @@ export {
   getChartGraphicPresetList,
   registerChartGraphicPreset,
   resolveChartGraphicPreset
-} from '../model/ChartGraphicPreset'
+} from './ChartGraphicPreset'

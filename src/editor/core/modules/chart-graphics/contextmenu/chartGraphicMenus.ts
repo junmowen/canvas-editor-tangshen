@@ -3,7 +3,7 @@ import {
   DentalToothStatus,
   IChartAnnotation,
   IChartDataPoint
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 import {
   IContextMenuContext,
   IRegisterContextMenu

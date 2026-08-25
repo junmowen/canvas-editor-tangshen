@@ -6,10 +6,8 @@ import {
   convertStringToBase64,
   deepClone
 } from '../../../../utils'
-import {
-  createChartGraphicElement,
-  isChartGraphicElement
-} from '../command/ChartGraphicCommandPolicy'
+import { createChartGraphicElement } from '../command/ChartGraphicCommandPolicy'
+import { isChartGraphicElement } from '../utils/ChartGraphicUtils'
 
 export const CHART_GRAPHIC_CLIPBOARD_PAYLOAD_ATTR =
   'ceChartGraphicPayload'

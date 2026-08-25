@@ -6,7 +6,7 @@ import { IRowElement } from '../../../interface/Row'
 import { ITableFragmentDescriptor } from '../../../interface/table/TableFragment'
 import { isCheckboxHitElement, isRadioHitElement } from '../../modules/control/hittest/ControlHitTest'
 import { ElementType } from '../../../dataset/enum/Element'
-import { isChartGraphicElement } from '../../modules/chart-graphics/layout/ChartGraphicElementLayout'
+import { isChartGraphicElement } from '../../modules/chart-graphics/utils/ChartGraphicUtils'
 import { pushChartGraphicWorkerSnapshotCommands } from '../../modules/chart-graphics/render/ChartGraphicWorkerSnapshotPolicy'
 import {
   isFormulaDebugEnabled,

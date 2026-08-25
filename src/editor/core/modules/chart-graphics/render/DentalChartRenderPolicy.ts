@@ -1,7 +1,7 @@
 import {
   DentalSurface,
   DentalToothStatus
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 
 export type DentalStatusMarker =
   | 'cross'

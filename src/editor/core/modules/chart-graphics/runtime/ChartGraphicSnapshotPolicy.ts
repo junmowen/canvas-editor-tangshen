@@ -1,13 +1,13 @@
 import {
   IChartGraphicSnapshot
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 import { IElement } from '../../../../interface/Element'
 import {
   downsampleChartSeriesPoints,
   resolveChartSeriesDataPoints
 } from '../render/ChartGraphicSeriesPointPolicy'
 import { resolveChartRenderContext } from '../render/ChartGraphicCoordinatePolicy'
-import { isChartGraphicElement } from '../command/ChartGraphicCommandPolicy'
+import { isChartGraphicElement, resolveChartGraphicElementSize } from '../utils/ChartGraphicUtils'
 import {
   isEcgChart,
   resolveEcgSeriesRenderContext
@@ -19,8 +19,7 @@ export function createChartGraphicSnapshot(
 ): IChartGraphicSnapshot | null {
   if (!isChartGraphicElement(element)) return null
   const chart = element.chartGraphic
-  const width = element.width || chart.size.width
-  const height = element.height || chart.size.height
+  const { width, height } = resolveChartGraphicElementSize(element)
   const context = resolveChartRenderContext(chart, width, height)
   return {
     elementId: element.id,

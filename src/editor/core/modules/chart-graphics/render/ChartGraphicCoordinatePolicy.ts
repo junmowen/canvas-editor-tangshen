@@ -5,7 +5,7 @@ import {
   IChartMark,
   IChartRegion,
   IChartSeries
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 import {
   resolveChartAxisValueNumber,
   resolveChartSeriesDataPoints,

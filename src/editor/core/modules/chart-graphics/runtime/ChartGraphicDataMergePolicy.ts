@@ -7,7 +7,7 @@ import {
   IChartMark,
   IChartRegion,
   IChartSeries
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 import { deepClone } from '../../../../utils'
 
 function isReplaceStrategy(strategy: ChartGraphicDataMergeStrategy | undefined) {

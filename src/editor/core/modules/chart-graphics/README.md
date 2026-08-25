@@ -105,3 +105,11 @@ CG-00/CG-01/CG-02/CG-03/CG-04/CG-05/CG-06 已完成：
 - `getChartGraphicHit`
 
 后续专科交互、命中、导出和 Worker snapshot 都应继续复用这个模块，不再散落到图片、block 或表格分支。
+
+目录实现说明：
+
+- `model/ChartGraphic.ts`：图表公开模型的模块内规范来源；`src/editor/interface/ChartGraphic.ts` 仅作为兼容导出入口。
+- `presets/ChartGraphicPreset.ts`：内置预设、注册表、归一化和版本治理。
+- `runtime/`：数据绑定、数据合并和渲染快照。
+- `interaction/`、`selection/`、`position/`、`utils/`：分别承载交互、内部选择、文档位置和模块工具策略。
+- `render/ChartGraphicSvgExporter.ts`：图表 SVG 导出实现；旧的 `src/editor/utils/print/svg/chartGraphic.ts` 仅保留兼容转出。

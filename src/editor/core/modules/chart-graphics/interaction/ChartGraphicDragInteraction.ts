@@ -3,20 +3,20 @@ import {
   IChartDataPoint,
   IChartMark,
   IChartRegion
-} from '../../../../../interface/ChartGraphic'
-import { CanvasEvent } from '../../../CanvasEvent'
+} from '../model/ChartGraphic'
+import { CanvasEvent } from '../../../event/CanvasEvent'
 import {
   applyChartGraphicAnnotationUpsert,
   applyChartGraphicMarkUpsert,
   applyChartGraphicRegionUpsert,
   applyChartGraphicSeriesPointPatch
-} from '../../../../modules/chart-graphics/command/ChartGraphicCommandPolicy'
-import { queryChartGraphicHitByPoint } from '../../../../modules/chart-graphics/query/ChartGraphicHitQueryPolicy'
-import { resolveChartAxisPointValueFromLocalCoordinate } from '../../../../modules/chart-graphics/render/ChartGraphicCoordinatePolicy'
+} from '../command/ChartGraphicCommandPolicy'
+import { queryChartGraphicHitByPoint } from '../hittest/ChartGraphicHitQueryPolicy'
+import { resolveChartAxisPointValueFromLocalCoordinate } from '../render/ChartGraphicCoordinatePolicy'
 import {
   resolveChartAxisValueNumber,
   toChartNumber
-} from '../../../../modules/chart-graphics/render/ChartGraphicSeriesPointPolicy'
+} from '../render/ChartGraphicSeriesPointPolicy'
 
 function resolveChartSeriesPoint(payload: {
   chart: {
@@ -341,7 +341,7 @@ function updateChartGraphicDragPreview(payload: {
 }
 
 /** 在直接命中图表对象时启动拖拽会话。 */
-export function startChartGraphicDragIntent(payload: {
+export function startChartGraphicDragInteraction(payload: {
   host: CanvasEvent
   evt: MouseEvent
   pageNo: number
@@ -486,7 +486,7 @@ export function startChartGraphicDragIntent(payload: {
 }
 
 /** 在图表对象拖拽过程中更新拖拽预览。 */
-export function runChartGraphicDragIntent(payload: {
+export function runChartGraphicDragInteraction(payload: {
   host: CanvasEvent
   evt: MouseEvent
 }) {
@@ -494,7 +494,7 @@ export function runChartGraphicDragIntent(payload: {
 }
 
 /** 提交图表对象拖拽；释放时只补交一次历史快照。 */
-export function commitChartGraphicDragIntent(payload: {
+export function commitChartGraphicDragInteraction(payload: {
   host: CanvasEvent
   evt: MouseEvent
 }) {
@@ -510,3 +510,7 @@ export function commitChartGraphicDragIntent(payload: {
   }
   return true
 }
+
+export const startChartGraphicDragIntent = startChartGraphicDragInteraction
+export const runChartGraphicDragIntent = runChartGraphicDragInteraction
+export const commitChartGraphicDragIntent = commitChartGraphicDragInteraction

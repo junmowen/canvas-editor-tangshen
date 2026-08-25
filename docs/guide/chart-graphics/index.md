@@ -1546,26 +1546,26 @@ Cypress 回归：
 | 导出图片 | 包含图表的文档 | 图表在导出图中非空且比例一致 |
 | 导出 PDF | ASCII 图表打印 SVG | 生成 `application/pdf` blob 且以 `%PDF` 开头 |
 
-## 当前实现映射（2026-07）
+## 当前实现映射（2026-08）
 
 下表用于把本文的设计口径和仓库里的真实代码位置对齐，后续继续推进时优先以这里为准：
 
 | 主题 | 当前代码位置 | 当前状态 |
 | --- | --- | --- |
-| 元素类型与模型 | `src/editor/dataset/enum/Element.ts`、`src/editor/interface/ChartGraphic.ts`、`src/editor/interface/Element.ts` | 已落地 `ElementType.CHART_GRAPHIC`、`IChartGraphic` 和图表元素挂载字段 |
-| 预设与归一化 | `src/editor/core/modules/chart-graphics/model/ChartGraphicPreset.ts`、`src/editor/core/modules/chart-graphics/presets/index.ts` | 已内置 8 个预设，具备独立预设模块出口，并支持业务侧动态注册、同 id 临时覆盖、注销恢复、基础结构校验、kind 一致性回退、宿主版本 / 能力兼容查询和实例预设版本升级治理 |
+| 元素类型与模型 | `src/editor/dataset/enum/Element.ts`、`src/editor/core/modules/chart-graphics/model/ChartGraphic.ts`、`src/editor/interface/ChartGraphic.ts`、`src/editor/interface/Element.ts` | 已落地 `ElementType.CHART_GRAPHIC`、`IChartGraphic` 和图表元素挂载字段 |
+| 预设与归一化 | `src/editor/core/modules/chart-graphics/presets/ChartGraphicPreset.ts`、`src/editor/core/modules/chart-graphics/presets/index.ts` | 已内置 8 个预设，具备独立预设模块出口，并支持业务侧动态注册、同 id 临时覆盖、注销恢复、基础结构校验、kind 一致性回退、宿主版本 / 能力兼容查询和实例预设版本升级治理 |
 | 插入与 patch 命令 | `src/editor/core/modules/chart-graphics/command/ChartGraphicCommandPolicy.ts`、`src/editor/core/command/Command.ts`、`src/editor/core/command/CommandAdaptMedia.ts` | 已支持插入、整体 patch、切换预设、更新序列 / 标记 / 区间 / 标注 / 牙位，以及设值后的 `on-open` 自动刷新 |
 | 布局测量 | `src/editor/core/modules/chart-graphics/layout/ChartGraphicElementLayout.ts`、`src/editor/core/modules/chart-graphics/layout/ChartGraphicLayoutEngine.ts`、`src/editor/core/modules/chart-graphics/layout/ChartGraphicFragmentPolicy.ts` | 已支持块级测量、超宽等比缩放、超高图表纵向 fragment，以及体温单 / 麻醉记录按时间窗口跨页续图 |
 | Canvas 编辑区渲染 | `src/editor/core/modules/chart-graphics/render/ChartGraphicRowRenderer.ts` | 已支持 frame、grid、regions、line / stepLine / scatter / waveform / bar、marks、annotations、牙位图和图例 |
 | 点位抽稀 | `src/editor/core/modules/chart-graphics/render/ChartGraphicSeriesPointPolicy.ts` | 已落地峰值保留抽稀，Canvas2D、SVG 打印和 Worker snapshot 共用 |
-| 心电图渲染 | `src/editor/core/modules/chart-graphics/render/ChartGraphicEcgRenderPolicy.ts`、`src/editor/core/modules/chart-graphics/model/ChartGraphicPreset.ts` | 已支持 12 导联 ECG 预设、标准纸网格、导联分区、1mV 标定脉冲、高密度抽稀、Canvas / SVG / Worker 和内部命中 |
+| 心电图渲染 | `src/editor/core/modules/chart-graphics/render/ChartGraphicEcgRenderPolicy.ts`、`src/editor/core/modules/chart-graphics/presets/ChartGraphicPreset.ts` | 已支持 12 导联 ECG 预设、标准纸网格、导联分区、1mV 标定脉冲、高密度抽稀、Canvas / SVG / Worker 和内部命中 |
 | 内部命中 | `src/editor/core/modules/chart-graphics/hittest/ChartGraphicHitTest.ts`、`src/editor/core/command/CommandAdaptQuery.ts` | 已支持本地坐标命中和文档坐标命令查询，覆盖点位 / 标记 / 区间 / 标注 / 牙位 / 图例 |
 | 内部编辑态 | `src/editor/interface/ChartGraphic.ts`、`src/editor/core/command/CommandAdaptMedia.ts` | 已支持 `interaction.internalEditing` 读写、内部多选目标、批量删除、目标有效性检查和只读预览约束 |
-| 默认内部拖拽 | `src/editor/core/event/pointer/intents/chart-graphics/ChartGraphicDragIntent.ts`、`src/editor/core/event/pointer/PointerSession.ts` | 已支持 `series-point / mark / region / annotation` 拖拽预览和 `mouseup` 单步历史提交，`readonly` 图表仍阻止改写 |
-| 校验与快照 | `src/editor/core/modules/chart-graphics/model/ChartGraphicValidationPolicy.ts`、`src/editor/core/modules/chart-graphics/model/ChartGraphicSnapshotPolicy.ts` | 已支持单图和文档级结构化校验、数据源 warning、预设治理 / 锁定项 warning、fallback warning、性能阈值 warning、医疗业务范围 warning 和归一化快照读取 |
+| 默认内部拖拽 | `src/editor/core/modules/chart-graphics/interaction/ChartGraphicDragInteraction.ts`、`src/editor/core/event/pointer/PointerSession.ts` | 已支持 `series-point / mark / region / annotation` 拖拽预览和 `mouseup` 单步历史提交，`readonly` 图表仍阻止改写 |
+| 校验与快照 | `src/editor/core/modules/chart-graphics/model/ChartGraphicValidationPolicy.ts`、`src/editor/core/modules/chart-graphics/runtime/ChartGraphicSnapshotPolicy.ts` | 已支持单图和文档级结构化校验、数据源 warning、预设治理 / 锁定项 warning、fallback warning、性能阈值 warning、医疗业务范围 warning 和归一化快照读取 |
 | Worker snapshot | `src/editor/core/modules/chart-graphics/render/ChartGraphicWorkerSnapshotPolicy.ts`、`src/editor/core/render-backend/worker/WorkerRenderProtocol.ts` | 已输出后台绘制命令，覆盖坐标图、牙位图、ECG、纵向 fragment、time-window fragment、内部 clip 平移和 OffscreenCanvas 路径绘制 |
-| 打印 / 图片导出 | `src/editor/utils/print/svg/chartGraphic.ts`、`src/editor/utils/print/svg/inline.ts`、`src/editor/core/command/CommandAdaptQuery.ts` | 已接入 SVG 打印、PDF、`getImage()` raster 导出、纵向 fragment clip、ECG 导联 clip、时间窗口快照和 PDF 导出前 `on-print` 刷新 |
-| 剪贴板恢复 | `src/editor/core/modules/chart-graphics/serializer/ChartGraphicClipboardSerializer.ts`、`src/editor/utils/elementDom.ts`、`src/editor/utils/print/svg/chartGraphic.ts` | 已在复制 HTML 和打印 SVG 中写入 `data-ce-chart-graphic-payload`，粘贴 HTML / SVG 时可恢复为 `CHART_GRAPHIC` 元素 |
+| 打印 / 图片导出 | `src/editor/core/modules/chart-graphics/render/ChartGraphicSvgExporter.ts`、`src/editor/utils/print/svg/chartGraphic.ts`、`src/editor/utils/print/svg/inline.ts`、`src/editor/core/command/CommandAdaptQuery.ts` | 已接入 SVG 打印、PDF、`getImage()` raster 导出、纵向 fragment clip、ECG 导联 clip、时间窗口快照和 PDF 导出前 `on-print` 刷新 |
+| 剪贴板恢复 | `src/editor/core/modules/chart-graphics/serializer/ChartGraphicClipboardSerializer.ts`、`src/editor/utils/elementDom.ts`、`src/editor/core/modules/chart-graphics/render/ChartGraphicSvgExporter.ts` | 已在复制 HTML 和打印 SVG 中写入 `data-ce-chart-graphic-payload`，粘贴 HTML / SVG 时可恢复为 `CHART_GRAPHIC` 元素 |
 | Demo 入口 | `src/app/toolbar.ts` | 已提供“插入图表”下拉，可直接插入 8 个预设 |
 | 回归测试 | `cypress/e2e/chart-graphics/chart-graphics.cy.ts` | 已覆盖插入、patch、预设切换、provider 刷新、命中、校验、Worker、打印 PDF，以及医疗图表时间窗口跨页和后续窗口编辑 |
 | CG-00 收口 | 模型、预设、命令、序列化、Demo | 已完成；预设 / payload / 查询结果互相隔离，覆盖 `getValue -> JSON -> setValue` 往返，并具备单图与文档级 `presetVersion` 升级治理 |
@@ -1576,7 +1576,7 @@ Cypress 回归：
 - 已落地纵向跨页和医疗时间窗口续图；跨页 fragment 的增量缓存、窗口懒渲染和更复杂的业务表头配置仍可继续增强。
 - 已内建 `series-point / mark / region / annotation` 的默认拖拽编辑、内部编辑态命令和内部目标批量选择 / 删除；overlay 控件仍未实现。
 - 牙位图已落地共享牙冠 / 牙面 Path2D 几何、命中、菜单编辑、撤销、Canvas / SVG / Worker 导出；后续可继续增强多牙选择、象限批量操作和更贴近真实牙体外形的专业图形资源。
-- 设计文中的 `ChartGraphicRuntime`、`ChartGraphicLayoutPolicy` 和完整 layout snapshot 仍属于后续抽象目标，不应按“已完成”理解。
+- 设计文中的完整 `ChartGraphicRuntime`、`ChartGraphicLayoutPolicy` 抽象仍属于后续目标；当前运行态策略已按 `runtime/` 分层落地，布局能力已由 `layout/` 下的元素测量、fragment policy 和 layout engine 承载。
 
 ## 推进阶段
 

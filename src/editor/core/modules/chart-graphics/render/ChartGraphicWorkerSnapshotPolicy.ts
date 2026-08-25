@@ -1,7 +1,7 @@
 import {
   IChartGraphic,
   IChartSeries
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 import { IElementPosition } from '../../../../interface/Element'
 import { IRowElement } from '../../../../interface/Row'
 import { IWorkerPaintCommand } from '../../../render-backend/worker/WorkerRenderProtocol'

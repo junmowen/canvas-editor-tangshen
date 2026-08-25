@@ -5,7 +5,7 @@ import {
   IChartMark,
   IChartRegion,
   IChartSeries
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 import { IDrawRowPayload } from '../../../../interface/Draw'
 import {
   DENTAL_STATUS_VISUAL_LIST,

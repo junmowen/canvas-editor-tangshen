@@ -1,7 +1,7 @@
 import {
   IChartGraphic,
   IChartSeries
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 import {
   IChartPoint,
   IChartRenderContext

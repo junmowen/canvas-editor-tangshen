@@ -12,12 +12,13 @@ import {
   IChartRegion,
   IChartSeries,
   IInsertChartGraphicPayload
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 import { IElement } from '../../../../interface/Element'
+import { isChartGraphicElement } from '../utils/ChartGraphicUtils'
 import {
   findChartGraphicPresetById,
   normalizeChartGraphic
-} from '../model/ChartGraphicPreset'
+} from '../presets/ChartGraphicPreset'
 
 function toChartComparableX(value: number | string, fallback = 0) {
   if (typeof value === 'number') return value
@@ -41,13 +42,6 @@ export function createChartGraphicElement(
     height: chartGraphic.size.height,
     chartGraphic
   }
-}
-
-/** 判断元素是否为图表图形元素。 */
-export function isChartGraphicElement(
-  element: IElement | undefined | null
-): element is IElement & { chartGraphic: IChartGraphic } {
-  return element?.type === ElementType.CHART_GRAPHIC && !!element.chartGraphic
 }
 
 /** 将元素尺寸同步到图表模型尺寸。 */

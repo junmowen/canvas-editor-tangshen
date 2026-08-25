@@ -1,11 +1,11 @@
 import {
   IChartGraphic,
   IChartGraphicFragmentDescriptor
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 import { IElement, IElementMetrics } from '../../../../interface/Element'
 import { IRow, IRowElement } from '../../../../interface/Row'
 import { deepClone } from '../../../../utils'
-import { isChartGraphicElement } from './ChartGraphicElementLayout'
+import { isChartGraphicElement } from '../utils/ChartGraphicUtils'
 import {
   resolveChartAxisValueNumber,
   resolveChartSeriesDataPoints,

@@ -54,7 +54,7 @@ import {
   createOoxmlDocxPackageBlob,
   createOoxmlPackageParts
 } from '../export/ooxml/OoxmlPackage'
-import { queryChartGraphicHitByPoint } from '../modules/chart-graphics/query/ChartGraphicHitQueryPolicy'
+import { queryChartGraphicHitByPoint } from '../modules/chart-graphics/hittest/ChartGraphicHitQueryPolicy'
 import { resolveChartAxisPointValueFromLocalCoordinate } from '../modules/chart-graphics/render/ChartGraphicCoordinatePolicy'
 
 function resolveChartAxisPositionValue(payload: {

@@ -1,12 +1,5 @@
-import { ElementType } from '../../../../dataset/enum/Element'
 import { IElement, IElementMetrics } from '../../../../interface/Element'
-
-/** 判断当前元素是否是图表图形。 */
-export function isChartGraphicElement(
-  element: IElement | undefined | null
-): element is IElement & { chartGraphic: NonNullable<IElement['chartGraphic']> } {
-  return element?.type === ElementType.CHART_GRAPHIC && !!element.chartGraphic
-}
+import { isChartGraphicElement } from '../utils/ChartGraphicUtils'
 
 /** 图表图形元素测量器。 */
 export class ChartGraphicElementLayout {

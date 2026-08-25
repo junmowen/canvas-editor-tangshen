@@ -7,7 +7,7 @@ import {
   IChartGraphicPresetUpgradeInfo,
   IChartGraphicPreset,
   IDentalChartModel
-} from '../../../../interface/ChartGraphic'
+} from '../model/ChartGraphic'
 import { deepClone } from '../../../../utils'
 
 const DEFAULT_PALETTE = ['#2563eb', '#dc2626', '#16a34a', '#9333ea']
