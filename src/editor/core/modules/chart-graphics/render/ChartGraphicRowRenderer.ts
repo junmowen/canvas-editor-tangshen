@@ -45,6 +45,7 @@ import {
   resolveChartRegionRect,
   resolveChartRenderContext
 } from './ChartGraphicCoordinatePolicy'
+import { drawChartVitalSigns } from './ChartGraphicVitalSignsPolicy'
 import {
   isEcgChart,
   resolveEcgCalibrationPulse,
@@ -94,6 +95,11 @@ export class ChartGraphicRowRenderer {
     }
     if (chart.kind === 'dental') {
       this.drawDentalChart(ctx, chart, width, height)
+      ctx.restore()
+      return
+    }
+    if (chart.kind === 'vital-signs') {
+      drawChartVitalSigns(ctx, chart, width, height)
       ctx.restore()
       return
     }

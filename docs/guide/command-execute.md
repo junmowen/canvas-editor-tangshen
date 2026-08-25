@@ -722,6 +722,20 @@ const ok = instance.command.executeUpdateChartGraphicSeriesPoint(
 )
 ```
 
+## executeUpdateChartGraphicVitalSignsField
+
+更新标准体温单中的患者信息或护理记录字段。字段值保存在体温单结构化模型中，Canvas、SVG 和 Worker 渲染会同步显示；业务侧可以根据字段的 `controlType` 绑定文本、数字或日期控件。
+
+```ts
+const ok = instance.command.executeUpdateChartGraphicVitalSignsField(
+  'vital-signs-1',
+  'patient-name',
+  { value: '张三' }
+)
+```
+
+可用字段由 `chartGraphic.vitalSigns.fields` 声明，例如 `patient-name`、`patient-age`、`patient-admission-date` 和 `footer-blood-pressure`。不存在的字段或非体温单图表会返回 `false`。
+
 ## executeUpsertChartGraphicMark
 
 功能：新增或更新事件 / 用药 / 警示标记，成功返回 `true`。

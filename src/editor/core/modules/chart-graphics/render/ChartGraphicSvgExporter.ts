@@ -16,6 +16,7 @@ import {
   resolveChartSeriesDataPoints
 } from '../render/ChartGraphicSeriesPointPolicy'
 import { resolveChartSmoothBezierSegmentList } from '../render/ChartGraphicSeriesGeometryPolicy'
+import { createVitalSignsSvg } from './ChartGraphicVitalSignsPolicy'
 import {
   resolveChartMedicalBandLayout,
   resolveChartMedicalHeaderText,
@@ -824,7 +825,9 @@ export function createPrintSvgChartGraphic(position: IElementPosition) {
   const content =
     chart.kind === 'dental'
       ? createDentalChart(chart, width, height)
-      : [
+      : chart.kind === 'vital-signs'
+        ? createVitalSignsSvg(chart, width, height)
+        : [
           createFrame(chart, width, height, renderContext!),
           createRegions(chart, renderContext!),
           createSeries(

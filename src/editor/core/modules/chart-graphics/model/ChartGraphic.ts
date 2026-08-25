@@ -181,6 +181,44 @@ export interface IChartGraphicPagination {
 }
 
 /** 图表跨页片段描述，保留完整图表模型并声明当前可见窗口。 */
+/** 体温单可填写字段。 */
+export interface IChartVitalSignsField {
+  /** 字段标识。 */
+  id: string
+  /** 字段标签。 */
+  label: string
+  /** 当前填写值。 */
+  value?: string
+  /** 空值时显示的占位文字。 */
+  placeholder?: string
+  /** 字段所在区域。 */
+  section: 'patient' | 'footer'
+  /** footer 区域行号。 */
+  rowIndex?: number
+  /** 推荐控件类型，供宿主生成文本 / 数值 / 日期控件。 */
+  controlType?: 'text' | 'number' | 'date'
+}
+/** 医院体温单的固定版式配置。 */
+export interface IChartVitalSignsLayout {
+  /** 横向日期数量，标准模板为 7 天。 */
+  dayCount: number
+  /** 每天的时间格数量，标准模板为 6 格。 */
+  slotsPerDay: number
+  /** 日期表头文字。 */
+  dayLabels: string[]
+  /** 每天重复显示的时间文字。 */
+  timeLabels: string[]
+  /** 体温刻度，按摄氏度显示。 */
+  temperatureTicks: number[]
+  /** 脉搏刻度，和体温网格共用纵坐标。 */
+  pulseTicks: number[]
+  /** 底部护理记录行。 */
+  footerRows: Array<{ label: string; unit?: string }>
+  /** 是否显示患者信息表头。 */
+  showPatientHeader?: boolean
+  /** 可填写的患者和底部记录字段。 */
+  fields?: IChartVitalSignsField[]
+}
 export interface IChartGraphicFragmentDescriptor {
   /** 当前片段在逻辑图表中的顺序。 */
   fragmentIndex: number
@@ -232,6 +270,8 @@ export interface IChartGraphicPreset {
   defaultInteraction?: IChartInteractionState
   /** 默认分页策略。 */
   defaultPagination?: IChartGraphicPagination
+  /** 体温单默认固定版式。 */
+  vitalSigns?: IChartVitalSignsLayout
   /** 默认数据源绑定，供模板预设声明业务字段映射。 */
   defaultSource?: IChartDataSourceBinding
   /** 预设要求的宿主版本和能力声明。 */
@@ -412,6 +452,8 @@ export interface IChartGraphicDataResult {
   interaction?: IChartInteractionState
   /** fallback 资源。 */
   fallback?: IChartFallbackResource
+  /** 体温单专用固定版式。 */
+  vitalSigns?: IChartVitalSignsLayout
   /** 分页策略。 */
   pagination?: IChartGraphicPagination
 }
@@ -802,6 +844,8 @@ export interface IChartGraphic {
   interaction?: IChartInteractionState
   /** fallback 资源。 */
   fallback?: IChartFallbackResource
+  /** 体温单专用固定版式。 */
+  vitalSigns?: IChartVitalSignsLayout
   /** 分页策略。 */
   pagination?: IChartGraphicPagination
 }

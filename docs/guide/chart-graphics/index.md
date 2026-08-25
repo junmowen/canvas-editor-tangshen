@@ -346,15 +346,15 @@ idle
 
 ### 体温单
 
-体温单以日期 / 时间格为横轴，以体温、脉搏、呼吸、血压、出入量等多类数据为纵向分区。
+体温单不是普通曲线图，也不是插入一张图片后只能查看的静态资源。标准预设是一张可填写的医院固定表单：一次插入一个图表元素，表单内包含连续 7 天、每天 6 个时间格、体温 / 脉搏刻度、患者信息和护理记录行。体温和脉搏曲线只是在表单数据被填写后覆盖到网格上的记录结果。
 
 模型要点：
 
-- 支持按日、班次、小时展示。
-- 支持体温、脉搏、呼吸等多序列叠加。
-- 支持住院天数、术后天数、事件栏、护理记录栏。
-- 支持断点、复测点、降温后体温符号和自定义符号。
-- 支持跨页续表，页内保持网格和表头一致。
+- 标准 `medical.vitalSigns.standard` 固定为 7 天 × 6 时间格，单次插入不会生成 7 张体温单。
+- 患者姓名、年龄、性别、科别、床号、入院日期、住院病历号，以及呼吸、血氧、出入量、大便、小便、体重、身高、血压均以结构化字段保存，不依赖图片文字。
+- 可通过 `executeUpdateChartGraphicVitalSignsField()` 写入字段值；字段声明了推荐的 `text`、`number` 或 `date` 控件类型，宿主可以据此绑定或生成填写控件。
+- 体温、脉搏和呼吸序列默认为空，只有业务填写或数据源刷新后才绘制曲线，避免插入模板时出现虚假数据。
+- 显式使用 `time-window` 仅适用于业务传入的长周期记录；标准七日模板使用 `vertical-slice`，保证表单主体只插入一次。
 
 建议预设：
 
@@ -369,9 +369,9 @@ kind: 'vital-signs'
 {
   kind: 'vital-signs',
   presetId: 'medical.vitalSigns.standard',
-  size: { width: 720, height: 520, lockAspectRatio: false },
+  size: { width: 760, height: 920, lockAspectRatio: false },
   coordinate: {
-    xAxis: { type: 'time', tickInterval: 6 },
+    xAxis: { type: 'linear', min: 1, max: 42 },
     yAxis: { type: 'linear', min: 34, max: 42 },
     grid: { majorStep: 1, minorStep: 0.2 }
   },
@@ -409,6 +409,24 @@ kind: 'vital-signs'
   ]
 }
 ```
+
+填写患者信息和护理记录：
+
+```ts
+editor.command.executeUpdateChartGraphicVitalSignsField(
+  'vital-signs-1',
+  'patient-name',
+  { value: '张三' }
+)
+
+editor.command.executeUpdateChartGraphicVitalSignsField(
+  'vital-signs-1',
+  'footer-blood-pressure',
+  { value: '120/80' }
+)
+```
+
+`chartGraphic.vitalSigns.fields` 保存字段定义和值；Canvas 编辑区、SVG 打印导出和 Worker 快照都会读取同一份结构化数据。字段为空时显示下划线占位，填写后显示实际值，因此体温单始终是可再次编辑的数据模型，而不是图片。
 
 ### 心电图
 
@@ -925,6 +943,7 @@ export interface IChartGraphicHitResult {
 | `executeUpgradeChartGraphicPreset(id)` | 将图表实例升级到当前注册表中的同 id 最新预设版本，保留业务数据并合并新增默认主题、交互、分页和数据源字段映射 |
 | `executeUpgradeChartGraphicPresets()` | 批量升级文档内所有可写且可升级的图表实例，返回检查、升级、跳过和失败统计 |
 | `executeUpdateChartGraphicSeries(id, seriesId, patch)` | 按序列 id 更新曲线、散点或波形数据 |
+| `executeUpdateChartGraphicVitalSignsField(id, fieldId, patch)` | 更新体温单患者信息或护理记录字段；字段值以结构化数据保存 |
 | `executeInsertChartGraphicSeriesPoint(id, seriesId, point)` | 在指定序列中插入单个点位 |
 | `executeUpdateChartGraphicSeriesPoint(id, seriesId, dataIndex, patch)` | 更新指定序列中的单个点位 |
 | `executeDeleteChartGraphicSeriesPoint(id, seriesId, dataIndex)` | 删除指定序列中的单个点位 |

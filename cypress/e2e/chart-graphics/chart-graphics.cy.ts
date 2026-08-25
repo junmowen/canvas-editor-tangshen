@@ -1724,16 +1724,44 @@ describe('chart graphics', () => {
         'pulse',
         'respiration'
       ])
+      expect(vitalSigns.size).to.deep.include({
+        width: 760,
+        height: 920
+      })
+      expect(vitalSigns.vitalSigns).to.deep.include({
+        dayCount: 7,
+        slotsPerDay: 6
+      })
+      expect(vitalSigns.series?.every(series => series.data.length === 0)).to.eq(
+        true
+      )
+      expect(vitalSigns.vitalSigns?.fields?.map(field => field.id)).to.include.members([
+        'patient-name',
+        'patient-age',
+        'patient-admission-date',
+        'footer-blood-pressure'
+      ])
       expect(vitalSigns.marks?.[0]).to.deep.include({
         id: 'admission',
         label: '入院'
       })
       expect(vitalSigns.pagination).to.deep.include({
-        mode: 'time-window',
-        windowSize: 7,
+        mode: 'vertical-slice',
         repeatedHeaderHeight: 34,
         eventTrackHeight: 20
       })
+      expect(
+        editor.command.executeUpdateChartGraphicVitalSignsField(
+          vitalSignsId!,
+          'patient-name',
+          { value: '张三' }
+        )
+      ).to.eq(true)
+      expect(
+        editor.command.getChartGraphic(vitalSignsId!)?.vitalSigns?.fields?.find(
+          field => field.id === 'patient-name'
+        )?.value
+      ).to.eq('张三')
 
       const partogramId = editor.command.executeInsertChartGraphic({
         kind: 'partogram',
@@ -7624,6 +7652,13 @@ describe('chart graphics', () => {
                     bottom: 54,
                     left: 42
                   }
+                },
+                pagination: {
+                  mode: 'time-window',
+                  windowSize: 7,
+                  pageBreakBetweenFragments: true,
+                  repeatedHeaderHeight: 34,
+                  eventTrackHeight: 20
                 },
                 series: [
                   {

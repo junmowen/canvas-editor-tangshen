@@ -11,6 +11,7 @@ import {
   IChartMark,
   IChartRegion,
   IChartSeries,
+  IChartVitalSignsField,
   IInsertChartGraphicPayload
 } from '../model/ChartGraphic'
 import { IElement } from '../../../../interface/Element'
@@ -126,6 +127,28 @@ export function applyChartGraphicSeriesPatch(
   }
   return applyChartGraphicPatch(element, {
     series: nextSeriesList
+  })
+}
+
+/** 更新体温单中的一个结构化填写字段。 */
+export function applyChartGraphicVitalSignsFieldPatch(
+  element: IElement | null | undefined,
+  fieldId: string,
+  patch: Partial<IChartVitalSignsField>
+) {
+  if (!isChartGraphicElement(element) || element.chartGraphic.kind !== 'vital-signs') {
+    return false
+  }
+  const layout = element.chartGraphic.vitalSigns
+  if (!layout?.fields?.some(field => field.id === fieldId)) return false
+  const fields = layout.fields.map(field =>
+    field.id === fieldId ? { ...field, ...patch, id: fieldId } : field
+  )
+  return applyChartGraphicPatch(element, {
+    vitalSigns: {
+      ...layout,
+      fields
+    }
   })
 }
 

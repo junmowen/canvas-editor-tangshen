@@ -166,14 +166,14 @@ const VITAL_SIGNS_PRESET: IChartGraphicPreset = {
   name: '标准体温单',
   version: '1.0.0',
   defaultSize: {
-    width: 720,
-    height: 420
+    width: 760,
+    height: 920
   },
   defaultCoordinate: {
     xAxis: {
       type: 'linear',
       min: 1,
-      max: 7
+      max: 42
     },
     yAxis: {
       type: 'linear',
@@ -195,15 +195,7 @@ const VITAL_SIGNS_PRESET: IChartGraphicPreset = {
       unit: 'celsius',
       symbol: 'circle',
       color: '#2563eb',
-      data: [
-        { x: 1, y: 36.5 },
-        { x: 2, y: 36.8 },
-        { x: 3, y: 37.2 },
-        { x: 4, y: 36.9 },
-        { x: 5, y: 37.4 },
-        { x: 6, y: 37.1 },
-        { x: 7, y: 36.7 }
-      ]
+      data: []
     },
     {
       id: 'pulse',
@@ -212,15 +204,7 @@ const VITAL_SIGNS_PRESET: IChartGraphicPreset = {
       unit: 'bpm',
       symbol: 'dot',
       color: '#dc2626',
-      data: [
-        { x: 1, y: 36.9 },
-        { x: 2, y: 37.2 },
-        { x: 3, y: 37.8 },
-        { x: 4, y: 37.4 },
-        { x: 5, y: 38.1 },
-        { x: 6, y: 37.6 },
-        { x: 7, y: 37.1 }
-      ]
+      data: []
     },
     {
       id: 'respiration',
@@ -229,17 +213,47 @@ const VITAL_SIGNS_PRESET: IChartGraphicPreset = {
       unit: 'rpm',
       symbol: 'triangle',
       color: '#16a34a',
-      data: [
-        { x: 1, y: 35.8 },
-        { x: 2, y: 36 },
-        { x: 3, y: 36.2 },
-        { x: 4, y: 35.9 },
-        { x: 5, y: 36.3 },
-        { x: 6, y: 36.1 },
-        { x: 7, y: 35.9 }
-      ]
+      data: []
     }
   ],
+  vitalSigns: {
+    dayCount: 7,
+    slotsPerDay: 6,
+    dayLabels: ['1', '2', '3', '4', '5', '6', '7'],
+    timeLabels: ['2', '6', '10', '14', '18', '22'],
+    temperatureTicks: [35, 36, 37, 38, 39, 40, 41, 42],
+    pulseTicks: [40, 60, 80, 100, 120, 140, 160, 180],
+    footerRows: [
+      { label: '呼吸', unit: '次/分' },
+      { label: '血氧', unit: '%' },
+      { label: '出量', unit: 'ml' },
+      { label: '入量', unit: 'ml' },
+      { label: '大便', unit: '次/日' },
+      { label: '小便', unit: '次/日' },
+      { label: '体重', unit: 'kg' },
+      { label: '身高', unit: 'cm' },
+      { label: '血压', unit: 'mmHg' }
+    ],
+    fields: [
+      { id: 'patient-name', label: '姓名', section: 'patient', controlType: 'text' },
+      { id: 'patient-age', label: '年龄', section: 'patient', controlType: 'number' },
+      { id: 'patient-gender', label: '性别', section: 'patient', controlType: 'text' },
+      { id: 'patient-department', label: '科别', section: 'patient', controlType: 'text' },
+      { id: 'patient-bed', label: '床号', section: 'patient', controlType: 'text' },
+      { id: 'patient-admission-date', label: '入院日期', section: 'patient', controlType: 'date' },
+      { id: 'patient-record-no', label: '住院病历号', section: 'patient', controlType: 'text' },
+      { id: 'footer-respiration', label: '呼吸', section: 'footer', rowIndex: 0, controlType: 'number' },
+      { id: 'footer-blood-oxygen', label: '血氧', section: 'footer', rowIndex: 1, controlType: 'number' },
+      { id: 'footer-output', label: '出量', section: 'footer', rowIndex: 2, controlType: 'number' },
+      { id: 'footer-input', label: '入量', section: 'footer', rowIndex: 3, controlType: 'number' },
+      { id: 'footer-stool', label: '大便', section: 'footer', rowIndex: 4, controlType: 'number' },
+      { id: 'footer-urine', label: '小便', section: 'footer', rowIndex: 5, controlType: 'number' },
+      { id: 'footer-weight', label: '体重', section: 'footer', rowIndex: 6, controlType: 'number' },
+      { id: 'footer-height', label: '身高', section: 'footer', rowIndex: 7, controlType: 'number' },
+      { id: 'footer-blood-pressure', label: '血压', section: 'footer', rowIndex: 8, controlType: 'text' }
+    ],
+    showPatientHeader: true
+  },
   defaultMarks: [
     {
       id: 'admission',
@@ -256,7 +270,7 @@ const VITAL_SIGNS_PRESET: IChartGraphicPreset = {
     backgroundColor: '#ffffff'
   },
   defaultPagination: {
-    mode: 'time-window',
+    mode: 'vertical-slice',
     windowSize: 7,
     pageBreakBetweenFragments: true,
     repeatedHeaderHeight: 34,
@@ -955,6 +969,26 @@ export function normalizeChartGraphic(chart: Partial<IChartGraphic> & {
       ...chart.interaction
     },
     fallback: chart.fallback,
+    vitalSigns:
+      chart.vitalSigns || preset.vitalSigns
+        ? {
+            ...(preset.vitalSigns || chart.vitalSigns!),
+            ...chart.vitalSigns,
+            fields: chart.vitalSigns?.fields ?? preset.vitalSigns?.fields,
+            footerRows:
+              chart.vitalSigns?.footerRows ?? preset.vitalSigns?.footerRows ?? [],
+            dayLabels:
+              chart.vitalSigns?.dayLabels ?? preset.vitalSigns?.dayLabels ?? [],
+            timeLabels:
+              chart.vitalSigns?.timeLabels ?? preset.vitalSigns?.timeLabels ?? [],
+            temperatureTicks:
+              chart.vitalSigns?.temperatureTicks ??
+              preset.vitalSigns?.temperatureTicks ??
+              [],
+            pulseTicks:
+              chart.vitalSigns?.pulseTicks ?? preset.vitalSigns?.pulseTicks ?? []
+          }
+        : undefined,
     pagination:
       chart.pagination || preset.defaultPagination
         ? {

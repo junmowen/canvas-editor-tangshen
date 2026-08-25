@@ -32,6 +32,7 @@ import {
   IChartMark,
   IChartRegion,
   IChartSeries,
+  IChartVitalSignsField,
   IInsertChartGraphicPayload,
   IRefreshChartGraphicSourceOption,
   IRefreshChartGraphicSourcesPayload,
@@ -81,6 +82,7 @@ import {
   applyChartGraphicRegionDelete,
   applyChartGraphicRegionUpsert,
   applyChartGraphicSeriesPatch,
+  applyChartGraphicVitalSignsFieldPatch,
   createChartGraphicElement,
   toggleChartGraphicDentalSurfaceStatus,
   toggleChartGraphicDentalToothStatus
@@ -564,6 +566,21 @@ export class CommandAdaptMedia extends CommandAdaptTable {
     if (this.isCommandDisabled()) return false
     const element = this.findChartGraphicElement(id)
     if (!applyChartGraphicSeriesPatch(element, seriesId, patch)) return false
+    this.renderChartGraphicUpdate()
+    return true
+  }
+
+  /** 更新体温单中的一个结构化填写字段。 */
+  public updateChartGraphicVitalSignsField(
+    id: string,
+    fieldId: string,
+    patch: Partial<IChartVitalSignsField>
+  ) {
+    if (this.isCommandDisabled()) return false
+    const element = this.findChartGraphicElement(id)
+    if (!applyChartGraphicVitalSignsFieldPatch(element, fieldId, patch)) {
+      return false
+    }
     this.renderChartGraphicUpdate()
     return true
   }

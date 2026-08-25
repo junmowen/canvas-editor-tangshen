@@ -39,6 +39,7 @@ import {
   resolveChartMedicalHeaderText,
   resolveChartMedicalMarkCoordinate
 } from './ChartGraphicMedicalRenderPolicy'
+import { pushVitalSignsWorkerCommands } from './ChartGraphicVitalSignsPolicy'
 import {
   isEcgChart,
   resolveEcgCalibrationPulse,
@@ -223,7 +224,7 @@ function pushFrameCommands(
           width: context.plot.width,
           height: medicalLayout.headerHeight
         },
-        fillStyle: chart.kind === 'vital-signs' ? '#eff6ff' : '#f3f4f6',
+        fillStyle: '#f3f4f6',
         alpha
       },
       {
@@ -963,6 +964,8 @@ export function pushChartGraphicWorkerSnapshotCommands(payload: {
   const localCommandList: IWorkerPaintCommand[] = []
   if (chart.kind === 'dental') {
     pushDentalCommands(localCommandList, chart, width, height, alpha, scale)
+  } else if (chart.kind === 'vital-signs') {
+    pushVitalSignsWorkerCommands(localCommandList, chart, width, height, alpha, scale)
   } else {
     const context = resolveChartRenderContext(chart, width, height)
     pushFrameCommands(localCommandList, chart, width, height, alpha, scale)

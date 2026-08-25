@@ -154,6 +154,8 @@ export class Command {
   public executeUpgradeChartGraphicPresets: CommandAdapt['upgradeChartGraphicPresets']
   /** 对外暴露的更新图表图形序列命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeUpdateChartGraphicSeries: CommandAdapt['updateChartGraphicSeries']
+  /** 对外暴露的更新体温单填写字段命令入口，内部代理到 CommandAdapt 对应实现。 */
+  public executeUpdateChartGraphicVitalSignsField: CommandAdapt['updateChartGraphicVitalSignsField']
   /** 对外暴露的插入图表图形序列点位命令入口，内部代理到 CommandAdapt 对应实现。 */
   public executeInsertChartGraphicSeriesPoint: CommandAdapt['insertChartGraphicSeriesPoint']
   /** 对外暴露的更新图表图形序列点位命令入口，内部代理到 CommandAdapt 对应实现。 */
@@ -548,6 +550,8 @@ export class Command {
       adapt.upgradeChartGraphicPresets.bind(adapt)
     this.executeUpdateChartGraphicSeries =
       adapt.updateChartGraphicSeries.bind(adapt)
+    this.executeUpdateChartGraphicVitalSignsField =
+      adapt.updateChartGraphicVitalSignsField.bind(adapt)
     this.executeInsertChartGraphicSeriesPoint =
       adapt.insertChartGraphicSeriesPoint.bind(adapt)
     this.executeUpdateChartGraphicSeriesPoint =

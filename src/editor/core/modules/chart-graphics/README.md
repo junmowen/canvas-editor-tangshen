@@ -36,7 +36,7 @@ CG-00/CG-01/CG-02/CG-03/CG-04/CG-05/CG-06 已完成：
 - 块级测量
 - Canvas2D 行级渲染，包含网格、折线、平滑线、阶梯线、散点、柱状、点符号、区间、事件标记和文字标注
 - 平滑线 Canvas / SVG 几何与命中共用三次贝塞尔策略
-- 体温单多序列医疗网格、护理事件栏和按 7 日窗口跨页续图
+- 体温单固定 7 日 × 6 时间格表单、患者信息 / 护理记录字段和数据覆盖曲线
 - 产程图锁定医学坐标、警戒线、处理线和双曲线
 - 麻醉记录生命体征曲线、事件轨道和按 60 分钟窗口跨页续图
 - time-window fragment 在 Canvas、命中、SVG 和 Worker 间共用窗口 snapshot
@@ -50,6 +50,7 @@ CG-00/CG-01/CG-02/CG-03/CG-04/CG-05/CG-06 已完成：
 - 文档坐标命中查询命令，支持业务侧从页内坐标定位图表内部对象
 - 通用媒体 direct-hit 选中和 resizer 尺寸同步，resize 后保持元素宽高与 `chartGraphic.size` 一致
 - 结构化校验命令，覆盖尺寸、坐标轴、序列数据、牙位状态、数据源 warning、预设治理 / 锁定项 warning、fallback warning、性能阈值 warning 和第一批医疗业务范围 warning
+- 体温单字段通过 `executeUpdateChartGraphicVitalSignsField()` 更新，Canvas、SVG 和 Worker 共用结构化字段数据
 - SVG 打印、`getImage()` 图片导出、PDF blob、纵向 fragment clip、time-window 快照和 ECG 导联 clip，供打印和导出链路复用
 - Worker snapshot 命令输出，支持坐标图、牙位图、ECG、医疗时间窗口、纵向 fragment 和后台 OffscreenCanvas 路径绘制
 
